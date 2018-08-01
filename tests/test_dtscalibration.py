@@ -1,4 +1,4 @@
-
+# coding=utf-8
 from dtscalibration.cli import main
 
 
