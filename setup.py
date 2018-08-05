@@ -51,13 +51,17 @@ setup(
         'Operating System :: Microsoft :: Windows',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: Implementation :: PyPy',
         'Topic :: Utilities',
         ],
     keywords=[
         'DTS', 'Calibration',
         ],
     install_requires=[
+        'numpy',
+        'xarray',
+        'pyyaml',
+        'xmltodict',
+        'scipy'
         # eg: 'aspectlib==1.1.1', 'six>=1.7',
         ],
     extras_require={
