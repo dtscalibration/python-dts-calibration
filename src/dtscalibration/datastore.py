@@ -179,6 +179,28 @@ def read_xml_dir(filepath,
                  timezone_ultima_xml='Europe/Amsterdam',
                  file_ext='*.xml',
                  **kwargs):
+    """Read a folder with measurement files. Each measurement file contains values for a
+    single timestep. Remember to check which timezone you are working in.
+
+    Parameters
+    ----------
+    filepath : str, Path
+        Path to folder
+    timezone_netcdf : str, optional
+        Timezone string of the netcdf file. UTC follows CF-conventions.
+    timezone_ultima_xml : str, optional
+        Timezone string of the measurement files. Remember to check when measurements are taken.
+        Also if summertime is used.
+    file_ext : str, optional
+        file extension of the measurement files
+    kwargs : dict-like, optional
+        keyword-arguments are passed to DataStore initialization
+
+    Returns
+    -------
+    datastore : DataStore
+        The newly created datastore.
+    """
 
     filelist = sorted(glob.glob(os.path.join(filepath, file_ext)))
     array, timearr, meta, extra = grab_data(filelist)
