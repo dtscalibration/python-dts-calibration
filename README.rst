@@ -90,3 +90,15 @@ Note, to combine the coverage data from all the tox environments run:
       - ::
 
             PYTEST_ADDOPTS=--cov-append tox
+
+To bump version and docs
+    tox
+    git status  # to make sure no unversioned modifications are in the repository
+    git add --all
+    bumpversion patch
+    rm -rf build
+    rm -rf src/*.egg-info
+    rm -rf dist/*
+    tox
+    python setup.py clean --all sdist bdist_wheel
+    twine upload --repository-url https://upload.pypi.org/legacy/ dist/*
