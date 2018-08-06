@@ -6,7 +6,8 @@ import os
 import xarray as xr
 import yaml
 
-from dtscalibration.datastore_utils import coords_time, grab_data
+from dtscalibration.datastore_utils import coords_time
+from dtscalibration.datastore_utils import grab_data
 
 
 class DataStore(xr.Dataset):

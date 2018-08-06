@@ -6,7 +6,6 @@ from xml.etree import ElementTree
 import numpy as np
 import pandas as pd
 import xmltodict
-# from dtscalibration.datastore import DataStore
 
 
 def read_data_from_fp_numpy(fp):

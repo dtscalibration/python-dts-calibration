@@ -10,7 +10,6 @@ from dtscalibration import open_datastore
 from dtscalibration import read_xml_dir
 from dtscalibration.datastore_utils import read_data_from_fp_numpy
 
-
 fn = ["channel 1_20170921112245510.xml",
       "channel 1_20170921112746818.xml",
       "channel 1_20170921112746818.xml"]
@@ -106,9 +105,9 @@ def test_io_sections_property():
 def test_read_xml_dir():
     filepath = data_dir
     ds = read_xml_dir(filepath,
-                timezone_netcdf='UTC',
-                timezone_ultima_xml='Europe/Amsterdam',
-                file_ext='*.xml')
+                      timezone_netcdf='UTC',
+                      timezone_ultima_xml='Europe/Amsterdam',
+                      file_ext='*.xml')
 
     assert ds._initialized
 
