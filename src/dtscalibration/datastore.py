@@ -11,8 +11,7 @@ from dtscalibration.datastore_utils import grab_data
 
 
 class DataStore(xr.Dataset):
-    def __init__(self, *args, **kwargs):
-        """To load data from a file or file-like object, use the `open_datastore`
+    """To load data from a file or file-like object, use the `open_datastore`
         function.
 
         Parameters
@@ -25,7 +24,7 @@ class DataStore(xr.Dataset):
             in all variables in which it appears.
         coords : dict-like, optional
             Another mapping in the same form as the `variables` argument,
-            except the each item is saved on the dataset as a "coordinate".
+            except the each item is saved on the datastore as a "coordinate".
             These variables have an associated meaning: they describe
             constant/fixed/independent quantities, unlike the
             varying/measured/dependent quantities that belong in `variables`.
@@ -34,7 +33,7 @@ class DataStore(xr.Dataset):
             assumed to give index values along the dimension with the same
             name.
         attrs : dict-like, optional
-            Global attributes to save on this dataset.
+            Global attributes to save on this datastore.
         sections : dict, optional
             Sections for calibration. The dictionary should contain key-var couples
             in which the key is the name of the calibration temp time series. And
@@ -42,7 +41,7 @@ class DataStore(xr.Dataset):
             stop in meter (float).
         compat : {'broadcast_equals', 'equals', 'identical'}, optional
             String indicating how to compare variables of the same name for
-            potential conflicts when initializing this dataset:
+            potential conflicts when initializing this datastore:
 
             - 'broadcast_equals': all values must be equal when variables are
               broadcast against each other to ensure common dimensions.
@@ -50,6 +49,7 @@ class DataStore(xr.Dataset):
             - 'identical': all values, dimensions and attributes must be the
               same.
         """
+    def __init__(self, *args, **kwargs):
         super(DataStore, self).__init__(*args, **kwargs)
 
         if '_sections' not in self.attrs:
@@ -76,7 +76,7 @@ class DataStore(xr.Dataset):
 
 
 def open_datastore(filename_or_obj, **kwargs):
-    """Load and decode a dataset from a file or file-like object
+    """Load and decode a datastore from a file or file-like object
     into a DataStore object.
 
     Parameters
@@ -116,14 +116,14 @@ def open_datastore(filename_or_obj, **kwargs):
         used as the last dimension of character arrays.
     decode_coords : bool, optional
         If True, decode the 'coordinates' attribute to identify coordinates in
-        the resulting dataset.
+        the resulting datastore.
     engine : {'netcdf4', 'scipy', 'pydap', 'h5netcdf', 'pynio', 'pseudonetcdf'}, optional
         Engine to use when reading files. If not provided, the default engine
         is chosen based on available dependencies, with a preference for
         'netcdf4'.
     chunks : int or dict, optional
-        If chunks is provided, it used to load the new dataset into dask
-        arrays. ``chunks={}`` loads the dataset with dask using a single
+        If chunks is provided, it used to load the new datastore into dask
+        arrays. ``chunks={}`` loads the datastore with dask using a single
         chunk for all arrays.
     lock : False, True or threading.Lock, optional
         If chunks is provided, this argument is passed on to
@@ -140,12 +140,12 @@ def open_datastore(filename_or_obj, **kwargs):
         always load their data from disk into a ``pandas.Index``.
     drop_variables: string or iterable, optional
         A variable or list of variables to exclude from being parsed from the
-        dataset. This may be useful to drop variables with problems or
+        datastore. This may be useful to drop variables with problems or
         inconsistent values.
     backend_kwargs: dictionary, optional
         A dictionary of keyword arguments to pass on to the backend. This
         may be useful when backend options would improve performance or
-        allow user control of dataset processing.
+        allow user control of datastore processing.
     sections : dict, optional
         Sections for calibration. The dictionary should contain key-var couples
         in which the key is the name of the calibration temp time series. And
@@ -153,11 +153,11 @@ def open_datastore(filename_or_obj, **kwargs):
         stop in meter (float).
     Returns
     -------
-    dataset : Dataset
-        The newly created dataset.
+    datastore : DataStore
+        The newly created datastore.
     See Also
     --------
-    open_mfdataset
+    read_xml_dir
     """
 
     xr_kws = inspect.signature(xr.open_dataset).parameters.keys()
@@ -210,7 +210,5 @@ def read_xml_dir(filepath,
                    coords=coords,
                    attrs=meta,
                    **kwargs)
-
-    print(ds)
 
     return ds
