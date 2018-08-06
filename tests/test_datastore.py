@@ -7,18 +7,22 @@ import numpy as np
 
 from dtscalibration import DataStore
 from dtscalibration import open_datastore
+from dtscalibration import read_xml_dir
 from dtscalibration.datastore_utils import read_data_from_fp_numpy
+
 
 fn = ["channel 1_20170921112245510.xml",
       "channel 1_20170921112746818.xml",
       "channel 1_20170921112746818.xml"]
 
 if 1:
+    # working dir is tests
     wd = os.path.dirname(os.path.abspath(__file__))
     data_dir = os.path.join(wd, 'data')
 
 else:
-    data_dir = os.path.join('python-dts-calibration', 'tests', 'data')
+    # working dir is src
+    data_dir = os.path.join('..', '..', 'tests', 'data')
 
 
 def test_read_data_from_single_file():
@@ -47,12 +51,14 @@ def test_read_data_from_single_file():
 def test_empty_construction():
     ds = DataStore()
     assert ds._initialized, 'Empty obj in not initialized'
+    pass
 
 
 def test_has_sectionattr_upon_creation():
     ds = DataStore()
     assert hasattr(ds, '_sections')
     assert isinstance(ds._sections, str)
+    pass
 
 
 def test_sections_property():
@@ -93,5 +99,17 @@ def test_io_sections_property():
         ds2 = open_datastore(tmp.name)
 
         assert ds.sections == ds2.sections
+
+    pass
+
+
+def test_read_xml_dir():
+    filepath = data_dir
+    ds = read_xml_dir(filepath,
+                timezone_netcdf='UTC',
+                timezone_ultima_xml='Europe/Amsterdam',
+                file_ext='*.xml')
+
+    assert ds._initialized
 
     pass

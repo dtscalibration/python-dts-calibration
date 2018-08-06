@@ -6,8 +6,7 @@ from xml.etree import ElementTree
 import numpy as np
 import pandas as pd
 import xmltodict
-
-from dtscalibration.datastore import DataStore
+# from dtscalibration.datastore import DataStore
 
 
 def read_data_from_fp_numpy(fp):
@@ -88,33 +87,10 @@ def find_dimensions(filename):
     else:
         doc = doc_[u'logs'][u'log']
 
-    return (len(doc[u'logCurveInfo']), len(doc[u'logData']['data']))
+    nitem = len(doc[u'logCurveInfo'])
+    nx = len(doc[u'logData']['data'])
 
-
-def file_to_array(file, nx, dtype):
-    with open(file, 'r') as fh:
-        s = fh.readlines()
-
-    i_start = s.index('   <data>\n')
-    i_stop = i_start - 1 + 3 * nx
-
-    str_array = s[slice(i_start + 1, i_stop, 3)]
-
-    return np.loadtxt(str_array, delimiter=',', dtype=dtype)
-
-
-def items_per_chunk(filelisti, maxfilesize=1000):
-    from math import ceil
-    nitem, nx = find_dimensions(filelisti)
-    return int(ceil(maxfilesize * 1e6 / (nitem * nx * 8)))
-
-
-def split_filelist(filelist, maxfilesize=1000):
-    maxitems = items_per_chunk(filelist[0], maxfilesize=maxfilesize)
-
-    return [
-        filelist[i:i + maxitems] for i in range(0, len(filelist), maxitems)
-        ]
+    return nitem, nx
 
 
 def grab_data(filelist, sep=':'):
@@ -126,41 +102,31 @@ def grab_data(filelist, sep=':'):
 
     nitem, nx = find_dimensions(filelist[0])
     ntime = len(filelist)
-    '''save other data'''
-    # extra = {
-    #     'acquisitionTime': dict(iloc=(18, 0)),
-    #     'referenceTemperature': dict(iloc=(18, 1)),
-    #     'probe1Temperature': dict(iloc=(18, 2)),
-    #     'probe2Temperature': dict(iloc=(18, 3)),
-    #     'referenceProbeVoltage': dict(iloc=(18, 6)),
-    #     'probe1Voltage': dict(iloc=(18, 7)),
-    #     'probe2Voltage': dict(iloc=(18, 8)),
-    #     'userAcquisitionTimeFW': dict(iloc=(-1, -1, 1, 4, 2)),
-    #     'userAcquisitionTimeBW': dict(iloc=(-1, -1, 2, 4, 2))
-    # }
 
     double_ended_flag = bool(int(meta['customData:isDoubleEnded']))
     chFW = int(meta['customData:forwardMeasurementChannel']) - 1  # zero-based
 
     extra2 = [('log', 'customData', 'acquisitionTime'),
-              ('log', 'customData',
-               'referenceTemperature'), ('log', 'customData',
-                                         'probe1Temperature'),
-              ('log', 'customData',
-               'probe2Temperature'), ('log', 'customData',
-                                      'referenceProbeVoltage'),
-              ('log', 'customData', 'probe1Voltage'), ('log', 'customData',
-                                                       'probe2Voltage'),
-              ('log', 'customData', 'UserConfiguration',
-               'ChannelConfiguration', 'AcquisitionConfiguration',
-               'AcquisitionTime', 'userAcquisitionTimeFW')]
-    if double_ended_flag:
+              ('log', 'customData', 'referenceTemperature'),
+              ('log', 'customData', 'probe1Temperature'),
+              ('log', 'customData', 'probe2Temperature'),
+              ('log', 'customData', 'referenceProbeVoltage'),
+              ('log', 'customData', 'probe1Voltage'),
+              ('log', 'customData', 'probe2Voltage')
+              ]
+
+    if not double_ended_flag:
+        extra2.append(('log', 'customData', 'UserConfiguration',
+                       'ChannelConfiguration', 'AcquisitionConfiguration',
+                       'AcquisitionTime', 'userAcquisitionTime'))
+
+    else:
+        extra2.append(('log', 'customData', 'UserConfiguration',
+                       'ChannelConfiguration', 'AcquisitionConfiguration',
+                       'AcquisitionTime', 'userAcquisitionTimeFW'))
         extra2.append(('log', 'customData', 'UserConfiguration',
                        'ChannelConfiguration', 'AcquisitionConfiguration',
                        'AcquisitionTime', 'userAcquisitionTimeBW'))
-
-    # 'userAcquisitionTimeFW': dict(iloc=(0, -1, -1, 1, 4, 2)),
-    # 'userAcquisitionTimeBW': dict(iloc=(0, -1, -1, 2, 4, 2))
 
     extra = {
         item[-1]: dict(path=item, array=np.zeros(ntime, dtype=np.float32))
@@ -187,7 +153,7 @@ def grab_data(filelist, sep=':'):
     ddtype = np.dtype(ddict)
     array = np.zeros((nx, ntime), dtype=ddtype)
     timearr = np.zeros(
-        (ntime),
+        ntime,
         dtype=[('minDateTimeIndex', '<U29'), ('maxDateTimeIndex', '<U29'),
                ('filename_tstamp', (np.unicode_, 17))])  # 'S17'
 
@@ -236,78 +202,75 @@ def grab_data(filelist, sep=':'):
     return array, timearr, meta, extra
 
 
-def process_files(filelisti, timezone_ultima_xml, timezone_netCDF):
-    """
-    In double-ended measurements:
-    - 'time' is the timestamp between the forward and backward measurement
-    - 'timeFW is the timestamp in the middle of the FW measurement.
-        representative for the forward measurement
-    - 'timeBW' is the timestamp in the middle of the BW measuremnt.
-        representative for the backward measurement
+def coords_time(double_ended_flag, extra, timearr, timezone_netcdf, timezone_ultima_xml):
+    if not double_ended_flag:
+        # single ended measurement
+        dt1 = pd.to_timedelta(extra['userAcquisitionTimeFW']['array'],
+                              's').values
 
+        # start of the forward measurement
+        index_time_FWstart = pd.to_datetime(
+            (pd.DatetimeIndex(timearr['maxDateTimeIndex']) - dt1).tz_localize(
+                tz=timezone_ultima_xml).tz_convert(timezone_netcdf))
 
-    :param filelisti:
-    :param timezone_ultima_xml:
-    :param timezone_netCDF:
-    :return:
-    """
-    array, timearr, meta, extra = grab_data(filelisti)
+        # end of the forward measurement
+        index_time_FWend = pd.to_datetime(
+            pd.DatetimeIndex(timearr['maxDateTimeIndex']).tz_localize(
+                tz=timezone_ultima_xml).tz_convert(timezone_netcdf))
 
-    double_ended_flag = 'REV-ST' in array.dtype.names
+        # center of forward measurement
+        index_time_FWmean = pd.to_datetime(
+            (pd.DatetimeIndex(timearr['maxDateTimeIndex']) - dt1 / 2).tz_localize(
+                tz=timezone_ultima_xml).tz_convert(timezone_netcdf))
 
-    # assert double_ended_flag, 'Only double ended is supported'
+        coords = {
+            'timestart': index_time_FWstart.astype('datetime64[ns]'),
+            'timeend':   index_time_FWend.astype('datetime64[ns]'),
+            'time':      index_time_FWmean.astype('datetime64[ns]')}  # in UTC
 
-    dt1 = pd.to_timedelta(extra['userAcquisitionTimeFW']['array'], 's').values
-
-    index_time_FWstart = pd.to_datetime(
-        (pd.DatetimeIndex(timearr['maxDateTimeIndex']) - dt1).tz_localize(
-            tz=timezone_ultima_xml).tz_convert(timezone_netCDF))
-    index_time_FWend = pd.to_datetime(
-        pd.DatetimeIndex(timearr['maxDateTimeIndex']).tz_localize(
-            tz=timezone_ultima_xml).tz_convert(timezone_netCDF))
-    index_time_FWmean = pd.to_datetime(
-        (pd.DatetimeIndex(timearr['maxDateTimeIndex']) - dt1 / 2).tz_localize(
-            tz=timezone_ultima_xml).tz_convert(timezone_netCDF))
-
-    if double_ended_flag:
+    else:
+        # double ended measurement
+        dt1 = pd.to_timedelta(extra['userAcquisitionTimeFW']['array'],
+                              's').values
         dt2 = pd.to_timedelta(extra['userAcquisitionTimeBW']['array'],
                               's').values
-        # index_time_BWstart = index_time_FWend.copy()
-        # index_time_BWend = pd.to_datetime(
-        #     (pd.DatetimeIndex(timearr['maxDateTimeIndex']) + dt2).tz_localize(
-        #         tz=timezone_ultima_xml).tz_convert(timezone_netCDF))
+
+        # start of the forward measurement
+        index_time_FWstart = pd.to_datetime(
+            (pd.DatetimeIndex(timearr['maxDateTimeIndex']) - dt1).tz_localize(
+                tz=timezone_ultima_xml).tz_convert(timezone_netcdf))
+
+        # end of the forward measurement
+        index_time_FWend = pd.to_datetime(
+            pd.DatetimeIndex(timearr['maxDateTimeIndex']).tz_localize(
+                tz=timezone_ultima_xml).tz_convert(timezone_netcdf))
+
+        # center of forward measurement
+        index_time_FWmean = pd.to_datetime(
+            (pd.DatetimeIndex(timearr['maxDateTimeIndex']) - dt1 / 2).tz_localize(
+                tz=timezone_ultima_xml).tz_convert(timezone_netcdf))
+
+        # start of the backward measurement
+        index_time_BWstart = index_time_FWend.copy()
+
+        # end of the backward measurement
+        index_time_BWend = pd.to_datetime(
+            (pd.DatetimeIndex(timearr['maxDateTimeIndex']) + dt2).tz_localize(
+                tz=timezone_ultima_xml).tz_convert(timezone_netcdf))
+
+        # center of backward measurement
         index_time_BWmean = pd.to_datetime(
             (pd.DatetimeIndex(timearr['maxDateTimeIndex']) +
              dt2 / 2).tz_localize(
-                tz=timezone_ultima_xml).tz_convert(timezone_netCDF))
+                tz=timezone_ultima_xml).tz_convert(timezone_netcdf))
 
-    dataset_dict = {}
-    for name in array.dtype.names:
-        if name in ['ST', 'AST']:
-            dataset_dict[name] = (['x', 'timeFW'], array[name])
+        coords = {
+            'timeFWstart': index_time_FWstart.astype('datetime64[ns]'),
+            'timeFWend':   index_time_FWend.astype('datetime64[ns]'),
+            'timeFW':      index_time_FWmean.astype('datetime64[ns]'),
+            'timeBWstart': index_time_BWstart.astype('datetime64[ns]'),
+            'timeBWend':   index_time_BWend.astype('datetime64[ns]'),
+            'timeBW':      index_time_BWmean.astype('datetime64[ns]'),
+            'time':        index_time_FWend.astype('datetime64[ns]')}  # in UTC
 
-        elif name in ['REV-ST', 'REV-AST']:
-            dataset_dict[name] = (['x', 'timeBW'], array[name])
-
-        elif name == 'TMP':
-            dataset_dict[name] = (['x', 'time'], array[name])
-
-        elif name == 'LAF':
-            continue
-
-        else:
-            assert 0
-
-    for key, item in extra.items():
-        dataset_dict[key] = (['time'], item['array'])
-
-    coords = {
-        'x': array['LAF'][:, 0],
-        'time': index_time_FWend.astype('datetime64[ns]'),  # in UTC
-        'timeFW': index_time_FWmean.astype('datetime64[ns]'),  # in UTC
-        'timestartmeas': index_time_FWstart.astype('datetime64[ns]')  # in UTC
-        }
-    if double_ended_flag:
-        coords['timeBW'] = index_time_BWmean.astype('datetime64[ns]')  # in UTC
-
-    return DataStore(dataset_dict, coords=coords, attrs=meta)  # xr.Dataset
+    return coords
