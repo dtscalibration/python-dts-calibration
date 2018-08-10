@@ -91,7 +91,8 @@ Note, to combine the coverage data from all the tox environments run:
 
             PYTEST_ADDOPTS=--cov-append tox
 
-To bump version and docs
+To bump version and docs::
+
     tox
     git status  # to make sure no unversioned modifications are in the repository
     git add --all
