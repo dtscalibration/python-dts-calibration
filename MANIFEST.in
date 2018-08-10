@@ -3,6 +3,8 @@ graft src
 graft ci
 graft tests
 
+prune examples
+
 include .bumpversion.cfg
 include .coveragerc
 include .cookiecutterrc

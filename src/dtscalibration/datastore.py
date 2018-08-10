@@ -49,6 +49,7 @@ class DataStore(xr.Dataset):
             - 'identical': all values, dimensions and attributes must be the
               same.
         """
+
     def __init__(self, *args, **kwargs):
         super(DataStore, self).__init__(*args, **kwargs)
 
@@ -201,14 +202,49 @@ def read_xml_dir(filepath,
     datastore : DataStore
         The newly created datastore.
     """
+    log_attrs = {
+        'x':                     {
+            'description':      'Length along fiber',
+            'long_describtion': 'Starting at connector of forward channel',
+            'units':            'm'},
+        'TMP':                   {
+            'description': 'temperature calibrated by device',
+            'units':       'degC'},
+        'ST':                    {
+            'description': 'Stokes intensity',
+            'units':       '?'},
+        'AST':                   {
+            'description': 'anti-Stokes intensity',
+            'units':       '?'},
+        'REV-ST':                {
+            'description': 'reverse Stokes intensity',
+            'units':       '?'},
+        'REV-AST':               {
+            'description': 'reverse anti-Stokes intensity',
+            'units':       '?'},
+        'acquisitionTime':       {
+            'description':      'Measurement duration of forward channel',
+            'long_describtion': 'Actual measurement duration of forward channel',
+            'units':            'seconds'},
+        'userAcquisitionTimeFW': {
+            'description':      'Measurement duration of forward channel',
+            'long_describtion': 'Desired measurement duration of forward channel',
+            'units':            'seconds'},
+        'userAcquisitionTimeBW': {
+            'description':      'Measurement duration of backward channel',
+            'long_describtion': 'Desired measurement duration of backward channel',
+            'units':            'seconds'},
+        }
 
-    filelist = sorted(glob.glob(os.path.join(filepath, file_ext)))
-    array, timearr, meta, extra = grab_data(filelist)
+    filepathlist = sorted(glob.glob(os.path.join(filepath, file_ext)))
+    filenamelist = [os.path.basename(path) for path in filepathlist]
 
-    double_ended_flag = 'REV-ST' in array.dtype.names
+    array, timearr, meta, extra = grab_data(filepathlist)
 
-    coords = {'x': array['LAF'][:, 0]}
-    tcoords = coords_time(double_ended_flag, extra, timearr,
+    coords = {
+        'x':        ('x', array['LAF'][:, 0], log_attrs['x']),
+        'filename': ('time', filenamelist)}
+    tcoords = coords_time(extra, timearr,
                           timezone_netcdf=timezone_netcdf,
                           timezone_ultima_xml=timezone_ultima_xml)
     coords.update(tcoords)
@@ -216,7 +252,7 @@ def read_xml_dir(filepath,
     dataset_dict = {}
     for name in array.dtype.names:
         if name in ['TMP', 'ST', 'AST', 'REV-ST', 'REV-AST']:
-            dataset_dict[name] = (['x', 'time'], array[name])
+            dataset_dict[name] = (['x', 'time'], array[name], log_attrs[name])
 
         elif name == 'LAF':
             continue
@@ -226,7 +262,11 @@ def read_xml_dir(filepath,
             assert 0
 
     for key, item in extra.items():
-        dataset_dict[key] = (['time'], item['array'])
+        if key in log_attrs:
+            dataset_dict[key] = (['time'], item['array'], log_attrs[key])
+
+        else:
+            dataset_dict[key] = (['time'], item['array'])
 
     ds = DataStore(data_vars=dataset_dict,
                    coords=coords,
@@ -234,3 +274,9 @@ def read_xml_dir(filepath,
                    **kwargs)
 
     return ds
+
+# filepath = os.path.join('..', '..', 'tests', 'data')
+# ds = read_xml_dir(filepath,
+#                   timezone_netcdf='UTC',
+#                   timezone_ultima_xml='Europe/Amsterdam',
+#                   file_ext='*.xml')

@@ -1,3 +1,5 @@
+nbsphinx
+IPython
 sphinx>=1.3
 sphinx-py3doc-enhanced-theme
 -e .

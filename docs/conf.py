@@ -14,7 +14,14 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.todo',
     'sphinx.ext.viewcode',
-]
+    'sphinx.ext.autosectionlabel',
+    'nbsphinx',
+    'sphinx.ext.mathjax',
+    'sphinx.ext.intersphinx',
+    'IPython.sphinxext.ipython_directive',
+    'IPython.sphinxext.ipython_console_highlighting'
+    ]
+
 if os.getenv('SPELLCHECK'):
     extensions += 'sphinxcontrib.spelling',
     spelling_show_suggestions = True
@@ -34,6 +41,29 @@ extlinks = {
     'issue': ('https://github.com/bdestombe/python-dts-calibration/issues/%s', '#'),
     'pr': ('https://github.com/bdestombe/python-dts-calibration/pull/%s', 'PR #'),
 }
+exclude_patterns = ['_build', '**.ipynb_checkpoints', 'Thumbs.db', '.DS_Store']
+
+# This is processed by Jinja2 and inserted before each notebook
+nbsphinx_prolog = r"""
+{% set docname = env.doc2path(env.docname, base='doc') %}
+.. only:: html
+    .. role:: raw-html(raw)
+        :format: html
+    .. nbinfo::
+        This page was generated from `{{ docname }}`__.
+        Interactive online version:
+        :raw-html:`<a href="https://mybinder.org/v2/gh/spatialaudio/nbsphinx/{{ env.config.release }}?filepath={{ docname }}"><img alt="Binder badge" src="https://mybinder.org/badge.svg" style="vertical-align:text-bottom"></a>`
+    __ https://github.com/spatialaudio/nbsphinx/blob/
+        {{ env.config.release }}/{{ docname }}
+.. raw:: latex
+    \vfil\penalty-1\vfilneg
+    \vspace{\baselineskip}
+    \textcolor{gray}{The following section was generated from
+    \texttt{\strut{}{{ docname }}}\\[-0.5\baselineskip]
+    \noindent\rule{\textwidth}{0.4pt}}
+    \vspace{-2\baselineskip}
+"""
+
 import sphinx_py3doc_enhanced_theme
 html_theme = "sphinx_py3doc_enhanced_theme"
 html_theme_path = [sphinx_py3doc_enhanced_theme.get_html_theme_path()]

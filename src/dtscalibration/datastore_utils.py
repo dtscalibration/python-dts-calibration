@@ -201,7 +201,39 @@ def grab_data(filelist, sep=':'):
     return array, timearr, meta, extra
 
 
-def coords_time(double_ended_flag, extra, timearr, timezone_netcdf, timezone_ultima_xml):
+def coords_time(extra, timearr, timezone_netcdf, timezone_ultima_xml):
+    time_attrs = {
+        'time':        {
+            'description': 'time halfway the measurement',
+            'timezone':    str(timezone_netcdf)},
+        'timestart':   {
+            'description': 'time start of the measurement',
+            'timezone':    str(timezone_netcdf)},
+        'timeend':     {
+            'description': 'time end of the measurement',
+            'timezone':    str(timezone_netcdf)},
+        'timeFW':      {
+            'description': 'time halfway the forward channel measurement',
+            'timezone':    str(timezone_netcdf)},
+        'timeFWstart': {
+            'description': 'time start of the forward channel measurement',
+            'timezone':    str(timezone_netcdf)},
+        'timeFWend':   {
+            'description': 'time end of the forward channel measurement',
+            'timezone':    str(timezone_netcdf)},
+        'timeBW':      {
+            'description': 'time halfway the backward channel measurement',
+            'timezone':    str(timezone_netcdf)},
+        'timeBWstart': {
+            'description': 'time start of the backward channel measurement',
+            'timezone':    str(timezone_netcdf)},
+        'timeBWend':   {
+            'description': 'time end of the backward channel measurement',
+            'timezone':    str(timezone_netcdf)},
+        }
+
+    double_ended_flag = 'userAcquisitionTimeBW' in extra
+
     if not double_ended_flag:
         # single ended measurement
         dt1 = pd.to_timedelta(extra['userAcquisitionTimeFW']['array'],
@@ -209,23 +241,19 @@ def coords_time(double_ended_flag, extra, timearr, timezone_netcdf, timezone_ult
 
         # start of the forward measurement
         index_time_FWstart = pd.to_datetime(
-            (pd.DatetimeIndex(timearr['maxDateTimeIndex']) - dt1).tz_localize(
-                tz=timezone_ultima_xml).tz_convert(timezone_netcdf))
+            (pd.DatetimeIndex(timearr['maxDateTimeIndex']) - dt1))
 
         # end of the forward measurement
         index_time_FWend = pd.to_datetime(
-            pd.DatetimeIndex(timearr['maxDateTimeIndex']).tz_localize(
-                tz=timezone_ultima_xml).tz_convert(timezone_netcdf))
+            pd.DatetimeIndex(timearr['maxDateTimeIndex']))
 
         # center of forward measurement
         index_time_FWmean = pd.to_datetime(
-            (pd.DatetimeIndex(timearr['maxDateTimeIndex']) - dt1 / 2).tz_localize(
-                tz=timezone_ultima_xml).tz_convert(timezone_netcdf))
+            (pd.DatetimeIndex(timearr['maxDateTimeIndex']) - dt1 / 2))
 
-        coords = {
-            'timestart': index_time_FWstart.astype('datetime64[ns]'),
-            'timeend':   index_time_FWend.astype('datetime64[ns]'),
-            'time':      index_time_FWmean.astype('datetime64[ns]')}  # in UTC
+        coords_zip = [('timestart', index_time_FWstart),
+                      ('timeend', index_time_FWend),
+                      ('time', index_time_FWmean)]
 
     else:
         # double ended measurement
@@ -236,40 +264,44 @@ def coords_time(double_ended_flag, extra, timearr, timezone_netcdf, timezone_ult
 
         # start of the forward measurement
         index_time_FWstart = pd.to_datetime(
-            (pd.DatetimeIndex(timearr['maxDateTimeIndex']) - dt1).tz_localize(
-                tz=timezone_ultima_xml).tz_convert(timezone_netcdf))
+            (pd.DatetimeIndex(timearr['maxDateTimeIndex']) - dt1))
 
         # end of the forward measurement
         index_time_FWend = pd.to_datetime(
-            pd.DatetimeIndex(timearr['maxDateTimeIndex']).tz_localize(
-                tz=timezone_ultima_xml).tz_convert(timezone_netcdf))
+            pd.DatetimeIndex(timearr['maxDateTimeIndex']))
 
         # center of forward measurement
         index_time_FWmean = pd.to_datetime(
-            (pd.DatetimeIndex(timearr['maxDateTimeIndex']) - dt1 / 2).tz_localize(
-                tz=timezone_ultima_xml).tz_convert(timezone_netcdf))
+            (pd.DatetimeIndex(timearr['maxDateTimeIndex']) - dt1 / 2))
 
         # start of the backward measurement
         index_time_BWstart = index_time_FWend.copy()
 
         # end of the backward measurement
         index_time_BWend = pd.to_datetime(
-            (pd.DatetimeIndex(timearr['maxDateTimeIndex']) + dt2).tz_localize(
-                tz=timezone_ultima_xml).tz_convert(timezone_netcdf))
+            (pd.DatetimeIndex(timearr['maxDateTimeIndex']) + dt2))
 
         # center of backward measurement
         index_time_BWmean = pd.to_datetime(
             (pd.DatetimeIndex(timearr['maxDateTimeIndex']) +
-             dt2 / 2).tz_localize(
-                tz=timezone_ultima_xml).tz_convert(timezone_netcdf))
+             dt2 / 2))
 
-        coords = {
-            'timeFWstart': index_time_FWstart.astype('datetime64[ns]'),
-            'timeFWend':   index_time_FWend.astype('datetime64[ns]'),
-            'timeFW':      index_time_FWmean.astype('datetime64[ns]'),
-            'timeBWstart': index_time_BWstart.astype('datetime64[ns]'),
-            'timeBWend':   index_time_BWend.astype('datetime64[ns]'),
-            'timeBW':      index_time_BWmean.astype('datetime64[ns]'),
-            'time':        index_time_FWend.astype('datetime64[ns]')}  # in UTC
+        coords_zip = [('timeFWstart', index_time_FWstart),
+                      ('timeFWend', index_time_FWend),
+                      ('timeFW', index_time_FWmean),
+                      ('timeBWstart', index_time_BWstart),
+                      ('timeBWend', index_time_BWend),
+                      ('timeBW', index_time_BWmean),
+                      ('timestart', index_time_FWstart),
+                      ('timeend', index_time_BWend),
+                      ('time', index_time_FWend)]
+
+    coords = {k: (
+        'time',
+        v.tz_localize(
+            tz=timezone_ultima_xml).tz_convert(
+            timezone_netcdf).astype('datetime64[ns]'),
+        time_attrs[k]) for k, v in coords_zip
+        }
 
     return coords

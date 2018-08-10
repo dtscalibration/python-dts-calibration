@@ -14,3 +14,4 @@ parallel = true
 show_missing = true
 precision = 2
 omit = *migrations*
+ignore_errors = True

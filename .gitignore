@@ -1,4 +1,6 @@
 *.py[cod]
+*.ipynb_checkpoints
+*-checkpoint.ipynb
 
 # C extensions
 *.so
