@@ -74,22 +74,6 @@ To run the all tests run::
 
     tox
 
-Note, to combine the coverage data from all the tox environments run:
-
-.. list-table::
-    :widths: 10 90
-    :stub-columns: 1
-
-    - - Windows
-      - ::
-
-            set PYTEST_ADDOPTS=--cov-append
-            tox
-
-    - - Other
-      - ::
-
-            PYTEST_ADDOPTS=--cov-append tox
 
 To bump version and docs::
 
@@ -102,4 +86,4 @@ To bump version and docs::
     rm -rf dist/*
     tox
     python setup.py clean --all sdist bdist_wheel
-    twine upload --repository-url https://upload.pypi.org/legacy/ dist/*
+    twine upload --repository-url https://upload.pypi.org/legacy/ dist/dtscalibration*
