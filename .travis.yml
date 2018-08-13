@@ -20,7 +20,6 @@ before_install:
   - lsb_release -a
 install:
   - pip install pypandoc
-  - pip install frontmatter
   - sudo apt-get install pandoc
   - pip install tox
   - virtualenv --version
