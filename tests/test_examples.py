@@ -13,6 +13,7 @@ def _notebook_run(path):
     """
     dirname, __ = os.path.split(path)
     os.chdir(dirname)
+
     with tempfile.NamedTemporaryFile(suffix=".ipynb") as fout:
         jupyter_exec = shutil.which('jupyter')
 
@@ -36,8 +37,10 @@ def test_ipynb():
     file_ext = '*.ipynb'
     wd = os.path.dirname(os.path.abspath(__file__))
     nb_dir = os.path.join(wd, '..', 'examples', 'notebooks', file_ext)
-
     filepathlist = glob.glob(nb_dir)
+
     for fp in filepathlist:
         nb, errors = _notebook_run(fp)
         assert errors == []
+
+    pass

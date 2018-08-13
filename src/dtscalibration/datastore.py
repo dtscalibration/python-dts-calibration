@@ -3,6 +3,7 @@ import glob
 import inspect
 import os
 
+import numpy as np
 import xarray as xr
 import yaml
 
@@ -61,18 +62,148 @@ class DataStore(xr.Dataset):
 
     @property
     def sections(self):
-        assert hasattr(self, '_sections')
+        assert hasattr(self, '_sections'), 'first set the sections'
         return yaml.load(self.attrs['_sections'])
 
     @sections.setter
     def sections(self, sections):
-        # assert sections
+        if sections:
+            assert isinstance(sections, dict)
+
+            for k, v in sections.items():
+                for vi in v:
+                    assert isinstance(vi, slice)
+
         self.attrs['_sections'] = yaml.dump(sections)
         pass
 
     @sections.deleter
     def sections(self):
         self.sections = None
+        pass
+
+    def calibration_single_ended(self,
+                                 sections=None,
+                                 st_label=None,
+                                 ast_label=None,
+                                 store_c='c',
+                                 store_gamma='gamma',
+                                 store_alphaint='alphaint',
+                                 store_alpha='alpha',
+                                 store_IFW_var='IF_var',
+                                 store_resid_IFW='errF',
+                                 variance_suffix='_var',
+                                 method='single1'):
+
+        if sections:
+            self.sections = sections
+
+        self.check_dims(['st_label', 'ast_label'])
+        pass
+
+    def calibration_double_ended(self,
+                                 sections=None,
+                                 st_label=None,
+                                 ast_label=None,
+                                 rst_label=None,
+                                 rast_label=None,
+                                 store_c='c',
+                                 store_gamma='gamma',
+                                 store_alphaint='alphaint',
+                                 store_alpha='alpha',
+                                 store_IFW_var='IF_var',
+                                 store_IBW_var='IB_var',
+                                 store_resid_IFW='errF',
+                                 store_resid_IBW='errB',
+                                 variance_suffix='_var',
+                                 method='double1'):
+
+        if sections:
+            self.sections = sections
+
+        self.check_dims(['st_label', 'ast_label', 'rst_label', 'rast_label'])
+
+        if method == 'double1':
+            nt, z, p0_, err, errFW, errBW, var = self.calibration_double_ended_calc(
+                st_label, ast_label, rst_label, rast_label)
+
+            p0 = p0_[0]
+            gamma = p0[0]
+            alphaint = p0[1]
+            c = p0[2:nt + 2]
+            alpha = p0[nt + 2:]
+
+            no = len(alpha)
+            ddof = nt + 2 + no
+
+            # Estimate of the standard error - sqrt(diag of the COV matrix) - is not squared
+            p0var = var
+            gammavar = p0var[0]
+            alphaintvar = p0var[1]
+            cvar = p0var[2:nt + 2]
+            alphavar = p0var[nt + 2:]
+
+        else:
+            raise ValueError('Choose a valid method')
+
+        # store calibration parameters in DataStore
+        self[store_gamma] = (tuple(), gamma)
+        self[store_alphaint] = (tuple(), alphaint)
+        self[store_alpha] = (('x',), alpha)
+        self[store_c] = (('time',), c)
+
+        # store variances in DataStore
+        self[store_gamma + variance_suffix] = (tuple(), gammavar)
+        self[store_alphaint + variance_suffix] = (tuple(), alphaintvar)
+        self[store_alpha + variance_suffix] = (('x',), alphavar)
+        self[store_c + variance_suffix] = (('time',), cvar)
+
+        # deal with FW
+        to_dim = self[st_label].dims
+
+        tempF_data = gamma / \
+            (np.log(self[st_label].data / self[ast_label].data)
+             + c + alpha[:, None]) - 273.15
+        self['TMPF'] = (to_dim, tempF_data)
+
+        # deal with BW
+        tempB_data = gamma / \
+            (np.log(self[rst_label].data / self[rast_label].data)
+             + c - alpha[:, None] + alphaint) - 273.15
+        self['TMPB'] = (to_dim, tempB_data)
+
+        iz = np.argsort(z)  # What does this do?
+        self.coords['errz'] = z[iz]
+        self[store_resid_IFW] = (('errz', to_dim), errFW[iz])
+        self[store_IFW_var] = (tuple(), errFW.std(ddof=ddof) ** 2)
+        self[store_resid_IBW] = (('errz', to_dim), errBW[iz])
+        self[store_IBW_var] = (tuple(), errBW.std(ddof=ddof) ** 2)
+
+        self.Tvar_double_ended(store_IBW_var, store_IFW_var, store_alpha,
+                               store_c, store_gamma)
+
+        pass
+
+    def check_dims(self, labels):
+        """
+        Compare the dimensions of different labels (e.g., 'ST', 'REV-ST').
+        If a calculation is performed and the dimensions do not agree, the answers don't make
+        sense and the matrices are broadcasted and the memory usage will explode.
+
+        Parameters
+        ----------
+        labels : iterable
+            An iterable with labels
+
+        Returns
+        -------
+
+        """
+        assert len(labels) > 1
+
+        for li in labels[1:]:
+            assert self[labels[0]].dims == self[li].dims
+
         pass
 
 
@@ -238,6 +369,8 @@ def read_xml_dir(filepath,
 
     filepathlist = sorted(glob.glob(os.path.join(filepath, file_ext)))
     filenamelist = [os.path.basename(path) for path in filepathlist]
+    assert len(filepathlist) >= 1, 'No measurement files with extension {} found in {}'.format(
+        file_ext, filepath)
 
     array, timearr, meta, extra = grab_data(filepathlist)
 

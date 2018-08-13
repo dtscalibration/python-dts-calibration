@@ -1,6 +1,6 @@
 
-Load your first measurement files
-=================================
+1. Load your first measurement files
+====================================
 
 This notebook is located in
 https://github.com/bdestombe/python-dts-calibration/tree/master/examples/notebooks
@@ -31,13 +31,13 @@ The data files are located in ``./python-dts-calibration/tests/data``
         # Excecuted from console. pwd = ./docs
         wd = os.getcwd()
     
-    filepath = os.path.join(wd, '..', '..', 'tests', 'data')
+    filepath = os.path.join(wd, '..', '..', 'tests', 'data', 'double_ended')
     print(filepath)
 
 
 .. parsed-literal::
 
-    /Users/bfdestombe/PycharmProjects/dts-calibration/python-dts-calibration/examples/notebooks/../../tests/data
+    /Users/bfdestombe/PycharmProjects/dts-calibration/python-dts-calibration/examples/notebooks/../../tests/data/double_ended
 
 
 .. code:: ipython3
@@ -48,6 +48,7 @@ The data files are located in ``./python-dts-calibration/tests/data``
 
 .. code:: ipython3
 
+    # Just to show which files are in the folder
     filepathlist = sorted(glob.glob(os.path.join(filepath, file_ext)))
     filenamelist = [os.path.basename(path) for path in filepathlist]
     

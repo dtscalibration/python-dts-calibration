@@ -236,7 +236,7 @@ def coords_time(extra, timearr, timezone_netcdf, timezone_ultima_xml):
 
     if not double_ended_flag:
         # single ended measurement
-        dt1 = pd.to_timedelta(extra['userAcquisitionTimeFW']['array'],
+        dt1 = pd.to_timedelta(extra['userAcquisitionTime']['array'],
                               's').values
 
         # start of the forward measurement

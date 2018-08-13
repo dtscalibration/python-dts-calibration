@@ -37,11 +37,11 @@ for fp, fn in zip(filepathlist, filenamelist):
     # 2) save and show outputconvert notebook to rst for documentation
     outfilepath = os.path.join(outpath, fn)
     check_call(['jupyter', 'nbconvert',
-                # '--execute',
+                '--execute',
                 '--to', 'rst',
-                # '--ExecutePreprocessor.kernel_name=python',
-                # '--KernelGatewayApp.force_kernel_name=python',
-                # "--ExecutePreprocessor.timeout=60",
+                '--ExecutePreprocessor.kernel_name=python',
+                '--KernelGatewayApp.force_kernel_name=python',
+                "--ExecutePreprocessor.timeout=60",
                 '--output', outfilepath,
                 fp])
 
@@ -66,5 +66,5 @@ s = """Learn by Examples
 with open(fp_index, 'w+') as fh:
     fh.write(s)
     for fn in filenamelist:
-        sf = "    notebooks/{}.rst".format(fn)
+        sf = "    notebooks/{}.rst\n".format(fn)
         fh.write(sf)

@@ -2,4 +2,5 @@ Learn by Examples
 =================
 
 .. toctree::
-    notebooks/Load_xml_measurement_files.ipynb.rst
+    notebooks/01Load_xml_measurement_files.ipynb.rst
+    notebooks/02Define_sections.ipynb.rst

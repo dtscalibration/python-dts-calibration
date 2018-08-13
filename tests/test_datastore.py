@@ -17,19 +17,21 @@ fn = ["channel 1_20170921112245510.xml",
 if 1:
     # working dir is tests
     wd = os.path.dirname(os.path.abspath(__file__))
-    data_dir = os.path.join(wd, 'data')
+    data_dir_single_ended = os.path.join(wd, 'data', 'single_ended')
+    data_dir_double_ended = os.path.join(wd, 'data', 'double_ended')
 
 else:
     # working dir is src
-    data_dir = os.path.join('..', '..', 'tests', 'data')
+    data_dir_single_ended = os.path.join('..', '..', 'tests', 'data', 'single_ended')
+    data_dir_double_ended = os.path.join('..', '..', 'tests', 'data', 'double_ended')
 
 
-def test_read_data_from_single_file():
+def test_read_data_from_single_file_double_ended():
     """
     Check if read data from file is correct
     :return:
     """
-    fp0 = os.path.join(data_dir, fn[0])
+    fp0 = os.path.join(data_dir_double_ended, fn[0])
     data = read_data_from_fp_numpy(fp0)
 
     nx, ncols = data.shape
@@ -102,8 +104,20 @@ def test_io_sections_property():
     pass
 
 
-def test_read_xml_dir():
-    filepath = data_dir
+def test_read_xml_dir_single_ended():
+    filepath = data_dir_single_ended
+    ds = read_xml_dir(filepath,
+                      timezone_netcdf='UTC',
+                      timezone_ultima_xml='Europe/Amsterdam',
+                      file_ext='*.xml')
+
+    assert ds._initialized
+
+    pass
+
+
+def test_read_xml_dir_double_ended():
+    filepath = data_dir_double_ended
     ds = read_xml_dir(filepath,
                       timezone_netcdf='UTC',
                       timezone_ultima_xml='Europe/Amsterdam',
