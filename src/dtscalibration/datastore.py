@@ -3,9 +3,12 @@ import glob
 import inspect
 import os
 
+import dask.array as da
 import numpy as np
+import scipy.sparse as sp
 import xarray as xr
 import yaml
+from scipy.sparse import linalg as ln
 
 from dtscalibration.datastore_utils import coords_time
 from dtscalibration.datastore_utils import grab_data
@@ -81,6 +84,120 @@ class DataStore(xr.Dataset):
     def sections(self):
         self.sections = None
         pass
+
+    def variance_stokes(self, st_label, sections=None, use_statsmodels=False):
+        """
+        Calculates the variance between the measurements and a best fit exponential at each section
+
+        Parameters
+        ----------
+        st_label : str
+            label of the Stokes, anti-Stokes measurement.
+            E.g., ST, AST, REV-ST, REV-AST
+        sections : dict, optional
+            Define sections. See documentation
+
+        Returns
+        -------
+        I_var : float
+            Variance of the residuals between measured and best fit
+        resid : array_like
+            Residuals between measured and best fit
+        """
+        if sections:
+            self.sections = sections
+
+        assert 'time' in self[st_label].dims
+
+        nt = self['time'].size
+
+        len_stretch_list = []
+        y_list = []  # intensities of stokes
+        x_list = []  # length rel to start of section. for alpha
+
+        for k, stretches in self.sections.items():
+            for stretch in stretches:
+                y_list.append(self[st_label].sel(x=stretch).data.T.reshape(-1))
+                _x = self.x.sel(x=stretch).data
+                _x -= _x[0]
+                x_list.append(da.tile(_x, nt))
+                len_stretch_list.append(_x.size)
+
+        n_sections = len(len_stretch_list)
+        n_locs = sum(len_stretch_list)
+
+        x = da.concatenate(x_list)
+        y = da.concatenate(y_list).compute()
+        w = np.sqrt(y)
+
+        data1 = x
+        data2 = np.ones(sum(len_stretch_list) * nt)
+        data = da.concatenate([data1, data2]).compute()
+
+        wdata = data * da.hstack((w, w))
+
+        # alpha is the same for all -> one column
+        coords1row = np.arange(nt * n_locs)
+        coords1col = np.zeros_like(coords1row)
+
+        # second calibration parameter is different per section and per timestep
+        coords2row = np.arange(nt * n_locs)
+        coords2col = np.hstack([
+            np.repeat(np.arange(i * nt + 1, (i + 1) * nt + 1), in_locs)
+            for i, in_locs in enumerate(len_stretch_list)
+        ])  # C for
+        coords = (np.concatenate([coords1row, coords2row]),
+                  np.concatenate([coords1col, coords2col]))
+
+        wX = sp.coo_matrix(
+            (wdata, coords),
+            shape=(nt * n_locs, 1 + nt * n_sections),
+            dtype=float,
+            copy=False)
+        X = sp.coo_matrix(
+            (data, coords),
+            shape=(nt * n_locs, 1 + nt * n_sections),
+            dtype=float,
+            copy=False)
+
+        lny = da.log(y)
+        wlny = (lny * w)
+
+        if use_statsmodels:
+            # gives the same answer with statsmodel
+            import statsmodels.api as sm
+
+            mod_wls = sm.WLS(lny, X.todense(), weights=w**2)
+            res_wls = mod_wls.fit()
+            # print(res_wls.summary())
+            a = res_wls.params
+            C_expand_to_sec = np.hstack([
+                np.repeat(a[i * nt + 1:(i + 1) * nt + 1], leni)
+                for i, leni in enumerate(len_stretch_list)
+                ])
+            I_est = np.exp(C_expand_to_sec) * np.exp(x * a[0])
+            resid = I_est - y
+            var_I = resid.std(ddof=1 + nt * n_sections).compute()
+
+        else:
+            p0_est = np.asarray([0.] + nt * n_sections * [8])
+            a = ln.lsqr(wX, wlny, x0=p0_est, show=True, calc_var=False)[0]
+
+            C_expand_to_sec = np.hstack([
+                np.repeat(a[i * nt + 1:(i + 1) * nt + 1], leni)
+                for i, leni in enumerate(len_stretch_list)
+                ])
+            I_est = np.exp(C_expand_to_sec) * np.exp(x * a[0])
+            resid = I_est - y
+            var_I = resid.std(ddof=1 + nt * n_sections).compute()
+            print("The variance in", st_label, "is", var_I)
+
+        # if 0:
+        #     print("The variance in", st_label, "is", var_I)
+        #     import matplotlib.pyplot as plt
+        #     plt.plot(y)
+        #     plt.plot(I_est)
+        return var_I, resid
 
     def calibration_single_ended(self,
                                  sections=None,

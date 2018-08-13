@@ -1,0 +1,7 @@
+Measurements taken in collaboration with Waternet
+
+sections = {
+    'probe1Temperature': [slice(7.5, 17.), slice(70., 80.)],  # cold bath
+    'probe2Temperature': [slice(24., 34.), slice(85., 95.)],  # warm bath
+    # 'referenceTemperature': [slice(-24., -4), slice(108., 128.)]
+    }

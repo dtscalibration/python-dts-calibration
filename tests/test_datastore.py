@@ -19,11 +19,13 @@ if 1:
     wd = os.path.dirname(os.path.abspath(__file__))
     data_dir_single_ended = os.path.join(wd, 'data', 'single_ended')
     data_dir_double_ended = os.path.join(wd, 'data', 'double_ended')
+    data_dir_double_ended2 = os.path.join(wd, 'data', 'double_ended2')
 
 else:
     # working dir is src
     data_dir_single_ended = os.path.join('..', '..', 'tests', 'data', 'single_ended')
     data_dir_double_ended = os.path.join('..', '..', 'tests', 'data', 'double_ended')
+    data_dir_double_ended2 = os.path.join('..', '..', 'tests', 'data', 'double_ended2')
 
 
 def test_read_data_from_single_file_double_ended():
@@ -126,3 +128,37 @@ def test_read_xml_dir_double_ended():
     assert ds._initialized
 
     pass
+
+
+def test_variance_of_measurements_sparse():
+    correct_value = 6.33732530977151
+    filepath = data_dir_double_ended2
+    ds = read_xml_dir(filepath,
+                      timezone_netcdf='UTC',
+                      timezone_ultima_xml='Europe/Amsterdam',
+                      file_ext='*.xml')
+    sections = {
+        'probe1Temperature': [slice(7.5, 17.), slice(70., 80.)],  # cold bath
+        'probe2Temperature': [slice(24., 34.), slice(85., 95.)],  # warm bath
+        }
+
+    I_var, _ = ds.variance_stokes(st_label='ST', sections=sections, use_statsmodels=False)
+
+    np.testing.assert_almost_equal(I_var, correct_value, decimal=5)
+
+
+def test_variance_of_measurements_statsmodel():
+    correct_value = 6.33732530977151
+    filepath = data_dir_double_ended2
+    ds = read_xml_dir(filepath,
+                      timezone_netcdf='UTC',
+                      timezone_ultima_xml='Europe/Amsterdam',
+                      file_ext='*.xml')
+    sections = {
+        'probe1Temperature': [slice(7.5, 17.), slice(70., 80.)],  # cold bath
+        'probe2Temperature': [slice(24., 34.), slice(85., 95.)],  # warm bath
+        }
+
+    I_var, _ = ds.variance_stokes(st_label='ST', sections=sections, use_statsmodels=True)
+
+    np.testing.assert_almost_equal(I_var, correct_value, decimal=5)
