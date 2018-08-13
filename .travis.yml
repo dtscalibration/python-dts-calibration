@@ -1,7 +1,6 @@
 language: python
 python:
     - "3.6"
-sudo: false
 cache: pip
 env:
   global:
@@ -20,6 +19,9 @@ before_install:
   - uname -a
   - lsb_release -a
 install:
+  - pip install pypandoc
+  - pip install frontmatter
+  - sudo apt-get install pandoc
   - pip install tox
   - virtualenv --version
   - easy_install --version
