@@ -85,9 +85,17 @@ class DataStore(xr.Dataset):
         self.sections = None
         pass
 
-    def variance_stokes(self, st_label, sections=None, use_statsmodels=False):
+    def variance_stokes(self, st_label, sections=None, use_statsmodels=False, suppress_info=False):
         """
-        Calculates the variance between the measurements and a best fit exponential at each section
+        Calculates the variance between the measurements and a best fit exponential at each
+        reference section. This fits a two-parameter exponential to the stokes measurements. The
+        temperature is constant and there are no splices/sharp bends in each reference section.
+        Therefore all signal decrease is due to differential attenuation, which is the same for
+        each reference section. The scale of the exponential does differ per reference section.
+
+        Assumptions: 1) the temperature is the same along a reference section. 2) no sharp bends
+        and splices in the reference sections. 3) Same type of optical cable in each reference
+        section.
 
         Parameters
         ----------
@@ -107,7 +115,7 @@ class DataStore(xr.Dataset):
         if sections:
             self.sections = sections
 
-        assert 'time' in self[st_label].dims
+        assert 'time' in self[st_label].dims and 'x' in self[st_label].dims
 
         nt = self['time'].size
 
@@ -126,15 +134,15 @@ class DataStore(xr.Dataset):
         n_sections = len(len_stretch_list)
         n_locs = sum(len_stretch_list)
 
-        x = da.concatenate(x_list)
-        y = da.concatenate(y_list).compute()
+        x = da.concatenate(x_list)  # coordinates are already in memory
+        y = np.asarray(da.concatenate(y_list))
         w = np.sqrt(y)
 
         data1 = x
         data2 = np.ones(sum(len_stretch_list) * nt)
-        data = da.concatenate([data1, data2]).compute()
+        data = np.concatenate([data1, data2])
 
-        wdata = data * da.hstack((w, w))
+        wdata = data * np.hstack((w, w))
 
         # alpha is the same for all -> one column
         coords1row = np.arange(nt * n_locs)
@@ -145,29 +153,26 @@ class DataStore(xr.Dataset):
         coords2col = np.hstack([
             np.repeat(np.arange(i * nt + 1, (i + 1) * nt + 1), in_locs)
             for i, in_locs in enumerate(len_stretch_list)
-        ])  # C for
+            ])  # C for
         coords = (np.concatenate([coords1row, coords2row]),
                   np.concatenate([coords1col, coords2col]))
 
-        wX = sp.coo_matrix(
-            (wdata, coords),
-            shape=(nt * n_locs, 1 + nt * n_sections),
-            dtype=float,
-            copy=False)
-        X = sp.coo_matrix(
-            (data, coords),
-            shape=(nt * n_locs, 1 + nt * n_sections),
-            dtype=float,
-            copy=False)
+        wX = sp.coo_matrix((wdata, coords),
+                           shape=(nt * n_locs, 1 + nt * n_sections),
+                           dtype=float,
+                           copy=False)
+        X = sp.coo_matrix((data, coords),
+                          shape=(nt * n_locs, 1 + nt * n_sections),
+                          dtype=float,
+                          copy=False)
 
-        lny = da.log(y)
-        wlny = (lny * w)
+        lny = np.log(y)
 
         if use_statsmodels:
             # gives the same answer with statsmodel
             import statsmodels.api as sm
 
-            mod_wls = sm.WLS(lny, X.todense(), weights=w**2)
+            mod_wls = sm.WLS(lny, X.todense(), weights=w ** 2)
             res_wls = mod_wls.fit()
             # print(res_wls.summary())
             a = res_wls.params
@@ -177,11 +182,16 @@ class DataStore(xr.Dataset):
                 ])
             I_est = np.exp(C_expand_to_sec) * np.exp(x * a[0])
             resid = I_est - y
-            var_I = resid.std(ddof=1 + nt * n_sections).compute()
+            var_I = resid.std(ddof=1 + nt * n_sections).compute() ** 2
 
         else:
+            wlny = (lny * w)
+
             p0_est = np.asarray([0.] + nt * n_sections * [8])
-            a = ln.lsqr(wX, wlny, x0=p0_est, show=True, calc_var=False)[0]
+            a = ln.lsqr(wX, wlny,
+                        x0=p0_est,
+                        show=not suppress_info,
+                        calc_var=False)[0]
 
             C_expand_to_sec = np.hstack([
                 np.repeat(a[i * nt + 1:(i + 1) * nt + 1], leni)
@@ -189,14 +199,8 @@ class DataStore(xr.Dataset):
                 ])
             I_est = np.exp(C_expand_to_sec) * np.exp(x * a[0])
             resid = I_est - y
-            var_I = resid.std(ddof=1 + nt * n_sections).compute()
-            print("The variance in", st_label, "is", var_I)
+            var_I = resid.std(ddof=1 + nt * n_sections).compute() ** 2
 
-        # if 0:
-        #     print("The variance in", st_label, "is", var_I)
-        #     import matplotlib.pyplot as plt
-        #     plt.plot(y)
-        #     plt.plot(I_est)
         return var_I, resid
 
     def calibration_single_ended(self,

@@ -4,6 +4,7 @@ import os
 import tempfile
 
 import numpy as np
+from scipy import stats
 
 from dtscalibration import DataStore
 from dtscalibration import open_datastore
@@ -131,7 +132,7 @@ def test_read_xml_dir_double_ended():
 
 
 def test_variance_of_measurements_sparse():
-    correct_value = 6.33732530977151
+    correct_value = 40.161692081870584
     filepath = data_dir_double_ended2
     ds = read_xml_dir(filepath,
                       timezone_netcdf='UTC',
@@ -147,8 +148,8 @@ def test_variance_of_measurements_sparse():
     np.testing.assert_almost_equal(I_var, correct_value, decimal=5)
 
 
-def test_variance_of_measurements_statsmodel():
-    correct_value = 6.33732530977151
+def test_variance_of_stokes_statsmodel():
+    correct_var = 40.161692081870584
     filepath = data_dir_double_ended2
     ds = read_xml_dir(filepath,
                       timezone_netcdf='UTC',
@@ -161,4 +162,30 @@ def test_variance_of_measurements_statsmodel():
 
     I_var, _ = ds.variance_stokes(st_label='ST', sections=sections, use_statsmodels=True)
 
-    np.testing.assert_almost_equal(I_var, correct_value, decimal=5)
+    np.testing.assert_almost_equal(I_var, correct_var, decimal=5)
+
+
+def test_variance_of_stokes_synthetic():
+    yvar = 5.
+
+    nx = 50
+    x = np.linspace(0., 20., nx)
+
+    nt = 1000
+    beta = np.linspace(3000, 4000, nt)[None]
+
+    y = beta * np.exp(-0.001 * x[:, None])
+
+    y += stats.norm.rvs(size=y.size,
+                        scale=yvar ** 0.5).reshape(y.shape)
+
+    ds = DataStore({'test_ST': (['x', 'time'], y)},
+                   coords={'x':    x,
+                           'time': range(nt)})
+
+    sections = {'placeholder': [slice(0., 20.), ]}
+    test_ST_var, _ = ds.variance_stokes(st_label='test_ST',
+                                        sections=sections)
+
+    np.testing.assert_almost_equal(test_ST_var, yvar,
+                                   decimal=1)
