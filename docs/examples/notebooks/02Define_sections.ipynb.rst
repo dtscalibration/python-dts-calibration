@@ -23,7 +23,7 @@
     except:
         wd = os.getcwd()
     
-    filepath = os.path.join(wd, '..', '..', 'tests', 'data', 'double_ended')
+    filepath = os.path.join(wd, '..', '..', 'tests', 'data', 'double_ended2')
     timezone_netcdf = 'UTC',
     timezone_ultima_xml = 'Europe/Amsterdam'
     file_ext = '*.xml'
@@ -36,10 +36,10 @@
 
 .. parsed-literal::
 
-    3 files were found, each representing a single timestep
+    6 files were found, each representing a single timestep
     6 recorded vars were found: LAF, ST, AST, REV-ST, REV-AST, TMP
-    Recorded at 2330 points along the cable
-    processing file 1 out of 3
+    Recorded at 1693 points along the cable
+    processing file 1 out of 6
 
 
 A calibration is needed to estimate temperature from Stokes and

@@ -131,24 +131,7 @@ def test_read_xml_dir_double_ended():
     pass
 
 
-def test_variance_of_measurements_sparse():
-    correct_value = 40.161692081870584
-    filepath = data_dir_double_ended2
-    ds = read_xml_dir(filepath,
-                      timezone_netcdf='UTC',
-                      timezone_ultima_xml='Europe/Amsterdam',
-                      file_ext='*.xml')
-    sections = {
-        'probe1Temperature': [slice(7.5, 17.), slice(70., 80.)],  # cold bath
-        'probe2Temperature': [slice(24., 34.), slice(85., 95.)],  # warm bath
-        }
-
-    I_var, _ = ds.variance_stokes(st_label='ST', sections=sections, use_statsmodels=False)
-
-    np.testing.assert_almost_equal(I_var, correct_value, decimal=5)
-
-
-def test_variance_of_stokes_statsmodel():
+def test_variance_of_stokes():
     correct_var = 40.161692081870584
     filepath = data_dir_double_ended2
     ds = read_xml_dir(filepath,
@@ -161,11 +144,23 @@ def test_variance_of_stokes_statsmodel():
         }
 
     I_var, _ = ds.variance_stokes(st_label='ST', sections=sections, use_statsmodels=True)
-
     np.testing.assert_almost_equal(I_var, correct_var, decimal=5)
+
+    I_var, _ = ds.variance_stokes(st_label='ST', sections=sections, use_statsmodels=False)
+    np.testing.assert_almost_equal(I_var, correct_var, decimal=5)
+
+    pass
 
 
 def test_variance_of_stokes_synthetic():
+    """
+    Produces a synthetic Stokes measurement with a known noise distribution. Check if same
+    variance is obtained.
+
+    Returns
+    -------
+
+    """
     yvar = 5.
 
     nx = 50
@@ -185,7 +180,43 @@ def test_variance_of_stokes_synthetic():
 
     sections = {'placeholder': [slice(0., 20.), ]}
     test_ST_var, _ = ds.variance_stokes(st_label='test_ST',
-                                        sections=sections)
+                                        sections=sections,
+                                        suppress_info=True)
 
     np.testing.assert_almost_equal(test_ST_var, yvar,
                                    decimal=1)
+
+
+def test_calibration_ols():
+    """Testing ordinary least squares procedure. And compare with device calibrated temperature.
+    The measurements were calibrated by the device using only section 8--17.m. Those temperatures
+    are compared up to 2 decimals. Silixa only uses a single calibration constant (I think they
+    fix gamma).
+    """
+    filepath = data_dir_double_ended2
+    ds = read_xml_dir(filepath,
+                      timezone_netcdf='UTC',
+                      timezone_ultima_xml='Europe/Amsterdam',
+                      file_ext='*.xml')
+    ds100 = ds.sel(x=slice(0,100))
+    sections_ultima = {
+        'probe1Temperature': [slice(8., 17.)],  # cold bath
+        }
+
+    st_label = 'ST'
+    ast_label = 'AST'
+    rst_label = 'REV-ST'
+    rast_label = 'REV-AST'
+    ds100.calibration_double_ended(sections=sections_ultima,
+                                   st_label=st_label,
+                                   ast_label=ast_label,
+                                   rst_label=rst_label,
+                                   rast_label=rast_label,
+                                   method='ols')
+
+    ds100['TMPAVG'] = (ds100.TMPF + ds100.TMPB) / 2
+    np.testing.assert_array_almost_equal(ds100.TMPAVG.data, ds100.TMP.data, decimal=1)
+
+    ds009 = ds100.sel(x=sections_ultima['probe1Temperature'][0])
+    np.testing.assert_array_almost_equal(ds009.TMPAVG.data, ds009.TMP.data, decimal=2)
+    pass

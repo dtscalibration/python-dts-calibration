@@ -96,6 +96,7 @@ def calibration_double_ended_calc(self, st_label, ast_label, rst_label,
         shape=(2 * nx * nt + nt * no, nt + 2 + no),
         dtype=float,
         copy=False)
+
     y1F = da.log(st / ast).T.ravel()
     y1B = da.log(rst / rast).T.ravel()
     y1 = da.stack([y1F, y1B]).T.ravel()

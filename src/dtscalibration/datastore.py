@@ -10,6 +10,7 @@ import xarray as xr
 import yaml
 from scipy.sparse import linalg as ln
 
+# from dtscalibration.calibrate_utils import calibration_double_ended_calc
 from dtscalibration.datastore_utils import coords_time
 from dtscalibration.datastore_utils import grab_data
 
@@ -115,7 +116,7 @@ class DataStore(xr.Dataset):
         if sections:
             self.sections = sections
 
-        assert 'time' in self[st_label].dims and 'x' in self[st_label].dims
+        self.check_dims([st_label], correct_dims=('x', 'time'))
 
         nt = self['time'].size
 
@@ -136,13 +137,10 @@ class DataStore(xr.Dataset):
 
         x = da.concatenate(x_list)  # coordinates are already in memory
         y = np.asarray(da.concatenate(y_list))
-        w = np.sqrt(y)
 
         data1 = x
         data2 = np.ones(sum(len_stretch_list) * nt)
         data = np.concatenate([data1, data2])
-
-        wdata = data * np.hstack((w, w))
 
         # alpha is the same for all -> one column
         coords1row = np.arange(nt * n_locs)
@@ -157,20 +155,17 @@ class DataStore(xr.Dataset):
         coords = (np.concatenate([coords1row, coords2row]),
                   np.concatenate([coords1col, coords2col]))
 
-        wX = sp.coo_matrix((wdata, coords),
-                           shape=(nt * n_locs, 1 + nt * n_sections),
-                           dtype=float,
-                           copy=False)
-        X = sp.coo_matrix((data, coords),
-                          shape=(nt * n_locs, 1 + nt * n_sections),
-                          dtype=float,
-                          copy=False)
-
         lny = np.log(y)
+        w = np.sqrt(y)
 
         if use_statsmodels:
-            # gives the same answer with statsmodel
+            # returns the same answer with statsmodel
             import statsmodels.api as sm
+
+            X = sp.coo_matrix((data, coords),
+                              shape=(nt * n_locs, 1 + nt * n_sections),
+                              dtype=float,
+                              copy=False)
 
             mod_wls = sm.WLS(lny, X.todense(), weights=w ** 2)
             res_wls = mod_wls.fit()
@@ -185,6 +180,12 @@ class DataStore(xr.Dataset):
             var_I = resid.std(ddof=1 + nt * n_sections).compute() ** 2
 
         else:
+            wdata = data * np.hstack((w, w))
+            wX = sp.coo_matrix((wdata, coords),
+                               shape=(nt * n_locs, 1 + nt * n_sections),
+                               dtype=float,
+                               copy=False)
+
             wlny = (lny * w)
 
             p0_est = np.asarray([0.] + nt * n_sections * [8])
@@ -232,20 +233,63 @@ class DataStore(xr.Dataset):
                                  store_gamma='gamma',
                                  store_alphaint='alphaint',
                                  store_alpha='alpha',
-                                 store_IFW_var='IF_var',
-                                 store_IBW_var='IB_var',
-                                 store_resid_IFW='errF',
-                                 store_resid_IBW='errB',
+                                 store_tmpf='TMPF',
+                                 store_tmpb='TMPB',
                                  variance_suffix='_var',
-                                 method='double1'):
+                                 method='ols'):
+        """
+
+        Parameters
+        ----------
+        sections : dict, optional
+        st_label : str
+            Label of the forward stokes measurement
+        ast_label : str
+            Label of the anti-Stoke measurement
+        rst_label : str
+            Label of the reversed Stoke measurement
+        rast_label : str
+            Label of the reversed anti-Stoke measurement
+        store_c : str, optional
+            Label of where to store C
+        store_gamma : str, optional
+            Label of where to store gamma
+        store_alphaint : str, optional
+            Label of where to store alphaint
+        store_alpha : str, optional
+            Label of where to store alpha
+        store_tmpf : str, optional
+            Label of where to store the calibrated temperature of the forward direction
+        store_tmpb : str, optional
+            Label of where to store the calibrated temperature of the backward direction
+        variance_suffix : str, optional
+            String appended for storing the variance. Only used when method is wls.
+        method : {'ols', 'wls'}
+            Use 'ols' for ordinary least squares and 'wls' for weighted least squares
+
+        Returns
+        -------
+
+        """
 
         if sections:
             self.sections = sections
 
-        self.check_dims(['st_label', 'ast_label', 'rst_label', 'rast_label'])
+        self.check_dims([st_label, ast_label, rst_label, rast_label],
+                        correct_dims=('x', 'time'))
 
-        if method == 'double1':
-            nt, z, p0_, err, errFW, errBW, var = self.calibration_double_ended_calc(
+        if method == 'ols':
+            nt, z, p0_ = self.calibration_double_ended_ols(
+                st_label, ast_label, rst_label, rast_label)
+
+            p0 = p0_[0]
+            gamma = p0[0]
+            alphaint = p0[1]
+            c = p0[2:nt + 2]
+            alpha = p0[nt + 2:]
+
+        elif method == 'wls':
+            nt, z, p0_, err, errFW, errBW, p0var = self.calibration_double_ended_wls(
                 st_label, ast_label, rst_label, rast_label)
 
             p0 = p0_[0]
@@ -258,7 +302,6 @@ class DataStore(xr.Dataset):
             ddof = nt + 2 + no
 
             # Estimate of the standard error - sqrt(diag of the COV matrix) - is not squared
-            p0var = var
             gammavar = p0var[0]
             alphaintvar = p0var[1]
             cvar = p0var[2:nt + 2]
@@ -274,56 +317,290 @@ class DataStore(xr.Dataset):
         self[store_c] = (('time',), c)
 
         # store variances in DataStore
-        self[store_gamma + variance_suffix] = (tuple(), gammavar)
-        self[store_alphaint + variance_suffix] = (tuple(), alphaintvar)
-        self[store_alpha + variance_suffix] = (('x',), alphavar)
-        self[store_c + variance_suffix] = (('time',), cvar)
+        if method == 'wls':
+            self[store_gamma + variance_suffix] = (tuple(), gammavar)
+            self[store_alphaint + variance_suffix] = (tuple(), alphaintvar)
+            self[store_alpha + variance_suffix] = (('x',), alphavar)
+            self[store_c + variance_suffix] = (('time',), cvar)
 
         # deal with FW
-        to_dim = self[st_label].dims
-
         tempF_data = gamma / \
             (np.log(self[st_label].data / self[ast_label].data)
              + c + alpha[:, None]) - 273.15
-        self['TMPF'] = (to_dim, tempF_data)
+        self[store_tmpf] = (('x', 'time'), tempF_data)
 
         # deal with BW
         tempB_data = gamma / \
             (np.log(self[rst_label].data / self[rast_label].data)
              + c - alpha[:, None] + alphaint) - 273.15
-        self['TMPB'] = (to_dim, tempB_data)
+        self[store_tmpb] = (('x', 'time'), tempB_data)
 
-        iz = np.argsort(z)  # What does this do?
-        self.coords['errz'] = z[iz]
-        self[store_resid_IFW] = (('errz', to_dim), errFW[iz])
-        self[store_IFW_var] = (tuple(), errFW.std(ddof=ddof) ** 2)
-        self[store_resid_IBW] = (('errz', to_dim), errBW[iz])
-        self[store_IBW_var] = (tuple(), errBW.std(ddof=ddof) ** 2)
-
-        self.Tvar_double_ended(store_IBW_var, store_IFW_var, store_alpha,
-                               store_c, store_gamma)
+        #
+        #                          store_resid_tmpf='errF',
+        #                          store_resid_tmpb='errB',
+        # store_resid_tmpf : str, optional
+        #     Label of where to store the residuals
+        # store_resid_tmpb : str, optional
+        #     Label of where to store
+        # iz = np.argsort(z)  # Why?
+        # self.coords['errz'] = z[iz]
+        # self[store_resid_tmpf] = (('errz', 'time'), errFW[iz])
+        # self[store_resid_tmpb] = (('errz', 'time'), errBW[iz])
 
         pass
 
-    def check_dims(self, labels):
+    def calibration_double_ended_ols(self, st_label, ast_label, rst_label,
+                                     rast_label):
+        nx = 0
+        z_list = []
+        cal_dts_list = []
+        cal_ref_list = []
+        x_index_list = []
+        for k, v in self.sections.items():
+            for vi in v:
+                nx += len(self.x.sel(x=vi))
+
+                z_list.append(self.x.sel(x=vi).data)
+
+                # cut out calibration sections
+                cal_dts_list.append(self.sel(x=vi))
+
+                # broadcast point measurements to calibration sections
+                ref = xr.full_like(cal_dts_list[-1]['TMP'], 1.) * self[k]
+
+                cal_ref_list.append(ref)
+
+                x_index_list.append(
+                    np.where(
+                        np.logical_and(self.x > vi.start, self.x < vi.stop))[
+                        0])
+
+        z = np.concatenate(z_list)
+        x_index = np.concatenate(x_index_list)
+
+        cal_ref = xr.concat(cal_ref_list, dim='x').data
+
+        st = da.concatenate(
+            [a[st_label].data
+             for a in cal_dts_list], axis=0)
+        ast = da.concatenate(
+            [a[ast_label].data
+             for a in cal_dts_list], axis=0)
+        rst = da.concatenate(
+            [a[rst_label].data
+             for a in cal_dts_list], axis=0)
+        rast = da.concatenate(
+            [a[rast_label].data
+             for a in cal_dts_list], axis=0)
+
+        if hasattr(cal_ref, 'chunks'):
+            chunks_dim = (nx, cal_ref.chunks[1])
+
+            for item in [st, ast, rst, rast]:
+                item.rechunk(chunks_dim)
+
+        nt = self[st_label].data.shape[1]
+        no = self[st_label].data.shape[0]
+
+        p0_est = np.asarray([482., 0.1] + nt * [1.4] + no * [0.])
+
+        # Eqs for F and B temperature
+        data1 = np.repeat(1 / (cal_ref.T.ravel() + 273.15), 2)  # gamma
+        data2 = np.tile([0., -1.], nt * nx)  # alphaint
+        data3 = np.tile([-1., -1.], nt * nx)  # C
+        data5 = np.tile([-1., 1.], nt * nx)  # alpha
+        # Eqs for alpha
+        data6 = np.repeat(-0.5, nt * no)  # alphaint
+        data9 = np.ones(nt * no, dtype=float)  # alpha
+        data = np.concatenate([data1, data2, data3, data5, data6, data9])
+
+        # (irow, icol)
+        coord1row = np.arange(2 * nt * nx, dtype=int)
+        coord2row = np.arange(2 * nt * nx, dtype=int)
+        coord3row = np.arange(2 * nt * nx, dtype=int)
+        coord5row = np.arange(2 * nt * nx, dtype=int)
+
+        coord6row = np.arange(2 * nt * nx, 2 * nt * nx + nt * no, dtype=int)
+        coord9row = np.arange(2 * nt * nx, 2 * nt * nx + nt * no, dtype=int)
+
+        coord1col = np.zeros(2 * nt * nx, dtype=int)
+        coord2col = np.ones(2 * nt * nx, dtype=int) * (2 + nt + no - 1)
+        coord3col = np.repeat(np.arange(nt, dtype=int) + 2, 2 * nx)
+        coord5col = np.tile(np.repeat(x_index, 2) + nt + 2, nt)
+
+        coord6col = np.ones(nt * no, dtype=int)
+        coord9col = np.tile(np.arange(no, dtype=int) + nt + 2, nt)
+
+        rows = [coord1row, coord2row, coord3row,
+                coord5row, coord6row, coord9row]
+        cols = [coord1col, coord2col, coord3col,
+                coord5col, coord6col, coord9col]
+        coords = (np.concatenate(rows), np.concatenate(cols))
+
+        # try scipy.sparse.bsr_matrix
+        X = sp.coo_matrix(
+            (data, coords),
+            shape=(2 * nx * nt + nt * no, nt + 2 + no),
+            dtype=float,
+            copy=False)
+
+        y1F = da.log(st / ast).T.ravel()
+        y1B = da.log(rst / rast).T.ravel()
+        y1 = da.stack([y1F, y1B]).T.ravel()
+        y2F = np.log(self[st_label].data / self[ast_label].data).T.ravel()
+        y2B = np.log(self[rst_label].data / self[rast_label].data).T.ravel()
+        y2 = (y2B - y2F) / 2
+        y = da.concatenate([y1, y2]).compute()
+        p0 = ln.lsqr(X, y, x0=p0_est, show=True, calc_var=True)
+
+        return nt, z, p0
+
+    def calibration_double_ended_wls(self, st_label, ast_label, rst_label,
+                                     rast_label):
+        nx = 0
+        z_list = []
+        cal_dts_list = []
+        cal_ref_list = []
+        x_index_list = []
+        for k, v in self.sections.items():
+            for vi in v:
+                nx += len(self.x.sel(x=vi))
+
+                z_list.append(self.x.sel(x=vi).data)
+
+                # cut out calibration sections
+                cal_dts_list.append(self.sel(x=vi))
+
+                # broadcast point measurements to calibration sections
+                ref = xr.full_like(cal_dts_list[-1]['TMP'], 1.) * self[k]
+
+                cal_ref_list.append(ref)
+
+                x_index_list.append(
+                    np.where(
+                        np.logical_and(self.x > vi.start, self.x < vi.stop))[
+                        0])
+
+        z = np.concatenate(z_list)
+        x_index = np.concatenate(x_index_list)
+
+        cal_ref = xr.concat(cal_ref_list, dim='x').data
+
+        st = da.concatenate(
+            [a[st_label].data
+             for a in cal_dts_list], axis=0)
+        ast = da.concatenate(
+            [a[ast_label].data
+             for a in cal_dts_list], axis=0)
+        rst = da.concatenate(
+            [a[rst_label].data
+             for a in cal_dts_list], axis=0)
+        rast = da.concatenate(
+            [a[rast_label].data
+             for a in cal_dts_list], axis=0)
+
+        if hasattr(cal_ref, 'chunks'):
+            chunks_dim = (nx, cal_ref.chunks[1])
+
+            for item in [st, ast, rst, rast]:
+                item.rechunk(chunks_dim)
+
+        nt = self[st_label].data.shape[1]
+        no = self[st_label].data.shape[0]
+
+        p0_est = np.asarray([482., 0.1] + nt * [1.4] + no * [0.])
+
+        # Eqs for F and B temperature
+        data1 = np.repeat(1 / (cal_ref.T.ravel() + 273.15), 2)  # gamma
+        data2 = np.tile([0., -1.], nt * nx)  # alphaint
+        data3 = np.tile([-1., -1.], nt * nx)  # C
+        data5 = np.tile([-1., 1.], nt * nx)  # alpha
+        # Eqs for alpha
+        data6 = np.repeat(-0.5, nt * no)  # alphaint
+        data9 = np.ones(nt * no, dtype=float)  # alpha
+        data = np.concatenate([data1, data2, data3, data5, data6, data9])
+
+        # (irow, icol)
+        coord1row = np.arange(2 * nt * nx, dtype=int)
+        coord2row = np.arange(2 * nt * nx, dtype=int)
+        coord3row = np.arange(2 * nt * nx, dtype=int)
+        coord5row = np.arange(2 * nt * nx, dtype=int)
+
+        coord6row = np.arange(2 * nt * nx, 2 * nt * nx + nt * no, dtype=int)
+        coord9row = np.arange(2 * nt * nx, 2 * nt * nx + nt * no, dtype=int)
+
+        coord1col = np.zeros(2 * nt * nx, dtype=int)
+        coord2col = np.ones(2 * nt * nx, dtype=int) * (2 + nt + no - 1)
+        coord3col = np.repeat(np.arange(nt, dtype=int) + 2, 2 * nx)
+        coord5col = np.tile(np.repeat(x_index, 2) + nt + 2, nt)
+
+        coord6col = np.ones(nt * no, dtype=int)
+        coord9col = np.tile(np.arange(no, dtype=int) + nt + 2, nt)
+
+        rows = [coord1row, coord2row, coord3row,
+                coord5row, coord6row, coord9row]
+        cols = [coord1col, coord2col, coord3col,
+                coord5col, coord6col, coord9col]
+        coords = (np.concatenate(rows), np.concatenate(cols))
+
+        # try scipy.sparse.bsr_matrix
+        X = sp.coo_matrix(
+            (data, coords),
+            shape=(2 * nx * nt + nt * no, nt + 2 + no),
+            dtype=float,
+            copy=False)
+
+        y1F = da.log(st / ast).T.ravel()
+        y1B = da.log(rst / rast).T.ravel()
+        y1 = da.stack([y1F, y1B]).T.ravel()
+        y2F = np.log(self[st_label].data / self[ast_label].data).T.ravel()
+        y2B = np.log(self[rst_label].data / self[rast_label].data).T.ravel()
+        y2 = (y2B - y2F) / 2
+        y = da.concatenate([y1, y2]).compute()
+        p0 = ln.lsqr(X, y, x0=p0_est, show=True, calc_var=True)
+
+
+        # err = (y - X.dot(p0[0]))  # .reshape((nt, nx)).T  # dims: (nx, nt)
+        # errFW = err[:2 * nt * nx:2].reshape((nt, nx)).T
+        # errBW = err[1:2 * nt * nx:2].reshape((nt, nx)).T  # dims: (nx, nt)
+        # ddof = nt + 2 + no
+        # var_lsqr = p0[-1] * err.std(ddof=ddof) ** 2
+
+        # var_lsqr = ln.inv(X.T.dot(X)).diagonal() * err.std(ddof=ddof) ** 2
+
+        var_lsqr = None
+        err = None
+        errFW = None
+        errBW = None
+
+        return nt, z, p0, err, errFW, errBW, var_lsqr
+
+    def check_dims(self, labels, correct_dims=None):
         """
         Compare the dimensions of different labels (e.g., 'ST', 'REV-ST').
         If a calculation is performed and the dimensions do not agree, the answers don't make
-        sense and the matrices are broadcasted and the memory usage will explode.
+        sense and the matrices are broadcasted and the memory usage will explode. If no correct
+        dims provided the dimensions of the different are compared.
 
         Parameters
         ----------
         labels : iterable
             An iterable with labels
+        correct_dims : tuple of str, optional
+            The correct dimensions
 
         Returns
         -------
 
         """
-        assert len(labels) > 1
+        if not correct_dims:
+            assert len(labels) > 1
 
-        for li in labels[1:]:
-            assert self[labels[0]].dims == self[li].dims
+            for li in labels[1:]:
+                assert self[labels[0]].dims == self[li].dims
+        else:
+            for li in labels:
+                assert self[li].dims == correct_dims
 
         pass
 
@@ -464,16 +741,16 @@ def read_xml_dir(filepath,
             'units':       'degC'},
         'ST':                    {
             'description': 'Stokes intensity',
-            'units':       '?'},
+            'units':       '-'},
         'AST':                   {
             'description': 'anti-Stokes intensity',
-            'units':       '?'},
+            'units':       '-'},
         'REV-ST':                {
             'description': 'reverse Stokes intensity',
-            'units':       '?'},
+            'units':       '-'},
         'REV-AST':               {
             'description': 'reverse anti-Stokes intensity',
-            'units':       '?'},
+            'units':       '-'},
         'acquisitionTime':       {
             'description':      'Measurement duration of forward channel',
             'long_describtion': 'Actual measurement duration of forward channel',
