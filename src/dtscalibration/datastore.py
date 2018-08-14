@@ -298,9 +298,6 @@ class DataStore(xr.Dataset):
             c = p0[2:nt + 2]
             alpha = p0[nt + 2:]
 
-            no = len(alpha)
-            ddof = nt + 2 + no
-
             # Estimate of the standard error - sqrt(diag of the COV matrix) - is not squared
             gammavar = p0var[0]
             alphaintvar = p0var[1]
@@ -558,7 +555,6 @@ class DataStore(xr.Dataset):
         y2 = (y2B - y2F) / 2
         y = da.concatenate([y1, y2]).compute()
         p0 = ln.lsqr(X, y, x0=p0_est, show=True, calc_var=True)
-
 
         # err = (y - X.dot(p0[0]))  # .reshape((nt, nx)).T  # dims: (nx, nt)
         # errFW = err[:2 * nt * nx:2].reshape((nt, nx)).T

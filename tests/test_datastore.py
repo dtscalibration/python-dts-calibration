@@ -198,7 +198,7 @@ def test_calibration_ols():
                       timezone_netcdf='UTC',
                       timezone_ultima_xml='Europe/Amsterdam',
                       file_ext='*.xml')
-    ds100 = ds.sel(x=slice(0,100))
+    ds100 = ds.sel(x=slice(0, 100))
     sections_ultima = {
         'probe1Temperature': [slice(8., 17.)],  # cold bath
         }
