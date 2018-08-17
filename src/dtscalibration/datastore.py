@@ -6,11 +6,12 @@ import os
 import dask.array as da
 import numpy as np
 import scipy.sparse as sp
+import scipy.stats as sst
 import xarray as xr
 import yaml
 from scipy.sparse import linalg as ln
 
-# from dtscalibration.calibrate_utils import calibration_double_ended_calc
+from dtscalibration.calibrate_utils import wls_sparse
 from dtscalibration.datastore_utils import coords_time
 from dtscalibration.datastore_utils import grab_data
 
@@ -98,8 +99,14 @@ class DataStore(xr.Dataset):
         and splices in the reference sections. 3) Same type of optical cable in each reference
         section.
 
+        Idea from discussion at page 127 in Richter, P. H. (1995). Estimating errors in
+        least-squares fitting. For weights used error propagation:
+        w^2 = 1/sigma(lny)^2 = y^2/sigma(y)^2 = y^2
+
         Parameters
         ----------
+        use_statsmodels
+        suppress_info
         st_label : str
             label of the Stokes, anti-Stokes measurement.
             E.g., ST, AST, REV-ST, REV-AST
@@ -156,7 +163,9 @@ class DataStore(xr.Dataset):
                   np.concatenate([coords1col, coords2col]))
 
         lny = np.log(y)
-        w = np.sqrt(y)
+        w = y.copy()
+
+        ddof = 1 + nt * n_sections  # see numpy documentation on ddof
 
         if use_statsmodels:
             # returns the same answer with statsmodel
@@ -177,7 +186,7 @@ class DataStore(xr.Dataset):
                 ])
             I_est = np.exp(C_expand_to_sec) * np.exp(x * a[0])
             resid = I_est - y
-            var_I = resid.std(ddof=1 + nt * n_sections).compute() ** 2
+            var_I = resid.std(ddof=ddof).compute() ** 2
 
         else:
             wdata = data * np.hstack((w, w))
@@ -189,6 +198,7 @@ class DataStore(xr.Dataset):
             wlny = (lny * w)
 
             p0_est = np.asarray([0.] + nt * n_sections * [8])
+            # noinspection PyTypeChecker
             a = ln.lsqr(wX, wlny,
                         x0=p0_est,
                         show=not suppress_info,
@@ -200,7 +210,7 @@ class DataStore(xr.Dataset):
                 ])
             I_est = np.exp(C_expand_to_sec) * np.exp(x * a[0])
             resid = I_est - y
-            var_I = resid.std(ddof=1 + nt * n_sections).compute() ** 2
+            var_I = resid.std(ddof=ddof).compute() ** 2
 
         return var_I, resid
 
@@ -229,6 +239,10 @@ class DataStore(xr.Dataset):
                                  ast_label=None,
                                  rst_label=None,
                                  rast_label=None,
+                                 st_var=None,
+                                 ast_var=None,
+                                 rst_var=None,
+                                 rast_var=None,
                                  store_c='c',
                                  store_gamma='gamma',
                                  store_alphaint='alphaint',
@@ -236,7 +250,11 @@ class DataStore(xr.Dataset):
                                  store_tmpf='TMPF',
                                  store_tmpb='TMPB',
                                  variance_suffix='_var',
-                                 method='ols'):
+                                 method='ols',
+                                 conf_ints=None,
+                                 conf_ints_size=100,
+                                 ci_avg_time_flag=False
+                                 ):
         """
 
         Parameters
@@ -250,6 +268,10 @@ class DataStore(xr.Dataset):
             Label of the reversed Stoke measurement
         rast_label : str
             Label of the reversed anti-Stoke measurement
+        st_var
+        ast_var
+        rst_var
+        rast_var
         store_c : str, optional
             Label of where to store C
         store_gamma : str, optional
@@ -288,21 +310,27 @@ class DataStore(xr.Dataset):
             c = p0[2:nt + 2]
             alpha = p0[nt + 2:]
 
-        elif method == 'wls':
-            nt, z, p0_, err, errFW, errBW, p0var = self.calibration_double_ended_wls(
-                st_label, ast_label, rst_label, rast_label)
+            # Can not estimate parameter variance with ols
+            gammavar = None
+            alphaintvar = None
+            cvar = None
+            alphavar = None
 
-            p0 = p0_[0]
-            gamma = p0[0]
-            alphaint = p0[1]
-            c = p0[2:nt + 2]
-            alpha = p0[nt + 2:]
+        elif method == 'wls':
+            nt, z, p_sol, p_var, p_cov = self.calibration_double_ended_wls(
+                st_label, ast_label, rst_label, rast_label,
+                st_var, ast_var, rst_var, rast_var)
+
+            gamma = p_sol[0]
+            alphaint = p_sol[1]
+            c = p_sol[2:nt + 2]
+            alpha = p_sol[nt + 2:]
 
             # Estimate of the standard error - sqrt(diag of the COV matrix) - is not squared
-            gammavar = p0var[0]
-            alphaintvar = p0var[1]
-            cvar = p0var[2:nt + 2]
-            alphavar = p0var[nt + 2:]
+            gammavar = p_var[0]
+            alphaintvar = p_var[1]
+            cvar = p_var[2:nt + 2]
+            alphavar = p_var[nt + 2:]
 
         else:
             raise ValueError('Choose a valid method')
@@ -332,17 +360,57 @@ class DataStore(xr.Dataset):
              + c - alpha[:, None] + alphaint) - 273.15
         self[store_tmpb] = (('x', 'time'), tempB_data)
 
-        #
-        #                          store_resid_tmpf='errF',
-        #                          store_resid_tmpb='errB',
-        # store_resid_tmpf : str, optional
-        #     Label of where to store the residuals
-        # store_resid_tmpb : str, optional
-        #     Label of where to store
-        # iz = np.argsort(z)  # Why?
-        # self.coords['errz'] = z[iz]
-        # self[store_resid_tmpf] = (('errz', 'time'), errFW[iz])
-        # self[store_resid_tmpb] = (('errz', 'time'), errBW[iz])
+        if conf_ints:
+            assert method == 'wls'
+            p_mc = sst.multivariate_normal.rvs(mean=p_sol,
+                                               cov=p_cov,
+                                               size=conf_ints_size)
+            self.coords['MC'] = range(conf_ints_size)
+            self.coords['CI'] = conf_ints
+
+            gamma = p_mc[:, 0]
+            alphaint = p_mc[:, 1]
+            c = p_mc[:, 2:nt + 2]
+            alpha = p_mc[:, nt + 2:]
+
+            self[store_gamma + '_MC'] = (('MC',), gamma)
+            self[store_alphaint + '_MC'] = (('MC',), alphaint)
+            self[store_alpha + '_MC'] = (('MC', 'x',), alpha)
+            self[store_c + '_MC'] = (('MC', 'time',), c)
+
+            # deal with FW
+            tempF_data = self[store_gamma + '_MC'] / \
+                (xr.ufuncs.log(self[st_label] / self[ast_label])
+                 + self[store_c + '_MC'] + self[store_alpha + '_MC']) - 273.15
+            self[store_tmpf + '_MC'] = (('MC', 'x', 'time'), tempF_data)
+
+            tempB_data = self[store_gamma + '_MC'] / \
+                (xr.ufuncs.log(self[rst_label] / self[rast_label])
+                 + self[store_c + '_MC'] - self[store_alpha + '_MC'] +
+                 self[store_alphaint + '_MC']) - 273.15
+            self[store_tmpb + '_MC'] = (('MC', 'x', 'time'), tempB_data)
+
+            if not ci_avg_time_flag:
+                q = self[store_tmpf + '_MC'].quantile(conf_ints, dim=['MC', 'time'])
+                self[store_tmpf + '_MC'] = (('CI', 'x'), q)
+
+                q = self[store_tmpb + '_MC'].quantile(conf_ints, dim=['MC', 'time'])
+                self[store_tmpb + '_MC'] = (('CI', 'x'), q)
+
+            else:
+                q = self[store_tmpf + '_MC'].quantile(conf_ints, dim='MC')
+                self[store_tmpf + '_MC'] = (('CI', 'x', 'time'), q)
+
+                q = self[store_tmpb + '_MC'].quantile(conf_ints, dim='MC')
+                self[store_tmpb + '_MC'] = (('CI', 'x', 'time'), q)
+
+            drop_var = [store_gamma + '_MC',
+                        store_alphaint + '_MC',
+                        store_alpha + '_MC',
+                        store_c + '_MC',
+                        'MC']
+            for k in drop_var:
+                del self[k]
 
         pass
 
@@ -448,12 +516,14 @@ class DataStore(xr.Dataset):
         y2B = np.log(self[rst_label].data / self[rast_label].data).T.ravel()
         y2 = (y2B - y2F) / 2
         y = da.concatenate([y1, y2]).compute()
+        # noinspection PyTypeChecker
         p0 = ln.lsqr(X, y, x0=p0_est, show=True, calc_var=True)
 
         return nt, z, p0
 
     def calibration_double_ended_wls(self, st_label, ast_label, rst_label,
-                                     rast_label):
+                                     rast_label, st_var, ast_var, rst_var, rast_var,
+                                     calc_cov=True):
         nx = 0
         z_list = []
         cal_dts_list = []
@@ -500,6 +570,7 @@ class DataStore(xr.Dataset):
             chunks_dim = (nx, cal_ref.chunks[1])
 
             for item in [st, ast, rst, rast]:
+                # not sure if rechunk happens in-place
                 item.rechunk(chunks_dim)
 
         nt = self[st_label].data.shape[1]
@@ -507,32 +578,34 @@ class DataStore(xr.Dataset):
 
         p0_est = np.asarray([482., 0.1] + nt * [1.4] + no * [0.])
 
-        # Eqs for F and B temperature
+        # Data for F and B temperature, nt * nx items
         data1 = np.repeat(1 / (cal_ref.T.ravel() + 273.15), 2)  # gamma
         data2 = np.tile([0., -1.], nt * nx)  # alphaint
         data3 = np.tile([-1., -1.], nt * nx)  # C
         data5 = np.tile([-1., 1.], nt * nx)  # alpha
-        # Eqs for alpha
+
+        # Data for alpha, nt * no items
         data6 = np.repeat(-0.5, nt * no)  # alphaint
         data9 = np.ones(nt * no, dtype=float)  # alpha
+
         data = np.concatenate([data1, data2, data3, data5, data6, data9])
 
-        # (irow, icol)
-        coord1row = np.arange(2 * nt * nx, dtype=int)
-        coord2row = np.arange(2 * nt * nx, dtype=int)
-        coord3row = np.arange(2 * nt * nx, dtype=int)
-        coord5row = np.arange(2 * nt * nx, dtype=int)
+        # Coords (irow, icol)
+        coord1row = np.arange(2 * nt * nx, dtype=int)  # gamma
+        coord2row = np.arange(2 * nt * nx, dtype=int)  # alphaint
+        coord3row = np.arange(2 * nt * nx, dtype=int)  # C
+        coord5row = np.arange(2 * nt * nx, dtype=int)  # alpha
 
-        coord6row = np.arange(2 * nt * nx, 2 * nt * nx + nt * no, dtype=int)
-        coord9row = np.arange(2 * nt * nx, 2 * nt * nx + nt * no, dtype=int)
+        coord6row = np.arange(2 * nt * nx, 2 * nt * nx + nt * no, dtype=int)  # alphaint
+        coord9row = np.arange(2 * nt * nx, 2 * nt * nx + nt * no, dtype=int)  # alpha
 
-        coord1col = np.zeros(2 * nt * nx, dtype=int)
-        coord2col = np.ones(2 * nt * nx, dtype=int) * (2 + nt + no - 1)
-        coord3col = np.repeat(np.arange(nt, dtype=int) + 2, 2 * nx)
-        coord5col = np.tile(np.repeat(x_index, 2) + nt + 2, nt)
+        coord1col = np.zeros(2 * nt * nx, dtype=int)  # gamma
+        coord2col = np.ones(2 * nt * nx, dtype=int) * (2 + nt + no - 1)  # alphaint
+        coord3col = np.repeat(np.arange(nt, dtype=int) + 2, 2 * nx)  # C
+        coord5col = np.tile(np.repeat(x_index, 2) + nt + 2, nt)  # alpha
 
-        coord6col = np.ones(nt * no, dtype=int)
-        coord9col = np.tile(np.arange(no, dtype=int) + nt + 2, nt)
+        coord6col = np.ones(nt * no, dtype=int)  # * (2 + nt + no - 1)  # alphaint
+        coord9col = np.tile(np.arange(no, dtype=int) + nt + 2, nt)  # alpha
 
         rows = [coord1row, coord2row, coord3row,
                 coord5row, coord6row, coord9row]
@@ -547,29 +620,40 @@ class DataStore(xr.Dataset):
             dtype=float,
             copy=False)
 
+        # Spooky way to interleave and ravel arrays in correct order. Works!
         y1F = da.log(st / ast).T.ravel()
         y1B = da.log(rst / rast).T.ravel()
         y1 = da.stack([y1F, y1B]).T.ravel()
-        y2F = np.log(self[st_label].data / self[ast_label].data).T.ravel()
-        y2B = np.log(self[rst_label].data / self[rast_label].data).T.ravel()
+
+        y2F = np.log(self[st_label].data /
+                     self[ast_label].data).T.ravel()
+        y2B = np.log(self[rst_label].data /
+                     self[rast_label].data).T.ravel()
         y2 = (y2B - y2F) / 2
         y = da.concatenate([y1, y2]).compute()
-        p0 = ln.lsqr(X, y, x0=p0_est, show=True, calc_var=True)
 
-        # err = (y - X.dot(p0[0]))  # .reshape((nt, nx)).T  # dims: (nx, nt)
-        # errFW = err[:2 * nt * nx:2].reshape((nt, nx)).T
-        # errBW = err[1:2 * nt * nx:2].reshape((nt, nx)).T  # dims: (nx, nt)
-        # ddof = nt + 2 + no
-        # var_lsqr = p0[-1] * err.std(ddof=ddof) ** 2
+        # Calculate the reprocical of the variance (not std)
+        w1F = (1 / st ** 2 * st_var +
+               1 / ast ** 2 * ast_var
+               ).T.ravel()
+        w1B = (1 / rst ** 2 * rst_var +
+               1 / rast ** 2 * rast_var
+               ).T.ravel()
+        w1 = da.stack([w1F, w1B]).T.ravel()
 
-        # var_lsqr = ln.inv(X.T.dot(X)).diagonal() * err.std(ddof=ddof) ** 2
+        w2 = (0.5 / self[st_label].data ** 2 * st_var +
+              0.5 / self[ast_label].data ** 2 * ast_var +
+              0.5 / self[rst_label].data ** 2 * rst_var +
+              0.5 / self[rast_label].data ** 2 * rast_var
+              ).T.ravel()
+        w = da.concatenate([w1, w2])
 
-        var_lsqr = None
-        err = None
-        errFW = None
-        errBW = None
+        p_sol, p_var, p_cov = wls_sparse(X, y, w=w, x0=p0_est, calc_cov=calc_cov)
 
-        return nt, z, p0, err, errFW, errBW, var_lsqr
+        if calc_cov:
+            return nt, z, p_sol, p_var, p_cov
+        else:
+            return nt, z, p_sol, p_var
 
     def check_dims(self, labels, correct_dims=None):
         """
@@ -613,70 +697,6 @@ def open_datastore(filename_or_obj, **kwargs):
         ends with .gz, in which case the file is gunzipped and opened with
         scipy.io.netcdf (only netCDF3 supported). File-like objects are opened
         with scipy.io.netcdf (only netCDF3 supported).
-    group : str, optional
-        Path to the netCDF4 group in the given file to open (only works for
-        netCDF4 files).
-    decode_cf : bool, optional
-        Whether to decode these variables, assuming they were saved according
-        to CF conventions.
-    mask_and_scale : bool, optional
-        If True, replace array values equal to `_FillValue` with NA and scale
-        values according to the formula `original_values * scale_factor +
-        add_offset`, where `_FillValue`, `scale_factor` and `add_offset` are
-        taken from variable attributes (if they exist).  If the `_FillValue` or
-        `missing_value` attribute contains multiple values a warning will be
-        issued and all array values matching one of the multiple values will
-        be replaced by NA. mask_and_scale defaults to True except for the
-        pseudonetcdf backend.
-    decode_times : bool, optional
-        If True, decode times encoded in the standard NetCDF datetime format
-        into datetime objects. Otherwise, leave them encoded as numbers.
-    autoclose : bool, optional
-        If True, automatically close files to avoid OS Error of too many files
-        being open.  However, this option doesn't work with streams, e.g.,
-        BytesIO.
-    concat_characters : bool, optional
-        If True, concatenate along the last dimension of character arrays to
-        form string arrays. Dimensions will only be concatenated over (and
-        removed) if they have no corresponding variable and if they are only
-        used as the last dimension of character arrays.
-    decode_coords : bool, optional
-        If True, decode the 'coordinates' attribute to identify coordinates in
-        the resulting datastore.
-    engine : {'netcdf4', 'scipy', 'pydap', 'h5netcdf', 'pynio', 'pseudonetcdf'}, optional
-        Engine to use when reading files. If not provided, the default engine
-        is chosen based on available dependencies, with a preference for
-        'netcdf4'.
-    chunks : int or dict, optional
-        If chunks is provided, it used to load the new datastore into dask
-        arrays. ``chunks={}`` loads the datastore with dask using a single
-        chunk for all arrays.
-    lock : False, True or threading.Lock, optional
-        If chunks is provided, this argument is passed on to
-        :py:func:`dask.array.from_array`. By default, a global lock is
-        used when reading data from netCDF files with the netcdf4 and h5netcdf
-        engines to avoid issues with concurrent access when using dask's
-        multithreaded backend.
-    cache : bool, optional
-        If True, cache data loaded from the underlying datastore in memory as
-        NumPy arrays when accessed to avoid reading from the underlying data-
-        store multiple times. Defaults to True unless you specify the `chunks`
-        argument to use dask, in which case it defaults to False. Does not
-        change the behavior of coordinates corresponding to dimensions, which
-        always load their data from disk into a ``pandas.Index``.
-    drop_variables: string or iterable, optional
-        A variable or list of variables to exclude from being parsed from the
-        datastore. This may be useful to drop variables with problems or
-        inconsistent values.
-    backend_kwargs: dictionary, optional
-        A dictionary of keyword arguments to pass on to the backend. This
-        may be useful when backend options would improve performance or
-        allow user control of datastore processing.
-    sections : dict, optional
-        Sections for calibration. The dictionary should contain key-var couples
-        in which the key is the name of the calibration temp time series. And
-        the var is a list of slice objects as 'slice(start, stop)'; start and
-        stop in meter (float).
     Returns
     -------
     datastore : DataStore

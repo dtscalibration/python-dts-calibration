@@ -4,11 +4,14 @@ import os
 import tempfile
 
 import numpy as np
+import scipy.sparse as sp
 from scipy import stats
 
 from dtscalibration import DataStore
 from dtscalibration import open_datastore
 from dtscalibration import read_xml_dir
+from dtscalibration.calibrate_utils import wls_sparse
+from dtscalibration.calibrate_utils import wls_stats
 from dtscalibration.datastore_utils import read_data_from_fp_numpy
 
 np.random.seed(0)
@@ -134,7 +137,7 @@ def test_read_xml_dir_double_ended():
 
 
 def test_variance_of_stokes():
-    correct_var = 40.16169
+    correct_var = 40.16
     filepath = data_dir_double_ended2
     ds = read_xml_dir(filepath,
                       timezone_netcdf='UTC',
@@ -145,11 +148,19 @@ def test_variance_of_stokes():
         'probe2Temperature': [slice(24., 34.), slice(85., 95.)],  # warm bath
         }
 
-    I_var, _ = ds.variance_stokes(st_label='ST', sections=sections, use_statsmodels=True)
-    np.testing.assert_almost_equal(I_var, correct_var, decimal=3)
+    I_var, _ = ds.variance_stokes(st_label='ST',
+                                  sections=sections,
+                                  use_statsmodels=True)
+    np.testing.assert_almost_equal(I_var,
+                                   correct_var,
+                                   decimal=1)
 
-    I_var, _ = ds.variance_stokes(st_label='ST', sections=sections, use_statsmodels=False)
-    np.testing.assert_almost_equal(I_var, correct_var, decimal=3)
+    I_var, _ = ds.variance_stokes(st_label='ST',
+                                  sections=sections,
+                                  use_statsmodels=False)
+    np.testing.assert_almost_equal(I_var,
+                                   correct_var,
+                                   decimal=1)
 
     pass
 
@@ -217,8 +228,53 @@ def test_calibration_ols():
                                    method='ols')
 
     ds100['TMPAVG'] = (ds100.TMPF + ds100.TMPB) / 2
-    np.testing.assert_array_almost_equal(ds100.TMPAVG.data, ds100.TMP.data, decimal=1)
+    np.testing.assert_array_almost_equal(ds100.TMPAVG.data,
+                                         ds100.TMP.data,
+                                         decimal=1)
 
     ds009 = ds100.sel(x=sections_ultima['probe1Temperature'][0])
-    np.testing.assert_array_almost_equal(ds009.TMPAVG.data, ds009.TMP.data, decimal=2)
+    np.testing.assert_array_almost_equal(ds009.TMPAVG.data,
+                                         ds009.TMP.data,
+                                         decimal=2)
+    pass
+
+
+def test_calibrate_wls_procedures():
+    x = np.linspace(0, 10, 25 * 4)
+    np.random.shuffle(x)
+
+    X = x.reshape((25, 4))
+    beta = np.array([1, 0.1, 10, 5])
+    beta_w = np.concatenate((np.ones(10), np.ones(15) * 1.0))
+    beta_0 = np.array([1, 1, 1, 1])
+    y = np.dot(X, beta)
+    y_meas = y + np.random.normal(size=y.size)
+
+    # first check unweighted convergence
+    beta_numpy = np.linalg.lstsq(X, y, rcond=None)[0]
+    np.testing.assert_array_almost_equal(beta, beta_numpy, decimal=8)
+
+    ps_sol, ps_var = wls_stats(X, y, w=1, calc_cov=0, x0=beta_0)
+    p_sol, p_var = wls_sparse(X, y, w=1, calc_cov=0, x0=beta_0)
+
+    np.testing.assert_array_almost_equal(beta, ps_sol, decimal=8)
+    np.testing.assert_array_almost_equal(beta, p_sol, decimal=8)
+
+    # now with weights
+    dec = 8
+    ps_sol, ps_var, ps_cov = wls_stats(X, y_meas, w=beta_w, calc_cov=True, x0=beta_0)
+    p_sol, p_var, p_cov = wls_sparse(X, y_meas, w=beta_w, calc_cov=True, x0=beta_0)
+
+    np.testing.assert_array_almost_equal(p_sol, ps_sol, decimal=dec)
+    np.testing.assert_array_almost_equal(p_var, ps_var, decimal=dec)
+    np.testing.assert_array_almost_equal(p_cov, ps_cov, decimal=dec)
+
+    # Test array sparse
+    Xsp = sp.coo_matrix(X)
+    psp_sol, psp_var, psp_cov = wls_stats(Xsp, y_meas, w=beta_w, calc_cov=True, x0=beta_0)
+
+    np.testing.assert_array_almost_equal(p_sol, psp_sol, decimal=dec)
+    np.testing.assert_array_almost_equal(p_var, psp_var, decimal=dec)
+    np.testing.assert_array_almost_equal(p_cov, psp_cov, decimal=dec)
+
     pass
