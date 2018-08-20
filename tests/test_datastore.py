@@ -220,6 +220,7 @@ def test_calibration_ols():
     ast_label = 'AST'
     rst_label = 'REV-ST'
     rast_label = 'REV-AST'
+
     ds100.calibration_double_ended(sections=sections_ultima,
                                    st_label=st_label,
                                    ast_label=ast_label,

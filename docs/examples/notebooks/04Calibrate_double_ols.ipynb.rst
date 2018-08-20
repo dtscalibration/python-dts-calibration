@@ -72,26 +72,45 @@ considered equal here and no variance is calculated.
                 Label of the reversed Stoke measurement
             rast_label : str
                 Label of the reversed anti-Stoke measurement
-            st_var
-            ast_var
-            rst_var
-            rast_var
-            store_c : str, optional
+            st_var : float, optional
+                The variance of the measurement noise of the Stokes signals in the forward
+                direction Required if method is wls.
+            ast_var : float, optional
+                The variance of the measurement noise of the anti-Stokes signals in the forward
+                direction. Required if method is wls.
+            rst_var : float, optional
+                The variance of the measurement noise of the Stokes signals in the backward
+                direction. Required if method is wls.
+            rast_var : float, optional
+                The variance of the measurement noise of the anti-Stokes signals in the backward
+                direction. Required if method is wls.
+            store_c : str
                 Label of where to store C
-            store_gamma : str, optional
+            store_gamma : str
                 Label of where to store gamma
-            store_alphaint : str, optional
+            store_alphaint : str
                 Label of where to store alphaint
-            store_alpha : str, optional
+            store_alpha : str
                 Label of where to store alpha
-            store_tmpf : str, optional
+            store_tmpf : str
                 Label of where to store the calibrated temperature of the forward direction
-            store_tmpb : str, optional
+            store_tmpb : str
                 Label of where to store the calibrated temperature of the backward direction
             variance_suffix : str, optional
                 String appended for storing the variance. Only used when method is wls.
             method : {'ols', 'wls'}
                 Use 'ols' for ordinary least squares and 'wls' for weighted least squares
+            store_tempvar : str
+                If defined, the variance of the error is calculated
+            conf_ints : iterable object of float, optional
+                A list with the confidence boundaries that are calculated. E.g., to cal
+            conf_ints_size : int, optional
+                Size of the monte carlo parameter set used to calculate the confidence interval
+            ci_avg_time_flag : bool, optional
+                The confidence intervals differ per time step. If you would like to calculate confidence
+                intervals of all time steps together. ‘We can say with 95% confidence that the
+                temperature remained between this line and this line during the entire measurement
+                period’.
     
             Returns
             -------

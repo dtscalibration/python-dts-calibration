@@ -177,37 +177,4 @@ def calibration_double_ended_calc(self, st_label, ast_label, rst_label,
 
     return nt, z, p0, err, errFW, errBW, var_lsqr
 
-
-def Tvar_double_ended(self, store_IBW_var, store_IFW_var, store_alpha,
-                      store_c, store_gamma):
-    lF = ('Tvar_' + store_IFW_var,
-          'Tvar_' + store_c + 'F',
-          'Tvar_' + store_alpha + 'F',
-          'Tvar_' + store_gamma + 'F')
-    self.attrs['var_composite_label_F'] = lF
-    lB = ('Tvar_' + store_IBW_var,
-          'Tvar_' + store_c + 'B',
-          'Tvar_' + store_alpha + 'B',
-          'Tvar_' + store_gamma + 'B')
-    self.attrs['var_composite_label_B'] = lB
-
-    factorFW = (self['TMPF'] + 273.15) ** 4 / self[store_gamma] ** 2
-    self[lF[0]] = factorFW * self[store_IFW_var]
-    self[lF[1]] = factorFW * self[store_c + '_var'].data
-    self[lF[2]] = factorFW * self[store_alpha + '_var']
-    self[lF[3]] = (self['TMPF'] + 273.15) ** 2 / \
-        self[store_gamma] * self[store_gamma + '_var']
-
-    factorBW = (self['TMPB'] + 273.15) ** 4 / self[store_gamma] ** 2
-    self[lB[0]] = factorBW * self[store_IBW_var]
-    self[lB[1]] = factorBW * self[store_c + '_var'].data
-    self[lB[2]] = factorBW * self[store_alpha + '_var']
-    self[lB[3]] = (self['TMPB'] + 273.15) ** 2 / \
-        self[store_gamma] * self[store_gamma + '_var']
-    # self['Tvar_alphaint']
-
-    self['Tvar_F'] = xr.concat(
-        objs=[self[li] for li in lF], dim='stacked').sum(dim='stacked')
-    self['Tvar_B'] = xr.concat(
-        objs=[self[li] for li in lB], dim='stacked').sum(dim='stacked')
-    pass
+# def generate_synthetic_measurements()

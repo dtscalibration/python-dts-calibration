@@ -39,6 +39,7 @@ setup(
     package_dir={
         '': 'src'},
     py_modules=[splitext(basename(path))[0] for path in glob('src/*.py')],
+    python_requires='>= 3.6',  # default dictionary is sorted
     include_package_data=True,
     zip_safe=False,
     classifiers=[

@@ -235,10 +235,10 @@ class DataStore(xr.Dataset):
 
     def calibration_double_ended(self,
                                  sections=None,
-                                 st_label=None,
-                                 ast_label=None,
-                                 rst_label=None,
-                                 rast_label=None,
+                                 st_label='ST',
+                                 ast_label='AST',
+                                 rst_label='REV-ST',
+                                 rast_label='REV-AST',
                                  st_var=None,
                                  ast_var=None,
                                  rst_var=None,
@@ -251,6 +251,7 @@ class DataStore(xr.Dataset):
                                  store_tmpb='TMPB',
                                  variance_suffix='_var',
                                  method='ols',
+                                 store_tempvar=None,
                                  conf_ints=None,
                                  conf_ints_size=100,
                                  ci_avg_time_flag=False
@@ -268,26 +269,45 @@ class DataStore(xr.Dataset):
             Label of the reversed Stoke measurement
         rast_label : str
             Label of the reversed anti-Stoke measurement
-        st_var
-        ast_var
-        rst_var
-        rast_var
-        store_c : str, optional
+        st_var : float, optional
+            The variance of the measurement noise of the Stokes signals in the forward
+            direction Required if method is wls.
+        ast_var : float, optional
+            The variance of the measurement noise of the anti-Stokes signals in the forward
+            direction. Required if method is wls.
+        rst_var : float, optional
+            The variance of the measurement noise of the Stokes signals in the backward
+            direction. Required if method is wls.
+        rast_var : float, optional
+            The variance of the measurement noise of the anti-Stokes signals in the backward
+            direction. Required if method is wls.
+        store_c : str
             Label of where to store C
-        store_gamma : str, optional
+        store_gamma : str
             Label of where to store gamma
-        store_alphaint : str, optional
+        store_alphaint : str
             Label of where to store alphaint
-        store_alpha : str, optional
+        store_alpha : str
             Label of where to store alpha
-        store_tmpf : str, optional
+        store_tmpf : str
             Label of where to store the calibrated temperature of the forward direction
-        store_tmpb : str, optional
+        store_tmpb : str
             Label of where to store the calibrated temperature of the backward direction
         variance_suffix : str, optional
             String appended for storing the variance. Only used when method is wls.
         method : {'ols', 'wls'}
             Use 'ols' for ordinary least squares and 'wls' for weighted least squares
+        store_tempvar : str
+            If defined, the variance of the error is calculated
+        conf_ints : iterable object of float, optional
+            A list with the confidence boundaries that are calculated. E.g., to cal
+        conf_ints_size : int, optional
+            Size of the monte carlo parameter set used to calculate the confidence interval
+        ci_avg_time_flag : bool, optional
+            The confidence intervals differ per time step. If you would like to calculate confidence
+            intervals of all time steps together. ‘We can say with 95% confidence that the
+            temperature remained between this line and this line during the entire measurement
+            period’.
 
         Returns
         -------
@@ -317,6 +337,9 @@ class DataStore(xr.Dataset):
             alphavar = None
 
         elif method == 'wls':
+            for vari in [st_var, ast_var, rst_var, rast_var]:
+                assert isinstance(vari, float)
+
             nt, z, p_sol, p_var, p_cov = self.calibration_double_ended_wls(
                 st_label, ast_label, rst_label, rast_label,
                 st_var, ast_var, rst_var, rast_var)
@@ -390,17 +413,27 @@ class DataStore(xr.Dataset):
                  self[store_alphaint + '_MC']) - 273.15
             self[store_tmpb + '_MC'] = (('MC', 'x', 'time'), tempB_data)
 
-            if not ci_avg_time_flag:
+            if ci_avg_time_flag:
+                if store_tempvar:
+                    self[store_tmpf + '_MC' + store_tempvar] = (self[store_tmpf + '_MC'] - self[
+                        store_tmpf]).std(dim=['MC', 'time']) ** 2
+                    self[store_tmpb + '_MC' + store_tempvar] = (self[store_tmpb + '_MC'] - self[
+                        store_tmpb]).std(dim=['MC', 'time']) ** 2
+
                 q = self[store_tmpf + '_MC'].quantile(conf_ints, dim=['MC', 'time'])
                 self[store_tmpf + '_MC'] = (('CI', 'x'), q)
-
                 q = self[store_tmpb + '_MC'].quantile(conf_ints, dim=['MC', 'time'])
                 self[store_tmpb + '_MC'] = (('CI', 'x'), q)
 
             else:
+                if store_tempvar:
+                    self[store_tmpf + '_MC' + store_tempvar] = (self[store_tmpf + '_MC'] - self[
+                        store_tmpf]).std(dim='MC', ddof=1) ** 2
+                    self[store_tmpb + '_MC' + store_tempvar] = (self[store_tmpb + '_MC'] - self[
+                        store_tmpb]).std(dim='MC', ddof=1) ** 2
+
                 q = self[store_tmpf + '_MC'].quantile(conf_ints, dim='MC')
                 self[store_tmpf + '_MC'] = (('CI', 'x', 'time'), q)
-
                 q = self[store_tmpb + '_MC'].quantile(conf_ints, dim='MC')
                 self[store_tmpb + '_MC'] = (('CI', 'x', 'time'), q)
 
@@ -416,53 +449,27 @@ class DataStore(xr.Dataset):
 
     def calibration_double_ended_ols(self, st_label, ast_label, rst_label,
                                      rast_label):
-        nx = 0
-        z_list = []
-        cal_dts_list = []
-        cal_ref_list = []
-        x_index_list = []
-        for k, v in self.sections.items():
-            for vi in v:
-                nx += len(self.x.sel(x=vi))
+        cal_ref = self.ufunc_per_section(label=st_label,
+                                         ref_temp_broadcasted=True,
+                                         calc_per='all')
 
-                z_list.append(self.x.sel(x=vi).data)
+        st = self.ufunc_per_section(label=st_label, calc_per='all')
+        ast = self.ufunc_per_section(label=ast_label, calc_per='all')
+        rst = self.ufunc_per_section(label=rst_label, calc_per='all')
+        rast = self.ufunc_per_section(label=rast_label, calc_per='all')
+        z = self.ufunc_per_section(label='x', calc_per='all')
 
-                # cut out calibration sections
-                cal_dts_list.append(self.sel(x=vi))
+        nx = z.size
 
-                # broadcast point measurements to calibration sections
-                ref = xr.full_like(cal_dts_list[-1]['TMP'], 1.) * self[k]
+        _xsorted = np.argsort(self.x.data)
+        _ypos = np.searchsorted(self.x.data[_xsorted], z)
+        x_index = _xsorted[_ypos]
 
-                cal_ref_list.append(ref)
-
-                x_index_list.append(
-                    np.where(
-                        np.logical_and(self.x > vi.start, self.x < vi.stop))[
-                        0])
-
-        z = np.concatenate(z_list)
-        x_index = np.concatenate(x_index_list)
-
-        cal_ref = xr.concat(cal_ref_list, dim='x').data
-
-        st = da.concatenate(
-            [a[st_label].data
-             for a in cal_dts_list], axis=0)
-        ast = da.concatenate(
-            [a[ast_label].data
-             for a in cal_dts_list], axis=0)
-        rst = da.concatenate(
-            [a[rst_label].data
-             for a in cal_dts_list], axis=0)
-        rast = da.concatenate(
-            [a[rast_label].data
-             for a in cal_dts_list], axis=0)
-
-        if hasattr(cal_ref, 'chunks'):
-            chunks_dim = (nx, cal_ref.chunks[1])
-
-            for item in [st, ast, rst, rast]:
-                item.rechunk(chunks_dim)
+        # if hasattr(cal_ref, 'chunks'):
+        #     chunks_dim = (nx, cal_ref.chunks[1])
+        #
+        #     for item in [st, ast, rst, rast]:
+        #         item.rechunk(chunks_dim)
 
         nt = self[st_label].data.shape[1]
         no = self[st_label].data.shape[0]
@@ -524,54 +531,21 @@ class DataStore(xr.Dataset):
     def calibration_double_ended_wls(self, st_label, ast_label, rst_label,
                                      rast_label, st_var, ast_var, rst_var, rast_var,
                                      calc_cov=True):
-        nx = 0
-        z_list = []
-        cal_dts_list = []
-        cal_ref_list = []
-        x_index_list = []
-        for k, v in self.sections.items():
-            for vi in v:
-                nx += len(self.x.sel(x=vi))
+        cal_ref = self.ufunc_per_section(label=st_label,
+                                         ref_temp_broadcasted=True,
+                                         calc_per='all')
 
-                z_list.append(self.x.sel(x=vi).data)
+        st = self.ufunc_per_section(label=st_label, calc_per='all')
+        ast = self.ufunc_per_section(label=ast_label, calc_per='all')
+        rst = self.ufunc_per_section(label=rst_label, calc_per='all')
+        rast = self.ufunc_per_section(label=rast_label, calc_per='all')
+        z = self.ufunc_per_section(label='x', calc_per='all')
 
-                # cut out calibration sections
-                cal_dts_list.append(self.sel(x=vi))
+        nx = z.size
 
-                # broadcast point measurements to calibration sections
-                ref = xr.full_like(cal_dts_list[-1]['TMP'], 1.) * self[k]
-
-                cal_ref_list.append(ref)
-
-                x_index_list.append(
-                    np.where(
-                        np.logical_and(self.x > vi.start, self.x < vi.stop))[
-                        0])
-
-        z = np.concatenate(z_list)
-        x_index = np.concatenate(x_index_list)
-
-        cal_ref = xr.concat(cal_ref_list, dim='x').data
-
-        st = da.concatenate(
-            [a[st_label].data
-             for a in cal_dts_list], axis=0)
-        ast = da.concatenate(
-            [a[ast_label].data
-             for a in cal_dts_list], axis=0)
-        rst = da.concatenate(
-            [a[rst_label].data
-             for a in cal_dts_list], axis=0)
-        rast = da.concatenate(
-            [a[rast_label].data
-             for a in cal_dts_list], axis=0)
-
-        if hasattr(cal_ref, 'chunks'):
-            chunks_dim = (nx, cal_ref.chunks[1])
-
-            for item in [st, ast, rst, rast]:
-                # not sure if rechunk happens in-place
-                item.rechunk(chunks_dim)
+        _xsorted = np.argsort(self.x.data)
+        _ypos = np.searchsorted(self.x.data[_xsorted], z)
+        x_index = _xsorted[_ypos]
 
         nt = self[st_label].data.shape[1]
         no = self[st_label].data.shape[0]
@@ -654,6 +628,83 @@ class DataStore(xr.Dataset):
             return nt, z, p_sol, p_var, p_cov
         else:
             return nt, z, p_sol, p_var
+
+    def ufunc_per_section(self,
+                          func=None,
+                          label=None,
+                          subtract_from_label=None,
+                          temp_err=False,
+                          ref_temp_broadcasted=False,
+                          calc_per='stretch',
+                          **func_kwargs):
+        """
+
+        Parameters
+        ----------
+        func : callable
+            A numpy function, or lambda function to apple to each 'calc_per'.
+        label
+        subtract_from_label
+        temp_err : bool
+            The argument of the function is label minus the reference temperature.
+        ref_temp_broadcasted : bool
+        calc_per : {'all', 'per_section', 'per_stretch'}
+        func_kwargs : dict
+            Dictionary with options that are passed to func
+
+        Returns
+        -------
+
+        """
+
+        if not func:
+            def func(a):
+                return a
+
+        out = dict()
+
+        for k, section in self.sections.items():
+
+            out[k] = []
+            for stretch in section:
+                arg1 = self[label].sel(x=stretch).data
+
+                if subtract_from_label:
+                    # calculate std wrt other series
+                    self.check_dims([subtract_from_label], correct_dims=('x', 'time'))
+
+                    assert not temp_err
+
+                    arg2 = self[subtract_from_label].sel(x=stretch).data
+                    out[k].append(arg1 - arg2)
+
+                elif temp_err:
+                    # calculate std wrt reference temperature
+                    arg2 = self[k].data
+                    out[k].append(arg1 - arg2)
+
+                elif ref_temp_broadcasted:
+                    assert not temp_err
+                    assert not subtract_from_label
+
+                    arg2 = np.broadcast_to(self[k].data, arg1.shape)
+                    out[k].append(arg2)
+
+                else:
+                    # calculate std wrt mean value
+                    out[k].append(arg1)
+
+            if calc_per == 'stretch':
+                out[k] = [func(argi, **func_kwargs) for argi in out[k]]
+
+            elif calc_per == 'section':
+                out[k] = func(np.concatenate(out[k]), **func_kwargs)
+
+        if calc_per == 'all':
+            out = {k: np.concatenate(section) for k, section in out.items()}
+            out = func(np.concatenate(list(out.values()), axis=0), **func_kwargs)
+
+        return out
 
     def check_dims(self, labels, correct_dims=None):
         """

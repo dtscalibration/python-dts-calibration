@@ -53,7 +53,7 @@ to perform a decent calibration procedure.
 
 +------------+------------------------------+----------------+--------------------+
 | Name       | Name reference temperature   | Number of      | Location of        |
-| section    | time series                  | sections       | sections (m)       |
+| section    | time series                  | stretches      | sections (m)       |
 +============+==============================+================+====================+
 | Cold bath  | probe1Temperature            | 2              | 7.5-17.0;          |
 |            |                              |                | 70.0-80.0          |
@@ -68,7 +68,7 @@ already be part of the DataStore object.
 
 Sections are defined in a dictionary with its keywords of the names of
 the reference temperature time series. Its values are lists of slice
-objects, where each slice object is a section.
+objects, where each slice object is a stretch.
 
 Note that slice is part of the standard Python library and no import is
 required.

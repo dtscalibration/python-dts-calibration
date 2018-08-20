@@ -1,5 +1,5 @@
 
-4. Calibration of double ended measurement with WLS and confidence intervals
+5. Calibration of double ended measurement with WLS and confidence intervals
 ============================================================================
 
 A double ended calibration is performed with weighted least squares.
@@ -190,8 +190,8 @@ confidence interval 'coordinates'.
         c_var                  (time) float64 6.007e-07 6.007e-07 6.007e-07 ...
         TMPF                   (x, time) float64 16.8 17.06 16.33 16.6 16.77 ...
         TMPB                   (x, time) float64 16.81 16.84 16.88 16.58 16.56 ...
-        TMPF_MC                (CI, x) float64 16.27 16.47 17.98 19.68 19.32 ...
-        TMPB_MC                (CI, x) float64 16.46 16.44 17.78 19.73 19.33 ...
+        TMPF_MC                (CI, x, time) float64 16.69 16.94 16.22 16.49 ...
+        TMPB_MC                (CI, x, time) float64 16.65 16.69 16.73 16.42 ...
     Attributes:
         uid:                                                                     ...
         nameWell:                                                                ...
@@ -542,4 +542,32 @@ confidence interval 'coordinates'.
         customData:UserConfiguration:ChannelConfiguration_3:FibreCorrectionConfig...
         _sections:                                                               ...
 
+
+
+.. code:: ipython3
+
+    ds.calibration_double_ended(sections=sections,
+                                st_label=st_label,
+                                ast_label=ast_label,
+                                rst_label=rst_label,
+                                rast_label=rast_label,
+                                st_var=st_var,
+                                ast_var=ast_var,
+                                rst_var=rst_var,
+                                rast_var=rast_var,
+                                method='wls',
+                                conf_ints=[0.025, 0.975],
+                                ci_avg_time_flag=1,
+                                store_tempvar='_var',
+                                conf_ints_size=1000)
+
+
+.. parsed-literal::
+
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration/.tox/docs/lib/python3.6/site-packages/scipy/sparse/compressed.py:214: SparseEfficiencyWarning: Comparing a sparse matrix with 0 using == is inefficient, try using != instead.
+      ", try using != instead.", SparseEfficiencyWarning)
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration/.tox/docs/lib/python3.6/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:295: SparseEfficiencyWarning: splu requires CSC matrix format
+      warn('splu requires CSC matrix format', SparseEfficiencyWarning)
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration/.tox/docs/lib/python3.6/site-packages/scipy/sparse/linalg/dsolve/linsolve.py:202: SparseEfficiencyWarning: spsolve is more efficient when sparse b is in the CSC matrix format
+      'is in the CSC matrix format', SparseEfficiencyWarning)
 
