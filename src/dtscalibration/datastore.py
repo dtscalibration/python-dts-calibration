@@ -12,6 +12,7 @@ import yaml
 from scipy.sparse import linalg as ln
 
 from dtscalibration.calibrate_utils import wls_sparse
+from dtscalibration.calibrate_utils import wls_stats
 from dtscalibration.datastore_utils import coords_time
 from dtscalibration.datastore_utils import grab_data
 
@@ -134,7 +135,7 @@ class DataStore(xr.Dataset):
         for k, stretches in self.sections.items():
             for stretch in stretches:
                 y_list.append(self[st_label].sel(x=stretch).data.T.reshape(-1))
-                _x = self.x.sel(x=stretch).data
+                _x = self.x.sel(x=stretch).data.copy()
                 _x -= _x[0]
                 x_list.append(da.tile(_x, nt))
                 len_stretch_list.append(_x.size)
@@ -142,7 +143,7 @@ class DataStore(xr.Dataset):
         n_sections = len(len_stretch_list)
         n_locs = sum(len_stretch_list)
 
-        x = da.concatenate(x_list)  # coordinates are already in memory
+        x = np.concatenate(x_list)  # coordinates are already in memory
         y = np.asarray(da.concatenate(y_list))
 
         data1 = x
@@ -180,13 +181,6 @@ class DataStore(xr.Dataset):
             res_wls = mod_wls.fit()
             # print(res_wls.summary())
             a = res_wls.params
-            C_expand_to_sec = np.hstack([
-                np.repeat(a[i * nt + 1:(i + 1) * nt + 1], leni)
-                for i, leni in enumerate(len_stretch_list)
-                ])
-            I_est = np.exp(C_expand_to_sec) * np.exp(x * a[0])
-            resid = I_est - y
-            var_I = resid.std(ddof=ddof).compute() ** 2
 
         else:
             wdata = data * np.hstack((w, w))
@@ -204,13 +198,13 @@ class DataStore(xr.Dataset):
                         show=not suppress_info,
                         calc_var=False)[0]
 
-            C_expand_to_sec = np.hstack([
-                np.repeat(a[i * nt + 1:(i + 1) * nt + 1], leni)
-                for i, leni in enumerate(len_stretch_list)
-                ])
-            I_est = np.exp(C_expand_to_sec) * np.exp(x * a[0])
-            resid = I_est - y
-            var_I = resid.std(ddof=ddof).compute() ** 2
+        C_expand_to_sec = np.hstack([
+            np.repeat(a[i * nt + 1:(i + 1) * nt + 1], leni)
+            for i, leni in enumerate(len_stretch_list)
+            ])
+        I_est = np.exp(C_expand_to_sec) * np.exp(x * a[0])
+        resid = I_est - y
+        var_I = resid.std(ddof=ddof) ** 2
 
         return var_I, resid
 
@@ -254,7 +248,10 @@ class DataStore(xr.Dataset):
                                  store_tempvar=None,
                                  conf_ints=None,
                                  conf_ints_size=100,
-                                 ci_avg_time_flag=False
+                                 ci_avg_time_flag=False,
+                                 solver='sparse',
+                                 x_alpha_set_zero=0.,
+                                 da_random_state=None
                                  ):
         """
 
@@ -342,7 +339,8 @@ class DataStore(xr.Dataset):
 
             nt, z, p_sol, p_var, p_cov = self.calibration_double_ended_wls(
                 st_label, ast_label, rst_label, rast_label,
-                st_var, ast_var, rst_var, rast_var)
+                st_var, ast_var, rst_var, rast_var, solver=solver,
+                x_alpha_set_zero=x_alpha_set_zero)
 
             gamma = p_sol[0]
             alphaint = p_sol[1]
@@ -384,6 +382,8 @@ class DataStore(xr.Dataset):
         self[store_tmpb] = (('x', 'time'), tempB_data)
 
         if conf_ints:
+            import dask.array as da
+
             assert method == 'wls'
             p_mc = sst.multivariate_normal.rvs(mean=p_sol,
                                                cov=p_cov,
@@ -401,14 +401,31 @@ class DataStore(xr.Dataset):
             self[store_alpha + '_MC'] = (('MC', 'x',), alpha)
             self[store_c + '_MC'] = (('MC', 'time',), c)
 
+            rshape = (self.MC.size, self.x.size, self.time.size)
+
+            if da_random_state:
+                state = da_random_state
+            else:
+                state = da.random.RandomState()
+
+            r_st = state.normal(loc=0, scale=st_var ** 0.5, size=rshape, chunks=rshape)
+            r_ast = state.normal(loc=0, scale=ast_var ** 0.5, size=rshape, chunks=rshape)
+            r_rst = state.normal(loc=0, scale=rst_var ** 0.5, size=rshape, chunks=rshape)
+            r_rast = state.normal(loc=0, scale=rast_var ** 0.5, size=rshape, chunks=rshape)
+
+            self['r_st'] = (('MC', 'x', 'time'), r_st)
+            self['r_ast'] = (('MC', 'x', 'time'), r_ast)
+            self['r_rst'] = (('MC', 'x', 'time'), r_rst)
+            self['r_rast'] = (('MC', 'x', 'time'), r_rast)
+
             # deal with FW
             tempF_data = self[store_gamma + '_MC'] / \
-                (xr.ufuncs.log(self[st_label] / self[ast_label])
+                (xr.ufuncs.log((self[st_label] + self['r_st']) / (self[ast_label] + self['r_ast']))
                  + self[store_c + '_MC'] + self[store_alpha + '_MC']) - 273.15
             self[store_tmpf + '_MC'] = (('MC', 'x', 'time'), tempF_data)
 
             tempB_data = self[store_gamma + '_MC'] / \
-                (xr.ufuncs.log(self[rst_label] / self[rast_label])
+                (xr.ufuncs.log((self[rst_label] + self['r_rst']) / (self[rast_label] + self['r_rast']))
                  + self[store_c + '_MC'] - self[store_alpha + '_MC'] +
                  self[store_alphaint + '_MC']) - 273.15
             self[store_tmpb + '_MC'] = (('MC', 'x', 'time'), tempB_data)
@@ -441,7 +458,11 @@ class DataStore(xr.Dataset):
                         store_alphaint + '_MC',
                         store_alpha + '_MC',
                         store_c + '_MC',
-                        'MC']
+                        'MC',
+                        'r_st',
+                        'r_ast',
+                        'r_rst',
+                        'r_rast']
             for k in drop_var:
                 del self[k]
 
@@ -530,7 +551,7 @@ class DataStore(xr.Dataset):
 
     def calibration_double_ended_wls(self, st_label, ast_label, rst_label,
                                      rast_label, st_var, ast_var, rst_var, rast_var,
-                                     calc_cov=True):
+                                     calc_cov=True, solver='sparse', x_alpha_set_zero=0.):
         cal_ref = self.ufunc_per_section(label=st_label,
                                          ref_temp_broadcasted=True,
                                          calc_per='all')
@@ -550,6 +571,10 @@ class DataStore(xr.Dataset):
         nt = self[st_label].data.shape[1]
         no = self[st_label].data.shape[0]
 
+        # set one alpha for all times to zero
+        x_alpha_set_zeroi = np.argmin(np.abs(self.x.data - x_alpha_set_zero))
+        x_alpha_set_zeroidata = np.arange(nt) * no + x_alpha_set_zeroi
+
         p0_est = np.asarray([482., 0.1] + nt * [1.4] + no * [0.])
 
         # Data for F and B temperature, nt * nx items
@@ -561,6 +586,8 @@ class DataStore(xr.Dataset):
         # Data for alpha, nt * no items
         data6 = np.repeat(-0.5, nt * no)  # alphaint
         data9 = np.ones(nt * no, dtype=float)  # alpha
+
+        data9[x_alpha_set_zeroidata] = 0.
 
         data = np.concatenate([data1, data2, data3, data5, data6, data9])
 
@@ -622,7 +649,10 @@ class DataStore(xr.Dataset):
               ).T.ravel()
         w = da.concatenate([w1, w2])
 
-        p_sol, p_var, p_cov = wls_sparse(X, y, w=w, x0=p0_est, calc_cov=calc_cov)
+        if solver == 'sparse':
+            p_sol, p_var, p_cov = wls_sparse(X, y, w=w, x0=p0_est, calc_cov=calc_cov)
+        elif solver == 'stats':
+            p_sol, p_var, p_cov = wls_stats(X, y, w=w, x0=p0_est, calc_cov=calc_cov)
 
         if calc_cov:
             return nt, z, p_sol, p_var, p_cov
