@@ -110,7 +110,6 @@ def test_double_ended_variance_estimate_synthetic():
                                 store_tempvar='_var',
                                 conf_ints_size=500,
                                 solver='sparse',
-                                x_alpha_set_zero=0.,
                                 da_random_state=state)
 
     # Calibrated variance

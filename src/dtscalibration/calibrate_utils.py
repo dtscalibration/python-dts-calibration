@@ -27,17 +27,20 @@ def wls_sparse(X, y, w=1., calc_cov=False, **kwargs):
     # The residual degree of freedom, defined as the number of observations
     # minus the rank of the regressor matrix.
     nobs = len(y)
-    rank = np.linalg.matrix_rank(X)
-    degrees_of_freedom_err = nobs - rank
-    # wresid = np.exp(wy) - np.exp(wX.dot(p_sol))
-    wresid = wy - wX.dot(p_sol)
+    npar = X.shape[1]  # ==rank
+
+    degrees_of_freedom_err = nobs - npar
+    # wresid = np.exp(wy) - np.exp(wX.dot(p_sol))  # this option is better. difference is small
+    wresid = wy - wX.dot(p_sol)  # this option is done by statsmodel
     err_var = np.dot(wresid, wresid) / degrees_of_freedom_err
 
     if calc_cov:
-        if sp.issparse(wX):
-            p_cov = ln.inv(wX.T.dot(wX)).todense() * err_var
-        else:
-            p_cov = np.linalg.inv(wX.T.dot(wX)) * err_var
+        arg = wX.T.dot(wX)
+
+        if sp.issparse(arg):
+            arg = arg.todense()
+
+        p_cov = np.linalg.inv(arg) * err_var
 
         p_var = np.diagonal(p_cov)
         return p_sol, p_var, p_cov

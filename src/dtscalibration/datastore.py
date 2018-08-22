@@ -88,7 +88,8 @@ class DataStore(xr.Dataset):
         self.sections = None
         pass
 
-    def variance_stokes(self, st_label, sections=None, use_statsmodels=False, suppress_info=False):
+    def variance_stokes(self, st_label, sections=None, use_statsmodels=False,
+                        suppress_info=True, debug_high_stokes_variance=False):
         """
         Calculates the variance between the measurements and a best fit exponential at each
         reference section. This fits a two-parameter exponential to the stokes measurements. The
@@ -164,7 +165,7 @@ class DataStore(xr.Dataset):
                   np.concatenate([coords1col, coords2col]))
 
         lny = np.log(y)
-        w = y.copy()
+        w = y.copy()  # 1/std.
 
         ddof = 1 + nt * n_sections  # see numpy documentation on ddof
 
@@ -206,7 +207,66 @@ class DataStore(xr.Dataset):
         resid = I_est - y
         var_I = resid.std(ddof=ddof) ** 2
 
-        return var_I, resid
+        if not debug_high_stokes_variance:
+            return var_I, resid
+
+        else:
+            resid_res = []
+            for leni, lenis, lenie in zip(
+                len_stretch_list,
+                nt * np.cumsum([0] + len_stretch_list[:-1]),
+                    nt * np.cumsum(len_stretch_list)):
+
+                resid_res.append(resid[lenis:lenie].reshape(leni, nt))
+
+            _resid = np.concatenate(resid_res)
+            _resid_x = self.ufunc_per_section(label='x', calc_per='all')
+            isort = np.argsort(_resid_x)
+            resid_x = _resid_x[isort]
+            resid = _resid[isort, :]
+
+            resid_da = xr.DataArray(self.ST.data * np.nan, dims=('x', 'time'),
+                                    coords={'x': self.x, 'time': self.time},
+                                    )
+
+            ix_resid = np.array([np.argmin(np.abs(ai - self.x.data)) for ai in resid_x])
+            self.x.sel(x=resid_x, method='nearest')
+            resid_da[ix_resid, :] = resid
+
+            # resid_da.plot()
+
+            return var_I, resid_da
+
+    def inverse_variance_weighted_mean(self,
+                                       store_tmpf='TMPF',
+                                       store_tmpb='TMPB',
+                                       store_tmpf_var='TMPF_MC_var',
+                                       store_tmpb_var='TMPB_MC_var',
+                                       store_tmpw='TMPW',
+                                       store_tmpw_var='TMPW_var'):
+        """
+
+        Parameters
+        ----------
+        store_tmpf : str
+        store_tmpb : str
+        store_tmpf_var : str
+        store_tmpb_var : str
+        store_tmpw : str
+        store_tmpw_var : str
+
+        Returns
+        -------
+
+        """
+
+        self[store_tmpw_var] = 1 / (1 / self[store_tmpf_var] +
+                                    1 / self[store_tmpb_var])
+
+        self[store_tmpw] = (self[store_tmpf] / self[store_tmpf_var] +
+                            self[store_tmpb] / self[store_tmpb_var]) * self[store_tmpw_var]
+
+        pass
 
     def calibration_single_ended(self,
                                  sections=None,
@@ -250,7 +310,6 @@ class DataStore(xr.Dataset):
                                  conf_ints_size=100,
                                  ci_avg_time_flag=False,
                                  solver='sparse',
-                                 x_alpha_set_zero=0.,
                                  da_random_state=None
                                  ):
         """
@@ -339,8 +398,7 @@ class DataStore(xr.Dataset):
 
             nt, z, p_sol, p_var, p_cov = self.calibration_double_ended_wls(
                 st_label, ast_label, rst_label, rast_label,
-                st_var, ast_var, rst_var, rast_var, solver=solver,
-                x_alpha_set_zero=x_alpha_set_zero)
+                st_var, ast_var, rst_var, rast_var, solver=solver)
 
             gamma = p_sol[0]
             alphaint = p_sol[1]
@@ -425,7 +483,8 @@ class DataStore(xr.Dataset):
             self[store_tmpf + '_MC'] = (('MC', 'x', 'time'), tempF_data)
 
             tempB_data = self[store_gamma + '_MC'] / \
-                (xr.ufuncs.log((self[rst_label] + self['r_rst']) / (self[rast_label] + self['r_rast']))
+                (xr.ufuncs.log((self[rst_label] + self['r_rst']) /
+                               (self[rast_label] + self['r_rast']))
                  + self[store_c + '_MC'] - self[store_alpha + '_MC'] +
                  self[store_alphaint + '_MC']) - 273.15
             self[store_tmpb + '_MC'] = (('MC', 'x', 'time'), tempB_data)
@@ -551,7 +610,33 @@ class DataStore(xr.Dataset):
 
     def calibration_double_ended_wls(self, st_label, ast_label, rst_label,
                                      rast_label, st_var, ast_var, rst_var, rast_var,
-                                     calc_cov=True, solver='sparse', x_alpha_set_zero=0.):
+                                     calc_cov=True, solver='sparse'):
+        """
+
+
+        Parameters
+        ----------
+        st_label
+        ast_label
+        rst_label
+        rast_label
+        st_var
+        ast_var
+        rst_var
+        rast_var
+        calc_cov
+        solver
+
+        Returns
+        -------
+
+        """
+
+        # x_alpha_set_zero=0.,
+        # set one alpha for all times to zero
+        # x_alpha_set_zeroi = np.argmin(np.abs(self.x.data - x_alpha_set_zero))
+        # x_alpha_set_zeroidata = np.arange(nt) * no + x_alpha_set_zeroi
+
         cal_ref = self.ufunc_per_section(label=st_label,
                                          ref_temp_broadcasted=True,
                                          calc_per='all')
@@ -571,10 +656,6 @@ class DataStore(xr.Dataset):
         nt = self[st_label].data.shape[1]
         no = self[st_label].data.shape[0]
 
-        # set one alpha for all times to zero
-        x_alpha_set_zeroi = np.argmin(np.abs(self.x.data - x_alpha_set_zero))
-        x_alpha_set_zeroidata = np.arange(nt) * no + x_alpha_set_zeroi
-
         p0_est = np.asarray([482., 0.1] + nt * [1.4] + no * [0.])
 
         # Data for F and B temperature, nt * nx items
@@ -587,7 +668,8 @@ class DataStore(xr.Dataset):
         data6 = np.repeat(-0.5, nt * no)  # alphaint
         data9 = np.ones(nt * no, dtype=float)  # alpha
 
-        data9[x_alpha_set_zeroidata] = 0.
+        # alpha should start at zero. But then the sparse solver crashes
+        # data9[x_alpha_set_zeroidata] = 0.
 
         data = np.concatenate([data1, data2, data3, data5, data6, data9])
 
@@ -690,6 +772,13 @@ class DataStore(xr.Dataset):
         if not func:
             def func(a):
                 return a
+
+        elif isinstance(func, str) and func == 'var':
+            def func(a):
+                return np.std(a) ** 2
+
+        else:
+            assert callable(func)
 
         out = dict()
 
@@ -902,9 +991,3 @@ def read_xml_dir(filepath,
                    **kwargs)
 
     return ds
-
-# filepath = os.path.join('..', '..', 'tests', 'data')
-# ds = read_xml_dir(filepath,
-#                   timezone_netcdf='UTC',
-#                   timezone_ultima_xml='Europe/Amsterdam',
-#                   file_ext='*.xml')

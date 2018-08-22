@@ -97,30 +97,6 @@
 
 .. parsed-literal::
 
-     
-    LSQR            Least-squares solution of  Ax = b
-    The matrix A has     1854 rows  and       25 cols
-    damp = 0.00000000000000e+00   calc_var =        0
-    atol = 1.00e-08                 conlim = 1.00e+08
-    btol = 1.00e-08               iter_lim =       50
-     
-       Itn      x[0]       r1norm     r2norm   Compatible    LS      Norm A   Cond A
-         0  0.00000e+00   3.071e+04  3.071e+04    1.0e+00  2.4e+01
-         1  2.98038e-02   1.623e+04  1.623e+04    1.3e-02  2.0e-02   8.7e+05  1.0e+00
-         2  1.02983e-02   8.346e+03  8.346e+03    6.5e-03  2.9e-02   8.7e+05  4.3e+01
-         3 -9.98110e-04   4.107e+02  4.107e+02    3.2e-04  2.8e-02   8.7e+05  6.1e+01
-         4 -1.02445e-03   2.710e+02  2.710e+02    2.1e-04  9.9e-04   8.8e+05  6.7e+01
-         5 -1.02525e-03   2.710e+02  2.710e+02    2.1e-04  2.2e-03   9.4e+05  7.1e+01
-         6 -1.02451e-03   2.709e+02  2.709e+02    2.1e-04  1.1e-05   1.2e+06  1.0e+02
-         7 -1.02451e-03   2.709e+02  2.709e+02    2.1e-04  2.6e-07   1.2e+06  1.1e+02
-         8 -1.02451e-03   2.709e+02  2.709e+02    2.1e-04  5.7e-09   1.2e+06  1.2e+02
-     
-    LSQR finished
-    The least-squares solution is good enough, given atol     
-     
-    istop =       2   r1norm = 2.7e+02   anorm = 1.2e+06   arnorm = 1.9e+00
-    itn   =       8   r2norm = 2.7e+02   acond = 1.2e+02   xnorm  = 9.8e-01
-     
     The variance of the Stokes signal along the reference sections is approximately 40.15998656786007
 
 
