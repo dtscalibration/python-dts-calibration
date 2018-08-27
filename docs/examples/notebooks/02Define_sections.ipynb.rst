@@ -39,7 +39,10 @@
     6 files were found, each representing a single timestep
     6 recorded vars were found: LAF, ST, AST, REV-ST, REV-AST, TMP
     Recorded at 1693 points along the cable
-    processing file 1 out of 6
+    Dask: Setting up handle for delayed readout. 1 out of 6
+    Dask: Setting up handle for delayed readout. 6 out of 6
+    Dask: Setting up handle for delayed readout. 1 out of 6
+    Dask: Setting up handle for delayed readout. 6 out of 6
 
 
 A calibration is needed to estimate temperature from Stokes and

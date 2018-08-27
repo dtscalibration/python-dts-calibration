@@ -79,7 +79,10 @@ The data files are located in ``./python-dts-calibration/tests/data``
     6 files were found, each representing a single timestep
     6 recorded vars were found: LAF, ST, AST, REV-ST, REV-AST, TMP
     Recorded at 1693 points along the cable
-    processing file 1 out of 6
+    Dask: Setting up handle for delayed readout. 1 out of 6
+    Dask: Setting up handle for delayed readout. 6 out of 6
+    Dask: Setting up handle for delayed readout. 1 out of 6
+    Dask: Setting up handle for delayed readout. 6 out of 6
 
 
 .. code:: ipython3
@@ -104,20 +107,20 @@ The data files are located in ``./python-dts-calibration/tests/data``
         timeend                (time) datetime64[ns] 2018-03-27T22:40:56.097000 ...
       * time                   (time) datetime64[ns] 2018-03-27T22:40:54.097000 ...
     Data variables:
-        ST                     (x, time) float32 1.2809 -0.53211 1.08074 ...
-        AST                    (x, time) float32 0.491657 1.24265 -1.06039 ...
-        REV-ST                 (x, time) float32 0.408573 -0.56803 -0.402128 ...
-        REV-AST                (x, time) float32 2.56905 -1.60345 1.08682 ...
-        TMP                    (x, time) float32 196.068 639.111 218.711 303.135 ...
-        acquisitionTime        (time) float32 2.098 2.075 2.076 2.133 2.085 2.062
-        referenceTemperature   (time) float32 21.0536 21.054 21.0497 21.0519 ...
-        probe1Temperature      (time) float32 4.36149 4.36025 4.35911 4.36002 ...
-        probe2Temperature      (time) float32 18.5792 18.5785 18.5848 18.5814 ...
-        referenceProbeVoltage  (time) float32 0.121704 0.121704 0.121703 ...
-        probe1Voltage          (time) float32 0.114 0.114 0.114 0.114 0.114 0.114
-        probe2Voltage          (time) float32 0.121 0.121 0.121 0.121 0.121 0.121
-        userAcquisitionTimeFW  (time) float32 2.0 2.0 2.0 2.0 2.0 2.0
-        userAcquisitionTimeBW  (time) float32 2.0 2.0 2.0 2.0 2.0 2.0
+        ST                     (x, time) float32 dask.array<shape=(1693, 6), chunksize=(1693, 1)>
+        AST                    (x, time) float32 dask.array<shape=(1693, 6), chunksize=(1693, 1)>
+        REV-ST                 (x, time) float32 dask.array<shape=(1693, 6), chunksize=(1693, 1)>
+        REV-AST                (x, time) float32 dask.array<shape=(1693, 6), chunksize=(1693, 1)>
+        TMP                    (x, time) float32 dask.array<shape=(1693, 6), chunksize=(1693, 1)>
+        acquisitionTime        (time) float64 2.098 2.075 2.076 2.133 2.085 2.062
+        referenceTemperature   (time) float64 21.05 21.05 21.05 21.05 21.05 21.06
+        probe1Temperature      (time) float64 4.361 4.36 4.359 4.36 4.36 4.361
+        probe2Temperature      (time) float64 18.58 18.58 18.58 18.58 18.58 18.57
+        referenceProbeVoltage  (time) float64 0.1217 0.1217 0.1217 0.1217 0.1217 ...
+        probe1Voltage          (time) float64 0.114 0.114 0.114 0.114 0.114 0.114
+        probe2Voltage          (time) float64 0.121 0.121 0.121 0.121 0.121 0.121
+        userAcquisitionTimeFW  (time) float64 2.0 2.0 2.0 2.0 2.0 2.0
+        userAcquisitionTimeBW  (time) float64 2.0 2.0 2.0 2.0 2.0 2.0
     Attributes:
         uid:                                                                     ...
         nameWell:                                                                ...

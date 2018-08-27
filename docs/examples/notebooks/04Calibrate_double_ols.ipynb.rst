@@ -49,7 +49,10 @@ considered equal here and no variance is calculated.
     6 files were found, each representing a single timestep
     6 recorded vars were found: LAF, ST, AST, REV-ST, REV-AST, TMP
     Recorded at 1693 points along the cable
-    processing file 1 out of 6
+    Dask: Setting up handle for delayed readout. 1 out of 6
+    Dask: Setting up handle for delayed readout. 6 out of 6
+    Dask: Setting up handle for delayed readout. 1 out of 6
+    Dask: Setting up handle for delayed readout. 6 out of 6
 
 
 .. code:: ipython3
@@ -150,16 +153,16 @@ considered equal here and no variance is calculated.
          5  4.81999e+02   1.131e-01  1.131e-01    7.9e-03  2.3e-02   6.6e+01  1.7e+01
          6  4.81999e+02   9.214e-02  9.214e-02    6.4e-03  3.1e-04   6.6e+01  3.1e+01
          7  4.81999e+02   9.212e-02  9.212e-02    6.4e-03  7.0e-04   6.6e+01  7.4e+01
-         8  4.81999e+02   9.209e-02  9.209e-02    6.4e-03  1.5e-02   6.6e+01  1.1e+02
-         9  4.82001e+02   8.993e-02  8.993e-02    6.3e-03  4.4e-03   8.1e+01  9.4e+02
-        10  4.82001e+02   8.993e-02  8.993e-02    6.3e-03  4.6e-06   8.8e+01  1.0e+03
-        15  4.82563e+02   8.988e-02  8.988e-02    6.3e-03  2.0e-08   1.0e+02  2.0e+04
-        16  4.82563e+02   8.988e-02  8.988e-02    6.3e-03  6.6e-12   1.1e+02  2.1e+04
+         8  4.81999e+02   9.209e-02  9.209e-02    6.4e-03  1.5e-02   6.6e+01  1.0e+02
+         9  4.82001e+02   8.994e-02  8.994e-02    6.3e-03  6.3e-03   8.1e+01  9.4e+02
+        10  4.82001e+02   8.993e-02  8.993e-02    6.3e-03  2.0e-06   8.8e+01  1.0e+03
+        15  4.82563e+02   8.988e-02  8.988e-02    6.3e-03  2.2e-08   1.0e+02  2.0e+04
+        16  4.82563e+02   8.988e-02  8.988e-02    6.3e-03  3.5e-12   1.1e+02  2.1e+04
      
     LSQR finished
     The least-squares solution is good enough, given atol     
      
-    istop =       2   r1norm = 9.0e-02   anorm = 1.1e+02   arnorm = 6.5e-11
+    istop =       2   r1norm = 9.0e-02   anorm = 1.1e+02   arnorm = 3.5e-11
     itn   =      16   r2norm = 9.0e-02   acond = 2.1e+04   xnorm  = 6.4e-01
      
 

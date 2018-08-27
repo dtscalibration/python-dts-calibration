@@ -14,7 +14,7 @@ from scipy.sparse import linalg as ln
 from dtscalibration.calibrate_utils import wls_sparse
 from dtscalibration.calibrate_utils import wls_stats
 from dtscalibration.datastore_utils import coords_time
-from dtscalibration.datastore_utils import grab_data
+from dtscalibration.datastore_utils import grab_data2
 
 
 class DataStore(xr.Dataset):
@@ -956,7 +956,7 @@ def read_xml_dir(filepath,
     assert len(filepathlist) >= 1, 'No measurement files with extension {} found in {}'.format(
         file_ext, filepath)
 
-    array, timearr, meta, extra = grab_data(filepathlist)
+    array, timearr, meta, extra = grab_data2(filepathlist)
 
     coords = {
         'x':        ('x', array['LAF'][:, 0], log_attrs['x']),

@@ -4,6 +4,8 @@ import numpy as np
 
 
 def plot_sigma_report(ds, temp_label, temp_var_label, itimes=None):
+    assert 'CI' not in ds[temp_label].dims, 'use other plot report function'
+
     fig, (ax1, ax2) = plt.subplots(nrows=2, sharex=True, figsize=(12, 8))
 
     colors = ['#ffeda0', '#feb24c', '#f03b20']
