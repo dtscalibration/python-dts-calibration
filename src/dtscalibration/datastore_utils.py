@@ -435,3 +435,33 @@ def coords_time(extra, timearr, timezone_netcdf, timezone_ultima_xml):
         }
 
     return coords
+
+
+def check_dims(ds, labels, correct_dims=None):
+    """
+    Compare the dimensions of different labels (e.g., 'ST', 'REV-ST').
+    If a calculation is performed and the dimensions do not agree, the answers don't make
+    sense and the matrices are broadcasted and the memory usage will explode. If no correct
+    dims provided the dimensions of the different are compared.
+
+    Parameters
+    ----------
+    labels : iterable
+        An iterable with labels
+    correct_dims : tuple of str, optional
+        The correct dimensions
+
+    Returns
+    -------
+
+    """
+    if not correct_dims:
+        assert len(labels) > 1
+
+        for li in labels[1:]:
+            assert ds[labels[0]].dims == ds[li].dims
+    else:
+        for li in labels:
+            assert ds[li].dims == correct_dims
+
+    pass
