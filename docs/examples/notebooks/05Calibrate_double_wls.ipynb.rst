@@ -57,8 +57,8 @@ defined.
     Recorded at 1693 points along the cable
     Dask: Setting up handle for delayed readout. 1 out of 6
     Dask: Setting up handle for delayed readout. 6 out of 6
-    Dask: Setting up handle for delayed readout. 1 out of 6
-    Dask: Setting up handle for delayed readout. 6 out of 6
+    Directly reading time and extra info from xml files. 1 out of 6
+    Directly reading time and extra info from xml files. 6 out of 6
 
 
 .. code:: ipython3
@@ -170,8 +170,8 @@ confidence interval 'coordinates'.
         c_var                  (time) float64 6.632e-07 6.632e-07 6.632e-07 ...
         TMPF                   (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 1)>
         TMPB                   (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 1)>
-        TMPF_MC                (CI, x, time) float64 16.02 16.28 15.57 15.8 16.0 ...
-        TMPB_MC                (CI, x, time) float64 15.55 15.72 15.52 15.28 ...
+        TMPF_MC                (CI, x, time) float64 16.11 16.34 15.55 15.86 ...
+        TMPB_MC                (CI, x, time) float64 15.56 15.64 15.57 15.26 ...
         TMPF_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 1)>
         TMPB_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 1)>
 

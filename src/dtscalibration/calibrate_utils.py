@@ -2,7 +2,117 @@
 import dask.array as da
 import numpy as np
 import scipy.sparse as sp
+import scipy.stats as sst
+import xarray as xr
 from scipy.sparse import linalg as ln
+
+
+def calibration_single_ended_ols(ds, st_label, ast_label):
+    cal_ref = ds.ufunc_per_section(label=st_label,
+                                   ref_temp_broadcasted=True,
+                                   calc_per='all')
+
+    st = ds.ufunc_per_section(label=st_label, calc_per='all')
+    ast = ds.ufunc_per_section(label=ast_label, calc_per='all')
+    z = ds.ufunc_per_section(label='x', calc_per='all')
+
+    nx = z.size
+
+    nt = ds[st_label].data.shape[1]
+
+    p0_est = np.asarray([482., 0.1] + nt * [1.4])
+
+    # Eqs for F and B temperature
+    data1 = 1 / (cal_ref.T.ravel() + 273.15)  # gamma
+    data2 = np.tile(-z, nt)  # dalpha
+    data3 = np.tile([-1.], nt * nx)  # C
+    data = np.concatenate([data1, data2, data3])
+
+    # (irow, icol)
+    coord1row = np.arange(nt * nx, dtype=int)
+    coord2row = np.arange(nt * nx, dtype=int)
+    coord3row = np.arange(nt * nx, dtype=int)
+
+    coord1col = np.zeros(nt * nx, dtype=int)
+    coord2col = np.ones(nt * nx, dtype=int)
+    coord3col = np.repeat(np.arange(2, nt + 2, dtype=int), nx)
+
+    rows = [coord1row, coord2row, coord3row]
+    cols = [coord1col, coord2col, coord3col]
+    coords = (np.concatenate(rows), np.concatenate(cols))
+
+    # try scipy.sparse.bsr_matrix
+    X = sp.coo_matrix(
+        (data, coords),
+        shape=(nt * nx, nt + 2),
+        dtype=float,
+        copy=False)
+
+    y = da.log(st / ast).T.ravel()
+    # noinspection PyTypeChecker
+    p0 = ln.lsqr(X, y, x0=p0_est, show=True, calc_var=True)
+
+    return nt, z, p0
+
+
+def calibration_single_ended_wls(ds, st_label, ast_label, st_var, ast_var,
+                                 calc_cov=True, solver='sparse'):
+    cal_ref = ds.ufunc_per_section(label=st_label,
+                                   ref_temp_broadcasted=True,
+                                   calc_per='all')
+
+    st = ds.ufunc_per_section(label=st_label, calc_per='all')
+    ast = ds.ufunc_per_section(label=ast_label, calc_per='all')
+    z = ds.ufunc_per_section(label='x', calc_per='all')
+
+    nx = z.size
+
+    nt = ds[st_label].data.shape[1]
+
+    p0_est = np.asarray([482., 0.1] + nt * [1.4])
+
+    # Eqs for F and B temperature
+    data1 = 1 / (cal_ref.T.ravel() + 273.15)  # gamma
+    data2 = np.tile(-z, nt)  # dalpha
+    data3 = np.tile([-1.], nt * nx)  # C
+    data = np.concatenate([data1, data2, data3])
+
+    # (irow, icol)
+    coord1row = np.arange(nt * nx, dtype=int)
+    coord2row = np.arange(nt * nx, dtype=int)
+    coord3row = np.arange(nt * nx, dtype=int)
+
+    coord1col = np.zeros(nt * nx, dtype=int)
+    coord2col = np.ones(nt * nx, dtype=int)
+    coord3col = np.repeat(np.arange(2, nt + 2, dtype=int), nx)
+
+    rows = [coord1row, coord2row, coord3row]
+    cols = [coord1col, coord2col, coord3col]
+    coords = (np.concatenate(rows), np.concatenate(cols))
+
+    # try scipy.sparse.bsr_matrix
+    X = sp.coo_matrix(
+        (data, coords),
+        shape=(nt * nx, nt + 2),
+        dtype=float,
+        copy=False)
+
+    y = da.log(st / ast).T.ravel()
+
+    w = (1 / st ** 2 * st_var +
+         1 / ast ** 2 * ast_var
+         ).T.ravel()
+
+    if solver == 'sparse':
+        p_sol, p_var, p_cov = wls_sparse(X, y, w=w, x0=p0_est, calc_cov=calc_cov)
+
+    elif solver == 'stats':
+        p_sol, p_var, p_cov = wls_stats(X, y, w=w, x0=p0_est, calc_cov=calc_cov)
+
+    if calc_cov:
+        return nt, z, p_sol, p_var, p_cov
+    else:
+        return nt, z, p_sol, p_var
 
 
 def calibration_double_ended_ols(ds, st_label, ast_label, rst_label,
@@ -220,6 +330,210 @@ def calibration_double_ended_wls(ds, st_label, ast_label, rst_label,
         return nt, z, p_sol, p_var, p_cov
     else:
         return nt, z, p_sol, p_var
+
+
+def conf_int_single_ended(ds,
+                          p_sol,
+                          p_cov,
+                          st_label='ST',
+                          ast_label='AST',
+                          st_var=None,
+                          ast_var=None,
+                          store_c='c',
+                          store_gamma='gamma',
+                          store_dalpha='dalpha',
+                          store_tmpf='TMPF',
+                          store_tempvar=None,
+                          conf_ints=None,
+                          conf_ints_size=100,
+                          ci_avg_time_flag=False,
+                          da_random_state=None
+                          ):
+    nt = ds.time.size
+
+    p_mc = sst.multivariate_normal.rvs(mean=p_sol,
+                                       cov=p_cov,
+                                       size=conf_ints_size)
+    ds.coords['MC'] = range(conf_ints_size)
+    ds.coords['CI'] = conf_ints
+    gamma = p_mc[:, 0]
+    dalpha = p_mc[:, 1]
+    c = p_mc[:, 2:nt + 2]
+    ds[store_gamma + '_MC'] = (('MC',), gamma)
+    ds[store_dalpha + '_MC'] = (('MC',), dalpha)
+    ds[store_c + '_MC'] = (('MC', 'time',), c)
+    rshape = (ds.MC.size, ds.x.size, ds.time.size)
+    if da_random_state:
+        state = da_random_state
+    else:
+        state = da.random.RandomState()
+    r_st = state.normal(loc=0, scale=st_var ** 0.5, size=rshape, chunks=rshape)
+    r_ast = state.normal(loc=0, scale=ast_var ** 0.5, size=rshape, chunks=rshape)
+    ds['r_st'] = (('MC', 'x', 'time'), r_st)
+    ds['r_ast'] = (('MC', 'x', 'time'), r_ast)
+
+    tempF_data = ds[store_gamma + '_MC'] / (xr.ufuncs.log(
+        (ds[st_label] + ds['r_st']) / (ds[ast_label] + ds['r_ast']))
+        + ds[store_c + '_MC'] + (ds.x * ds[store_dalpha + '_MC'])) - 273.15
+    ds[store_tmpf + '_MC'] = (('MC', 'x', 'time'), tempF_data)
+
+    if ci_avg_time_flag:
+        if store_tempvar:
+            ds[store_tmpf + '_MC' + store_tempvar] = (ds[store_tmpf + '_MC'] - ds[
+                store_tmpf]).std(dim=['MC', 'time'], ddof=1) ** 2
+
+        q = ds[store_tmpf + '_MC'].quantile(conf_ints, dim=['MC', 'time'])
+        ds[store_tmpf + '_MC'] = (('CI', 'x'), q)
+
+    else:
+        if store_tempvar:
+            ds[store_tmpf + '_MC' + store_tempvar] = (ds[store_tmpf + '_MC'] - ds[
+                store_tmpf]).std(dim='MC', ddof=1) ** 2
+
+        q = ds[store_tmpf + '_MC'].quantile(conf_ints, dim='MC')
+        ds[store_tmpf + '_MC'] = (('CI', 'x', 'time'), q)
+    drop_var = [store_gamma + '_MC',
+                store_dalpha + '_MC',
+                store_c + '_MC',
+                'MC',
+                'r_st',
+                'r_ast']
+    for k in drop_var:
+        del ds[k]
+
+
+def conf_int_double_ended(ds,
+                          p_sol,
+                          p_cov,
+                          st_label='ST',
+                          ast_label='AST',
+                          rst_label='REV-ST',
+                          rast_label='REV-AST',
+                          st_var=None,
+                          ast_var=None,
+                          rst_var=None,
+                          rast_var=None,
+                          store_c='c',
+                          store_gamma='gamma',
+                          store_alphaint='alphaint',
+                          store_alpha='alpha',
+                          store_tmpf='TMPF',
+                          store_tmpb='TMPB',
+                          store_tempvar=None,
+                          conf_ints=None,
+                          conf_ints_size=100,
+                          ci_avg_time_flag=False,
+                          da_random_state=None
+                          ):
+    """
+
+    Parameters
+    ----------
+    p_sol : array-like
+        parameter solution directly from calibration_double_ended_wls
+    p_cov : array-like
+        parameter covariance at the solution directly from calibration_double_ended_wls
+    st_label
+    ast_label
+    rst_label
+    rast_label
+    st_var
+    ast_var
+    rst_var
+    rast_var
+    store_c
+    store_gamma
+    store_alphaint
+    store_alpha
+    store_tmpf
+    store_tmpb
+    store_tempvar
+    conf_ints
+    conf_ints_size
+    ci_avg_time_flag
+    da_random_state
+
+    Returns
+    -------
+
+    """
+    nt = ds.time.size
+    p_mc = sst.multivariate_normal.rvs(mean=p_sol,
+                                       cov=p_cov,
+                                       size=conf_ints_size)
+    ds.coords['MC'] = range(conf_ints_size)
+    ds.coords['CI'] = conf_ints
+    gamma = p_mc[:, 0]
+    alphaint = p_mc[:, 1]
+    c = p_mc[:, 2:nt + 2]
+    alpha = p_mc[:, nt + 2:]
+    ds[store_gamma + '_MC'] = (('MC',), gamma)
+    ds[store_alphaint + '_MC'] = (('MC',), alphaint)
+    ds[store_alpha + '_MC'] = (('MC', 'x',), alpha)
+    ds[store_c + '_MC'] = (('MC', 'time',), c)
+    rshape = (ds.MC.size, ds.x.size, ds.time.size)
+
+    if da_random_state:
+        # In testing environments
+        assert isinstance(da_random_state, da.random.RandomState)
+
+        state = da_random_state
+    else:
+        state = da.random.RandomState()
+
+    r_st = state.normal(loc=0, scale=st_var ** 0.5, size=rshape, chunks=rshape)
+    r_ast = state.normal(loc=0, scale=ast_var ** 0.5, size=rshape, chunks=rshape)
+    r_rst = state.normal(loc=0, scale=rst_var ** 0.5, size=rshape, chunks=rshape)
+    r_rast = state.normal(loc=0, scale=rast_var ** 0.5, size=rshape, chunks=rshape)
+    ds['r_st'] = (('MC', 'x', 'time'), r_st)
+    ds['r_ast'] = (('MC', 'x', 'time'), r_ast)
+    ds['r_rst'] = (('MC', 'x', 'time'), r_rst)
+    ds['r_rast'] = (('MC', 'x', 'time'), r_rast)
+    # deal with FW
+    tempF_data = ds[store_gamma + '_MC'] / (xr.ufuncs.log(
+        (ds[st_label] + ds['r_st']) / (ds[ast_label] + ds['r_ast']))
+        + ds[store_c + '_MC'] + ds[store_alpha + '_MC']) - 273.15
+    ds[store_tmpf + '_MC'] = (('MC', 'x', 'time'), tempF_data)
+    tempB_data = ds[store_gamma + '_MC'] / (xr.ufuncs.log(
+        (ds[rst_label] + ds['r_rst']) / (ds[rast_label] + ds['r_rast']))
+        + ds[store_c + '_MC'] - ds[store_alpha + '_MC'] +
+        ds[store_alphaint + '_MC']) - 273.15
+    ds[store_tmpb + '_MC'] = (('MC', 'x', 'time'), tempB_data)
+
+    if ci_avg_time_flag:
+        if store_tempvar:
+            ds[store_tmpf + '_MC' + store_tempvar] = (ds[store_tmpf + '_MC'] - ds[
+                store_tmpf]).std(dim=['MC', 'time'], ddof=1) ** 2
+            ds[store_tmpb + '_MC' + store_tempvar] = (ds[store_tmpb + '_MC'] - ds[
+                store_tmpb]).std(dim=['MC', 'time'], ddof=1) ** 2
+
+        q = ds[store_tmpf + '_MC'].quantile(conf_ints, dim=['MC', 'time'])
+        ds[store_tmpf + '_MC'] = (('CI', 'x'), q)
+        q = ds[store_tmpb + '_MC'].quantile(conf_ints, dim=['MC', 'time'])
+        ds[store_tmpb + '_MC'] = (('CI', 'x'), q)
+
+    else:
+        if store_tempvar:
+            ds[store_tmpf + '_MC' + store_tempvar] = (ds[store_tmpf + '_MC'] - ds[
+                store_tmpf]).std(dim='MC', ddof=1) ** 2
+            ds[store_tmpb + '_MC' + store_tempvar] = (ds[store_tmpb + '_MC'] - ds[
+                store_tmpb]).std(dim='MC', ddof=1) ** 2
+
+        q = ds[store_tmpf + '_MC'].quantile(conf_ints, dim='MC')
+        ds[store_tmpf + '_MC'] = (('CI', 'x', 'time'), q)
+        q = ds[store_tmpb + '_MC'].quantile(conf_ints, dim='MC')
+        ds[store_tmpb + '_MC'] = (('CI', 'x', 'time'), q)
+    drop_var = [store_gamma + '_MC',
+                store_alphaint + '_MC',
+                store_alpha + '_MC',
+                store_c + '_MC',
+                'MC',
+                'r_st',
+                'r_ast',
+                'r_rst',
+                'r_rast']
+    for k in drop_var:
+        del ds[k]
 
 
 def wls_sparse(X, y, w=1., calc_cov=False, **kwargs):

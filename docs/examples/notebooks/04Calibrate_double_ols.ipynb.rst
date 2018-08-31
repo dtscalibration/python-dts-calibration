@@ -51,8 +51,8 @@ considered equal here and no variance is calculated.
     Recorded at 1693 points along the cable
     Dask: Setting up handle for delayed readout. 1 out of 6
     Dask: Setting up handle for delayed readout. 6 out of 6
-    Dask: Setting up handle for delayed readout. 1 out of 6
-    Dask: Setting up handle for delayed readout. 6 out of 6
+    Directly reading time and extra info from xml files. 1 out of 6
+    Directly reading time and extra info from xml files. 6 out of 6
 
 
 .. code:: ipython3
@@ -114,6 +114,12 @@ considered equal here and no variance is calculated.
                 intervals of all time steps together. ‘We can say with 95% confidence that the
                 temperature remained between this line and this line during the entire measurement
                 period’.
+            da_random_state : dask.array.random.RandomState
+                The seed for dask. Makes random not so random. To produce reproducable results for
+                testing environments.
+            solver : {'sparse', 'stats'}
+                Either use the homemade weighted sparse solver or the weighted dense matrix solver of
+                statsmodels
     
             Returns
             -------

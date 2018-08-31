@@ -6,13 +6,16 @@ import os
 import dask.array as da
 import numpy as np
 import scipy.sparse as sp
-import scipy.stats as sst
 import xarray as xr
 import yaml
 from scipy.sparse import linalg as ln
 
 from dtscalibration.calibrate_utils import calibration_double_ended_ols
 from dtscalibration.calibrate_utils import calibration_double_ended_wls
+from dtscalibration.calibrate_utils import calibration_single_ended_ols
+from dtscalibration.calibrate_utils import calibration_single_ended_wls
+from dtscalibration.calibrate_utils import conf_int_double_ended
+from dtscalibration.calibrate_utils import conf_int_single_ended
 from dtscalibration.datastore_utils import check_dims
 from dtscalibration.datastore_utils import coords_time
 from dtscalibration.datastore_utils import grab_data2
@@ -280,21 +283,153 @@ class DataStore(xr.Dataset):
 
     def calibration_single_ended(self,
                                  sections=None,
-                                 st_label=None,
-                                 ast_label=None,
+                                 st_label='ST',
+                                 ast_label='AST',
+                                 st_var=None,
+                                 ast_var=None,
                                  store_c='c',
                                  store_gamma='gamma',
-                                 store_alphaint='alphaint',
+                                 store_dalpha='dalpha',
                                  store_alpha='alpha',
-                                 store_IFW_var='IF_var',
-                                 store_resid_IFW='errF',
+                                 store_tmpf='TMPF',
                                  variance_suffix='_var',
-                                 method='single1'):
+                                 method='ols',
+                                 store_tempvar=None,
+                                 conf_ints=None,
+                                 conf_ints_size=100,
+                                 ci_avg_time_flag=False,
+                                 solver='sparse',
+                                 da_random_state=None
+                                 ):
+        """
+
+        Parameters
+        ----------
+        sections : dict, optional
+        st_label : str
+            Label of the forward stokes measurement
+        ast_label : str
+            Label of the anti-Stoke measurement
+        st_var : float, optional
+            The variance of the measurement noise of the Stokes signals in the forward
+            direction Required if method is wls.
+        ast_var : float, optional
+            The variance of the measurement noise of the anti-Stokes signals in the forward
+            direction. Required if method is wls.
+        store_c : str
+            Label of where to store C
+        store_gamma : str
+            Label of where to store gamma
+        store_dalpha : str
+            Label of where to store dalpha; the spatial derivative  of alpha.
+        store_tmpf : str
+            Label of where to store the calibrated temperature of the forward direction
+        variance_suffix : str, optional
+            String appended for storing the variance. Only used when method is wls.
+        method : {'ols', 'wls'}
+            Use 'ols' for ordinary least squares and 'wls' for weighted least squares
+        store_tempvar : str
+            If defined, the variance of the error is calculated
+        conf_ints : iterable object of float, optional
+            A list with the confidence boundaries that are calculated. E.g., to cal
+        conf_ints_size : int, optional
+            Size of the monte carlo parameter set used to calculate the confidence interval
+        ci_avg_time_flag : bool, optional
+            The confidence intervals differ per time step. If you would like to calculate confidence
+            intervals of all time steps together. ‘We can say with 95% confidence that the
+            temperature remained between this line and this line during the entire measurement
+            period’.
+        da_random_state : dask.array.random.RandomState
+            The seed for dask. Makes random not so random. To produce reproducable results for
+            testing environments.
+        solver : {'sparse', 'stats'}
+            Either use the homemade weighted sparse solver or the weighted dense matrix solver of
+            statsmodels
+
+        Returns
+        -------
+
+        """
 
         if sections:
             self.sections = sections
 
-        self.check_dims(['st_label', 'ast_label'])
+        check_dims(self,
+                   [st_label, ast_label],
+                   correct_dims=('x', 'time'))
+
+        if method == 'ols':
+            nt, z, p0_ = calibration_single_ended_ols(
+                self, st_label, ast_label)
+
+            p0 = p0_[0]
+            gamma = p0[0]
+            dalpha = p0[1]
+            c = p0[2:nt + 2]
+
+            # Can not estimate parameter variance with ols
+            gammavar = None
+            dalphavar = None
+            cvar = None
+
+        elif method == 'wls':
+            for vari in [st_var, ast_var]:
+                assert isinstance(vari, float)
+
+            nt, z, p_sol, p_var, p_cov = calibration_single_ended_wls(
+                self, st_label, ast_label,
+                st_var, ast_var, solver=solver)
+
+            gamma = p_sol[0]
+            dalpha = p_sol[1]
+            c = p_sol[2:nt + 2]
+
+            # Estimate of the standard error - sqrt(diag of the COV matrix) - is not squared
+            gammavar = p_var[0]
+            dalphavar = p_var[1]
+            cvar = p_var[2:nt + 2]
+
+        else:
+            raise ValueError('Choose a valid method')
+
+        # store calibration parameters in DataStore
+        self[store_gamma] = (tuple(), gamma)
+        self[store_dalpha] = (tuple(), dalpha)
+        self[store_alpha] = (('x',), dalpha * self.x.data)
+        self[store_c] = (('time',), c)
+
+        # store variances in DataStore
+        if method == 'wls':
+            self[store_gamma + variance_suffix] = (tuple(), gammavar)
+            self[store_dalpha + variance_suffix] = (tuple(), dalphavar)
+            self[store_c + variance_suffix] = (('time',), cvar)
+
+        # deal with FW
+        if store_tmpf:
+            tempF_data = gamma / \
+                (np.log(self[st_label].data / self[ast_label].data)
+                 + c + self.x.data[:, None] * dalpha) - 273.15
+            self[store_tmpf] = (('x', 'time'), tempF_data)
+
+        if conf_ints:
+            assert method == 'wls'
+            conf_int_single_ended(
+                self,
+                p_sol,
+                p_cov,
+                st_label=st_label,
+                ast_label=ast_label,
+                st_var=st_var,
+                ast_var=ast_var,
+                store_c=store_c,
+                store_gamma=store_gamma,
+                store_dalpha=store_dalpha,
+                store_tmpf=store_tmpf,
+                store_tempvar=store_tempvar,
+                conf_ints=conf_ints,
+                conf_ints_size=conf_ints_size,
+                ci_avg_time_flag=ci_avg_time_flag,
+                da_random_state=da_random_state)
         pass
 
     def calibration_double_ended(self,
@@ -374,6 +509,12 @@ class DataStore(xr.Dataset):
             intervals of all time steps together. ‘We can say with 95% confidence that the
             temperature remained between this line and this line during the entire measurement
             period’.
+        da_random_state : dask.array.random.RandomState
+            The seed for dask. Makes random not so random. To produce reproducable results for
+            testing environments.
+        solver : {'sparse', 'stats'}
+            Either use the homemade weighted sparse solver or the weighted dense matrix solver of
+            statsmodels
 
         Returns
         -------
@@ -439,102 +580,44 @@ class DataStore(xr.Dataset):
             self[store_c + variance_suffix] = (('time',), cvar)
 
         # deal with FW
-        tempF_data = gamma / \
-            (np.log(self[st_label].data / self[ast_label].data)
-             + c + alpha[:, None]) - 273.15
-        self[store_tmpf] = (('x', 'time'), tempF_data)
+        if store_tmpf:
+            tempF_data = gamma / \
+                (np.log(self[st_label].data / self[ast_label].data)
+                 + c + alpha[:, None]) - 273.15
+            self[store_tmpf] = (('x', 'time'), tempF_data)
 
         # deal with BW
-        tempB_data = gamma / \
-            (np.log(self[rst_label].data / self[rast_label].data)
-             + c - alpha[:, None] + alphaint) - 273.15
-        self[store_tmpb] = (('x', 'time'), tempB_data)
+        if store_tmpb:
+            tempB_data = gamma / \
+                (np.log(self[rst_label].data / self[rast_label].data)
+                 + c - alpha[:, None] + alphaint) - 273.15
+            self[store_tmpb] = (('x', 'time'), tempB_data)
 
         if conf_ints:
-            import dask.array as da
-
             assert method == 'wls'
-            p_mc = sst.multivariate_normal.rvs(mean=p_sol,
-                                               cov=p_cov,
-                                               size=conf_ints_size)
-            self.coords['MC'] = range(conf_ints_size)
-            self.coords['CI'] = conf_ints
-
-            gamma = p_mc[:, 0]
-            alphaint = p_mc[:, 1]
-            c = p_mc[:, 2:nt + 2]
-            alpha = p_mc[:, nt + 2:]
-
-            self[store_gamma + '_MC'] = (('MC',), gamma)
-            self[store_alphaint + '_MC'] = (('MC',), alphaint)
-            self[store_alpha + '_MC'] = (('MC', 'x',), alpha)
-            self[store_c + '_MC'] = (('MC', 'time',), c)
-
-            rshape = (self.MC.size, self.x.size, self.time.size)
-
-            if da_random_state:
-                state = da_random_state
-            else:
-                state = da.random.RandomState()
-
-            r_st = state.normal(loc=0, scale=st_var ** 0.5, size=rshape, chunks=rshape)
-            r_ast = state.normal(loc=0, scale=ast_var ** 0.5, size=rshape, chunks=rshape)
-            r_rst = state.normal(loc=0, scale=rst_var ** 0.5, size=rshape, chunks=rshape)
-            r_rast = state.normal(loc=0, scale=rast_var ** 0.5, size=rshape, chunks=rshape)
-
-            self['r_st'] = (('MC', 'x', 'time'), r_st)
-            self['r_ast'] = (('MC', 'x', 'time'), r_ast)
-            self['r_rst'] = (('MC', 'x', 'time'), r_rst)
-            self['r_rast'] = (('MC', 'x', 'time'), r_rast)
-
-            # deal with FW
-            tempF_data = self[store_gamma + '_MC'] / \
-                (xr.ufuncs.log((self[st_label] + self['r_st']) / (self[ast_label] + self['r_ast']))
-                 + self[store_c + '_MC'] + self[store_alpha + '_MC']) - 273.15
-            self[store_tmpf + '_MC'] = (('MC', 'x', 'time'), tempF_data)
-
-            tempB_data = self[store_gamma + '_MC'] / \
-                (xr.ufuncs.log((self[rst_label] + self['r_rst']) /
-                               (self[rast_label] + self['r_rast']))
-                 + self[store_c + '_MC'] - self[store_alpha + '_MC'] +
-                 self[store_alphaint + '_MC']) - 273.15
-            self[store_tmpb + '_MC'] = (('MC', 'x', 'time'), tempB_data)
-
-            if ci_avg_time_flag:
-                if store_tempvar:
-                    self[store_tmpf + '_MC' + store_tempvar] = (self[store_tmpf + '_MC'] - self[
-                        store_tmpf]).std(dim=['MC', 'time']) ** 2
-                    self[store_tmpb + '_MC' + store_tempvar] = (self[store_tmpb + '_MC'] - self[
-                        store_tmpb]).std(dim=['MC', 'time']) ** 2
-
-                q = self[store_tmpf + '_MC'].quantile(conf_ints, dim=['MC', 'time'])
-                self[store_tmpf + '_MC'] = (('CI', 'x'), q)
-                q = self[store_tmpb + '_MC'].quantile(conf_ints, dim=['MC', 'time'])
-                self[store_tmpb + '_MC'] = (('CI', 'x'), q)
-
-            else:
-                if store_tempvar:
-                    self[store_tmpf + '_MC' + store_tempvar] = (self[store_tmpf + '_MC'] - self[
-                        store_tmpf]).std(dim='MC', ddof=1) ** 2
-                    self[store_tmpb + '_MC' + store_tempvar] = (self[store_tmpb + '_MC'] - self[
-                        store_tmpb]).std(dim='MC', ddof=1) ** 2
-
-                q = self[store_tmpf + '_MC'].quantile(conf_ints, dim='MC')
-                self[store_tmpf + '_MC'] = (('CI', 'x', 'time'), q)
-                q = self[store_tmpb + '_MC'].quantile(conf_ints, dim='MC')
-                self[store_tmpb + '_MC'] = (('CI', 'x', 'time'), q)
-
-            drop_var = [store_gamma + '_MC',
-                        store_alphaint + '_MC',
-                        store_alpha + '_MC',
-                        store_c + '_MC',
-                        'MC',
-                        'r_st',
-                        'r_ast',
-                        'r_rst',
-                        'r_rast']
-            for k in drop_var:
-                del self[k]
+            conf_int_double_ended(
+                self,
+                p_sol,
+                p_cov,
+                st_label=st_label,
+                ast_label=ast_label,
+                rst_label=rst_label,
+                rast_label=rast_label,
+                st_var=st_var,
+                ast_var=ast_var,
+                rst_var=rst_var,
+                rast_var=rast_var,
+                store_c=store_c,
+                store_gamma=store_gamma,
+                store_alphaint=store_alphaint,
+                store_alpha=store_alpha,
+                store_tmpf=store_tmpf,
+                store_tmpb=store_tmpb,
+                store_tempvar=store_tempvar,
+                conf_ints=conf_ints,
+                conf_ints_size=conf_ints_size,
+                ci_avg_time_flag=ci_avg_time_flag,
+                da_random_state=da_random_state)
 
         pass
 

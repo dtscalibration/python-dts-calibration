@@ -81,8 +81,8 @@ The data files are located in ``./python-dts-calibration/tests/data``
     Recorded at 1693 points along the cable
     Dask: Setting up handle for delayed readout. 1 out of 6
     Dask: Setting up handle for delayed readout. 6 out of 6
-    Dask: Setting up handle for delayed readout. 1 out of 6
-    Dask: Setting up handle for delayed readout. 6 out of 6
+    Directly reading time and extra info from xml files. 1 out of 6
+    Directly reading time and extra info from xml files. 6 out of 6
 
 
 .. code:: ipython3

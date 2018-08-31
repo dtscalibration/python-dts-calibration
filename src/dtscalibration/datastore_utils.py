@@ -307,7 +307,7 @@ def grab_data2(filelist, sep=':'):
 
     for it, file_ in enumerate(filelist):
         if it % 25 == 0 or it == (ntime - 1):
-            print('Dask: Setting up handle for delayed readout. ' +
+            print('Directly reading time and extra info from xml files. ' +
                   str(it + 1) + ' out of ' + str(ntime))
 
         with open(file_, 'r') as fh:
