@@ -7,8 +7,7 @@
     import os
     
     from dtscalibration import read_xml_dir
-    
-    # from matplotlib import pyplot as plt
+    from matplotlib import pyplot as plt
 
 .. code:: ipython3
 
@@ -86,7 +85,10 @@
 
 .. code:: ipython3
 
-    I_var, residuals = ds.variance_stokes(st_label='ST', sections=sections, use_statsmodels=False)
+    I_var, residuals = ds.variance_stokes(st_label='ST', 
+                                          sections=sections, 
+                                          use_statsmodels=False, 
+                                          debug_high_stokes_variance=False)
     print("The variance of the Stokes signal along the reference sections "
           "is approximately {}".format(I_var))
 
@@ -98,11 +100,20 @@
 
 .. code:: ipython3
 
-    # plt.hist(residuals, bins=50, density=True);
+    plt.hist(residuals, bins=50, density=True);
 
 .. code:: ipython3
 
-    # plt.plot(residuals)  # not precisely randoms
+    plt.plot(residuals)  # not precisely randoms
+
+
+
+
+.. parsed-literal::
+
+    [<matplotlib.lines.Line2D at 0x11fb45eb8>]
+
+
 
 .. code:: ipython3
 
@@ -119,5 +130,19 @@
 .. parsed-literal::
 
     array([ 0., -1.,  0., -1.,  0., -1.,  0., -1.])
+
+
+
+.. code:: ipython3
+
+    residuals
+
+
+
+
+.. parsed-literal::
+
+    array([ 4.59044081,  3.87842694,  3.52629979, ..., 18.65920864,
+           17.3673991 , 15.97524777])
 
 

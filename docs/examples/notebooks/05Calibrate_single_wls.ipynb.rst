@@ -16,14 +16,7 @@ defined.
     import os
     
     from dtscalibration import read_xml_dir
-    
-    try:
-        import matplotlib.pyplot as plt
-        
-        has_matplotlib = True
-    except:
-        has_matplotlib = False
-        pass
+    import matplotlib.pyplot as plt
 
 .. code:: ipython3
 
@@ -202,27 +195,51 @@ Lets compare our calibrated values with the device calibration
 
 .. code:: ipython3
 
-    if has_matplotlib:
-        ds1 = ds.isel(time=0)  # take only the first timestep
+    ds1 = ds.isel(time=0)  # take only the first timestep
     
-        ds1.TMPF.plot(linewidth=1, label='User calibrated')  # plot the temperature calibrated by us
-        ds1.TMP.plot(linewidth=1, label='Device calibrated')  # plot the temperature calibrated by the device
-        plt.title('Temperature at the first time step')
-        plt.legend()
+    ds1.TMPF.plot(linewidth=1, label='User calibrated')  # plot the temperature calibrated by us
+    ds1.TMP.plot(linewidth=1, label='Device calibrated')  # plot the temperature calibrated by the device
+    plt.title('Temperature at the first time step')
+    plt.legend()
+
+
+
+
+.. parsed-literal::
+
+    <matplotlib.legend.Legend at 0x1211eb9e8>
+
+
 
 .. code:: ipython3
 
-    if has_matplotlib:
-        ds.TMPF_MC_var.plot()
+    ds.TMPF_MC_var.plot()
+
+
+
+
+.. parsed-literal::
+
+    <matplotlib.collections.QuadMesh at 0x11f9f6748>
+
+
 
 .. code:: ipython3
 
-    if has_matplotlib:
-        ds1.TMPF_MC.sel(CI=0.025).plot(label = '2.5% CI')
-        ds1.TMPF_MC.sel(CI=0.975).plot(label = '97.5% CI')
-        ds1.TMPF.plot(label='User calibrated')
-        plt.title('User calibrated temperature with 95% confidence interval')
-        plt.legend()
+    ds1.TMPF_MC.sel(CI=0.025).plot(label = '2.5% CI')
+    ds1.TMPF_MC.sel(CI=0.975).plot(label = '97.5% CI')
+    ds1.TMPF.plot(label='User calibrated')
+    plt.title('User calibrated temperature with 95% confidence interval')
+    plt.legend()
+
+
+
+
+.. parsed-literal::
+
+    <matplotlib.legend.Legend at 0x11f9bac88>
+
+
 
 We can tell from the graph above that the 95% confidence interval widens
 furtherdown the cable. Lets have a look at the calculated variance along
@@ -231,8 +248,16 @@ this should be around 0.005929 degC.
 
 .. code:: ipython3
 
-    if has_matplotlib:
-        ds1.TMPF_MC_var.plot()
+    ds1.TMPF_MC_var.plot()
+
+
+
+
+.. parsed-literal::
+
+    [<matplotlib.lines.Line2D at 0x121250f28>]
+
+
 
 The variance of the temperature measurement appears to be larger than
 what the manufacturer reports. This is already the case for the internal
@@ -246,9 +271,17 @@ Lets have a look at the Stokes and anti-Stokes signal.
 
 .. code:: ipython3
 
-    if has_matplotlib:
-        ds1.ST.plot()
-        ds1.AST.plot()
+    ds1.ST.plot()
+    ds1.AST.plot()
+
+
+
+
+.. parsed-literal::
+
+    [<matplotlib.lines.Line2D at 0x10aab7470>]
+
+
 
 Clearly there was a bad splice at 30 m that resulted in the sharp
 increase of measurement uncertainty for the cable section after the bad
