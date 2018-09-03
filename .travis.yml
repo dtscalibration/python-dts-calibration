@@ -18,6 +18,8 @@ before_install:
   - python --version
   - uname -a
   - lsb_release -a
+  - "export DISPLAY=:99.0"
+  - "sh -e /etc/init.d/xvfb start"
 install:
   - pip install pypandoc
   - sudo apt-get install pandoc
