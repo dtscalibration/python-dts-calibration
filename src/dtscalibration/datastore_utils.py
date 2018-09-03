@@ -292,7 +292,7 @@ def grab_data2(filelist, sep=':'):
     data_arr = da.stack(data_arr).T
 
     # read time data and extra data not lazy, as they are needed as coordinates
-    time_dtype = [('filename_tstamp', int),
+    time_dtype = [('filename_tstamp', np.int64),
                   ('minDateTimeIndex', '<U29'),
                   ('maxDateTimeIndex', '<U29')]
 
