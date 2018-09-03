@@ -12,13 +12,6 @@ https://github.com/bdestombe/python-dts-calibration/tree/master/examples/noteboo
     
     from dtscalibration import read_xml_dir
 
-
-.. parsed-literal::
-
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration/.tox/docs/lib/python3.6/importlib/_bootstrap.py:219: RuntimeWarning: numpy.dtype size changed, may indicate binary incompatibility. Expected 96, got 88
-      return f(*args, **kwds)
-
-
 The data files are located in ``./python-dts-calibration/tests/data``
 
 .. code:: ipython3

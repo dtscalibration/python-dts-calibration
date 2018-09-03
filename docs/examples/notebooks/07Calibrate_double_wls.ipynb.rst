@@ -16,14 +16,7 @@ defined.
     import os
     
     from dtscalibration import read_xml_dir
-    # import matplotlib.pyplot as plt
-
-
-.. parsed-literal::
-
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration/.tox/docs/lib/python3.6/importlib/_bootstrap.py:219: RuntimeWarning: numpy.dtype size changed, may indicate binary incompatibility. Expected 96, got 88
-      return f(*args, **kwds)
-
+    import matplotlib.pyplot as plt
 
 .. code:: ipython3
 
@@ -125,12 +118,12 @@ entire measurement period'.
 
 .. code:: ipython3
 
-    # ds1 = ds.isel(time=0)  # take only the first timestep
-    # ds1.TMPF.plot(linewidth=0.7)
-    # ds1.TMPF_MC.isel(CI=0).plot(linewidth=0.7, label='CI: 2.5%')
-    # ds1.TMPF_MC.isel(CI=1).plot(linewidth=0.7, label='CI: 97.5%')
-    # plt.legend()
-    # plt.show()
+    ds1 = ds.isel(time=0)  # take only the first timestep
+    ds1.TMPF.plot(linewidth=0.7)
+    ds1.TMPF_MC.isel(CI=0).plot(linewidth=0.7, label='CI: 2.5%')
+    ds1.TMPF_MC.isel(CI=1).plot(linewidth=0.7, label='CI: 97.5%')
+    plt.legend()
+    plt.show()
 
 The DataArrays ``TMPF_MC`` and ``TMPB_MC`` and the dimension ``CI`` are
 added. ``MC`` stands for monte carlo and the ``CI`` dimension holds the
@@ -170,8 +163,8 @@ confidence interval 'coordinates'.
         c_var                  (time) float64 6.632e-07 6.632e-07 6.632e-07 ...
         TMPF                   (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 1)>
         TMPB                   (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 1)>
-        TMPF_MC                (CI, x, time) float64 16.02 16.31 15.5 15.83 ...
-        TMPB_MC                (CI, x, time) float64 15.56 15.49 15.68 15.3 ...
+        TMPF_MC                (CI, x, time) float64 16.01 16.21 15.64 15.77 ...
+        TMPB_MC                (CI, x, time) float64 15.55 15.56 15.71 15.39 ...
         TMPF_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 1)>
         TMPB_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 1)>
 
