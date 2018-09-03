@@ -35,14 +35,15 @@ for fp, fn in zip(filepathlist, filenamelist):
     # run the notebook to:
     # 1) check whether no errors occur.
     # 2) save and show outputconvert notebook to rst for documentation
-    outfilepath = os.path.join(outpath, fn)
+    # outfilepath = os.path.join(outpath, fn)
     check_call(['jupyter', 'nbconvert',
                 '--execute',
                 '--to', 'rst',
                 '--ExecutePreprocessor.kernel_name=python',
                 '--KernelGatewayApp.force_kernel_name=python',
                 "--ExecutePreprocessor.timeout=60",
-                '--output', outfilepath,
+                '--output-dir', outpath,
+                '--output', fn,
                 fp])
 
 
