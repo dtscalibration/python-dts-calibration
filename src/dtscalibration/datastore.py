@@ -228,9 +228,9 @@ class DataStore(xr.Dataset):
         resid_x = _resid_x[isort]
         resid = _resid[isort, :]
 
-        resid_da = xr.DataArray(np.empty(shape=self.ST.shape), dims=('x', 'time'),
-                                coords={'x': self.x, 'time': self.time},
-                                )
+        resid_da = xr.DataArray(data=np.full(shape=self.ST.shape, fill_value=np.nan),
+                                dims=('x', 'time'),
+                                coords={'x': self.x, 'time': self.time})
 
         ix_resid = np.array([np.argmin(np.abs(ai - self.x.data)) for ai in resid_x])
         self.x.sel(x=resid_x, method='nearest')
