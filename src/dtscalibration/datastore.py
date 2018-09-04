@@ -228,7 +228,7 @@ class DataStore(xr.Dataset):
         resid_x = _resid_x[isort]
         resid = _resid[isort, :]
 
-        resid_da = xr.DataArray(data=np.full(shape=self.ST.shape, fill_value=np.nan),
+        resid_da = xr.DataArray(data=np.full(shape=self[st_label].shape, fill_value=np.nan),
                                 dims=('x', 'time'),
                                 coords={'x': self.x, 'time': self.time})
 
