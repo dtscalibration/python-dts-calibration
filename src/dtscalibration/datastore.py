@@ -128,6 +128,8 @@ class DataStore(xr.Dataset):
         """
         if sections:
             self.sections = sections
+        else:
+            assert self.sections, 'sections are not defined'
 
         check_dims(self, [st_label], correct_dims=('x', 'time'))
 
@@ -211,35 +213,30 @@ class DataStore(xr.Dataset):
         resid = I_est - y
         var_I = resid.std(ddof=ddof) ** 2
 
-        if not debug_high_stokes_variance:
-            return var_I, resid
+        # restructure the residuals, such that they can be plotted and added to ds
+        resid_res = []
+        for leni, lenis, lenie in zip(
+            len_stretch_list,
+            nt * np.cumsum([0] + len_stretch_list[:-1]),
+                nt * np.cumsum(len_stretch_list)):
 
-        else:
-            resid_res = []
-            for leni, lenis, lenie in zip(
-                len_stretch_list,
-                nt * np.cumsum([0] + len_stretch_list[:-1]),
-                    nt * np.cumsum(len_stretch_list)):
+            resid_res.append(resid[lenis:lenie].reshape(leni, nt))
 
-                resid_res.append(resid[lenis:lenie].reshape(leni, nt))
+        _resid = np.concatenate(resid_res)
+        _resid_x = self.ufunc_per_section(label='x', calc_per='all')
+        isort = np.argsort(_resid_x)
+        resid_x = _resid_x[isort]
+        resid = _resid[isort, :]
 
-            _resid = np.concatenate(resid_res)
-            _resid_x = self.ufunc_per_section(label='x', calc_per='all')
-            isort = np.argsort(_resid_x)
-            resid_x = _resid_x[isort]
-            resid = _resid[isort, :]
+        resid_da = xr.DataArray(np.empty(shape=self.ST.shape), dims=('x', 'time'),
+                                coords={'x': self.x, 'time': self.time},
+                                )
 
-            resid_da = xr.DataArray(self.ST.data * np.nan, dims=('x', 'time'),
-                                    coords={'x': self.x, 'time': self.time},
-                                    )
+        ix_resid = np.array([np.argmin(np.abs(ai - self.x.data)) for ai in resid_x])
+        self.x.sel(x=resid_x, method='nearest')
+        resid_da[ix_resid, :] = resid
 
-            ix_resid = np.array([np.argmin(np.abs(ai - self.x.data)) for ai in resid_x])
-            self.x.sel(x=resid_x, method='nearest')
-            resid_da[ix_resid, :] = resid
-
-            # resid_da.plot()
-
-            return var_I, resid_da
+        return var_I, resid_da
 
     def inverse_variance_weighted_mean(self,
                                        tmp1='TMPF',
@@ -353,6 +350,8 @@ class DataStore(xr.Dataset):
 
         if sections:
             self.sections = sections
+        else:
+            assert self.sections, 'sections are not defined'
 
         check_dims(self,
                    [st_label, ast_label],
@@ -523,6 +522,8 @@ class DataStore(xr.Dataset):
 
         if sections:
             self.sections = sections
+        else:
+            assert self.sections, 'sections are not defined'
 
         check_dims(self,
                    [st_label, ast_label, rst_label, rast_label],
