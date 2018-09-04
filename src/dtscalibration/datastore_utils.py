@@ -332,7 +332,7 @@ def grab_data2(filelist, sep=':'):
                 's:log/s:endDateTimeIndex', namespaces=ns).text
 
             file_name = os.path.split(file_)[1]
-            tstamp = int(file_name[10:-4])
+            tstamp = np.int64(file_name[10:-4])
             time_arr[it] = (tstamp, startDateTimeIndex, endDateTimeIndex)
 
     for key, item in extra.items():
