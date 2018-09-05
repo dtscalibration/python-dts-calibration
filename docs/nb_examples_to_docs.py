@@ -1,3 +1,4 @@
+# coding=utf-8
 import glob
 import os
 from subprocess import check_call
@@ -10,9 +11,9 @@ except:
     # Excecuted from console. pwd = ./docs
     wd = os.getcwd()
     print('run from console: wd', wd)
+    pass
 
 file_ext = '*.ipynb'
-prepend_title_flag = 0
 
 # ./examples/notebooks
 inpath = os.path.join(wd, '..', 'examples', 'notebooks')
@@ -45,16 +46,6 @@ for fp, fn in zip(filepathlist, filenamelist):
                 '--output-dir', outpath,
                 '--output', fn,
                 fp])
-
-
-    # prepend title
-    if prepend_title_flag:
-        title = fn + '\n' + '=' * len(fn) + '\n\n'
-
-        with open(outfilepath + '.rst', 'r') as original:
-            data = original.read()
-        with open(outfilepath + '.rst', 'w') as modified:
-            modified.write(title + data)
 
 # write index file to toc
 fp_index = os.path.join(wd, 'examples', 'index.rst')

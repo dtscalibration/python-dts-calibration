@@ -207,12 +207,8 @@ Lets compare our calibrated values with the device calibration
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x1c212280b8>
+    <matplotlib.legend.Legend at 0x11731ff28>
 
-
-
-
-.. image:: 05Calibrate_single_wls.ipynb_files/05Calibrate_single_wls.ipynb_12_1.png
 
 
 .. code:: ipython3
@@ -224,12 +220,8 @@ Lets compare our calibrated values with the device calibration
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x1c22a69780>
+    <matplotlib.collections.QuadMesh at 0x119354b70>
 
-
-
-
-.. image:: 05Calibrate_single_wls.ipynb_files/05Calibrate_single_wls.ipynb_13_1.png
 
 
 .. code:: ipython3
@@ -245,12 +237,8 @@ Lets compare our calibrated values with the device calibration
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x10cf03f60>
+    <matplotlib.legend.Legend at 0x11af29978>
 
-
-
-
-.. image:: 05Calibrate_single_wls.ipynb_files/05Calibrate_single_wls.ipynb_14_1.png
 
 
 We can tell from the graph above that the 95% confidence interval widens
@@ -267,12 +255,8 @@ this should be around 0.005929 degC.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x1c22ac9b70>]
+    [<matplotlib.lines.Line2D at 0x11afca2e8>]
 
-
-
-
-.. image:: 05Calibrate_single_wls.ipynb_files/05Calibrate_single_wls.ipynb_16_1.png
 
 
 The variance of the temperature measurement appears to be larger than
@@ -295,12 +279,8 @@ Lets have a look at the Stokes and anti-Stokes signal.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x10dc82cf8>]
+    [<matplotlib.lines.Line2D at 0x11afc0da0>]
 
-
-
-
-.. image:: 05Calibrate_single_wls.ipynb_files/05Calibrate_single_wls.ipynb_18_1.png
 
 
 Clearly there was a bad splice at 30 m that resulted in the sharp

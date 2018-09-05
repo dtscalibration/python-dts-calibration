@@ -95,63 +95,22 @@
 
 .. parsed-literal::
 
-    The variance of the Stokes signal along the reference sections is approximately 40.15998656786004
+    The variance of the Stokes signal along the reference sections is approximately 40.15998656786007
 
 
 .. code:: ipython3
 
-    plt.hist(residuals, bins=50, density=True);
-
-
-
-.. image:: 03Calculate_variance_Stokes.ipynb_files/03Calculate_variance_Stokes.ipynb_5_0.png
-
-
-.. code:: ipython3
-
-    plt.plot(residuals)  # not precisely randoms
+    residuals.plot(figsize=(12, 8))
 
 
 
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x1c232c6eb8>]
-
-
-
-
-.. image:: 03Calculate_variance_Stokes.ipynb_files/03Calculate_variance_Stokes.ipynb_6_1.png
-
-
-.. code:: ipython3
-
-    import numpy as np
-
-.. code:: ipython3
-
-    np.tile([0., -1.], 4
-           )
-
-
-
-
-.. parsed-literal::
-
-    array([ 0., -1.,  0., -1.,  0., -1.,  0., -1.])
+    <matplotlib.collections.QuadMesh at 0x11bac6630>
 
 
 
 .. code:: ipython3
 
-    residuals
-
-
-
-
-.. parsed-literal::
-
-    array([ 4.59044081,  3.87842694,  3.52629979, ..., 18.65920864,
-           17.3673991 , 15.97524777])
-
-
+    residuals.plot.hist(bins=50);

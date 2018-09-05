@@ -14,13 +14,21 @@ def read_data_from_fp_numpy(fp):
     """
     Read the data from a single Silixa xml file. Using a simple approach
 
-    :param fp: File path
-    :param i_first: Index of the first <data>. Use this if reading multiple files.
-    :param i_last:  Index of the last </data>. Use this if reading multiple files.
-    :return: The data of the file as numpy array of shape (nx, ncols)
+    Parameters
+    ----------
+    fp : file, str, or pathlib.Path
+        File path
 
-    :note: calculating i_first and i_last is fast compared to the rest
+    Returns
+    -------
+    data : ndarray
+        The data of the file as numpy array of shape (nx, ncols)
+
+    Notes
+    -----
+    calculating i_first and i_last is fast compared to the rest
     """
+
     with open(fp) as fh:
         s = fh.readlines()
 
@@ -269,10 +277,10 @@ def grab_data2(filelist, sep=':'):
     print('Recorded at %s points along the cable' % nx)
 
     @dask.delayed
-    def grab_data_per_file(file_, array_path, ns, data_dtype):
-        with open(file_, 'r') as fh:
-            tree = ElementTree.parse(fh)
-            arr_el = tree.findall(array_path, namespaces=ns)
+    def grab_data_per_file(file_handle, array_path, namespace, data_dtype):
+        with open(file_handle, 'r') as f_h:
+            eltree = ElementTree.parse(f_h)
+            arr_el = eltree.findall(array_path, namespaces=namespace)
             arr_str = [
                 tuple(arr_eli.text.strip().split(',')) for arr_eli in arr_el
                 ]
@@ -446,6 +454,7 @@ def check_dims(ds, labels, correct_dims=None):
 
     Parameters
     ----------
+    ds
     labels : iterable
         An iterable with labels
     correct_dims : tuple of str, optional

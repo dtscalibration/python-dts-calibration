@@ -125,11 +125,6 @@ entire measurement period'.
     plt.legend()
     plt.show()
 
-
-
-.. image:: 07Calibrate_double_wls.ipynb_files/07Calibrate_double_wls.ipynb_9_0.png
-
-
 The DataArrays ``TMPF_MC`` and ``TMPB_MC`` and the dimension ``CI`` are
 added. ``MC`` stands for monte carlo and the ``CI`` dimension holds the
 confidence interval 'coordinates'.
@@ -168,8 +163,8 @@ confidence interval 'coordinates'.
         c_var                  (time) float64 6.632e-07 6.632e-07 6.632e-07 ...
         TMPF                   (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 1)>
         TMPB                   (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 1)>
-        TMPF_MC                (CI, x, time) float64 16.05 16.27 15.57 15.86 ...
-        TMPB_MC                (CI, x, time) float64 15.56 15.68 15.65 15.31 ...
+        TMPF_MC                (CI, x, time) float64 16.09 16.19 15.57 15.86 ...
+        TMPB_MC                (CI, x, time) float64 15.5 15.59 15.62 15.31 ...
         TMPF_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 1)>
         TMPB_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 1)>
 

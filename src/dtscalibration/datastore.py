@@ -22,8 +22,9 @@ from dtscalibration.datastore_utils import grab_data2
 
 
 class DataStore(xr.Dataset):
-    """To load data from a file or file-like object, use the `open_datastore`
-        function.
+    """The data class that stores the measurements, contains calibration methods to relate Stokes
+    and anti-Stokes to temperature. The user should never initiate this class directly,
+    but use read_xml_dir or open_datastore functions instead.
 
         Parameters
         ----------
@@ -59,6 +60,11 @@ class DataStore(xr.Dataset):
             - 'equals': all values and dimensions must be the same.
             - 'identical': all values, dimensions and attributes must be the
               same.
+
+        See Also
+        --------
+        dtscalibration.read_xml_dir : Load measurements stored in XML-files
+        dtscalibration.open_datastore : Load (calibrated) measurements from netCDF-like file
         """
 
     def __init__(self, *args, **kwargs):
@@ -72,6 +78,23 @@ class DataStore(xr.Dataset):
 
     @property
     def sections(self):
+        """
+        Define calibration sections. Each section requires a reference temperature time series,
+        such as the temperature measured by an external temperature sensor. They should already be
+        part of the DataStore object.
+
+        Please look at the example notebook on `sections` if you encounter difficulties.
+
+        Parameters
+        ----------
+        sections : dict
+            Sections are defined in a dictionary with its keywords of the names of the reference
+            temperature time series. Its values are lists of slice objects, where each slice object
+            is a stretch.
+        Returns
+        -------
+
+        """
         assert hasattr(self, '_sections'), 'first set the sections'
         return yaml.load(self.attrs['_sections'])
 
@@ -80,9 +103,17 @@ class DataStore(xr.Dataset):
         if sections:
             assert isinstance(sections, dict)
 
+            for key in sections:
+                assert key in self.data_vars, 'The keys of the sections-dictionary should refer ' \
+                                              'to a valid timeserie already stored in ds.data_vars'
+
             for k, v in sections.items():
+                assert isinstance(v, (list, tuple)), 'The values of the sections-dictionary ' \
+                                                     'should be lists of slice objects.'
+
                 for vi in v:
-                    assert isinstance(vi, slice)
+                    assert isinstance(vi, slice), 'The values of the sections-dictionary should ' \
+                                                  'be lists of slice objects.'
 
         self.attrs['_sections'] = yaml.dump(sections)
         pass
@@ -93,7 +124,7 @@ class DataStore(xr.Dataset):
         pass
 
     def variance_stokes(self, st_label, sections=None, use_statsmodels=False,
-                        suppress_info=True, debug_high_stokes_variance=False):
+                        suppress_info=True):
         """
         Calculates the variance between the measurements and a best fit exponential at each
         reference section. This fits a two-parameter exponential to the stokes measurements. The
@@ -319,6 +350,9 @@ class DataStore(xr.Dataset):
             Label of where to store gamma
         store_dalpha : str
             Label of where to store dalpha; the spatial derivative  of alpha.
+        store_alpha : str
+            Label of where to store alpha; The integrated differential attenuation.
+            alpha(x=0) = 0
         store_tmpf : str
             Label of where to store the calibrated temperature of the forward direction
         variance_suffix : str, optional
