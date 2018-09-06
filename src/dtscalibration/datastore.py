@@ -106,6 +106,7 @@ class DataStore(xr.Dataset):
             for key in sections:
                 assert key in self.data_vars, 'The keys of the sections-dictionary should refer ' \
                                               'to a valid timeserie already stored in ds.data_vars'
+            check_dims(self, sections, ('time',))
 
             for k, v in sections.items():
                 assert isinstance(v, (list, tuple)), 'The values of the sections-dictionary ' \

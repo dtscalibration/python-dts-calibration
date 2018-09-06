@@ -335,11 +335,15 @@ def test_variance_of_stokes_synthetic():
     y += stats.norm.rvs(size=y.size,
                         scale=yvar ** 0.5).reshape(y.shape)
 
-    ds = DataStore({'test_ST': (['x', 'time'], y)},
-                   coords={'x':    x,
-                           'time': range(nt)})
+    ds = DataStore({
+        'test_ST': (['x', 'time'], y),
+        'probe1Temperature':  (['time'], range(nt))
+        },
+        coords={
+            'x':    x,
+            'time': range(nt)})
 
-    sections = {'placeholder': [slice(0., 20.), ]}
+    sections = {'probe1Temperature': [slice(0., 20.), ]}
     test_ST_var, _ = ds.variance_stokes(st_label='test_ST',
                                         sections=sections,
                                         suppress_info=True)

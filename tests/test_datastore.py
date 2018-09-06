@@ -93,7 +93,16 @@ def test_has_sectionattr_upon_creation():
 
 
 def test_sections_property():
-    ds = DataStore()
+    ds = DataStore({
+        'st':    (['x', 'time'], np.ones((5, 5))),
+        'ast':   (['x', 'time'], np.ones((5, 5))),
+        'probe1Temperature':  (['time'], range(5)),
+        'probe2Temperature':  (['time'], range(5))
+        },
+        coords={
+            'x':    range(5),
+            'time': range(5)})
+
     sections1 = {
         'probe1Temperature': [slice(7.5, 17.), slice(70., 80.)],  # cold bath
         'probe2Temperature': [slice(24., 34.), slice(85., 95.)],  # warm bath
@@ -117,7 +126,16 @@ def test_sections_property():
 
 
 def test_io_sections_property():
-    ds = DataStore()
+    ds = DataStore({
+        'st':    (['x', 'time'], np.ones((5, 5))),
+        'ast':   (['x', 'time'], np.ones((5, 5))),
+        'probe1Temperature':  (['time'], range(5)),
+        'probe2Temperature':  (['time'], range(5))
+        },
+        coords={
+            'x':    range(5),
+            'time': range(5)})
+
     sections = {
         'probe1Temperature': [slice(7.5, 17.), slice(70., 80.)],  # cold bath
         'probe2Temperature': [slice(24., 34.), slice(85., 95.)],  # warm bath
