@@ -2,6 +2,16 @@
 Changelog
 =========
 
+0.4.0 (2018-09-06)
+------------------
+
+* Single ended calibration
+* Confidence intervals for single ended calibration
+* Example notebooks have figures embedded
+* Several bugs squashed
+* Reorganized DataStore functions
+
+
 0.2.0 (2018-08-16)
 ------------------
 
