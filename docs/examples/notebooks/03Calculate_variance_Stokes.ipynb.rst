@@ -8,6 +8,8 @@
     
     from dtscalibration import read_xml_dir
     from matplotlib import pyplot as plt
+    
+    %matplotlib inline
 
 .. code:: ipython3
 
@@ -94,7 +96,7 @@
 
 .. parsed-literal::
 
-    The variance of the Stokes signal along the reference sections is approximately 40.15998656786004
+    The variance of the Stokes signal along the reference sections is approximately 40.15998656786007
 
 
 .. code:: ipython3
@@ -106,7 +108,7 @@
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x1c20ca5048>
+    <matplotlib.collections.QuadMesh at 0x114c28b38>
 
 
 

@@ -4,6 +4,8 @@ import os
 import shutil
 from subprocess import check_call
 
+clean_nb = False  # save clean notebook to github
+
 try:
     # this file is excecuted as script
     wd = os.path.dirname(os.path.realpath(__file__))
@@ -31,13 +33,21 @@ filepathlist = sorted(glob.glob(os.path.join(inpath, file_ext)))
 filenamelist = [os.path.basename(path) for path in filepathlist]
 
 for fp, fn in zip(filepathlist, filenamelist):
-    # save clean notebook to github
-    check_call(['jupyter', 'nbconvert',
-                '--clear-output',
-                '--ClearOutputPreprocessor.enabled=True',
-                '--inplace',
-                fp])
-
+    if clean_nb:
+        # save clean notebook to github
+        check_call(['jupyter', 'nbconvert',
+                    '--clear-output',
+                    '--ClearOutputPreprocessor.enabled=True',
+                    '--inplace',
+                    fp])
+    else:
+        check_call(['jupyter', 'nbconvert',
+                    '--execute',
+                    '--ExecutePreprocessor.kernel_name=python',
+                    '--KernelGatewayApp.force_kernel_name=python',
+                    "--ExecutePreprocessor.timeout=60",
+                    '--inplace',
+                    fp])
     # run the notebook to:
     # 1) check whether no errors occur.
     # 2) save and show outputconvert notebook to rst for documentation

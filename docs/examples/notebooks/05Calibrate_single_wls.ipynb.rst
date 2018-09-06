@@ -17,6 +17,7 @@ defined.
     
     from dtscalibration import read_xml_dir
     import matplotlib.pyplot as plt
+    %matplotlib inline
 
 .. code:: ipython3
 
@@ -210,7 +211,7 @@ Lets compare our calibrated values with the device calibration
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x1c25a2c6a0>
+    <matplotlib.legend.Legend at 0x1218e6ef0>
 
 
 
@@ -227,7 +228,7 @@ Lets compare our calibrated values with the device calibration
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x1c26744e10>
+    <matplotlib.collections.QuadMesh at 0x121d363c8>
 
 
 
@@ -248,7 +249,7 @@ Lets compare our calibrated values with the device calibration
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x110a42b00>
+    <matplotlib.legend.Legend at 0x10b538470>
 
 
 
@@ -270,7 +271,7 @@ this should be around 0.005929 degC.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x1c25ac8fd0>]
+    [<matplotlib.lines.Line2D at 0x10cca7160>]
 
 
 
@@ -298,7 +299,7 @@ Lets have a look at the Stokes and anti-Stokes signal.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x1124adcf8>]
+    [<matplotlib.lines.Line2D at 0x1210bbbe0>]
 
 
 

@@ -17,6 +17,7 @@ defined.
     
     from dtscalibration import read_xml_dir
     import matplotlib.pyplot as plt
+    %matplotlib inline
 
 .. code:: ipython3
 
@@ -168,8 +169,8 @@ confidence interval 'coordinates'.
         c_var                  (time) float64 6.632e-07 6.632e-07 6.632e-07 ...
         TMPF                   (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 1)>
         TMPB                   (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 1)>
-        TMPF_MC                (CI, x, time) float64 16.12 16.36 15.56 15.86 ...
-        TMPB_MC                (CI, x, time) float64 15.65 15.53 15.78 15.31 ...
+        TMPF_MC                (CI, x, time) float64 16.0 16.34 15.59 15.83 ...
+        TMPB_MC                (CI, x, time) float64 15.61 15.66 15.7 15.39 ...
         TMPF_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 1)>
         TMPB_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 1)>
 
