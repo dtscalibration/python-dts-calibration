@@ -15,6 +15,8 @@ Overview
     * - package
       - | |version| |wheel| |supported-versions| |supported-implementations|
         | |commits-since|
+    * - citable
+      - |zenodo|
 
 .. |docs| image:: https://readthedocs.org/projects/python-dts-calibration/badge/?style=flat
     :target: https://readthedocs.org/projects/python-dts-calibration
@@ -48,6 +50,9 @@ Overview
     :alt: Supported implementations
     :target: https://pypi.python.org/pypi/dtscalibration
 
+.. |zenodo| image:: https://zenodo.org/badge/143077491.svg
+   :alt: It would be greatly appreciated if you could cite this package in eg articles presentations
+   :target: https://zenodo.org/badge/latestdoi/143077491
 
 .. end-badges
 
