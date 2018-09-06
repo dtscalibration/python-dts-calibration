@@ -76,6 +76,7 @@ class DataStore(xr.Dataset):
         if 'sections' in kwargs:
             self.sections = kwargs['sections']
 
+    # noinspection PyIncorrectDocstring
     @property
     def sections(self):
         """

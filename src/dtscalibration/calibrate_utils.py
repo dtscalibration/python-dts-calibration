@@ -109,6 +109,9 @@ def calibration_single_ended_wls(ds, st_label, ast_label, st_var, ast_var,
     elif solver == 'stats':
         p_sol, p_var, p_cov = wls_stats(X, y, w=w, x0=p0_est, calc_cov=calc_cov)
 
+    else:
+        raise ValueError("Choose a valid solver")
+
     if calc_cov:
         return nt, z, p_sol, p_var, p_cov
     else:
@@ -205,6 +208,7 @@ def calibration_double_ended_wls(ds, st_label, ast_label, rst_label,
 
     Parameters
     ----------
+    ds : DataStore
     st_label
     ast_label
     rst_label
@@ -583,7 +587,7 @@ def wls_sparse(X, y, w=1., calc_cov=False, **kwargs):
         return p_sol, p_var
 
 
-def wls_stats(X, y, w=1., calc_cov=False, **kwargs):
+def wls_stats(X, y, w=1., calc_cov=False):
     import statsmodels.api as sm
 
     if sp.issparse(X):
