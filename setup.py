@@ -24,7 +24,7 @@ def read(*names, **kwargs):
 
 setup(
     name='dtscalibration',
-    version='0.3.0',
+    version='0.3.1',
     license='BSD 3-Clause License',
     description='A Python package to load raw DTS files, perform a calibration, and plot the '
                 'result',
