@@ -83,6 +83,9 @@ defined.
                 Label of where to store gamma
             store_dalpha : str
                 Label of where to store dalpha; the spatial derivative  of alpha.
+            store_alpha : str
+                Label of where to store alpha; The integrated differential attenuation.
+                alpha(x=0) = 0
             store_tmpf : str
                 Label of where to store the calibrated temperature of the forward direction
             variance_suffix : str, optional
@@ -207,7 +210,7 @@ Lets compare our calibrated values with the device calibration
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x11731ff28>
+    <matplotlib.legend.Legend at 0x11c3d86a0>
 
 
 
@@ -220,7 +223,7 @@ Lets compare our calibrated values with the device calibration
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x119354b70>
+    <matplotlib.collections.QuadMesh at 0x11e4e7c18>
 
 
 
@@ -237,7 +240,7 @@ Lets compare our calibrated values with the device calibration
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x11af29978>
+    <matplotlib.legend.Legend at 0x11abbd438>
 
 
 
@@ -255,7 +258,7 @@ this should be around 0.005929 degC.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x11afca2e8>]
+    [<matplotlib.lines.Line2D at 0x11e446588>]
 
 
 
@@ -279,7 +282,7 @@ Lets have a look at the Stokes and anti-Stokes signal.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x11afc0da0>]
+    [<matplotlib.lines.Line2D at 0x11e458dd8>]
 
 
 

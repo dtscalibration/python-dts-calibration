@@ -77,6 +77,9 @@ considered equal here and no variance is calculated.
                 Label of where to store gamma
             store_dalpha : str
                 Label of where to store dalpha; the spatial derivative  of alpha.
+            store_alpha : str
+                Label of where to store alpha; The integrated differential attenuation.
+                alpha(x=0) = 0
             store_tmpf : str
                 Label of where to store the calibrated temperature of the forward direction
             variance_suffix : str, optional

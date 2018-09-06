@@ -87,8 +87,7 @@
 
     I_var, residuals = ds.variance_stokes(st_label='ST', 
                                           sections=sections, 
-                                          use_statsmodels=False, 
-                                          debug_high_stokes_variance=False)
+                                          use_statsmodels=False)
     print("The variance of the Stokes signal along the reference sections "
           "is approximately {}".format(I_var))
 
@@ -107,9 +106,15 @@
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x11bac6630>
+    <matplotlib.collections.QuadMesh at 0x117ca74e0>
 
 
+
+The residuals should be normally distributed and independent from
+previous time steps and other points along the cable. If you observe
+patterns in the residuals plot (above), it might be caused by: - The
+temperature in the calibration bath is not uniform - Attenuation caused
+by coils/sharp bends in cable - Attenuation caused by a splice
 
 .. code:: ipython3
 
