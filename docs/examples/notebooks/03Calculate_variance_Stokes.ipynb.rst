@@ -94,7 +94,7 @@
 
 .. parsed-literal::
 
-    The variance of the Stokes signal along the reference sections is approximately 40.15998656786007
+    The variance of the Stokes signal along the reference sections is approximately 40.15998656786004
 
 
 .. code:: ipython3
@@ -106,8 +106,12 @@
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x117ca74e0>
+    <matplotlib.collections.QuadMesh at 0x1c20ca5048>
 
+
+
+
+.. image:: 03Calculate_variance_Stokes.ipynb_files/03Calculate_variance_Stokes.ipynb_5_1.png
 
 
 The residuals should be normally distributed and independent from
@@ -119,3 +123,8 @@ by coils/sharp bends in cable - Attenuation caused by a splice
 .. code:: ipython3
 
     residuals.plot.hist(bins=50);
+
+
+
+.. image:: 03Calculate_variance_Stokes.ipynb_files/03Calculate_variance_Stokes.ipynb_7_0.png
+

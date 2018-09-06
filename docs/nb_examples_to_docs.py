@@ -1,6 +1,7 @@
 # coding=utf-8
 import glob
 import os
+import shutil
 from subprocess import check_call
 
 try:
@@ -21,6 +22,10 @@ inpath = os.path.join(wd, '..', 'examples', 'notebooks')
 # ./docs/examples/notebooks
 outpath = os.path.join(wd, 'examples', 'notebooks')
 fp_index = os.path.join(wd, 'examples', 'index.rst')
+
+# clean outputdir
+shutil.rmtree(outpath)
+os.makedirs(outpath)
 
 filepathlist = sorted(glob.glob(os.path.join(inpath, file_ext)))
 filenamelist = [os.path.basename(path) for path in filepathlist]
