@@ -5,6 +5,10 @@ graft tests
 
 prune examples
 
+recursive-include docs *.ipynb_files
+recursive-include docs *.png
+recursive-include docs *.rst
+
 include .bumpversion.cfg
 include .coveragerc
 include .cookiecutterrc

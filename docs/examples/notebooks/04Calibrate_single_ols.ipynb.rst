@@ -5,13 +5,17 @@
 A double ended calibration is performed with ordinary least squares.
 Over all timesteps simultaneous. :math:`\gamma` and :math:`\alpha`
 remain constant, while :math:`C` varies over time. The weights are
-considered equal here and no variance is calculated.
+considered equal here and no variance or confidence interval is
+calculated.
 
 .. code:: ipython3
 
     import os
     
     from dtscalibration import read_xml_dir
+    import matplotlib.pyplot as plt
+    
+    %matplotlib inline
 
 .. code:: ipython3
 
@@ -152,16 +156,22 @@ Lets compare our calibrated values with the device calibration
 
 .. code:: ipython3
 
-    try:
-        import matplotlib.pyplot as plt
-        
-        ds1 = ds100.isel(time=0)  # take only the first timestep
+    ds1 = ds100.isel(time=0)  # take only the first timestep
     
-        ds1.TMPF.plot(linewidth=1, label='User calibrated')  # plot the temperature calibrated by us
-        ds1.TMP.plot(linewidth=1, label='Device calibrated')  # plot the temperature calibrated by the device
-        plt.title('Temperature at the first time step')
-        plt.legend()
-        
-    except:
-        pass
+    ds1.TMPF.plot(linewidth=1, label='User calibrated')  # plot the temperature calibrated by us
+    ds1.TMP.plot(linewidth=1, label='Device calibrated')  # plot the temperature calibrated by the device
+    plt.title('Temperature at the first time step')
+    plt.legend()
+
+
+
+
+.. parsed-literal::
+
+    <matplotlib.legend.Legend at 0x11eb1ada0>
+
+
+
+
+.. image:: 04Calibrate_single_ols.ipynb_files/04Calibrate_single_ols.ipynb_7_1.png
 

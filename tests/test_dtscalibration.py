@@ -407,7 +407,7 @@ def test_calibrate_wls_procedures():
     beta_numpy = np.linalg.lstsq(X, y, rcond=None)[0]
     np.testing.assert_array_almost_equal(beta, beta_numpy, decimal=8)
 
-    ps_sol, ps_var = wls_stats(X, y, w=1, calc_cov=0, x0=beta_0)
+    ps_sol, ps_var = wls_stats(X, y, w=1, calc_cov=0)
     p_sol, p_var = wls_sparse(X, y, w=1, calc_cov=0, x0=beta_0)
 
     np.testing.assert_array_almost_equal(beta, ps_sol, decimal=8)
@@ -415,7 +415,7 @@ def test_calibrate_wls_procedures():
 
     # now with weights
     dec = 8
-    ps_sol, ps_var, ps_cov = wls_stats(X, y_meas, w=beta_w, calc_cov=True, x0=beta_0)
+    ps_sol, ps_var, ps_cov = wls_stats(X, y_meas, w=beta_w, calc_cov=True)
     p_sol, p_var, p_cov = wls_sparse(X, y_meas, w=beta_w, calc_cov=True, x0=beta_0)
 
     np.testing.assert_array_almost_equal(p_sol, ps_sol, decimal=dec)
