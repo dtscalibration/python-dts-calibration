@@ -980,11 +980,12 @@ def open_datastore(filename_or_obj, group=None, decode_cf=True,
 
     ds_kwargs = {k: v for k, v in kwargs.items() if k not in xr_kws}
 
-    ds_xr = xr.open_dataset(filename_or_obj, group=group, decode_cf=decode_cf,
-                   mask_and_scale=mask_and_scale, decode_times=decode_times, autoclose=autoclose,
-                   concat_characters=concat_characters, decode_coords=decode_coords, engine=engine,
-                   chunks=chunks, lock=lock, cache=cache, drop_variables=drop_variables,
-                   backend_kwargs=backend_kwargs)
+    ds_xr = xr.open_dataset(
+        filename_or_obj, group=group, decode_cf=decode_cf,
+        mask_and_scale=mask_and_scale, decode_times=decode_times, autoclose=autoclose,
+        concat_characters=concat_characters, decode_coords=decode_coords, engine=engine,
+        chunks=chunks, lock=lock, cache=cache, drop_variables=drop_variables,
+        backend_kwargs=backend_kwargs)
 
     ds = DataStore(data_vars=ds_xr.data_vars,
                    coords=ds_xr.coords,
