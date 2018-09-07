@@ -107,7 +107,7 @@ def calibration_single_ended_wls(ds, st_label, ast_label, st_var, ast_var,
         p_sol, p_var, p_cov = wls_sparse(X, y, w=w, x0=p0_est, calc_cov=calc_cov)
 
     elif solver == 'stats':
-        p_sol, p_var, p_cov = wls_stats(X, y, w=w, x0=p0_est, calc_cov=calc_cov)
+        p_sol, p_var, p_cov = wls_stats(X, y, w=w, calc_cov=calc_cov)
 
     else:
         raise ValueError("Choose a valid solver")

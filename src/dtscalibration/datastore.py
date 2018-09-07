@@ -163,6 +163,85 @@ class DataStore(xr.Dataset):
             }
         return d
 
+    def to_netcdf(self, path=None, mode='w', format=None, group=None,
+                  engine=None, encoding=None, unlimited_dims=None,
+                  compute=True):
+        """Write datastore contents to a netCDF file.
+        Parameters
+        ----------
+        path : str, Path or file-like object, optional
+            Path to which to save this dataset. File-like objects are only
+            supported by the scipy engine. If no path is provided, this
+            function returns the resulting netCDF file as bytes; in this case,
+            we need to use scipy, which does not support netCDF version 4 (the
+            default format becomes NETCDF3_64BIT).
+        mode : {'w', 'a'}, optional
+            Write ('w') or append ('a') mode. If mode='w', any existing file at
+            this location will be overwritten. If mode='a', existing variables
+            will be overwritten.
+        format : {'NETCDF4', 'NETCDF4_CLASSIC', 'NETCDF3_64BIT','NETCDF3_CLASSIC'}, optional
+            File format for the resulting netCDF file:
+            * NETCDF4: Data is stored in an HDF5 file, using netCDF4 API
+              features.
+            * NETCDF4_CLASSIC: Data is stored in an HDF5 file, using only
+              netCDF 3 compatible API features.
+            * NETCDF3_64BIT: 64-bit offset version of the netCDF 3 file format,
+              which fully supports 2+ GB files, but is only compatible with
+              clients linked against netCDF version 3.6.0 or later.
+            * NETCDF3_CLASSIC: The classic netCDF 3 file format. It does not
+              handle 2+ GB files very well.
+            All formats are supported by the netCDF4-python library.
+            scipy.io.netcdf only supports the last two formats.
+            The default format is NETCDF4 if you are saving a file to disk and
+            have the netCDF4-python library available. Otherwise, xarray falls
+            back to using scipy to write netCDF files and defaults to the
+            NETCDF3_64BIT format (scipy does not support netCDF4).
+        group : str, optional
+            Path to the netCDF4 group in the given file to open (only works for
+            format='NETCDF4'). The group(s) will be created if necessary.
+        engine : {'netcdf4', 'scipy', 'h5netcdf'}, optional
+            Engine to use when writing netCDF files. If not provided, the
+            default engine is chosen based on available dependencies, with a
+            preference for 'netcdf4' if writing to a file on disk.
+        encoding : dict, optional
+            defaults to reasonable compression. Use encoding={} to disable encoding.
+            Nested dictionary with variable names as keys and dictionaries of
+            variable specific encodings as values, e.g.,
+            ``{'my_variable': {'dtype': 'int16', 'scale_factor': 0.1,
+                               'zlib': True}, ...}``
+            The `h5netcdf` engine supports both the NetCDF4-style compression
+            encoding parameters ``{'zlib': True, 'complevel': 9}`` and the h5py
+            ones ``{'compression': 'gzip', 'compression_opts': 9}``.
+            This allows using any compression plugin installed in the HDF5
+            library, e.g. LZF.
+        unlimited_dims : sequence of str, optional
+            Dimension(s) that should be serialized as unlimited dimensions.
+            By default, no dimensions are treated as unlimited dimensions.
+            Note that unlimited_dims may also be set via
+            ``dataset.encoding['unlimited_dims']``.
+        compute: boolean
+            If true compute immediately, otherwise return a
+            ``dask.delayed.Delayed`` object that can be computed later.
+        """
+        if encoding is None:
+            encoding = self.get_default_encoding()
+
+        if engine is None:
+            engine = 'netcdf4'
+
+        return super(DataStore, self).to_netcdf(
+            path, mode, format=format, group=group,
+            engine=engine, encoding=encoding,
+            unlimited_dims=unlimited_dims,
+            compute=compute)
+
+    def get_default_encoding(self):
+        compdata = dict(zlib=True, complevel=6, least_significant_digit=3, shuffle=False)
+        compcoords = dict(zlib=True, complevel=4)
+        encoding = {var: compdata for var in self.data_vars}
+        encoding.update({var: compcoords for var in self.coords})
+        return encoding
+
     def variance_stokes(self, st_label, sections=None, use_statsmodels=False,
                         suppress_info=True):
         """
@@ -300,13 +379,13 @@ class DataStore(xr.Dataset):
         resid_x = _resid_x[isort]
         resid = _resid[isort, :]
 
-        resid_da = xr.DataArray(data=np.full(shape=self[st_label].shape, fill_value=np.nan),
+        ix_resid = np.array([np.argmin(np.abs(ai - self.x.data)) for ai in resid_x])
+
+        resid_sorted = np.full(shape=self[st_label].shape, fill_value=np.nan)
+        resid_sorted[ix_resid, :] = resid
+        resid_da = xr.DataArray(data=resid_sorted,
                                 dims=('x', 'time'),
                                 coords={'x': self.x, 'time': self.time})
-
-        ix_resid = np.array([np.argmin(np.abs(ai - self.x.data)) for ai in resid_x])
-        self.x.sel(x=resid_x, method='nearest')
-        resid_da[ix_resid, :] = resid
 
         return var_I, resid_da
 
