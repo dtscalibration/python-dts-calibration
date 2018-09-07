@@ -67,7 +67,8 @@ setup(
         'nbsphinx',
         'dask',
         'toolz',
-        'matplotlib'
+        'matplotlib',
+        'netCDF4'
         # eg: 'aspectlib==1.1.1', 'six>=1.7',
         ],
     extras_require={

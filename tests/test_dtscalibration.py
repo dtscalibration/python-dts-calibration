@@ -4,6 +4,7 @@ import os
 import numpy as np
 import scipy.sparse as sp
 from scipy import stats
+import tempfile
 
 from dtscalibration import DataStore
 from dtscalibration import read_xml_dir
@@ -320,6 +321,23 @@ def test_variance_of_stokes():
                                    decimal=1)
 
     pass
+
+
+# def test_variance_of_stokes_dask():
+#     correct_var = 40.16
+#     filepath = data_dir_double_ended2
+#     ds = read_xml_dir(filepath,
+#                       timezone_netcdf='UTC',
+#                       timezone_ultima_xml='Europe/Amsterdam',
+#                       file_ext='*.xml')
+#     sections = {
+#         'probe1Temperature': [slice(7.5, 17.), slice(70., 80.)],  # cold bath
+#         'probe2Temperature': [slice(24., 34.), slice(85., 95.)],  # warm bath
+#         }
+#
+#     with tempfile.NamedTemporaryFile(suffix=".ipynb") as fout:
+#         ds.to_netcdf(fout)
+#         dt
 
 
 def test_variance_of_stokes_synthetic():

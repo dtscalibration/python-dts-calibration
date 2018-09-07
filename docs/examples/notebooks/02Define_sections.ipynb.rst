@@ -47,16 +47,16 @@ while :math:`C` may vary.
 At least two calibration sections of different temperatures are needed
 to perform a decent calibration procedure.
 
-+------------+------------------------------+----------------+--------------------+
-| Name       | Name reference temperature   | Number of      | Location of        |
-| section    | time series                  | stretches      | sections (m)       |
-+============+==============================+================+====================+
-| Cold bath  | probe1Temperature            | 2              | 7.5-17.0;          |
-|            |                              |                | 70.0-80.0          |
-+------------+------------------------------+----------------+--------------------+
-| Warm bath  | probe2Temperature            | 2              | 24.0-34.0;         |
-|            |                              |                | 85.0-95.0          |
-+------------+------------------------------+----------------+--------------------+
++---------+---------------------------+-------------+-----------------+
+| Name    | Name reference            | Number of   | Location of     |
+| section | temperature time series   | stretches   | sections (m)    |
++=========+===========================+=============+=================+
+| Cold    | probe1Temperature         | 2           | 7.5-17.0;       |
+| bath    |                           |             | 70.0-80.0       |
++---------+---------------------------+-------------+-----------------+
+| Warm    | probe2Temperature         | 2           | 24.0-34.0;      |
+| bath    |                           |             | 85.0-95.0       |
++---------+---------------------------+-------------+-----------------+
 
 Each section requires a reference temperature time series, such as the
 temperature measured by an external temperature sensor. They should
