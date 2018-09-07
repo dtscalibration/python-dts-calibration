@@ -236,7 +236,7 @@ def grab_data2(filelist, sep=':'):
     if not double_ended_flag:
         extra2.append(('log', 'customData', 'UserConfiguration',
                        'ChannelConfiguration', 'AcquisitionConfiguration',
-                       'AcquisitionTime', 'userAcquisitionTime'))
+                       'AcquisitionTime', 'userAcquisitionTimeFW'))
 
     else:
         extra2.append(('log', 'customData', 'UserConfiguration',
@@ -386,7 +386,7 @@ def coords_time(extra, timearr, timezone_netcdf, timezone_ultima_xml):
 
     if not double_ended_flag:
         # single ended measurement
-        dt1 = extra['userAcquisitionTime']['array'].astype('timedelta64[s]')
+        dt1 = extra['userAcquisitionTimeFW']['array'].astype('timedelta64[s]')
 
         # start of the forward measurement
         index_time_FWstart = maxTimeIndex - dt1
@@ -499,21 +499,39 @@ def get_netcdf_encoding(ds, zlib=True, complevel=5, **kwargs):
     return encoding
 
 
-def check_timestep_allclose(ds, dim, eps=0.2):
+def check_timestep_allclose(ds, eps=0.01):
     """
-    Check if all timesteps are of equal size.
+    Check if all timesteps are of equal size. For now it is not possible to calibrate over timesteps
+    if the acquisition time of timesteps varies, as the Stokes variance would change over time.
+
+    The acquisition time is stored for single ended
+    measurements in userAcquisitionTime, for doubleended measurements in userAcquisitionTimeFW
+    and userAcquisitionTimeBW
     Parameters
     ----------
-    ds
-    dim
-    eps
+    ds : DataStore
+    dim : str
+        Label of the acquisition timeseries
+    eps : float
+        Default accepts 1% of relative variation between min and max acquisition time.
 
     Returns
     -------
 
     """
-    dt = (ds[dim].data[1:] - ds[dim].data[:-1]).astype(float)
-    dtmin = dt.min().astype(float)
-    dtmax = dt.max().astype(float)
+    dim = ds.channel_configuration['chfw']['acquisitiontime_label']
+    dt = ds[dim].data
+    dtmin = dt.min()
+    dtmax = dt.max()
     dtavg = (dtmin + dtmax) / 2
-    (dtmax - dtmin) / dtavg < epsilon
+    assert (dtmax - dtmin) / dtavg < eps, 'Acquisition time is Forward channel not equal for all ' \
+                                          'time steps'
+
+    if ds.is_double_ended:
+        dim = ds.channel_configuration['chbw']['acquisitiontime_label']
+        dt = ds[dim].data
+        dtmin = dt.min()
+        dtmax = dt.max()
+        dtavg = (dtmin + dtmax) / 2
+        assert (dtmax - dtmin) / dtavg < eps, 'Acquisition time Backward channel is not equal ' \
+                                              'for all time steps'

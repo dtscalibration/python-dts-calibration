@@ -108,7 +108,7 @@
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x11fc61f28>
+    <matplotlib.collections.QuadMesh at 0x11655ea90>
 
 
 

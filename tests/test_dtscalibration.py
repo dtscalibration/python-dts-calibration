@@ -50,10 +50,11 @@ def test_double_ended_variance_estimate_synthetic():
 
     stokes_m_var = 40.
     cable_len = 100.
-    time = np.arange(500)
+    nt = 500
+    time = np.arange(nt)
     x = np.linspace(0., cable_len, 100)
-    ts_cold = np.ones(time.size) * 4.
-    ts_warm = np.ones(time.size) * 20.
+    ts_cold = np.ones(nt) * 4.
+    ts_warm = np.ones(nt) * 20.
 
     C_p = 15246
     C_m = 2400.
@@ -63,7 +64,7 @@ def test_double_ended_variance_estimate_synthetic():
     gamma = 482.6
     cold_mask = x < 0.5 * cable_len
     warm_mask = np.invert(cold_mask)  # == False
-    temp_real = np.ones((len(x), time.size))
+    temp_real = np.ones((len(x), nt))
     temp_real[cold_mask] *= ts_cold + 273.15
     temp_real[warm_mask] *= ts_warm + 273.15
 
@@ -96,12 +97,16 @@ def test_double_ended_variance_estimate_synthetic():
         'mast':  (['x', 'time'], ast_m),
         'mrst':  (['x', 'time'], rst_m),
         'mrast': (['x', 'time'], rast_m),
+        'userAcquisitionTimeFW': (['time'], np.ones(nt)),
+        'userAcquisitionTimeBW': (['time'], np.ones(nt)),
         'cold':  (['time'], ts_cold),
         'warm':  (['time'], ts_warm)
         },
         coords={
             'x':    x,
-            'time': time})
+            'time': time},
+        attrs={
+            'customData:isDoubleEnded': '1'})
 
     sections = {
         'cold': [slice(0., 0.5 * cable_len)],
@@ -191,10 +196,11 @@ def test_single_ended_variance_estimate_synthetic():
     stokes_m_var = 40.
     astokes_m_var = 60.
     cable_len = 100.
-    time = np.arange(50)
+    nt = 50
+    time = np.arange(nt)
     x = np.linspace(0., cable_len, 500)
-    ts_cold = np.ones(time.size) * 4.
-    ts_warm = np.ones(time.size) * 20.
+    ts_cold = np.ones(nt) * 4.
+    ts_warm = np.ones(nt) * 20.
 
     C_p = 15246
     C_m = 2400.
@@ -204,7 +210,7 @@ def test_single_ended_variance_estimate_synthetic():
     gamma = 482.6
     cold_mask = x < 0.5 * cable_len
     warm_mask = np.invert(cold_mask)  # == False
-    temp_real = np.ones((len(x), time.size))
+    temp_real = np.ones((len(x), nt))
     temp_real[cold_mask] *= ts_cold + 273.15
     temp_real[warm_mask] *= ts_warm + 273.15
 
@@ -225,12 +231,15 @@ def test_single_ended_variance_estimate_synthetic():
         'ast':   (['x', 'time'], ast),
         'mst':   (['x', 'time'], st_m),
         'mast':  (['x', 'time'], ast_m),
+        'userAcquisitionTimeFW': (['time'], np.ones(nt)),
         'cold':  (['time'], ts_cold),
         'warm':  (['time'], ts_warm)
         },
         coords={
             'x':    x,
-            'time': time})
+            'time': time},
+        attrs={
+            'customData:isDoubleEnded': '0'})
 
     sections = {
         'cold': [slice(0., 0.5 * cable_len)],
@@ -337,11 +346,13 @@ def test_variance_of_stokes_synthetic():
 
     ds = DataStore({
         'test_ST': (['x', 'time'], y),
-        'probe1Temperature':  (['time'], range(nt))
+        'probe1Temperature':  (['time'], range(nt)),
+        'userAcquisitionTimeFW': (['time'], np.ones(nt)),
         },
         coords={
             'x':    x,
-            'time': range(nt)})
+            'time': range(nt)},
+        attrs={'customData:isDoubleEnded': '0'})
 
     sections = {'probe1Temperature': [slice(0., 20.), ]}
     test_ST_var, _ = ds.variance_stokes(st_label='test_ST',
@@ -424,7 +435,7 @@ def test_calibrate_wls_procedures():
 
     # Test array sparse
     Xsp = sp.coo_matrix(X)
-    psp_sol, psp_var, psp_cov = wls_stats(Xsp, y_meas, w=beta_w, calc_cov=True, x0=beta_0)
+    psp_sol, psp_var, psp_cov = wls_stats(Xsp, y_meas, w=beta_w, calc_cov=True)
 
     np.testing.assert_array_almost_equal(p_sol, psp_sol, decimal=dec)
     np.testing.assert_array_almost_equal(p_var, psp_var, decimal=dec)

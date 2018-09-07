@@ -17,6 +17,7 @@ from dtscalibration.calibrate_utils import calibration_single_ended_wls
 from dtscalibration.calibrate_utils import conf_int_double_ended
 from dtscalibration.calibrate_utils import conf_int_single_ended
 from dtscalibration.datastore_utils import check_dims
+from dtscalibration.datastore_utils import check_timestep_allclose
 from dtscalibration.datastore_utils import coords_time
 from dtscalibration.datastore_utils import grab_data2
 
@@ -125,6 +126,43 @@ class DataStore(xr.Dataset):
         self.sections = None
         pass
 
+    @property
+    def is_double_ended(self):
+        return bool(int(self.attrs['customData:isDoubleEnded']))
+
+    @property
+    def chfw(self):
+        return int(self.attrs['customData:forwardMeasurementChannel']) - 1  # zero-based
+
+    @property
+    def chbw(self):
+        if self.is_double_ended:
+            return int(self.attrs['customData:reverseMeasurementChannel']) - 1  # zero-based
+        else:
+            return None
+
+    @property
+    def channel_configuration(self):
+        d = {
+            'chfw': {
+                'st_label':              'ST',
+                'ast_label':             'AST',
+                'acquisitiontime_label': 'userAcquisitionTimeFW',
+                'time_start_label':      'timeFWstart',
+                'time_label':            'timeFW',
+                'time_end_label':        'timeFWend',
+                },
+            'chbw': {
+                'st_label':              'REV-ST',
+                'ast_label':             'REV-AST',
+                'acquisitiontime_label': 'userAcquisitionTimeBW',
+                'time_start_label':      'timeBWstart',
+                'time_label':            'timeBW',
+                'time_end_label':        'timeBWend',
+                }
+            }
+        return d
+
     def variance_stokes(self, st_label, sections=None, use_statsmodels=False,
                         suppress_info=True):
         """
@@ -165,6 +203,7 @@ class DataStore(xr.Dataset):
             assert self.sections, 'sections are not defined'
 
         check_dims(self, [st_label], correct_dims=('x', 'time'))
+        check_timestep_allclose(self, eps=0.01)
 
         nt = self['time'].size
 
