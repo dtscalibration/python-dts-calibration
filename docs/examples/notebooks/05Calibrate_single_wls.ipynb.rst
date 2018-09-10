@@ -204,36 +204,20 @@ Lets compare our calibrated values with the device calibration
     ds1.TMPF.plot(linewidth=1, label='User calibrated')  # plot the temperature calibrated by us
     ds1.TMP.plot(linewidth=1, label='Device calibrated')  # plot the temperature calibrated by the device
     plt.title('Temperature at the first time step')
-    plt.legend()
+    plt.legend();
 
 
 
-
-.. parsed-literal::
-
-    <matplotlib.legend.Legend at 0x126009128>
-
-
-
-
-.. image:: 05Calibrate_single_wls.ipynb_files/05Calibrate_single_wls.ipynb_12_1.png
+.. image:: 05Calibrate_single_wls.ipynb_files/05Calibrate_single_wls.ipynb_12_0.png
 
 
 .. code:: ipython3
 
-    ds.TMPF_MC_var.plot()
+    ds.TMPF_MC_var.plot();
 
 
 
-
-.. parsed-literal::
-
-    <matplotlib.collections.QuadMesh at 0x12601b438>
-
-
-
-
-.. image:: 05Calibrate_single_wls.ipynb_files/05Calibrate_single_wls.ipynb_13_1.png
+.. image:: 05Calibrate_single_wls.ipynb_files/05Calibrate_single_wls.ipynb_13_0.png
 
 
 .. code:: ipython3
@@ -242,19 +226,11 @@ Lets compare our calibrated values with the device calibration
     ds1.TMPF_MC.sel(CI=0.975).plot(label = '97.5% CI')
     ds1.TMPF.plot(label='User calibrated')
     plt.title('User calibrated temperature with 95% confidence interval')
-    plt.legend()
+    plt.legend();
 
 
 
-
-.. parsed-literal::
-
-    <matplotlib.legend.Legend at 0x127830208>
-
-
-
-
-.. image:: 05Calibrate_single_wls.ipynb_files/05Calibrate_single_wls.ipynb_14_1.png
+.. image:: 05Calibrate_single_wls.ipynb_files/05Calibrate_single_wls.ipynb_14_0.png
 
 
 We can tell from the graph above that the 95% confidence interval widens
@@ -264,19 +240,11 @@ this should be around 0.005929 degC.
 
 .. code:: ipython3
 
-    ds1.TMPF_MC_var.plot()
+    ds1.TMPF_MC_var.plot();
 
 
 
-
-.. parsed-literal::
-
-    [<matplotlib.lines.Line2D at 0x12a92c5f8>]
-
-
-
-
-.. image:: 05Calibrate_single_wls.ipynb_files/05Calibrate_single_wls.ipynb_16_1.png
+.. image:: 05Calibrate_single_wls.ipynb_files/05Calibrate_single_wls.ipynb_16_0.png
 
 
 The variance of the temperature measurement appears to be larger than
@@ -292,19 +260,11 @@ Lets have a look at the Stokes and anti-Stokes signal.
 .. code:: ipython3
 
     ds1.ST.plot()
-    ds1.AST.plot()
+    ds1.AST.plot();
 
 
 
-
-.. parsed-literal::
-
-    [<matplotlib.lines.Line2D at 0x12a8c4da0>]
-
-
-
-
-.. image:: 05Calibrate_single_wls.ipynb_files/05Calibrate_single_wls.ipynb_18_1.png
+.. image:: 05Calibrate_single_wls.ipynb_files/05Calibrate_single_wls.ipynb_18_0.png
 
 
 Clearly there was a bad splice at 30 m that resulted in the sharp

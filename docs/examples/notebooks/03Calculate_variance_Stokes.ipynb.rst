@@ -101,19 +101,11 @@
 
 .. code:: ipython3
 
-    residuals.plot(figsize=(12, 8))
+    residuals.plot(figsize=(12, 8));
 
 
 
-
-.. parsed-literal::
-
-    <matplotlib.collections.QuadMesh at 0x121cac1d0>
-
-
-
-
-.. image:: 03Calculate_variance_Stokes.ipynb_files/03Calculate_variance_Stokes.ipynb_5_1.png
+.. image:: 03Calculate_variance_Stokes.ipynb_files/03Calculate_variance_Stokes.ipynb_5_0.png
 
 
 The residuals should be normally distributed and independent from
