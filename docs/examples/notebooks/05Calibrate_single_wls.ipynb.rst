@@ -211,7 +211,7 @@ Lets compare our calibrated values with the device calibration
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x117cabfd0>
+    <matplotlib.legend.Legend at 0x126009128>
 
 
 
@@ -228,7 +228,7 @@ Lets compare our calibrated values with the device calibration
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x117cd2f60>
+    <matplotlib.collections.QuadMesh at 0x12601b438>
 
 
 
@@ -249,7 +249,7 @@ Lets compare our calibrated values with the device calibration
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x102039e10>
+    <matplotlib.legend.Legend at 0x127830208>
 
 
 
@@ -271,7 +271,7 @@ this should be around 0.005929 degC.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x102ef4cc0>]
+    [<matplotlib.lines.Line2D at 0x12a92c5f8>]
 
 
 
@@ -299,7 +299,7 @@ Lets have a look at the Stokes and anti-Stokes signal.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x102df2eb8>]
+    [<matplotlib.lines.Line2D at 0x12a8c4da0>]
 
 
 

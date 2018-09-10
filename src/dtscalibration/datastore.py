@@ -6,6 +6,7 @@ import os
 import dask.array as da
 import numpy as np
 import scipy.sparse as sp
+import scipy.stats as sst
 import xarray as xr
 import yaml
 from scipy.sparse import linalg as ln
@@ -14,8 +15,6 @@ from dtscalibration.calibrate_utils import calibration_double_ended_ols
 from dtscalibration.calibrate_utils import calibration_double_ended_wls
 from dtscalibration.calibrate_utils import calibration_single_ended_ols
 from dtscalibration.calibrate_utils import calibration_single_ended_wls
-from dtscalibration.calibrate_utils import conf_int_double_ended
-from dtscalibration.calibrate_utils import conf_int_single_ended
 from dtscalibration.datastore_utils import check_dims
 from dtscalibration.datastore_utils import check_timestep_allclose
 from dtscalibration.datastore_utils import coords_time
@@ -243,7 +242,7 @@ class DataStore(xr.Dataset):
         return encoding
 
     def variance_stokes(self, st_label, sections=None, use_statsmodels=False,
-                        suppress_info=True):
+                        suppress_info=True, reshape_residuals=True):
         """
         Calculates the variance between the measurements and a best fit exponential at each
         reference section. This fits a two-parameter exponential to the stokes measurements. The
@@ -364,30 +363,33 @@ class DataStore(xr.Dataset):
         resid = I_est - y
         var_I = resid.std(ddof=ddof) ** 2
 
-        # restructure the residuals, such that they can be plotted and added to ds
-        resid_res = []
-        for leni, lenis, lenie in zip(
-            len_stretch_list,
-            nt * np.cumsum([0] + len_stretch_list[:-1]),
-                nt * np.cumsum(len_stretch_list)):
+        if not reshape_residuals:
+            return var_I, resid
+        else:
+            # restructure the residuals, such that they can be plotted and added to ds
+            resid_res = []
+            for leni, lenis, lenie in zip(
+                len_stretch_list,
+                nt * np.cumsum([0] + len_stretch_list[:-1]),
+                    nt * np.cumsum(len_stretch_list)):
 
-            resid_res.append(resid[lenis:lenie].reshape(leni, nt))
+                resid_res.append(resid[lenis:lenie].reshape(leni, nt))
 
-        _resid = np.concatenate(resid_res)
-        _resid_x = self.ufunc_per_section(label='x', calc_per='all')
-        isort = np.argsort(_resid_x)
-        resid_x = _resid_x[isort]
-        resid = _resid[isort, :]
+            _resid = np.concatenate(resid_res)
+            _resid_x = self.ufunc_per_section(label='x', calc_per='all')
+            isort = np.argsort(_resid_x)
+            resid_x = _resid_x[isort]
+            resid = _resid[isort, :]
 
-        ix_resid = np.array([np.argmin(np.abs(ai - self.x.data)) for ai in resid_x])
+            ix_resid = np.array([np.argmin(np.abs(ai - self.x.data)) for ai in resid_x])
 
-        resid_sorted = np.full(shape=self[st_label].shape, fill_value=np.nan)
-        resid_sorted[ix_resid, :] = resid
-        resid_da = xr.DataArray(data=resid_sorted,
-                                dims=('x', 'time'),
-                                coords={'x': self.x, 'time': self.time})
+            resid_sorted = np.full(shape=self[st_label].shape, fill_value=np.nan)
+            resid_sorted[ix_resid, :] = resid
+            resid_da = xr.DataArray(data=resid_sorted,
+                                    dims=('x', 'time'),
+                                    coords={'x': self.x, 'time': self.time})
 
-        return var_I, resid_da
+            return var_I, resid_da
 
     def inverse_variance_weighted_mean(self,
                                        tmp1='TMPF',
@@ -468,6 +470,8 @@ class DataStore(xr.Dataset):
                                  store_dalpha='dalpha',
                                  store_alpha='alpha',
                                  store_tmpf='TMPF',
+                                 store_p_cov='p_cov',
+                                 store_p_sol='p_val',
                                  variance_suffix='_var',
                                  method='ols',
                                  store_tempvar=None,
@@ -592,12 +596,27 @@ class DataStore(xr.Dataset):
                  + c + self.x.data[:, None] * dalpha) - 273.15
             self[store_tmpf] = (('x', 'time'), tempF_data)
 
+        if store_p_sol and method == 'wls':
+            self[store_p_sol] = (('params1',), p_sol)
+            _p_sol = store_p_sol
+        elif method == 'wls':
+            _p_sol = p_sol
+        else:
+            _p_sol = None
+
+        if store_p_cov and method == 'wls':
+            self[store_p_cov] = (('params1', 'params2'), p_cov)
+            _p_cov = store_p_cov
+        elif method == 'wls':
+            _p_cov = p_cov
+        else:
+            _p_cov = None
+
         if conf_ints:
             assert method == 'wls'
-            conf_int_single_ended(
-                self,
-                p_sol,
-                p_cov,
+            self.conf_int_single_ended(
+                p_sol=_p_sol,
+                p_cov=_p_cov,
                 st_label=st_label,
                 ast_label=ast_label,
                 st_var=st_var,
@@ -629,6 +648,8 @@ class DataStore(xr.Dataset):
                                  store_alpha='alpha',
                                  store_tmpf='TMPF',
                                  store_tmpb='TMPB',
+                                 store_p_cov='p_cov',
+                                 store_p_sol='p_val',
                                  variance_suffix='_var',
                                  method='ols',
                                  store_tempvar=None,
@@ -636,8 +657,8 @@ class DataStore(xr.Dataset):
                                  conf_ints_size=100,
                                  ci_avg_time_flag=False,
                                  solver='sparse',
-                                 da_random_state=None
-                                 ):
+                                 da_random_state=None,
+                                 dtype32=False):
         """
 
         Parameters
@@ -733,7 +754,7 @@ class DataStore(xr.Dataset):
 
             nt, z, p_sol, p_var, p_cov = calibration_double_ended_wls(
                 self, st_label, ast_label, rst_label, rast_label,
-                st_var, ast_var, rst_var, rast_var, solver=solver)
+                st_var, ast_var, rst_var, rast_var, solver=solver, dtype32=dtype32)
 
             gamma = p_sol[0]
             alphaint = p_sol[1]
@@ -776,12 +797,27 @@ class DataStore(xr.Dataset):
                  + c - alpha[:, None] + alphaint) - 273.15
             self[store_tmpb] = (('x', 'time'), tempB_data)
 
+        if store_p_sol and method == 'wls':
+            self[store_p_sol] = (('params1',), p_sol)
+            _p_sol = store_p_sol
+        elif method == 'wls':
+            _p_sol = p_sol
+        else:
+            _p_sol = None
+
+        if store_p_cov and method == 'wls':
+            self[store_p_cov] = (('params1', 'params2'), p_cov)
+            _p_cov = store_p_cov
+        elif method == 'wls':
+            _p_cov = p_cov
+        else:
+            _p_cov = None
+
         if conf_ints:
             assert method == 'wls'
-            conf_int_double_ended(
-                self,
-                p_sol,
-                p_cov,
+            self.conf_int_double_ended(
+                p_sol=_p_sol,
+                p_cov=_p_cov,
                 st_label=st_label,
                 ast_label=ast_label,
                 rst_label=rst_label,
@@ -803,6 +839,237 @@ class DataStore(xr.Dataset):
                 da_random_state=da_random_state)
 
         pass
+
+    def conf_int_single_ended(self,
+                              p_sol,
+                              p_cov,
+                              st_label='ST',
+                              ast_label='AST',
+                              st_var=None,
+                              ast_var=None,
+                              store_c='c',
+                              store_gamma='gamma',
+                              store_dalpha='dalpha',
+                              store_tmpf='TMPF',
+                              store_tempvar=None,
+                              conf_ints=None,
+                              conf_ints_size=100,
+                              ci_avg_time_flag=False,
+                              da_random_state=None
+                              ):
+
+        no, nt = self[st_label].data.shape
+        npar = nt + 2  # number of parameters
+
+        assert isinstance(p_sol, (str, np.ndarray, np.generic))
+        if isinstance(p_sol, str):
+            p_sol = self[p_sol].data
+        assert p_sol.shape == (npar,)
+
+        assert isinstance(p_cov, (str, np.ndarray, np.generic))
+        if isinstance(p_cov, str):
+            p_cov = self[p_cov].data
+        assert p_cov.shape == (npar, npar)
+
+        nt = self.time.size
+
+        p_mc = sst.multivariate_normal.rvs(mean=p_sol,
+                                           cov=p_cov,
+                                           size=conf_ints_size)
+        self.coords['MC'] = range(conf_ints_size)
+        self.coords['CI'] = conf_ints
+        gamma = p_mc[:, 0]
+        dalpha = p_mc[:, 1]
+        c = p_mc[:, 2:nt + 2]
+        self[store_gamma + '_MC'] = (('MC',), gamma)
+        self[store_dalpha + '_MC'] = (('MC',), dalpha)
+        self[store_c + '_MC'] = (('MC', 'time',), c)
+        rshape = (self.MC.size, self.x.size, self.time.size)
+        if da_random_state:
+            state = da_random_state
+        else:
+            state = da.random.RandomState()
+        r_st = state.normal(loc=0, scale=st_var ** 0.5, size=rshape, chunks=rshape)
+        r_ast = state.normal(loc=0, scale=ast_var ** 0.5, size=rshape, chunks=rshape)
+        self['r_st'] = (('MC', 'x', 'time'), r_st)
+        self['r_ast'] = (('MC', 'x', 'time'), r_ast)
+
+        tempF_data = self[store_gamma + '_MC'] / (xr.ufuncs.log(
+            (self[st_label] + self['r_st']) / (self[ast_label] + self['r_ast']))
+                                                + self[store_c + '_MC'] + (
+                                                        self.x * self[store_dalpha + '_MC'])) - 273.15
+        self[store_tmpf + '_MC'] = (('MC', 'x', 'time'), tempF_data)
+
+        if ci_avg_time_flag:
+            if store_tempvar:
+                self[store_tmpf + '_MC' + store_tempvar] = (self[store_tmpf + '_MC'] - self[
+                    store_tmpf]).std(dim=['MC', 'time'], ddof=1) ** 2
+
+            q = self[store_tmpf + '_MC'].quantile(conf_ints, dim=['MC', 'time'])
+            self[store_tmpf + '_MC'] = (('CI', 'x'), q)
+
+        else:
+            if store_tempvar:
+                self[store_tmpf + '_MC' + store_tempvar] = (self[store_tmpf + '_MC'] - self[
+                    store_tmpf]).std(dim='MC', ddof=1) ** 2
+
+            q = self[store_tmpf + '_MC'].quantile(conf_ints, dim='MC')
+            self[store_tmpf + '_MC'] = (('CI', 'x', 'time'), q)
+        drop_var = [store_gamma + '_MC',
+                    store_dalpha + '_MC',
+                    store_c + '_MC',
+                    'MC',
+                    'r_st',
+                    'r_ast']
+        for k in drop_var:
+            del self[k]
+
+    def conf_int_double_ended(self,
+                              p_sol=None,
+                              p_cov=None,
+                              st_label='ST',
+                              ast_label='AST',
+                              rst_label='REV-ST',
+                              rast_label='REV-AST',
+                              st_var=None,
+                              ast_var=None,
+                              rst_var=None,
+                              rast_var=None,
+                              store_c='c',
+                              store_gamma='gamma',
+                              store_alphaint='alphaint',
+                              store_alpha='alpha',
+                              store_tmpf='TMPF',
+                              store_tmpb='TMPB',
+                              store_tempvar=None,
+                              conf_ints=None,
+                              conf_ints_size=100,
+                              ci_avg_time_flag=False,
+                              da_random_state=None
+                              ):
+        """
+
+        Parameters
+        ----------
+        p_sol : array-like
+            parameter solution directly from calibration_double_ended_wls
+        p_cov : array-like
+            parameter covariance at the solution directly from calibration_double_ended_wls
+        st_label
+        ast_label
+        rst_label
+        rast_label
+        st_var
+        ast_var
+        rst_var
+        rast_var
+        store_c
+        store_gamma
+        store_alphaint
+        store_alpha
+        store_tmpf
+        store_tmpb
+        store_tempvar
+        conf_ints
+        conf_ints_size
+        ci_avg_time_flag
+        da_random_state
+
+        Returns
+        -------
+
+        """
+
+        no, nt = self[st_label].data.shape
+        npar = nt + 2 + no  # number of parameters
+
+        assert isinstance(p_sol, (str, np.ndarray, np.generic))
+        if isinstance(p_sol, str):
+            p_sol = self[p_sol].data
+        assert p_sol.shape == (npar,)
+
+        assert isinstance(p_cov, (str, np.ndarray, np.generic))
+        if isinstance(p_cov, str):
+            p_cov = self[p_cov].data
+        assert p_cov.shape == (npar, npar)
+
+        p_mc = sst.multivariate_normal.rvs(mean=p_sol,
+                                           cov=p_cov,
+                                           size=conf_ints_size)
+        self.coords['MC'] = range(conf_ints_size)
+        self.coords['CI'] = conf_ints
+        gamma = p_mc[:, 0]
+        alphaint = p_mc[:, 1]
+        c = p_mc[:, 2:nt + 2]
+        alpha = p_mc[:, nt + 2:]
+        self[store_gamma + '_MC'] = (('MC',), gamma)
+        self[store_alphaint + '_MC'] = (('MC',), alphaint)
+        self[store_alpha + '_MC'] = (('MC', 'x',), alpha)
+        self[store_c + '_MC'] = (('MC', 'time',), c)
+        rshape = (self.MC.size, self.x.size, self.time.size)
+
+        if da_random_state:
+            # In testing environments
+            assert isinstance(da_random_state, da.random.RandomState)
+
+            state = da_random_state
+        else:
+            state = da.random.RandomState()
+
+        r_st = state.normal(loc=0, scale=st_var ** 0.5, size=rshape, chunks=rshape)
+        r_ast = state.normal(loc=0, scale=ast_var ** 0.5, size=rshape, chunks=rshape)
+        r_rst = state.normal(loc=0, scale=rst_var ** 0.5, size=rshape, chunks=rshape)
+        r_rast = state.normal(loc=0, scale=rast_var ** 0.5, size=rshape, chunks=rshape)
+        self['r_st'] = (('MC', 'x', 'time'), r_st)
+        self['r_ast'] = (('MC', 'x', 'time'), r_ast)
+        self['r_rst'] = (('MC', 'x', 'time'), r_rst)
+        self['r_rast'] = (('MC', 'x', 'time'), r_rast)
+        # deal with FW
+        tempF_data = self[store_gamma + '_MC'] / (xr.ufuncs.log(
+            (self[st_label] + self['r_st']) / (self[ast_label] + self['r_ast']))
+                                                + self[store_c + '_MC'] + self[
+                                                    store_alpha + '_MC']) - 273.15
+        self[store_tmpf + '_MC'] = (('MC', 'x', 'time'), tempF_data)
+        tempB_data = self[store_gamma + '_MC'] / (xr.ufuncs.log(
+            (self[rst_label] + self['r_rst']) / (self[rast_label] + self['r_rast']))
+                                                + self[store_c + '_MC'] - self[store_alpha + '_MC'] +
+                                                self[store_alphaint + '_MC']) - 273.15
+        self[store_tmpb + '_MC'] = (('MC', 'x', 'time'), tempB_data)
+
+        if ci_avg_time_flag:
+            if store_tempvar:
+                self[store_tmpf + '_MC' + store_tempvar] = (self[store_tmpf + '_MC'] - self[
+                    store_tmpf]).std(dim=['MC', 'time'], ddof=1) ** 2
+                self[store_tmpb + '_MC' + store_tempvar] = (self[store_tmpb + '_MC'] - self[
+                    store_tmpb]).std(dim=['MC', 'time'], ddof=1) ** 2
+
+            q = self[store_tmpf + '_MC'].quantile(conf_ints, dim=['MC', 'time'])
+            self[store_tmpf + '_MC'] = (('CI', 'x'), q)
+            q = self[store_tmpb + '_MC'].quantile(conf_ints, dim=['MC', 'time'])
+            self[store_tmpb + '_MC'] = (('CI', 'x'), q)
+
+        else:
+            if store_tempvar:
+                self[store_tmpf + '_MC' + store_tempvar] = (self[store_tmpf + '_MC'] - self[
+                    store_tmpf]).std(dim='MC', ddof=1) ** 2
+                self[store_tmpb + '_MC' + store_tempvar] = (self[store_tmpb + '_MC'] - self[
+                    store_tmpb]).std(dim='MC', ddof=1) ** 2
+
+            q = self[store_tmpf + '_MC'].quantile(conf_ints, dim='MC')
+            self[store_tmpf + '_MC'] = (('CI', 'x', 'time'), q)
+            q = self[store_tmpb + '_MC'].quantile(conf_ints, dim='MC')
+            self[store_tmpb + '_MC'] = (('CI', 'x', 'time'), q)
+        drop_var = [store_gamma + '_MC',
+                    store_alphaint + '_MC',
+                    store_alpha + '_MC',
+                    store_c + '_MC',
+                    'MC',
+                    'r_st',
+                    'r_ast',
+                    'r_rst',
+                    'r_rast']
+        for k in drop_var:
+            del self[k]
 
     def ufunc_per_section(self,
                           func=None,
@@ -874,7 +1141,7 @@ class DataStore(xr.Dataset):
                     assert not temp_err
                     assert not subtract_from_label
 
-                    arg2 = np.broadcast_to(self[k].data, arg1.shape)
+                    arg2 = da.broadcast_to(self[k].data, arg1.shape)
                     out[k].append(arg2)
 
                 else:
@@ -885,11 +1152,20 @@ class DataStore(xr.Dataset):
                 out[k] = [func(argi, **func_kwargs) for argi in out[k]]
 
             elif calc_per == 'section':
-                out[k] = func(np.concatenate(out[k]), **func_kwargs)
+                out[k] = func(da.concatenate(out[k]), **func_kwargs)
 
         if calc_per == 'all':
-            out = {k: np.concatenate(section) for k, section in out.items()}
-            out = func(np.concatenate(list(out.values()), axis=0), **func_kwargs)
+            out = {k: da.concatenate(section) for k, section in out.items()}
+            out = func(da.concatenate(list(out.values()), axis=0), **func_kwargs)
+
+            if hasattr(out, 'chunks') and 'x' in self[label].dims:
+                # also sum the chunksize in the x dimension
+                # first find out where the x dim is
+                ixdim = self[label].dims.index('x')
+                c_old = out.chunks
+                c_new = list(c_old)
+                c_new[ixdim] = sum(c_old[ixdim])
+                out = out.rechunk(c_new)
 
         return out
 

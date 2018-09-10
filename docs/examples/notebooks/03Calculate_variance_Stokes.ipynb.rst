@@ -91,12 +91,12 @@
                                           sections=sections, 
                                           use_statsmodels=False)
     print("The variance of the Stokes signal along the reference sections "
-          "is approximately {}".format(I_var))
+          "is approximately {} on a {} sec acquisition time".format(I_var, ds.userAcquisitionTimeFW.data[0]))
 
 
 .. parsed-literal::
 
-    The variance of the Stokes signal along the reference sections is approximately 40.15998656786007
+    The variance of the Stokes signal along the reference sections is approximately 40.15998656786007 on a 2.0 sec acquisition time
 
 
 .. code:: ipython3
@@ -108,7 +108,7 @@
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x114e8d2b0>
+    <matplotlib.collections.QuadMesh at 0x121cac1d0>
 
 
 
@@ -129,4 +129,17 @@ by coils/sharp bends in cable - Attenuation caused by a splice
 
 
 .. image:: 03Calculate_variance_Stokes.ipynb_files/03Calculate_variance_Stokes.ipynb_7_0.png
+
+
+.. code:: ipython3
+
+    ds.userAcquisitionTimeFW.data[0]
+
+
+
+
+.. parsed-literal::
+
+    2.0
+
 
