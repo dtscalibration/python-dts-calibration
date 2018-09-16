@@ -17,6 +17,8 @@ Overview
         | |commits-since|
     * - citable
       - |zenodo|
+    * - Example notebooks
+      - |example-notebooks|
 
 .. |docs| image:: https://readthedocs.org/projects/python-dts-calibration/badge/?style=flat
     :target: https://readthedocs.org/projects/python-dts-calibration
@@ -53,11 +55,15 @@ Overview
 .. |zenodo| image:: https://zenodo.org/badge/143077491.svg
    :alt: It would be greatly appreciated if you could cite this package in eg articles presentations
    :target: https://zenodo.org/badge/latestdoi/143077491
+   
+.. |example-notebooks| image:: https://mybinder.org/badge.svg
+   :alt: Interactively run the example notebooks online
+   :target: https://mybinder.org/v2/gh/bdestombe/python-dts-calibration.git/master?filepath=examples%2Fnotebooks
 
 .. end-badges
 
 A Python package to load raw DTS files, perform a calibration, and plot the result
-.. image:: https://mybinder.org/badge.svg :target: https://mybinder.org/v2/gh/bdestombe/python-dts-calibration.git/master?filepath=examples%2Fnotebooks
+
 * Free software: BSD 3-Clause License
 
 Installation
