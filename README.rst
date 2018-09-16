@@ -73,6 +73,10 @@ Installation
 
     pip install dtscalibration
 
+Learn by examples
+=================
+Interactively run the example notebooks online by clicking the launch-binder button.
+
 Documentation
 =============
 
