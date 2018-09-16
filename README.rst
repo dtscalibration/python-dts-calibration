@@ -57,7 +57,7 @@ Overview
 .. end-badges
 
 A Python package to load raw DTS files, perform a calibration, and plot the result
-
+.. image:: https://mybinder.org/badge.svg :target: https://mybinder.org/v2/gh/bdestombe/python-dts-calibration.git/master?filepath=examples%2Fnotebooks
 * Free software: BSD 3-Clause License
 
 Installation
