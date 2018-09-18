@@ -59,7 +59,7 @@ Overview
 .. |example-notebooks| image:: https://mybinder.org/badge.svg
    :alt: Interactively run the example notebooks online
    :target: https://mybinder.org/v2/gh/bdestombe/python-dts-calibration.git/master?filepath=examples%2Fnotebooks
-
+   
 .. end-badges
 
 A Python package to load raw DTS files, perform a calibration, and plot the result
@@ -85,20 +85,26 @@ https://python-dts-calibration.readthedocs.io/
 Development
 ===========
 
-To run the all tests run::
+To run the all tests run:
+
+.. code-block:: zsh
 
     tox
 
 
-To bump version and docs::
+To bump version and docs:
 
-    tox
-    git status  # to make sure no unversioned modifications are in the repository
-    git add --all
-    bumpversion patch
-    rm -rf build
+.. code-block:: zsh
+
+    git status          # to make sure no unversioned modifications are in the repository
+    tox                 # Performes tests and creates documentation and runs notebooks
+    git status          # Only notebook related files should be shown
+    git add --all       # Add all notebook related files to local version
+    git commit -m "Updated notebook examples to reflect recent changes"
+    bumpversion patch   # (major, minor, patch)
+    git push
+    rm -rf build        # Clean local folders (not synced) used for pip wheel
     rm -rf src/*.egg-info
     rm -rf dist/*
-    tox
     python setup.py clean --all sdist bdist_wheel
     twine upload --repository-url https://upload.pypi.org/legacy/ dist/dtscalibration*
