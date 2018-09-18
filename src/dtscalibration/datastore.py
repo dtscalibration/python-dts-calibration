@@ -631,7 +631,6 @@ class DataStore(xr.Dataset):
                 cheap_on_memory_flag=cheap_on_memory_flag)
         pass
 
-
     def calibration_double_ended(self,
                                  sections=None,
                                  st_label='ST',
@@ -918,7 +917,7 @@ class DataStore(xr.Dataset):
                     'c_MC',
                     'MC',
                     'r_st',
-                    'r_ast',]
+                    'r_ast']
         for k in drop_var:
             del self[k]
 
@@ -932,11 +931,13 @@ class DataStore(xr.Dataset):
                 store_tmpf]).std(dim=avg_dims, ddof=1) ** 2
 
         if not cheap_on_memory_flag:
-            from dask import delayed
+            # f = lambda s, ci: self[s].reduce(np.percentile, q=ci, dim=avg_dims)
+            def percentile_expensive_mem(s, ci):
+                return self[s].reduce(np.percentile, q=ci, dim=avg_dims)
 
-            f = lambda s, ci: self[s].reduce(np.percentile, q=ci, dim=avg_dims)
-
-            q = xr.concat([f(store_tmpf + '_MC', cii) for cii in conf_ints], dim='CI')
+            q = xr.concat(
+                [percentile_expensive_mem(store_tmpf + '_MC', cii) for cii in conf_ints],
+                dim='CI')
             self[store_tmpf + '_MC'] = (('CI', 'x', 'time'), q.data)
 
         else:
@@ -1102,13 +1103,16 @@ class DataStore(xr.Dataset):
                 store_tmpb]).std(dim=avg_dims, ddof=1) ** 2
 
         if not cheap_on_memory_flag:
-            from dask import delayed
+            def percentile_expensive_mem(s, ci):
+                return self[s].reduce(np.percentile, q=ci, dim=avg_dims)
 
-            f = lambda s, ci: self[s].reduce(np.percentile, q=ci, dim=avg_dims)
-
-            q = xr.concat([f(store_tmpf + '_MC', cii) for cii in conf_ints], dim='CI')
+            q = xr.concat(
+                [percentile_expensive_mem(store_tmpf + '_MC', cii) for cii in conf_ints],
+                dim='CI')
             self[store_tmpf + '_MC'] = (('CI', 'x', 'time'), q.data)
-            q = xr.concat([f(store_tmpb + '_MC', cii) for cii in conf_ints], dim='CI')
+            q = xr.concat(
+                [percentile_expensive_mem(store_tmpb + '_MC', cii) for cii in conf_ints],
+                dim='CI')
             self[store_tmpb + '_MC'] = (('CI', 'x', 'time'), q.data)
 
         else:
@@ -1128,7 +1132,6 @@ class DataStore(xr.Dataset):
 
             self[store_tmpf + '_MC'] = percentile_cheap_memory(self[store_tmpf + '_MC'], conf_ints)
             self[store_tmpb + '_MC'] = percentile_cheap_memory(self[store_tmpb + '_MC'], conf_ints)
-
 
     def ufunc_per_section(self,
                           func=None,
@@ -1316,7 +1319,7 @@ def open_datastore(filename_or_obj, group=None, decode_cf=True,
     ds_kwargs = {k: v for k, v in kwargs.items() if k not in xr_kws}
 
     if chunks is None:
-        chunks = {0: -1, 1: 'auto', 2: -1}
+        chunks = {'x': 'auto', 'time': -1}
 
     ds_xr = xr.open_dataset(
         filename_or_obj, group=group, decode_cf=decode_cf,
