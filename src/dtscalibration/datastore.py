@@ -1416,9 +1416,7 @@ def read_xml_dir(filepath,
 def plot_dask(arr, file_path=None):
     from dask.diagnostics import Profiler, ResourceProfiler, CacheProfiler, visualize
 
-    with Profiler() as prof, \
-        ResourceProfiler(dt=0.25) as rprof, \
-        CacheProfiler() as cprof:
+    with Profiler() as prof, ResourceProfiler(dt=0.25) as rprof, CacheProfiler() as cprof:
         out = arr.compute()
 
     arr.visualize(file_path)
