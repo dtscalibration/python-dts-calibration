@@ -235,8 +235,10 @@ class DataStore(xr.Dataset):
             compute=compute)
 
     def get_default_encoding(self):
-        compdata = dict(zlib=True, complevel=6, least_significant_digit=3, shuffle=False)
+        # TODO: set scle parameter
+        compdata = dict(zlib=True, complevel=6, shuffle=False)  # , least_significant_digit=None
         compcoords = dict(zlib=True, complevel=4)
+
         encoding = {var: compdata for var in self.data_vars}
         encoding.update({var: compcoords for var in self.coords})
         return encoding
@@ -907,10 +909,6 @@ class DataStore(xr.Dataset):
             self['r_st'] / self['r_ast']) + self['c_MC'] + self[
             'dalpha_MC'] * self.x) - 273.15
 
-        # tempF_data = gamma / \
-        #              (np.log(self[st_label].data / self[ast_label].data)
-        #               + c + self.x.data[:, None] * dalpha) - 273.15
-
         del p_mc
         drop_var = ['gamma_MC',
                     'dalpha_MC',
@@ -926,36 +924,23 @@ class DataStore(xr.Dataset):
         else:
             avg_dims = ['MC']
 
+        avg_axis = self[store_tmpf + '_MC'].get_axis_num(avg_dims)
+
         if store_tempvar:
             self[store_tmpf + '_MC' + store_tempvar] = (self[store_tmpf + '_MC'] - self[
                 store_tmpf]).std(dim=avg_dims, ddof=1) ** 2
 
-        if not cheap_on_memory_flag:
-            # f = lambda s, ci: self[s].reduce(np.percentile, q=ci, dim=avg_dims)
-            def percentile_expensive_mem(s, ci):
-                return self[s].reduce(np.percentile, q=ci, dim=avg_dims)
-
-            q = xr.concat(
-                [percentile_expensive_mem(store_tmpf + '_MC', cii) for cii in conf_ints],
-                dim='CI')
-            self[store_tmpf + '_MC'] = (('CI', 'x', 'time'), q.data)
-
+        if ci_avg_time_flag:
+            new_chunks = ((len(conf_ints), ),) + self[store_tmpf + '_MC'].chunks[1]
         else:
-            def percentile_cheap_memory(ds, q):
-                assert ds.dims == ('MC', 'x', 'time')
-                sh = (len(q),) + ds.shape[1:]
-                ds_out = xr.DataArray(np.zeros(sh), dims=('quantile', 'x', 'time'))
+            new_chunks = ((len(conf_ints), ),) + self[store_tmpf + '_MC'].chunks[1:]
 
-                xch = np.cumsum((0,) + ds.chunks[1])
-
-                for xch_start, xch_end in zip(xch[:-1], xch[1:]):
-                    s = slice(xch_start, xch_end)
-                    ds_out[:, xch_start:xch_end] = ds.isel(x=s).compute().quantile(dim=avg_dims, q=q)
-
-                ds_out.rename({'quantile': 'CI'})
-                return ds_out
-
-            self[store_tmpf + '_MC'] = percentile_cheap_memory(self[store_tmpf + '_MC'], conf_ints)
+        q = self[store_tmpf + '_MC'].data.map_blocks(
+            lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
+            chunks=new_chunks,  #
+            drop_axis=avg_axis,  # avg dimesnions are dropped from input arr
+            new_axis=0)  # The new CI dimension is added as first axis
+        self[store_tmpf + '_MC'] = (('CI', 'x', 'time'), q)
 
     def conf_int_double_ended(self,
                               p_sol=None,
@@ -1096,42 +1081,32 @@ class DataStore(xr.Dataset):
         else:
             avg_dims = ['MC']
 
+        avg_axis = self[store_tmpf + '_MC'].get_axis_num(avg_dims)
+
         if store_tempvar:
             self[store_tmpf + '_MC' + store_tempvar] = (self[store_tmpf + '_MC'] - self[
                 store_tmpf]).std(dim=avg_dims, ddof=1) ** 2
             self[store_tmpb + '_MC' + store_tempvar] = (self[store_tmpb + '_MC'] - self[
                 store_tmpb]).std(dim=avg_dims, ddof=1) ** 2
 
-        if not cheap_on_memory_flag:
-            def percentile_expensive_mem(s, ci):
-                return self[s].reduce(np.percentile, q=ci, dim=avg_dims)
-
-            q = xr.concat(
-                [percentile_expensive_mem(store_tmpf + '_MC', cii) for cii in conf_ints],
-                dim='CI')
-            self[store_tmpf + '_MC'] = (('CI', 'x', 'time'), q.data)
-            q = xr.concat(
-                [percentile_expensive_mem(store_tmpb + '_MC', cii) for cii in conf_ints],
-                dim='CI')
-            self[store_tmpb + '_MC'] = (('CI', 'x', 'time'), q.data)
-
+        if ci_avg_time_flag:
+            new_chunks = ((len(conf_ints), ),) + self[store_tmpf + '_MC'].chunks[1]
         else:
-            def percentile_cheap_memory(ds, q):
-                assert ds.dims == ('MC', 'x', 'time')
-                sh = (len(q),) + ds.shape[1:]
-                ds_out = xr.DataArray(np.zeros(sh), dims=('quantile', 'x', 'time'))
+            new_chunks = ((len(conf_ints), ),) + self[store_tmpf + '_MC'].chunks[1:]
 
-                xch = np.cumsum((0,) + ds.chunks[1])
+        q = self[store_tmpf + '_MC'].data.map_blocks(
+            lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
+            chunks=new_chunks,  #
+            drop_axis=avg_axis,  # avg dimesnions are dropped from input arr
+            new_axis=0)  # The new CI dimension is added as first axis
+        self[store_tmpf + '_MC'] = (('CI', 'x', 'time'), q)
 
-                for xch_start, xch_end in zip(xch[:-1], xch[1:]):
-                    s = slice(xch_start, xch_end)
-                    ds_out[:, xch_start:xch_end] = ds.isel(x=s).compute().quantile(dim=avg_dims, q=q)
-
-                ds_out.rename({'quantile': 'CI'})
-                return ds_out
-
-            self[store_tmpf + '_MC'] = percentile_cheap_memory(self[store_tmpf + '_MC'], conf_ints)
-            self[store_tmpb + '_MC'] = percentile_cheap_memory(self[store_tmpb + '_MC'], conf_ints)
+        q = self[store_tmpb + '_MC'].data.map_blocks(
+            lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
+            chunks=new_chunks,  #
+            drop_axis=avg_axis,  # avg dimesnions are dropped from input arr
+            new_axis=0)  # The new CI dimension is added as first axis
+        self[store_tmpb + '_MC'] = (('CI', 'x', 'time'), q)
 
     def ufunc_per_section(self,
                           func=None,
@@ -1436,3 +1411,18 @@ def read_xml_dir(filepath,
                    **kwargs)
 
     return ds
+
+
+def plot_dask(arr, file_path=None):
+    from dask.diagnostics import Profiler, ResourceProfiler, CacheProfiler, visualize
+
+    with Profiler() as prof, \
+        ResourceProfiler(dt=0.25) as rprof, \
+        CacheProfiler() as cprof:
+        out = arr.compute()
+
+    arr.visualize(file_path)
+
+    visualize([prof, rprof, cprof], show=True)
+
+    return out
