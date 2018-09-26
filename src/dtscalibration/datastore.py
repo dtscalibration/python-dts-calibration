@@ -928,7 +928,7 @@ class DataStore(xr.Dataset):
 
         if store_tempvar:
             self[store_tmpf + '_MC' + store_tempvar] = (self[store_tmpf + '_MC'] - self[
-                store_tmpf]).std(dim=avg_dims, ddof=1) ** 2
+                store_tmpf]).std(dim=avg_dims) ** 2
 
         if ci_avg_time_flag:
             new_chunks = ((len(conf_ints), ),) + self[store_tmpf + '_MC'].chunks[1]
@@ -1085,9 +1085,9 @@ class DataStore(xr.Dataset):
 
         if store_tempvar:
             self[store_tmpf + '_MC' + store_tempvar] = (self[store_tmpf + '_MC'] - self[
-                store_tmpf]).std(dim=avg_dims, ddof=1) ** 2
+                store_tmpf]).std(dim=avg_dims) ** 2
             self[store_tmpb + '_MC' + store_tempvar] = (self[store_tmpb + '_MC'] - self[
-                store_tmpb]).std(dim=avg_dims, ddof=1) ** 2
+                store_tmpb]).std(dim=avg_dims) ** 2
 
         if ci_avg_time_flag:
             new_chunks = ((len(conf_ints), ),) + self[store_tmpf + '_MC'].chunks[1]

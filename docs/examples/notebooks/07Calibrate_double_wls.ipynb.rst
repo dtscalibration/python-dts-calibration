@@ -153,23 +153,23 @@ confidence interval ‘coordinates’.
         referenceTemperature   (time) float64 21.05 21.05 21.05 21.05 21.05 21.06
         probe1Temperature      (time) float64 4.361 4.36 4.359 4.36 4.36 4.361
         probe2Temperature      (time) float64 18.58 18.58 18.58 18.58 18.58 18.57
-        referenceProbeVoltage  (time) float64 0.1217 0.1217 0.1217 0.1217 0.1217 ...
+        referenceProbeVoltage  (time) float64 0.1217 0.1217 0.1217 ... 0.1217 0.1217
         probe1Voltage          (time) float64 0.114 0.114 0.114 0.114 0.114 0.114
         probe2Voltage          (time) float64 0.121 0.121 0.121 0.121 0.121 0.121
         userAcquisitionTimeFW  (time) float64 2.0 2.0 2.0 2.0 2.0 2.0
         userAcquisitionTimeBW  (time) float64 2.0 2.0 2.0 2.0 2.0 2.0
         gamma                  float64 482.6
         alphaint               float64 -0.01034
-        alpha                  (x) float64 -0.01233 -0.008471 -0.001988 ...
+        alpha                  (x) float64 -0.01233 -0.008471 ... -0.01044 -0.01034
         c                      (time) float64 1.47 1.471 1.47 1.47 1.471 1.47
         gamma_var              float64 0.03868
         alphaint_var           float64 7.387e-07
-        alpha_var              (x) float64 3.563e-07 3.489e-07 3.47e-07 ...
-        c_var                  (time) float64 6.632e-07 6.632e-07 6.632e-07 ...
+        alpha_var              (x) float64 3.563e-07 3.489e-07 ... 7.284e-07
+        c_var                  (time) float64 6.632e-07 6.632e-07 ... 6.632e-07
         TMPF                   (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 1)>
         TMPB                   (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 1)>
-        p_val                  (params1) float64 482.6 -0.01034 1.47 1.471 1.47 ...
-        p_cov                  (params1, params2) float64 0.03868 -1.751e-07 ...
+        p_val                  (params1) float64 482.6 -0.01034 ... -0.01034
+        p_cov                  (params1, params2) float64 0.03868 ... 7.284e-07
         TMPF_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 787, 6)>
         TMPB_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 787, 6)>
         TMPF_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 1)>
