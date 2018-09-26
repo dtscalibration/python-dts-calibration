@@ -1,6 +1,6 @@
 nbsphinx
 IPython
-matplotlib
+matplotlib<3.0.0
 sphinx>=1.3
 sphinx-py3doc-enhanced-theme
 -e .
