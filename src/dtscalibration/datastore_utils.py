@@ -553,7 +553,6 @@ def shift_double_ended(ds, i_shift):
     There is no interpolation, as this would alter the accuracy.
 
 
-
     Parameters
     ----------
     ds : DataSore object
