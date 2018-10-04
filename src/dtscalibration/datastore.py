@@ -1337,6 +1337,40 @@ def read_xml_dir(filepath,
     datastore : DataStore
         The newly created datastore.
     """
+
+    filepathlist = sorted(glob.glob(os.path.join(filepath, file_ext)))
+    filenamelist = [os.path.basename(path) for path in filepathlist]
+    assert len(filepathlist) >= 1, 'No measurement files with extension {} found in {}'.format(
+        file_ext, filepath)
+
+    ds = read_xml_list(filepathlist, timezone_netcdf, timezone_ultima_xml)
+    
+    return ds
+
+def read_xml_list(filepathlist,
+                  timezone_netcdf='UTC',
+                  timezone_ultima_xml='UTC',
+                  **kwargs):
+    """Read a list of measurement files. Each measurement file contains values for a
+    single timestep. Remember to check which timezone you are working in.
+
+    Parameters
+    ----------
+    filenamelist : list, Path
+        List of paths to files
+    timezone_netcdf : str, optional
+        Timezone string of the netcdf file. UTC follows CF-conventions.
+    timezone_ultima_xml : str, optional
+        Timezone string of the measurement files. Remember to check when measurements are taken.
+        Also if summertime is used.
+    kwargs : dict-like, optional
+        keyword-arguments are passed to DataStore initialization
+
+    Returns
+    -------
+    datastore : DataStore
+        The newly created datastore.
+    """
     log_attrs = {
         'x':                     {
             'description':      'Length along fiber',
@@ -1370,12 +1404,12 @@ def read_xml_dir(filepath,
             'long_describtion': 'Desired measurement duration of backward channel',
             'units':            'seconds'},
         }
-
-    filepathlist = sorted(glob.glob(os.path.join(filepath, file_ext)))
+    
+    #Get list of only file names, from the path
     filenamelist = [os.path.basename(path) for path in filepathlist]
-    assert len(filepathlist) >= 1, 'No measurement files with extension {} found in {}'.format(
-        file_ext, filepath)
-
+    assert len(filepathlist) >= 1, 'No measurement files found in {}'.format(filepath)
+    
+    #Call grab_data2 to read out all files
     array, timearr, meta, extra = grab_data2(filepathlist)
 
     coords = {
