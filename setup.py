@@ -63,7 +63,7 @@ setup(
         'pyyaml',
         'xmltodict',
         'scipy',
-        'patsy',
+        'patsy',  # a dependency of statsmodels
         'statsmodels',
         'nbsphinx',
         'dask',
