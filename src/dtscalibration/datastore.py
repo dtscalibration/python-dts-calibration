@@ -1312,7 +1312,7 @@ def open_datastore(filename_or_obj, group=None, decode_cf=True,
 
 def read_xml_dir(filepath,
                  timezone_netcdf='UTC',
-                 timezone_ultima_xml='Europe/Amsterdam',
+                 timezone_ultima_xml='UTC',
                  file_ext='*.xml',
                  **kwargs):
     """Read a folder with measurement files. Each measurement file contains values for a
@@ -1338,13 +1338,19 @@ def read_xml_dir(filepath,
         The newly created datastore.
     """
 
+    # Get list of files in the given path
     filepathlist = sorted(glob.glob(os.path.join(filepath, file_ext)))
+
+    # Get the file names of each file, without the path
     filenamelist = [os.path.basename(path) for path in filepathlist]
+
+    # Make sure that there are files in the folder, to avoid errors later
     assert len(filepathlist) >= 1, 'No measurement files with extension {} found in {}'.format(
         file_ext, filepath)
 
+    # Use the read_xml_list function to read all files
     ds = read_xml_list(filepathlist, timezone_netcdf, timezone_ultima_xml)
-    
+
     return ds
 
 def read_xml_list(filepathlist,
@@ -1404,12 +1410,13 @@ def read_xml_list(filepathlist,
             'long_describtion': 'Desired measurement duration of backward channel',
             'units':            'seconds'},
         }
-    
-    #Get list of only file names, from the path
+    # Make sure that the list of files contains any files
+    assert len(filepathlist) >= 1, 'No measurement files found in provided list'
+
+    # Get list of only file names, from the path
     filenamelist = [os.path.basename(path) for path in filepathlist]
-    assert len(filepathlist) >= 1, 'No measurement files found in {}'.format(filepath)
-    
-    #Call grab_data2 to read out all files
+
+    # Call grab_data2 to read out all files
     array, timearr, meta, extra = grab_data2(filepathlist)
 
     coords = {
