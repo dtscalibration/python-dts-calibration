@@ -1307,6 +1307,9 @@ def open_datastore(filename_or_obj, group=None, decode_cf=True,
                    coords=ds_xr.coords,
                    attrs=ds_xr.attrs,
                    **ds_kwargs)
+    
+    ds_xr.close()
+    
     return ds
 
 
