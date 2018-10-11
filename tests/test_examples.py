@@ -29,9 +29,7 @@ def _notebook_run(path):
             "--execute", "--ExecutePreprocessor.timeout=60"]
     subprocess.check_call(args)
 
-    # 'with' method, so file is closed after use and free to be overwritten
-    with open(nbpath, 'r') as nbfile:
-        nb = nbformat.read(nbfile, nbformat.current_nbformat)
+    nb = nbformat.read(nbpath, nbformat.current_nbformat)
 
     errors = [output for cell in nb.cells if "outputs" in cell
               for output in cell["outputs"]
