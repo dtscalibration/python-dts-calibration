@@ -193,6 +193,8 @@ def calibration_double_ended_ols(ds, st_label, ast_label, rst_label,
     y2 = (y2B - y2F) / 2
     y = da.concatenate([y1, y2]).compute()
     # noinspection PyTypeChecker
+    assert not np.any(np.isnan(y)), 'There are nan values in the measured (anti-) Stokes'
+
     p0 = ln.lsqr(X, y, x0=p0_est, show=True, calc_var=True)
 
     return nt, z, p0
@@ -316,6 +318,8 @@ def calibration_double_ended_wls(ds, st_label, ast_label, rst_label,
                  ds[rast_label].data).T.ravel()
     y2 = (y2B - y2F) / 2
     y = da.concatenate([y1, y2]).compute()
+
+    assert not np.any(np.isnan(y)), 'There are nan values in the measured (anti-) Stokes'
 
     # Calculate the reprocical of the variance (not std)
     w1F = (1 / st ** 2 * st_var +

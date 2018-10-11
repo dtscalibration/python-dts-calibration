@@ -13,14 +13,13 @@ def _notebook_run(path):
     """
     dirname, __ = os.path.split(path)
     os.chdir(dirname)
-    
-    #Create a temporary file to write the notebook to.
-    #'with' method is used so the file is closed by tempfile
+
+    # Create a temporary file to write the notebook to.
+    # 'with' method is used so the file is closed by tempfile
     # and free to be overwritten.
     with tempfile.NamedTemporaryFile('w', suffix=".ipynb") as fout:
         nbpath = fout.name
-    
-    #
+
     jupyter_exec = shutil.which('jupyter')
 
     #
@@ -30,18 +29,18 @@ def _notebook_run(path):
             "--execute", "--ExecutePreprocessor.timeout=60"]
     subprocess.check_call(args)
 
-    #'with' method, so file is closed after use and free to be overwritten
+    # 'with' method, so file is closed after use and free to be overwritten
     with open(nbpath, 'r') as nbfile:
         nb = nbformat.read(nbfile, nbformat.current_nbformat)
 
     errors = [output for cell in nb.cells if "outputs" in cell
               for output in cell["outputs"]
               if output.output_type == "error"]
-    
-    #Remove the temp file once the test is done
+
+    # Remove the temp file once the test is done
     if os.path.exists(nbpath):
         os.remove(nbpath)
-    
+
     return nb, errors
 
 

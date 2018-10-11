@@ -1307,9 +1307,9 @@ def open_datastore(filename_or_obj, group=None, decode_cf=True,
                    coords=ds_xr.coords,
                    attrs=ds_xr.attrs,
                    **ds_kwargs)
-    
+
     ds_xr.close()
-    
+
     return ds
 
 
@@ -1343,9 +1343,6 @@ def read_xml_dir(filepath,
 
     # Get list of files in the given path
     filepathlist = sorted(glob.glob(os.path.join(filepath, file_ext)))
-
-    # Get the file names of each file, without the path
-    filenamelist = [os.path.basename(path) for path in filepathlist]
 
     # Make sure that there are files in the folder, to avoid errors later
     assert len(filepathlist) >= 1, 'No measurement files with extension {} found in {}'.format(

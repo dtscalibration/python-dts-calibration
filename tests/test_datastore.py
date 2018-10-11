@@ -142,28 +142,28 @@ def test_io_sections_property():
         }
 
     ds.sections = sections
-    
-    #Create a temporary file to write data to.
-    #'with' method is used so the file is closed by tempfile
+
+    # Create a temporary file to write data to.
+    # 'with' method is used so the file is closed by tempfile
     # and free to be overwritten.
     with tempfile.NamedTemporaryFile('w') as tmp:
         temppath = tmp.name
-        
-    #Write the datastore to the temp file
+
+    # Write the datastore to the temp file
     ds.to_netcdf(path=temppath)
 
     ds2 = open_datastore(temppath)
-    
+
     assert ds.sections == ds2.sections
-    
-    #Close the datastore so the temp file can be removed
+
+    # Close the datastore so the temp file can be removed
     ds2.close()
     ds2 = None
-    
-    #Remove the temp file once the test is done
+
+    # Remove the temp file once the test is done
     if os.path.exists(temppath):
         os.remove(temppath)
-    
+
     pass
 
 
