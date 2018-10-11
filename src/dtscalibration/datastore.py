@@ -1315,7 +1315,7 @@ def open_datastore(filename_or_obj, group=None, decode_cf=True,
 
 def read_xml_dir(filepath,
                  timezone_netcdf='UTC',
-                 timezone_ultima_xml='Europe/Amsterdam',
+                 timezone_ultima_xml='UTC',
                  file_ext='*.xml',
                  **kwargs):
     """Read a folder with measurement files. Each measurement file contains values for a
@@ -1332,6 +1332,46 @@ def read_xml_dir(filepath,
         Also if summertime is used.
     file_ext : str, optional
         file extension of the measurement files
+    kwargs : dict-like, optional
+        keyword-arguments are passed to DataStore initialization
+
+    Returns
+    -------
+    datastore : DataStore
+        The newly created datastore.
+    """
+
+    # Get list of files in the given path
+    filepathlist = sorted(glob.glob(os.path.join(filepath, file_ext)))
+
+    # Get the file names of each file, without the path
+    filenamelist = [os.path.basename(path) for path in filepathlist]
+
+    # Make sure that there are files in the folder, to avoid errors later
+    assert len(filepathlist) >= 1, 'No measurement files with extension {} found in {}'.format(
+        file_ext, filepath)
+
+    # Use the read_xml_list function to read all files
+    ds = read_xml_list(filepathlist, timezone_netcdf, timezone_ultima_xml)
+
+    return ds
+
+def read_xml_list(filepathlist,
+                  timezone_netcdf='UTC',
+                  timezone_ultima_xml='UTC',
+                  **kwargs):
+    """Read a list of measurement files. Each measurement file contains values for a
+    single timestep. Remember to check which timezone you are working in.
+
+    Parameters
+    ----------
+    filenamelist : list, Path
+        List of paths to files
+    timezone_netcdf : str, optional
+        Timezone string of the netcdf file. UTC follows CF-conventions.
+    timezone_ultima_xml : str, optional
+        Timezone string of the measurement files. Remember to check when measurements are taken.
+        Also if summertime is used.
     kwargs : dict-like, optional
         keyword-arguments are passed to DataStore initialization
 
@@ -1373,12 +1413,13 @@ def read_xml_dir(filepath,
             'long_describtion': 'Desired measurement duration of backward channel',
             'units':            'seconds'},
         }
+    # Make sure that the list of files contains any files
+    assert len(filepathlist) >= 1, 'No measurement files found in provided list'
 
-    filepathlist = sorted(glob.glob(os.path.join(filepath, file_ext)))
+    # Get list of only file names, from the path
     filenamelist = [os.path.basename(path) for path in filepathlist]
-    assert len(filepathlist) >= 1, 'No measurement files with extension {} found in {}'.format(
-        file_ext, filepath)
 
+    # Call grab_data2 to read out all files
     array, timearr, meta, extra = grab_data2(filepathlist)
 
     coords = {
