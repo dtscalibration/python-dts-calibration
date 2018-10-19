@@ -46,7 +46,6 @@ def test_double_ended_variance_estimate_synthetic():
 
     np.random.seed(0)
     state = da.random.RandomState(0)
-    # from dtscalibration.calibrate_utils import
 
     stokes_m_var = 40.
     cable_len = 100.
