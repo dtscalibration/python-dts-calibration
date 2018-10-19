@@ -6,7 +6,7 @@ import scipy.sparse as sp
 from scipy import stats
 
 from dtscalibration import DataStore
-from dtscalibration import read_xml_dir
+from dtscalibration import read_silixa_files
 from dtscalibration.calibrate_utils import wls_sparse
 from dtscalibration.calibrate_utils import wls_stats
 from dtscalibration.cli import main
@@ -296,10 +296,11 @@ def test_single_ended_variance_estimate_synthetic():
 def test_variance_of_stokes():
     correct_var = 40.16
     filepath = data_dir_double_ended2
-    ds = read_xml_dir(filepath,
-                      timezone_netcdf='UTC',
-                      timezone_ultima_xml='Europe/Amsterdam',
-                      file_ext='*.xml')
+    ds = read_silixa_files(
+        directory=filepath,
+        timezone_netcdf='UTC',
+        timezone_ultima_xml='Europe/Amsterdam',
+        file_ext='*.xml')
     sections = {
         'probe1Temperature': [slice(7.5, 17.), slice(70., 80.)],  # cold bath
         'probe2Temperature': [slice(24., 34.), slice(85., 95.)],  # warm bath
@@ -373,10 +374,11 @@ def test_calibration_ols():
     fix gamma).
     """
     filepath = data_dir_double_ended2
-    ds = read_xml_dir(filepath,
-                      timezone_netcdf='UTC',
-                      timezone_ultima_xml='Europe/Amsterdam',
-                      file_ext='*.xml')
+    ds = read_silixa_files(
+        directory=filepath,
+        timezone_netcdf='UTC',
+        timezone_ultima_xml='Europe/Amsterdam',
+        file_ext='*.xml')
     ds100 = ds.sel(x=slice(0, 100))
     sections_ultima = {
         'probe1Temperature': [slice(8., 17.)],  # cold bath

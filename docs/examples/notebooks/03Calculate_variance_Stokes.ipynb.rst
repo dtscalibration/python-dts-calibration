@@ -6,7 +6,7 @@
 
     import os
     
-    from dtscalibration import read_xml_dir
+    from dtscalibration import read_silixa_files
     from matplotlib import pyplot as plt
     
     %matplotlib inline
@@ -23,10 +23,11 @@
     timezone_ultima_xml = 'Europe/Amsterdam'
     file_ext = '*.xml'
     
-    ds = read_xml_dir(filepath,
-                      timezone_netcdf=timezone_netcdf,
-                      timezone_ultima_xml=timezone_ultima_xml,
-                      file_ext=file_ext)
+    ds = read_silixa_files(
+        directory=filepath,
+        timezone_netcdf=timezone_netcdf,
+        timezone_ultima_xml=timezone_ultima_xml,
+        file_ext=file_ext)
     sections = {
         'probe1Temperature': [slice(7.5, 17.), slice(70., 80.)],  # cold bath
         'probe2Temperature': [slice(24., 34.), slice(85., 95.)],  # warm bath
@@ -38,10 +39,7 @@
     6 files were found, each representing a single timestep
     6 recorded vars were found: LAF, ST, AST, REV-ST, REV-AST, TMP
     Recorded at 1693 points along the cable
-    Dask: Setting up handle for delayed readout. 1 out of 6
-    Dask: Setting up handle for delayed readout. 6 out of 6
-    Directly reading time and extra info from xml files. 1 out of 6
-    Directly reading time and extra info from xml files. 6 out of 6
+    The measurement is double ended
 
 
 .. code:: ipython3
@@ -96,7 +94,7 @@
 
 .. parsed-literal::
 
-    The variance of the Stokes signal along the reference sections is approximately 40.15998656786007 on a 2.0 sec acquisition time
+    The variance of the Stokes signal along the reference sections is approximately 40.159973819523046 on a 2.0 sec acquisition time
 
 
 .. code:: ipython3
@@ -121,17 +119,4 @@ by coils/sharp bends in cable - Attenuation caused by a splice
 
 
 .. image:: 03Calculate_variance_Stokes.ipynb_files/03Calculate_variance_Stokes.ipynb_7_0.png
-
-
-.. code:: ipython3
-
-    ds.userAcquisitionTimeFW.data[0]
-
-
-
-
-.. parsed-literal::
-
-    2.0
-
 

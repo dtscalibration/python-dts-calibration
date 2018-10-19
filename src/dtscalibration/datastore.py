@@ -17,8 +17,7 @@ from dtscalibration.calibrate_utils import calibration_single_ended_ols
 from dtscalibration.calibrate_utils import calibration_single_ended_wls
 from dtscalibration.datastore_utils import check_dims
 from dtscalibration.datastore_utils import check_timestep_allclose
-from dtscalibration.datastore_utils import coords_time
-from dtscalibration.datastore_utils import grab_data2
+from dtscalibration.datastore_utils import read_silixa_files_routine
 
 
 class DataStore(xr.Dataset):
@@ -235,7 +234,7 @@ class DataStore(xr.Dataset):
             compute=compute)
 
     def get_default_encoding(self):
-        # TODO: set scle parameter
+        # TODO: set scale parameter
         compdata = dict(zlib=True, complevel=6, shuffle=False)  # , least_significant_digit=None
         compcoords = dict(zlib=True, complevel=4)
 
@@ -389,7 +388,9 @@ class DataStore(xr.Dataset):
             resid_sorted[ix_resid, :] = resid
             resid_da = xr.DataArray(data=resid_sorted,
                                     dims=('x', 'time'),
-                                    coords={'x': self.x, 'time': self.time})
+                                    coords={
+                                        'x':    self.x,
+                                        'time': self.time})
 
             return var_I, resid_da
 
@@ -456,7 +457,7 @@ class DataStore(xr.Dataset):
         self[tmpw_var_store] = 1 / (1 / self[
             tmp_var_label]).sum(dim=dim)
 
-        self[tmpw_store] = (self[tmp_label]/self[tmp_var_label]).sum(dim=dim)/(1/self[
+        self[tmpw_store] = (self[tmp_label] / self[tmp_var_label]).sum(dim=dim) / (1 / self[
             tmp_var_label]).sum(dim=dim)
 
         pass
@@ -482,7 +483,6 @@ class DataStore(xr.Dataset):
                                  ci_avg_time_flag=False,
                                  solver='sparse',
                                  da_random_state=None,
-                                 cheap_on_memory_flag=False
                                  ):
         """
 
@@ -595,8 +595,8 @@ class DataStore(xr.Dataset):
         # deal with FW
         if store_tmpf:
             tempF_data = gamma / \
-                (np.log(self[st_label].data / self[ast_label].data)
-                 + c + self.x.data[:, None] * dalpha) - 273.15
+                         (np.log(self[st_label].data / self[ast_label].data)
+                          + c + self.x.data[:, None] * dalpha) - 273.15
             self[store_tmpf] = (('x', 'time'), tempF_data)
 
         if store_p_sol and method == 'wls':
@@ -629,8 +629,7 @@ class DataStore(xr.Dataset):
                 conf_ints=conf_ints,
                 conf_ints_size=conf_ints_size,
                 ci_avg_time_flag=ci_avg_time_flag,
-                da_random_state=da_random_state,
-                cheap_on_memory_flag=cheap_on_memory_flag)
+                da_random_state=da_random_state)
         pass
 
     def calibration_double_ended(self,
@@ -659,8 +658,7 @@ class DataStore(xr.Dataset):
                                  ci_avg_time_flag=False,
                                  solver='sparse',
                                  da_random_state=None,
-                                 dtype32=False,
-                                 cheap_on_memory_flag=False):
+                                 dtype32=False):
         """
 
         Parameters
@@ -788,15 +786,15 @@ class DataStore(xr.Dataset):
         # deal with FW
         if store_tmpf:
             tempF_data = gamma / \
-                (np.log(self[st_label].data / self[ast_label].data)
-                 + c + alpha[:, None]) - 273.15
+                         (np.log(self[st_label].data / self[ast_label].data)
+                          + c + alpha[:, None]) - 273.15
             self[store_tmpf] = (('x', 'time'), tempF_data)
 
         # deal with BW
         if store_tmpb:
             tempB_data = gamma / \
-                (np.log(self[rst_label].data / self[rast_label].data)
-                 + c - alpha[:, None] + alphaint) - 273.15
+                         (np.log(self[rst_label].data / self[rast_label].data)
+                          + c - alpha[:, None] + alphaint) - 273.15
             self[store_tmpb] = (('x', 'time'), tempB_data)
 
         if store_p_sol and method == 'wls':
@@ -838,8 +836,7 @@ class DataStore(xr.Dataset):
                 conf_ints=conf_ints,
                 conf_ints_size=conf_ints_size,
                 ci_avg_time_flag=ci_avg_time_flag,
-                da_random_state=da_random_state,
-                cheap_on_memory_flag=cheap_on_memory_flag)
+                da_random_state=da_random_state)
 
         pass
 
@@ -855,8 +852,7 @@ class DataStore(xr.Dataset):
                               conf_ints=None,
                               conf_ints_size=100,
                               ci_avg_time_flag=False,
-                              da_random_state=None,
-                              cheap_on_memory_flag=False
+                              da_random_state=None
                               ):
         assert conf_ints
 
@@ -892,7 +888,10 @@ class DataStore(xr.Dataset):
         self['c_MC'] = (('MC', 'time',), c)
 
         rshape = (self.MC.size, self.x.size, self.time.size)
-        r2shape = {0: -1, 1: 'auto', 2: -1}
+        r2shape = {
+            0: -1,
+            1: 'auto',
+            2: -1}
 
         self['r_st'] = (('MC', 'x', 'time'), state.normal(
             loc=self[st_label].data,
@@ -907,7 +906,7 @@ class DataStore(xr.Dataset):
 
         self[store_tmpf + '_MC'] = self['gamma_MC'] / (xr.ufuncs.log(
             self['r_st'] / self['r_ast']) + self['c_MC'] + self[
-            'dalpha_MC'] * self.x) - 273.15
+                                                           'dalpha_MC'] * self.x) - 273.15
 
         del p_mc
         drop_var = ['gamma_MC',
@@ -931,9 +930,9 @@ class DataStore(xr.Dataset):
                 store_tmpf]).std(dim=avg_dims) ** 2
 
         if ci_avg_time_flag:
-            new_chunks = ((len(conf_ints), ),) + self[store_tmpf + '_MC'].chunks[1]
+            new_chunks = ((len(conf_ints),),) + self[store_tmpf + '_MC'].chunks[1]
         else:
-            new_chunks = ((len(conf_ints), ),) + self[store_tmpf + '_MC'].chunks[1:]
+            new_chunks = ((len(conf_ints),),) + self[store_tmpf + '_MC'].chunks[1:]
 
         q = self[store_tmpf + '_MC'].data.map_blocks(
             lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
@@ -959,9 +958,7 @@ class DataStore(xr.Dataset):
                               conf_ints=None,
                               conf_ints_size=100,
                               ci_avg_time_flag=False,
-                              da_random_state=None,
-                              cheap_on_memory_flag=False
-                              ):
+                              da_random_state=None):
         """
 
         Parameters
@@ -1023,7 +1020,10 @@ class DataStore(xr.Dataset):
         self.coords['CI'] = conf_ints
 
         rshape = (self.MC.size, self.x.size, self.time.size)
-        r2shape = {0: -1, 1: 'auto', 2: -1}
+        r2shape = {
+            0: -1,
+            1: 'auto',
+            2: -1}
 
         self['r_st'] = (('MC', 'x', 'time'), state.normal(
             loc=self[st_label].data,
@@ -1058,10 +1058,11 @@ class DataStore(xr.Dataset):
 
         self[store_tmpf + '_MC'] = self['gamma_MC'] / (xr.ufuncs.log(
             self['r_st'] / self['r_ast']) + self['c_MC'] + self[
-            'alpha_MC']) - 273.15
+                                                           'alpha_MC']) - 273.15
         self[store_tmpb + '_MC'] = self['gamma_MC'] / (xr.ufuncs.log(
             self['r_rst'] / self['r_rast']) + self['c_MC'] - self[
-            'alpha_MC'] + self['alphaint_MC']) - 273.15
+                                                           'alpha_MC'] + self[
+                                                           'alphaint_MC']) - 273.15
 
         del p_mc
         drop_var = ['gamma_MC',
@@ -1090,9 +1091,9 @@ class DataStore(xr.Dataset):
                 store_tmpb]).std(dim=avg_dims) ** 2
 
         if ci_avg_time_flag:
-            new_chunks = ((len(conf_ints), ),) + self[store_tmpf + '_MC'].chunks[1]
+            new_chunks = ((len(conf_ints),),) + self[store_tmpf + '_MC'].chunks[1]
         else:
-            new_chunks = ((len(conf_ints), ),) + self[store_tmpf + '_MC'].chunks[1:]
+            new_chunks = ((len(conf_ints),),) + self[store_tmpf + '_MC'].chunks[1:]
 
         q = self[store_tmpf + '_MC'].data.map_blocks(
             lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
@@ -1294,7 +1295,9 @@ def open_datastore(filename_or_obj, group=None, decode_cf=True,
     ds_kwargs = {k: v for k, v in kwargs.items() if k not in xr_kws}
 
     if chunks is None:
-        chunks = {'x': 'auto', 'time': -1}
+        chunks = {
+            'x':    'auto',
+            'time': -1}
 
     ds_xr = xr.open_dataset(
         filename_or_obj, group=group, decode_cf=decode_cf,
@@ -1313,17 +1316,23 @@ def open_datastore(filename_or_obj, group=None, decode_cf=True,
     return ds
 
 
-def read_xml_dir(filepath,
-                 timezone_netcdf='UTC',
-                 timezone_ultima_xml='UTC',
-                 file_ext='*.xml',
-                 **kwargs):
+def read_silixa_files(
+    filepathlist=None,
+    directory=None,
+    file_ext='*.xml',
+    timezone_netcdf='UTC',
+    timezone_ultima_xml='UTC',
+    silent=False,
+        **kwargs):
+
     """Read a folder with measurement files. Each measurement file contains values for a
     single timestep. Remember to check which timezone you are working in.
 
     Parameters
     ----------
-    filepath : str, Path
+    filepathlist : list of str, optional
+        List of paths that point the the silixa files
+    directory : str, Path, optional
         Path to folder
     timezone_netcdf : str, optional
         Timezone string of the netcdf file. UTC follows CF-conventions.
@@ -1332,6 +1341,8 @@ def read_xml_dir(filepath,
         Also if summertime is used.
     file_ext : str, optional
         file extension of the measurement files
+    silent : bool
+        If set tot True, some verbose texts are not printed to stdout/screen
     kwargs : dict-like, optional
         keyword-arguments are passed to DataStore initialization
 
@@ -1341,115 +1352,22 @@ def read_xml_dir(filepath,
         The newly created datastore.
     """
 
-    # Get list of files in the given path
-    filepathlist = sorted(glob.glob(os.path.join(filepath, file_ext)))
+    if not filepathlist:
+        filepathlist = sorted(glob.glob(os.path.join(directory, file_ext)))
 
-    # Make sure that there are files in the folder, to avoid errors later
-    assert len(filepathlist) >= 1, 'No measurement files with extension {} found in {}'.format(
-        file_ext, filepath)
-
-    # Use the read_xml_list function to read all files
-    ds = read_xml_list(filepathlist, timezone_netcdf, timezone_ultima_xml)
-
-    return ds
-
-
-def read_xml_list(filepathlist,
-                  timezone_netcdf='UTC',
-                  timezone_ultima_xml='UTC',
-                  **kwargs):
-    """Read a list of measurement files. Each measurement file contains values for a
-    single timestep. Remember to check which timezone you are working in.
-
-    Parameters
-    ----------
-    filenamelist : list, Path
-        List of paths to files
-    timezone_netcdf : str, optional
-        Timezone string of the netcdf file. UTC follows CF-conventions.
-    timezone_ultima_xml : str, optional
-        Timezone string of the measurement files. Remember to check when measurements are taken.
-        Also if summertime is used.
-    kwargs : dict-like, optional
-        keyword-arguments are passed to DataStore initialization
-
-    Returns
-    -------
-    datastore : DataStore
-        The newly created datastore.
-    """
-    log_attrs = {
-        'x':                     {
-            'description':      'Length along fiber',
-            'long_describtion': 'Starting at connector of forward channel',
-            'units':            'm'},
-        'TMP':                   {
-            'description': 'temperature calibrated by device',
-            'units':       'degC'},
-        'ST':                    {
-            'description': 'Stokes intensity',
-            'units':       '-'},
-        'AST':                   {
-            'description': 'anti-Stokes intensity',
-            'units':       '-'},
-        'REV-ST':                {
-            'description': 'reverse Stokes intensity',
-            'units':       '-'},
-        'REV-AST':               {
-            'description': 'reverse anti-Stokes intensity',
-            'units':       '-'},
-        'acquisitionTime':       {
-            'description':      'Measurement duration of forward channel',
-            'long_describtion': 'Actual measurement duration of forward channel',
-            'units':            'seconds'},
-        'userAcquisitionTimeFW': {
-            'description':      'Measurement duration of forward channel',
-            'long_describtion': 'Desired measurement duration of forward channel',
-            'units':            'seconds'},
-        'userAcquisitionTimeBW': {
-            'description':      'Measurement duration of backward channel',
-            'long_describtion': 'Desired measurement duration of backward channel',
-            'units':            'seconds'},
-        }
     # Make sure that the list of files contains any files
-    assert len(filepathlist) >= 1, 'No measurement files found in provided list'
+    assert len(filepathlist) >= 1, 'No measurement files found in provided list/directory'
 
-    # Get list of only file names, from the path
-    filenamelist = [os.path.basename(path) for path in filepathlist]
+    # read raw files:
+    data_vars, coords, attrs = read_silixa_files_routine(
+        filepathlist,
+        timezone_netcdf=timezone_netcdf,
+        timezone_ultima_xml=timezone_ultima_xml,
+        silent=silent)
 
-    # Call grab_data2 to read out all files
-    array, timearr, meta, extra = grab_data2(filepathlist)
-
-    coords = {
-        'x':        ('x', array['LAF'][:, 0], log_attrs['x']),
-        'filename': ('time', filenamelist)}
-    tcoords = coords_time(extra, timearr,
-                          timezone_netcdf=timezone_netcdf,
-                          timezone_ultima_xml=timezone_ultima_xml)
-    coords.update(tcoords)
-
-    dataset_dict = {}
-    for name in array.dtype.names:
-        if name in ['TMP', 'ST', 'AST', 'REV-ST', 'REV-AST']:
-            dataset_dict[name] = (['x', 'time'], array[name], log_attrs[name])
-
-        elif name == 'LAF':
-            continue
-
-        else:
-            print(name)
-            assert 0
-
-    for key, item in extra.items():
-        if key in log_attrs:
-            dataset_dict[key] = (['time'], item['array'], log_attrs[key])
-
-        else:
-            dataset_dict[key] = (['time'], item['array'])
-
-    ds = DataStore(data_vars=dataset_dict,
+    ds = DataStore(data_vars=data_vars,
                    coords=coords,
-                   attrs=meta,
+                   attrs=attrs,
                    **kwargs)
 
     return ds

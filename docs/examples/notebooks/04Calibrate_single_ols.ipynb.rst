@@ -12,7 +12,7 @@ calculated.
 
     import os
     
-    from dtscalibration import read_xml_dir
+    from dtscalibration import read_silixa_files
     import matplotlib.pyplot as plt
     
     %matplotlib inline
@@ -29,10 +29,11 @@ calculated.
     timezone_ultima_xml = 'Europe/Amsterdam'
     file_ext = '*.xml'
     
-    ds = read_xml_dir(filepath,
-                      timezone_netcdf=timezone_netcdf,
-                      timezone_ultima_xml=timezone_ultima_xml,
-                      file_ext=file_ext)
+    ds = read_silixa_files(
+        directory=filepath,
+        timezone_netcdf=timezone_netcdf,
+        timezone_ultima_xml=timezone_ultima_xml,
+        file_ext=file_ext)
     
     ds100 = ds.sel(x=slice(-30, 101))  # only calibrate parts of the fiber
     sections = {
@@ -47,10 +48,7 @@ calculated.
     3 files were found, each representing a single timestep
     4 recorded vars were found: LAF, ST, AST, TMP
     Recorded at 1461 points along the cable
-    Dask: Setting up handle for delayed readout. 1 out of 3
-    Dask: Setting up handle for delayed readout. 3 out of 3
-    Directly reading time and extra info from xml files. 1 out of 3
-    Directly reading time and extra info from xml files. 3 out of 3
+    The measurement is single ended
 
 
 .. code:: ipython3
@@ -137,18 +135,17 @@ calculated.
          0  4.82000e+02   2.948e+01  2.948e+01    1.0e+00  1.0e+01
          1  4.82000e+02   6.004e-01  6.004e-01    1.4e-01  1.4e-02   3.1e+02  1.0e+00
          2  4.81999e+02   1.868e-02  1.868e-02    4.4e-03  3.4e-02   3.1e+02  7.1e+01
-         3  4.81999e+02   6.248e-03  6.248e-03    1.5e-03  5.1e-06   3.1e+02  7.6e+01
+         3  4.81999e+02   6.248e-03  6.248e-03    1.5e-03  2.7e-05   3.1e+02  7.6e+01
          4  4.81999e+02   6.248e-03  6.248e-03    1.5e-03  1.2e-08   4.4e+02  1.1e+02
-         5  4.81877e+02   6.247e-03  6.247e-03    1.5e-03  2.2e-08   4.4e+02  8.6e+05
-         6  4.81877e+02   6.247e-03  6.247e-03    1.5e-03  3.0e-07   4.4e+02  8.6e+05
-         7  4.81877e+02   6.247e-03  6.247e-03    1.5e-03  1.9e-08   5.3e+02  1.1e+06
-         8  4.81877e+02   6.247e-03  6.247e-03    1.5e-03  6.6e-18   5.3e+02  1.1e+06
+         5  4.81877e+02   6.248e-03  6.248e-03    1.5e-03  1.5e-08   4.4e+02  8.6e+05
+         6  4.81877e+02   6.248e-03  6.248e-03    1.5e-03  1.1e-08   5.0e+02  9.8e+05
+         7  4.81877e+02   6.248e-03  6.248e-03    1.5e-03  8.0e-09   5.3e+02  1.1e+06
      
     LSQR finished
     The least-squares solution is good enough, given atol     
      
-    istop =       2   r1norm = 6.2e-03   anorm = 5.3e+02   arnorm = 2.2e-17
-    itn   =       8   r2norm = 6.2e-03   acond = 1.1e+06   xnorm  = 2.1e-01
+    istop =       2   r1norm = 6.2e-03   anorm = 5.3e+02   arnorm = 2.7e-08
+    itn   =       7   r2norm = 6.2e-03   acond = 1.1e+06   xnorm  = 2.1e-01
      
 
 
@@ -168,7 +165,7 @@ Lets compare our calibrated values with the device calibration
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x11ca825c0>
+    <matplotlib.legend.Legend at 0x1127250b8>
 
 
 

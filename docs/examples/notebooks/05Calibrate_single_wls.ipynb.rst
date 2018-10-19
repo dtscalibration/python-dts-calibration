@@ -15,7 +15,7 @@ defined.
 
     import os
     
-    from dtscalibration import read_xml_dir
+    from dtscalibration import read_silixa_files
     import matplotlib.pyplot as plt
     %matplotlib inline
 
@@ -31,10 +31,11 @@ defined.
     timezone_ultima_xml = 'Europe/Amsterdam'
     file_ext = '*.xml'
     
-    ds = read_xml_dir(filepath,
-                      timezone_netcdf=timezone_netcdf,
-                      timezone_ultima_xml=timezone_ultima_xml,
-                      file_ext=file_ext)
+    ds = read_silixa_files(
+        directory=filepath,
+        timezone_netcdf=timezone_netcdf,
+        timezone_ultima_xml=timezone_ultima_xml,
+        file_ext=file_ext)
     
     ds = ds.sel(x=slice(-30, 101))  # only calibrate parts of the fiber
     sections = {
@@ -50,10 +51,7 @@ defined.
     3 files were found, each representing a single timestep
     4 recorded vars were found: LAF, ST, AST, TMP
     Recorded at 1461 points along the cable
-    Dask: Setting up handle for delayed readout. 1 out of 3
-    Dask: Setting up handle for delayed readout. 3 out of 3
-    Directly reading time and extra info from xml files. 1 out of 3
-    Directly reading time and extra info from xml files. 3 out of 3
+    The measurement is single ended
 
 
 .. code:: ipython3
@@ -127,17 +125,17 @@ defined.
 .. parsed-literal::
 
     Data variables:
-        ST                     (x, time) float32 dask.array<shape=(1030, 3), chunksize=(1030, 1)>
-        AST                    (x, time) float32 dask.array<shape=(1030, 3), chunksize=(1030, 1)>
-        TMP                    (x, time) float32 dask.array<shape=(1030, 3), chunksize=(1030, 1)>
-        acquisitionTime        (time) float64 30.71 30.7 30.72
-        referenceTemperature   (time) float64 24.52 24.52 24.51
-        probe1Temperature      (time) float64 18.02 18.02 18.02
-        probe2Temperature      (time) float64 6.62 6.617 6.617
-        referenceProbeVoltage  (time) float64 0.1232 0.1232 0.1232
-        probe1Voltage          (time) float64 0.12 0.12 0.12
-        probe2Voltage          (time) float64 0.115 0.115 0.115
-        userAcquisitionTimeFW  (time) float64 30.0 30.0 30.0
+        ST                     (x, time) float64 dask.array<shape=(1030, 3), chunksize=(1030, 1)>
+        AST                    (x, time) float64 dask.array<shape=(1030, 3), chunksize=(1030, 1)>
+        TMP                    (x, time) float64 dask.array<shape=(1030, 3), chunksize=(1030, 1)>
+        acquisitionTime        (time) float32 30.71 30.702 30.716
+        referenceTemperature   (time) float32 24.5187 24.5168 24.5138
+        probe1Temperature      (time) float32 18.0204 18.0211 18.0216
+        probe2Temperature      (time) float32 6.61986 6.61692 6.61695
+        referenceProbeVoltage  (time) float32 0.123199 0.123198 0.123198
+        probe1Voltage          (time) float32 0.12 0.12 0.12
+        probe2Voltage          (time) float32 0.115 0.115 0.115
+        userAcquisitionTimeFW  (time) float32 30.0 30.0 30.0
 
 
 

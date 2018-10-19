@@ -11,7 +11,7 @@ considered equal here and no variance is calculated.
 
     import os
     
-    from dtscalibration import read_xml_dir
+    from dtscalibration import read_silixa_files
     import matplotlib.pyplot as plt
     %matplotlib inline
 
@@ -27,10 +27,11 @@ considered equal here and no variance is calculated.
     timezone_ultima_xml = 'Europe/Amsterdam'
     file_ext = '*.xml'
     
-    ds = read_xml_dir(filepath,
-                      timezone_netcdf=timezone_netcdf,
-                      timezone_ultima_xml=timezone_ultima_xml,
-                      file_ext=file_ext)
+    ds = read_silixa_files(
+        directory=filepath,
+        timezone_netcdf=timezone_netcdf,
+        timezone_ultima_xml=timezone_ultima_xml,
+        file_ext=file_ext)
     
     ds100 = ds.sel(x=slice(0, 100))  # only calibrate parts of the fiber
     sections = {
@@ -44,10 +45,7 @@ considered equal here and no variance is calculated.
     6 files were found, each representing a single timestep
     6 recorded vars were found: LAF, ST, AST, REV-ST, REV-AST, TMP
     Recorded at 1693 points along the cable
-    Dask: Setting up handle for delayed readout. 1 out of 6
-    Dask: Setting up handle for delayed readout. 6 out of 6
-    Directly reading time and extra info from xml files. 1 out of 6
-    Directly reading time and extra info from xml files. 6 out of 6
+    The measurement is double ended
 
 
 .. code:: ipython3
@@ -154,16 +152,17 @@ considered equal here and no variance is calculated.
          5  4.81999e+02   1.131e-01  1.131e-01    7.9e-03  2.3e-02   6.6e+01  1.7e+01
          6  4.81999e+02   9.214e-02  9.214e-02    6.4e-03  3.1e-04   6.6e+01  3.1e+01
          7  4.81999e+02   9.212e-02  9.212e-02    6.4e-03  7.0e-04   6.6e+01  7.4e+01
-         8  4.81999e+02   9.209e-02  9.209e-02    6.4e-03  1.5e-02   6.6e+01  1.0e+02
-         9  4.82001e+02   8.994e-02  8.994e-02    6.3e-03  6.3e-03   8.1e+01  9.4e+02
-        10  4.82001e+02   8.993e-02  8.993e-02    6.3e-03  2.0e-06   8.8e+01  1.0e+03
-        15  4.82563e+02   8.988e-02  8.988e-02    6.3e-03  2.2e-08   1.0e+02  2.0e+04
-        16  4.82563e+02   8.988e-02  8.988e-02    6.3e-03  3.5e-12   1.1e+02  2.1e+04
+         8  4.82000e+02   9.072e-02  9.072e-02    6.3e-03  7.3e-02   6.6e+01  6.2e+02
+         9  4.82001e+02   8.996e-02  8.996e-02    6.3e-03  1.2e-02   8.0e+01  9.3e+02
+        10  4.82001e+02   8.993e-02  8.993e-02    6.3e-03  3.5e-06   8.8e+01  1.0e+03
+        14  4.82563e+02   8.988e-02  8.988e-02    6.3e-03  4.0e-08   1.0e+02  1.9e+04
+        15  4.82563e+02   8.988e-02  8.988e-02    6.3e-03  7.8e-08   1.0e+02  2.0e+04
+        16  4.82563e+02   8.988e-02  8.988e-02    6.3e-03  1.4e-11   1.1e+02  2.1e+04
      
     LSQR finished
     The least-squares solution is good enough, given atol     
      
-    istop =       2   r1norm = 9.0e-02   anorm = 1.1e+02   arnorm = 3.5e-11
+    istop =       2   r1norm = 9.0e-02   anorm = 1.1e+02   arnorm = 1.4e-10
     itn   =      16   r2norm = 9.0e-02   acond = 2.1e+04   xnorm  = 6.4e-01
      
 
@@ -182,7 +181,7 @@ considered equal here and no variance is calculated.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x117b7add8>
+    <matplotlib.legend.Legend at 0x11b6440f0>
 
 
 
@@ -205,7 +204,7 @@ first.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x117cbfba8>]
+    [<matplotlib.lines.Line2D at 0x11b991518>]
 
 
 

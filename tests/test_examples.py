@@ -22,7 +22,6 @@ def _notebook_run(path):
 
     jupyter_exec = shutil.which('jupyter')
 
-    #
     args = [jupyter_exec, "nbconvert", path,
             "--output", nbpath,
             "--to", "notebook",

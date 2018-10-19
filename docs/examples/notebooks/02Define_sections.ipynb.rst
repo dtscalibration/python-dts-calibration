@@ -7,7 +7,7 @@
     import os
     import glob
     
-    from dtscalibration import read_xml_dir
+    from dtscalibration import read_silixa_files
 
 .. code:: ipython3
 
@@ -21,10 +21,11 @@
     timezone_ultima_xml = 'Europe/Amsterdam'
     file_ext = '*.xml'
     
-    ds = read_xml_dir(filepath,
-                      timezone_netcdf=timezone_netcdf,
-                      timezone_ultima_xml=timezone_ultima_xml,
-                      file_ext=file_ext)
+    ds = read_silixa_files(
+        directory=filepath,
+        timezone_netcdf=timezone_netcdf,
+        timezone_ultima_xml=timezone_ultima_xml,
+        file_ext=file_ext)
 
 
 .. parsed-literal::
@@ -32,10 +33,7 @@
     6 files were found, each representing a single timestep
     6 recorded vars were found: LAF, ST, AST, REV-ST, REV-AST, TMP
     Recorded at 1693 points along the cable
-    Dask: Setting up handle for delayed readout. 1 out of 6
-    Dask: Setting up handle for delayed readout. 6 out of 6
-    Directly reading time and extra info from xml files. 1 out of 6
-    Directly reading time and extra info from xml files. 6 out of 6
+    The measurement is double ended
 
 
 A calibration is needed to estimate temperature from Stokes and

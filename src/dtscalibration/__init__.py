@@ -1,8 +1,8 @@
 # coding=utf-8
 from .datastore import DataStore
 from .datastore import open_datastore
-from .datastore import read_xml_dir
-from .datastore import read_xml_list
+from .datastore import plot_dask
+from .datastore import read_silixa_files
 
 __version__ = '0.5.0'
-__all__ = ["DataStore", "open_datastore", "read_xml_dir", "read_xml_list"]
+__all__ = ["DataStore", "open_datastore", "read_silixa_files", "plot_dask"]

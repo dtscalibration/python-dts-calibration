@@ -10,12 +10,13 @@ https://github.com/bdestombe/python-dts-calibration/tree/master/examples/noteboo
     import os
     import glob
     
-    from dtscalibration import read_xml_dir
+    from dtscalibration import read_silixa_files
 
 The data files are located in ``./python-dts-calibration/tests/data``
 
 .. code:: ipython3
 
+    # The path is different for testing environments vs locally
     try:
         # this file is excecuted as script
         wd = os.path.dirname(os.path.realpath(__file__))
@@ -32,6 +33,9 @@ The data files are located in ``./python-dts-calibration/tests/data``
 
     /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration/examples/notebooks/../../tests/data/double_ended2
 
+
+Define in which timezone the measurements are taken. In this case it is
+the timezone of the Silixa Ultima computer.
 
 .. code:: ipython3
 
@@ -61,7 +65,7 @@ The data files are located in ``./python-dts-calibration/tests/data``
 
 .. code:: ipython3
 
-    ds = read_xml_dir(filepath,
+    ds = read_silixa_files(directory=filepath,
                       timezone_netcdf=timezone_netcdf,
                       timezone_ultima_xml=timezone_ultima_xml,
                       file_ext=file_ext)
@@ -72,10 +76,7 @@ The data files are located in ``./python-dts-calibration/tests/data``
     6 files were found, each representing a single timestep
     6 recorded vars were found: LAF, ST, AST, REV-ST, REV-AST, TMP
     Recorded at 1693 points along the cable
-    Dask: Setting up handle for delayed readout. 1 out of 6
-    Dask: Setting up handle for delayed readout. 6 out of 6
-    Directly reading time and extra info from xml files. 1 out of 6
-    Directly reading time and extra info from xml files. 6 out of 6
+    The measurement is double ended
 
 
 .. code:: ipython3
@@ -88,8 +89,9 @@ The data files are located in ``./python-dts-calibration/tests/data``
     <xarray.DataStore>
     Dimensions:                (time: 6, x: 1693)
     Coordinates:
-      * x                      (x) float32 -80.5043 -80.3772 ... 134.421 134.548
+      * x                      (x) float64 -80.5 -80.38 -80.25 ... 134.3 134.4 134.5
         filename               (time) <U31 'channel 1_20180328014052498.xml' ... 'channel 1_20180328014115480.xml'
+        filename_tstamp        (time) int64 20180328014052498 ... 20180328014115480
         timeFWstart            (time) datetime64[ns] 2018-03-27T22:40:52.097000 ... 2018-03-27T22:41:15.061000
         timeFWend              (time) datetime64[ns] 2018-03-27T22:40:54.097000 ... 2018-03-27T22:41:17.061000
         timeFW                 (time) datetime64[ns] 2018-03-27T22:40:53.097000 ... 2018-03-27T22:41:16.061000
@@ -100,20 +102,20 @@ The data files are located in ``./python-dts-calibration/tests/data``
         timeend                (time) datetime64[ns] 2018-03-27T22:40:56.097000 ... 2018-03-27T22:41:19.061000
       * time                   (time) datetime64[ns] 2018-03-27T22:40:54.097000 ... 2018-03-27T22:41:17.061000
     Data variables:
-        ST                     (x, time) float32 dask.array<shape=(1693, 6), chunksize=(1693, 1)>
-        AST                    (x, time) float32 dask.array<shape=(1693, 6), chunksize=(1693, 1)>
-        REV-ST                 (x, time) float32 dask.array<shape=(1693, 6), chunksize=(1693, 1)>
-        REV-AST                (x, time) float32 dask.array<shape=(1693, 6), chunksize=(1693, 1)>
-        TMP                    (x, time) float32 dask.array<shape=(1693, 6), chunksize=(1693, 1)>
-        acquisitionTime        (time) float64 2.098 2.075 2.076 2.133 2.085 2.062
-        referenceTemperature   (time) float64 21.05 21.05 21.05 21.05 21.05 21.06
-        probe1Temperature      (time) float64 4.361 4.36 4.359 4.36 4.36 4.361
-        probe2Temperature      (time) float64 18.58 18.58 18.58 18.58 18.58 18.57
-        referenceProbeVoltage  (time) float64 0.1217 0.1217 0.1217 ... 0.1217 0.1217
-        probe1Voltage          (time) float64 0.114 0.114 0.114 0.114 0.114 0.114
-        probe2Voltage          (time) float64 0.121 0.121 0.121 0.121 0.121 0.121
-        userAcquisitionTimeFW  (time) float64 2.0 2.0 2.0 2.0 2.0 2.0
-        userAcquisitionTimeBW  (time) float64 2.0 2.0 2.0 2.0 2.0 2.0
+        ST                     (x, time) float64 dask.array<shape=(1693, 6), chunksize=(1693, 1)>
+        AST                    (x, time) float64 dask.array<shape=(1693, 6), chunksize=(1693, 1)>
+        REV-ST                 (x, time) float64 dask.array<shape=(1693, 6), chunksize=(1693, 1)>
+        REV-AST                (x, time) float64 dask.array<shape=(1693, 6), chunksize=(1693, 1)>
+        TMP                    (x, time) float64 dask.array<shape=(1693, 6), chunksize=(1693, 1)>
+        acquisitionTime        (time) float32 2.098 2.075 2.076 2.133 2.085 2.062
+        referenceTemperature   (time) float32 21.0536 21.054 ... 21.0531 21.057
+        probe1Temperature      (time) float32 4.36149 4.36025 ... 4.36021 4.36118
+        probe2Temperature      (time) float32 18.5792 18.5785 ... 18.5805 18.5723
+        referenceProbeVoltage  (time) float32 0.121704 0.121704 ... 0.121705
+        probe1Voltage          (time) float32 0.114 0.114 0.114 0.114 0.114 0.114
+        probe2Voltage          (time) float32 0.121 0.121 0.121 0.121 0.121 0.121
+        userAcquisitionTimeFW  (time) float32 2.0 2.0 2.0 2.0 2.0 2.0
+        userAcquisitionTimeBW  (time) float32 2.0 2.0 2.0 2.0 2.0 2.0
     Attributes:
         uid:                                                                     ...
         nameWell:                                                                ...

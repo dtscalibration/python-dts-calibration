@@ -7,7 +7,7 @@ import numpy as np
 
 from dtscalibration import DataStore
 from dtscalibration import open_datastore
-from dtscalibration import read_xml_dir
+from dtscalibration import read_silixa_files
 from dtscalibration.datastore_utils import read_data_from_fp_numpy
 
 np.random.seed(0)
@@ -167,24 +167,26 @@ def test_io_sections_property():
     pass
 
 
-def test_read_xml_dir_single_ended():
+def test_read_silixa_files_single_ended():
     filepath = data_dir_single_ended
-    ds = read_xml_dir(filepath,
-                      timezone_netcdf='UTC',
-                      timezone_ultima_xml='Europe/Amsterdam',
-                      file_ext='*.xml')
+    ds = read_silixa_files(
+        directory=filepath,
+        timezone_netcdf='UTC',
+        timezone_ultima_xml='Europe/Amsterdam',
+        file_ext='*.xml')
 
     assert ds._initialized
 
     pass
 
 
-def test_read_xml_dir_double_ended():
+def test_read_silixa_files_double_ended():
     filepath = data_dir_double_ended
-    ds = read_xml_dir(filepath,
-                      timezone_netcdf='UTC',
-                      timezone_ultima_xml='Europe/Amsterdam',
-                      file_ext='*.xml')
+    ds = read_silixa_files(
+        directory=filepath,
+        timezone_netcdf='UTC',
+        timezone_ultima_xml='Europe/Amsterdam',
+        file_ext='*.xml')
 
     assert ds._initialized
 
