@@ -227,6 +227,11 @@ class DataStore(xr.Dataset):
         if engine is None:
             engine = 'netcdf4'
 
+        # Fix Bart Schilperoort: netCDF doesn't like None's
+        for attribute, value in self.attrs.items():
+            if value is None:
+                self.attrs[attribute] = ''
+
         return super(DataStore, self).to_netcdf(
             path, mode, format=format, group=group,
             engine=engine, encoding=encoding,
