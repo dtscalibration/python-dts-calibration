@@ -50,7 +50,8 @@ def clear_output_dir(fp, fn='*.nc'):
 def read_silixa_files_routine(filepathlist,
                               timezone_netcdf='UTC',
                               timezone_ultima_xml='UTC',
-                              silent=False):
+                              silent=False,
+                              load_in_memory='auto'):
     """
     Internal routine that reads Silixa files. Use dtscalibration.read_silixa_files function instead.
 
@@ -170,7 +171,7 @@ def read_silixa_files_routine(filepathlist,
         else:
             item['uom'] = ''
 
-    # data array dtype
+    # Gather data
     arr_path = 's:' + '/s:'.join(['log', 'logData', 'data'])
 
     @dask.delayed
@@ -187,7 +188,16 @@ def read_silixa_files_routine(filepathlist,
 
     data_lst_dly = [grab_data_per_file(fp) for fp in filepathlist]
     data_lst = [da.from_delayed(x, shape=(nx, nitem), dtype=np.float) for x in data_lst_dly]
-    data_arr = da.stack(data_lst).T
+    data_arr = da.stack(data_lst).T  # .compute()
+
+    # Check whether to compute data_arr (if possible 25% faster)
+    data_arr_cnk = data_arr.rechunk({0: -1, 1: -1, 2: 'auto'})
+    if load_in_memory == 'auto' and data_arr_cnk.npartitions <= 5:
+        data_arr = data_arr_cnk.compute()
+    elif load_in_memory:
+        data_arr = data_arr_cnk.compute()
+    else:
+        data_arr = data_arr_cnk
 
     data_vars = {}
     for name, data_arri in zip(data_item_names, data_arr):

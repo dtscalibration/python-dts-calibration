@@ -1328,6 +1328,7 @@ def read_silixa_files(
     timezone_netcdf='UTC',
     timezone_ultima_xml='UTC',
     silent=False,
+    load_in_memory='auto',
         **kwargs):
 
     """Read a folder with measurement files. Each measurement file contains values for a
@@ -1348,6 +1349,8 @@ def read_silixa_files(
         file extension of the measurement files
     silent : bool
         If set tot True, some verbose texts are not printed to stdout/screen
+    load_in_memory : {'auto', True, False}
+        If 'auto' the Stokes data is only loaded to memory for small files
     kwargs : dict-like, optional
         keyword-arguments are passed to DataStore initialization
 
@@ -1368,7 +1371,8 @@ def read_silixa_files(
         filepathlist,
         timezone_netcdf=timezone_netcdf,
         timezone_ultima_xml=timezone_ultima_xml,
-        silent=silent)
+        silent=silent,
+        load_in_memory=load_in_memory)
 
     ds = DataStore(data_vars=data_vars,
                    coords=coords,
