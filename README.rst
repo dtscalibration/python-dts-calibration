@@ -10,10 +10,14 @@ Overview
     * - docs
       - |docs|
     * - tests
-      - | |travis| |appveyor|
+      - | |travis|
+        | |appveyor|
         | |codecov|
     * - package
-      - | |version| |wheel| |supported-versions| |supported-implementations|
+      - | |version|
+        | |wheel|
+        | |supported-versions|
+        | |supported-implementations|
         | |commits-since|
     * - citable
       - |zenodo|
@@ -28,8 +32,7 @@ Overview
     :alt: Travis-CI Build Status
     :target: https://travis-ci.org/bdestombe/python-dts-calibration
 
-.. |appveyor| image:: https://ci.appveyor
-.com/api/projects/status/github/bdestombe/python-dts-calibration?branch=master&svg=true
+.. |appveyor| image:: https://ci.appveyor.com/api/projects/status/github/bdestombe/python-dts-calibration?branch=master&svg=true
     :alt: AppVeyor Build Status
     :target: https://ci.appveyor.com/project/bdestombe/python-dts-calibration
 
