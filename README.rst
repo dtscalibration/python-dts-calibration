@@ -109,6 +109,14 @@ To bump version and docs:
     git status          # Only notebook related files should be shown
     git add --all       # Add all notebook related files to local version
     git commit -m "Updated notebook examples to reflect recent changes"
+    
+.. code-block:: zsh
+
+    # update CHANGELOG.rst with the recent commits
+    # update AUTHORS.rst
+    
+.. code-block:: zsh
+
     bumpversion patch   # (major, minor, patch)
     git push
     rm -rf build        # Clean local folders (not synced) used for pip wheel
@@ -116,3 +124,13 @@ To bump version and docs:
     rm -rf dist/*
     python setup.py clean --all sdist bdist_wheel
     twine upload --repository-url https://upload.pypi.org/legacy/ dist/dtscalibration*
+    
+On GitHub draft a new release
+
+.. code-block:: zsh
+
+    # GitHub > Code > Releases > Draft a new release
+    # Tag: v1.2.3
+    # Title: v1.2.3
+    # Describtion: Copy-paste the new part of CHANGELOG.rst
+
