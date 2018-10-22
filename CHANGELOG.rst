@@ -2,8 +2,8 @@
 Changelog
 =========
 
-Head
-----
+Master
+------
 
 * CI: Add appveyor to continuesly test on Windows platform
 * Auto load Silixa files to memory option, if size is small
