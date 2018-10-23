@@ -17,7 +17,7 @@ from .calibrate_utils import calibration_single_ended_ols
 from .calibrate_utils import calibration_single_ended_wls
 from .datastore_utils import check_dims
 from .datastore_utils import check_timestep_allclose
-from .datastore_utils import read_silixa_files_routine
+from .io              import read_silixa_files_routine
 
 
 class DataStore(xr.Dataset):
