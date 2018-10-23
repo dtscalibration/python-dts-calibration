@@ -1,5 +1,5 @@
 
-7. Calibration of double ended measurement with WLS and confidence intervals
+8. Calibration of double ended measurement with WLS and confidence intervals
 ============================================================================
 
 A double ended calibration is performed with weighted least squares.
@@ -125,7 +125,7 @@ entire measurement period’.
 
 
 
-.. image:: 07Calibrate_double_wls.ipynb_files/07Calibrate_double_wls.ipynb_9_0.png
+.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_9_0.png
 
 
 The DataArrays ``TMPF_MC`` and ``TMPB_MC`` and the dimension ``CI`` are
@@ -142,11 +142,11 @@ confidence interval ‘coordinates’.
 .. parsed-literal::
 
     Data variables:
-        ST                     (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 1)>
-        AST                    (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 1)>
-        REV-ST                 (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 1)>
-        REV-AST                (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 1)>
-        TMP                    (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 1)>
+        ST                     (x, time) float64 4.049e+03 4.044e+03 ... 3.501e+03
+        AST                    (x, time) float64 3.293e+03 3.296e+03 ... 2.803e+03
+        REV-ST                 (x, time) float64 4.061e+03 4.037e+03 ... 4.584e+03
+        REV-AST                (x, time) float64 3.35e+03 3.333e+03 ... 3.707e+03
+        TMP                    (x, time) float64 16.69 16.87 16.51 ... 13.6 13.69
         acquisitionTime        (time) float32 2.098 2.075 2.076 2.133 2.085 2.062
         referenceTemperature   (time) float32 21.0536 21.054 ... 21.0531 21.057
         probe1Temperature      (time) float32 4.36149 4.36025 ... 4.36021 4.36118
@@ -164,13 +164,13 @@ confidence interval ‘coordinates’.
         alphaint_var           float64 7.387e-07
         alpha_var              (x) float64 3.563e-07 3.489e-07 ... 7.284e-07
         c_var                  (time) float64 6.632e-07 6.632e-07 ... 6.632e-07
-        TMPF                   (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 1)>
-        TMPB                   (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 1)>
+        TMPF                   (x, time) float64 16.8 17.06 16.33 ... 13.48 13.78
+        TMPB                   (x, time) float64 16.81 16.84 16.88 ... 13.73 13.69
         p_val                  (params1) float64 482.6 -0.01034 ... -0.01034
         p_cov                  (params1, params2) float64 0.03868 ... 7.284e-07
         TMPF_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 787, 6)>
         TMPB_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 787, 6)>
-        TMPF_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 1)>
-        TMPB_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 1)>
+        TMPF_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 6)>
+        TMPB_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 6)>
 
 

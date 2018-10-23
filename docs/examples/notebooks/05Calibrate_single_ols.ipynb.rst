@@ -1,5 +1,5 @@
 
-4. Calibration of double ended measurement with OLS
+5. Calibration of double ended measurement with OLS
 ===================================================
 
 A double ended calibration is performed with ordinary least squares.
@@ -165,10 +165,10 @@ Lets compare our calibrated values with the device calibration
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x117dcecc0>
+    <matplotlib.legend.Legend at 0x11ec94d30>
 
 
 
 
-.. image:: 04Calibrate_single_ols.ipynb_files/04Calibrate_single_ols.ipynb_7_1.png
+.. image:: 05Calibrate_single_ols.ipynb_files/05Calibrate_single_ols.ipynb_7_1.png
 

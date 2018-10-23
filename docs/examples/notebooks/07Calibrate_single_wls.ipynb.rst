@@ -1,5 +1,5 @@
 
-5. Calibration of single ended measurement with WLS and confidence intervals
+7. Calibration of single ended measurement with WLS and confidence intervals
 ============================================================================
 
 A single ended calibration is performed with weighted least squares.
@@ -125,9 +125,9 @@ defined.
 .. parsed-literal::
 
     Data variables:
-        ST                     (x, time) float64 dask.array<shape=(1030, 3), chunksize=(1030, 1)>
-        AST                    (x, time) float64 dask.array<shape=(1030, 3), chunksize=(1030, 1)>
-        TMP                    (x, time) float64 dask.array<shape=(1030, 3), chunksize=(1030, 1)>
+        ST                     (x, time) float64 6.267e+03 6.272e+03 ... 2.619e+03
+        AST                    (x, time) float64 5.473e+03 5.473e+03 ... 2.09e+03
+        TMP                    (x, time) float64 24.9 24.81 24.92 ... 10.63 10.71
         acquisitionTime        (time) float32 30.71 30.702 30.716
         referenceTemperature   (time) float32 24.5187 24.5168 24.5138
         probe1Temperature      (time) float32 18.0204 18.0211 18.0216
@@ -207,7 +207,7 @@ Lets compare our calibrated values with the device calibration
 
 
 
-.. image:: 05Calibrate_single_wls.ipynb_files/05Calibrate_single_wls.ipynb_12_0.png
+.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_12_0.png
 
 
 .. code:: ipython3
@@ -216,7 +216,7 @@ Lets compare our calibrated values with the device calibration
 
 
 
-.. image:: 05Calibrate_single_wls.ipynb_files/05Calibrate_single_wls.ipynb_13_0.png
+.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_13_0.png
 
 
 .. code:: ipython3
@@ -229,7 +229,7 @@ Lets compare our calibrated values with the device calibration
 
 
 
-.. image:: 05Calibrate_single_wls.ipynb_files/05Calibrate_single_wls.ipynb_14_0.png
+.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_14_0.png
 
 
 We can tell from the graph above that the 95% confidence interval widens
@@ -243,7 +243,7 @@ this should be around 0.005929 degC.
 
 
 
-.. image:: 05Calibrate_single_wls.ipynb_files/05Calibrate_single_wls.ipynb_16_0.png
+.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_16_0.png
 
 
 The variance of the temperature measurement appears to be larger than
@@ -263,7 +263,7 @@ Lets have a look at the Stokes and anti-Stokes signal.
 
 
 
-.. image:: 05Calibrate_single_wls.ipynb_files/05Calibrate_single_wls.ipynb_18_0.png
+.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_18_0.png
 
 
 Clearly there was a bad splice at 30 m that resulted in the sharp

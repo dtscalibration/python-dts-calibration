@@ -1,5 +1,5 @@
 
-2. Define calibration sections
+3. Define calibration sections
 ==============================
 
 .. code:: ipython3

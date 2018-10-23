@@ -2,6 +2,7 @@
 import glob
 import inspect
 import os
+import pprint
 
 import dask.array as da
 import numpy as np
@@ -69,13 +70,36 @@ class DataStore(xr.Dataset):
         """
 
     def __init__(self, *args, **kwargs):
-        super(DataStore, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         if '_sections' not in self.attrs:
             self.attrs['_sections'] = yaml.dump(None)
 
         if 'sections' in kwargs:
             self.sections = kwargs['sections']
+
+    def __unicode__(self):
+        # __repr__ from xarray is used and edited.
+        #   'xarray' is prepended. so we remove it and add 'dtscalibration'
+        s = xr.core.formatting.dataset_repr(self)
+        name_module = type(self).__name__
+        preamble_new = u'<dtscalibration.%s>' % name_module
+
+        # Add sections to new preamble
+        preamble_new += '\nSections:'
+        if hasattr(self, '_sections') and self.sections:
+            preamble_new += '\n'
+            preamble_new += pprint.pformat(self.sections)
+        else:
+            preamble_new += '    ()'
+
+        # add new preamble to the remainder of the former __repr__
+        len_preamble_old = 8 + len(name_module) + 2
+        s_out = '\n'.join([preamble_new,
+                           s[len_preamble_old:]])
+
+        # return new __repr__
+        return s_out
 
     # noinspection PyIncorrectDocstring
     @property

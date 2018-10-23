@@ -1,5 +1,5 @@
 
-3. Calculate variance of Stokes and anti-Stokes measurements
+4. Calculate variance of Stokes and anti-Stokes measurements
 ============================================================
 
 .. code:: ipython3
@@ -103,7 +103,7 @@
 
 
 
-.. image:: 03Calculate_variance_Stokes.ipynb_files/03Calculate_variance_Stokes.ipynb_5_0.png
+.. image:: 04Calculate_variance_Stokes.ipynb_files/04Calculate_variance_Stokes.ipynb_5_0.png
 
 
 The residuals should be normally distributed and independent from
@@ -118,5 +118,5 @@ by coils/sharp bends in cable - Attenuation caused by a splice
 
 
 
-.. image:: 03Calculate_variance_Stokes.ipynb_files/03Calculate_variance_Stokes.ipynb_7_0.png
+.. image:: 04Calculate_variance_Stokes.ipynb_files/04Calculate_variance_Stokes.ipynb_7_0.png
 
