@@ -17,9 +17,11 @@ from .calibrate_utils import calibration_single_ended_ols
 from .calibrate_utils import calibration_single_ended_wls
 from .datastore_utils import check_dims
 from .datastore_utils import check_timestep_allclose
-from .io              import read_silixa_files_routine_v6
-from .io              import read_silixa_files_routine_v4
-from .io              import silixa_xml_version_check
+
+from .io import read_silixa_files_routine_v6
+from .io import read_silixa_files_routine_v4
+from .io import silixa_xml_version_check
+
 
 class DataStore(xr.Dataset):
     """The data class that stores the measurements, contains calibration methods to relate Stokes
@@ -1367,7 +1369,6 @@ def read_silixa_files(
     # Make sure that the list of files contains any files
     assert len(filepathlist) >= 1, 'No measurement files found in provided list/directory'
 
-    #Check version number of xml
     xml_version = silixa_xml_version_check(filepathlist)
 
     if xml_version == 4:
@@ -1390,12 +1391,10 @@ def read_silixa_files(
         raise NotImplementedError('Silixa xml version '+
                                   '{0} not implemented'.format(xml_version))
 
-
     ds = DataStore(data_vars=data_vars,
                    coords=coords,
                    attrs=attrs,
                    **kwargs)
-
     return ds
 
 

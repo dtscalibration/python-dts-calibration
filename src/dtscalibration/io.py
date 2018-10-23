@@ -57,31 +57,32 @@ dim_attrs = {k: v for kl, v in _dim_attrs.items() for k in kl}
 
 def silixa_xml_version_check(filepathlist):
     """Function which tests which version of xml files have to be read.
-    
+
     Parameters
     ----------
     filepathlist
 
     Returns
     -------
-    
+
     """
-    
+
     sep = ':'
     attrs = read_silixa_attrs_singlefile(filepathlist[0], sep)
-    
+
     version_string = attrs['customData:SystemSettings:softwareVersion']
 
     # Get major version from string. Tested for Ultima v4, v6, XT-DTS v6
-    major_version = int(version_string.replace(' ','').split(':')[-1][0])
+    major_version = int(version_string.replace(' ', '').split(':')[-1][0])
 
-    return major_version    
+    return major_version
+
 
 def read_silixa_files_routine_v6(filepathlist,
-                                timezone_netcdf='UTC',
-                                timezone_ultima_xml='UTC',
-                                silent=False,
-                                load_in_memory='auto'):
+                                 timezone_netcdf='UTC',
+                                 timezone_ultima_xml='UTC',
+                                 silent=False,
+                                 load_in_memory='auto'):
     """
     Internal routine that reads Silixa files. Use dtscalibration.read_silixa_files function instead.
 
@@ -288,10 +289,10 @@ def read_silixa_files_routine_v6(filepathlist,
 
 
 def read_silixa_files_routine_v4(filepathlist,
-                                timezone_netcdf='UTC',
-                                timezone_ultima_xml='UTC',
-                                silent=False,
-                                load_in_memory='auto'):
+                                 timezone_netcdf='UTC',
+                                 timezone_ultima_xml='UTC',
+                                 silent=False,
+                                 load_in_memory='auto'):
     """
     Internal routine that reads Silixa files. Use dtscalibration.read_silixa_files function instead.
 
@@ -315,7 +316,6 @@ def read_silixa_files_routine_v4(filepathlist,
     # Obtain metadata from the first file
     attrs = read_silixa_attrs_singlefile(filepathlist[0], sep)
 
-
     double_ended_flag = bool(int(attrs['customData:isDoubleEnded']))
     chFW = int(attrs['customData:forwardMeasurementChannel']) - 1  # zero-based
     if double_ended_flag:
@@ -326,10 +326,10 @@ def read_silixa_files_routine_v4(filepathlist,
 
     # obtain basic data info
     if double_ended_flag:
-        data_item_names = [attrs['logCurveInfo_{0}:mnemonic'.format(x)] for x in range(0,6)]
+        data_item_names = [attrs['logCurveInfo_{0}:mnemonic'.format(x)] for x in range(0, 6)]
     else:
-        data_item_names = [attrs['logCurveInfo_{0}:mnemonic'.format(x)] for x in range(0,4)]
-    
+        data_item_names = [attrs['logCurveInfo_{0}:mnemonic'.format(x)] for x in range(0, 4)]
+
     nitem = len(data_item_names)
 
     x_start = np.float32(attrs['blockInfo:startIndex:#text'])
@@ -390,16 +390,11 @@ def read_silixa_files_routine_v4(filepathlist,
         with open(file_handle, 'r') as f_h:
             eltree = ElementTree.parse(f_h)
             arr_el = eltree.findall(arr_path, namespaces=ns)
-            
+
             # remove the breaks on both sides of the string
             # split the string on the comma
             arr_str = [arr_eli.text.split(',') for arr_eli in arr_el]
-            
-            ## 0 values were replaced by an empty string by eltree
-            #str_arr = np.array(arr_str)
-            #str_arr[str_arr==''] = '0'
         return np.array(arr_str, dtype=float)
-        #return str_arr.astype(float)
 
     data_lst_dly = [grab_data_per_file(fp) for fp in filepathlist]
     data_lst = [da.from_delayed(x, shape=(nx, nitem), dtype=np.float) for x in data_lst_dly]
@@ -567,6 +562,7 @@ def read_silixa_attrs_singlefile(filename, sep):
 
     return metakey(dict(), doc, '', sep)
 
+
 def coords_time(maxTimeIndex, timezone_netcdf, timezone_ultima_xml, dtFW=None,
                 dtBW=None, double_ended_flag=False):
     time_attrs = {
@@ -658,4 +654,3 @@ def coords_time(maxTimeIndex, timezone_netcdf, timezone_ultima_xml, dtFW=None,
         }
 
     return coords
-
