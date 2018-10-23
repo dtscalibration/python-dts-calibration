@@ -125,9 +125,9 @@ defined.
 .. parsed-literal::
 
     Data variables:
-        ST                     (x, time) float64 dask.array<shape=(1030, 3), chunksize=(1030, 1)>
-        AST                    (x, time) float64 dask.array<shape=(1030, 3), chunksize=(1030, 1)>
-        TMP                    (x, time) float64 dask.array<shape=(1030, 3), chunksize=(1030, 1)>
+        ST                     (x, time) float64 6.267e+03 6.272e+03 ... 2.619e+03
+        AST                    (x, time) float64 5.473e+03 5.473e+03 ... 2.09e+03
+        TMP                    (x, time) float64 24.9 24.81 24.92 ... 10.63 10.71
         acquisitionTime        (time) float32 30.71 30.702 30.716
         referenceTemperature   (time) float32 24.5187 24.5168 24.5138
         probe1Temperature      (time) float32 18.0204 18.0211 18.0216
