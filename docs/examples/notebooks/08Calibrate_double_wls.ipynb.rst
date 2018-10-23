@@ -1,5 +1,5 @@
 
-7. Calibration of double ended measurement with WLS and confidence intervals
+8. Calibration of double ended measurement with WLS and confidence intervals
 ============================================================================
 
 A double ended calibration is performed with weighted least squares.
@@ -125,7 +125,7 @@ entire measurement period’.
 
 
 
-.. image:: 07Calibrate_double_wls.ipynb_files/07Calibrate_double_wls.ipynb_9_0.png
+.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_9_0.png
 
 
 The DataArrays ``TMPF_MC`` and ``TMPB_MC`` and the dimension ``CI`` are

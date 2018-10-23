@@ -1,5 +1,5 @@
 
-5. Calibration of single ended measurement with WLS and confidence intervals
+7. Calibration of single ended measurement with WLS and confidence intervals
 ============================================================================
 
 A single ended calibration is performed with weighted least squares.
@@ -207,7 +207,7 @@ Lets compare our calibrated values with the device calibration
 
 
 
-.. image:: 05Calibrate_single_wls.ipynb_files/05Calibrate_single_wls.ipynb_12_0.png
+.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_12_0.png
 
 
 .. code:: ipython3
@@ -216,7 +216,7 @@ Lets compare our calibrated values with the device calibration
 
 
 
-.. image:: 05Calibrate_single_wls.ipynb_files/05Calibrate_single_wls.ipynb_13_0.png
+.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_13_0.png
 
 
 .. code:: ipython3
@@ -229,7 +229,7 @@ Lets compare our calibrated values with the device calibration
 
 
 
-.. image:: 05Calibrate_single_wls.ipynb_files/05Calibrate_single_wls.ipynb_14_0.png
+.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_14_0.png
 
 
 We can tell from the graph above that the 95% confidence interval widens
@@ -243,7 +243,7 @@ this should be around 0.005929 degC.
 
 
 
-.. image:: 05Calibrate_single_wls.ipynb_files/05Calibrate_single_wls.ipynb_16_0.png
+.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_16_0.png
 
 
 The variance of the temperature measurement appears to be larger than
@@ -263,7 +263,7 @@ Lets have a look at the Stokes and anti-Stokes signal.
 
 
 
-.. image:: 05Calibrate_single_wls.ipynb_files/05Calibrate_single_wls.ipynb_18_0.png
+.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_18_0.png
 
 
 Clearly there was a bad splice at 30 m that resulted in the sharp
