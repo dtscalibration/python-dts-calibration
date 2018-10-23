@@ -68,7 +68,6 @@ class DataStore(xr.Dataset):
         """
 
     def __init__(self, *args, **kwargs):
-        # super(DataStore, self).__init__(*args, **kwargs)
         super().__init__(*args, **kwargs)
 
         if '_sections' not in self.attrs:
