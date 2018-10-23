@@ -8,7 +8,6 @@ import numpy as np
 from dtscalibration import DataStore
 from dtscalibration import open_datastore
 from dtscalibration import read_silixa_files
-from dtscalibration.datastore_utils import read_data_from_fp_numpy
 
 np.random.seed(0)
 
@@ -192,7 +191,8 @@ def test_read_silixa_files_double_ended():
 
     pass
 
-    def read_data_from_fp_numpy(fp):
+
+def read_data_from_fp_numpy(fp):
     """
     Read the data from a single Silixa xml file. Using a simple approach
 
