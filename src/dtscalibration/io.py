@@ -55,11 +55,33 @@ _dim_attrs = {
 dim_attrs = {k: v for kl, v in _dim_attrs.items() for k in kl}
 
 
-def read_silixa_files_routine(filepathlist,
-                              timezone_netcdf='UTC',
-                              timezone_ultima_xml='UTC',
-                              silent=False,
-                              load_in_memory='auto'):
+def silixa_xml_version_check(filepathlist):
+    """Function which tests which version of xml files have to be read.
+    
+    Parameters
+    ----------
+    filepathlist
+
+    Returns
+    -------
+    
+    """
+    
+    sep = ':'
+    attrs = read_silixa_attrs_singlefile(filepathlist[0], sep)
+    
+    version_string = attrs['customData:SystemSettings:softwareVersion']
+
+    # Get major version from string. Tested for Ultima v4, v6, XT-DTS v6
+    major_version = int(version_string.replace(' ','').split(':')[-1][0])
+
+    return major_version    
+
+def read_silixa_files_routine_v6(filepathlist,
+                                timezone_netcdf='UTC',
+                                timezone_ultima_xml='UTC',
+                                silent=False,
+                                load_in_memory='auto'):
     """
     Internal routine that reads Silixa files. Use dtscalibration.read_silixa_files function instead.
 
@@ -263,6 +285,226 @@ def read_silixa_files_routine(filepathlist,
     coords.update(tcoords)
 
     return data_vars, coords, attrs
+
+
+def read_silixa_files_routine_v4(filepathlist,
+                                timezone_netcdf='UTC',
+                                timezone_ultima_xml='UTC',
+                                silent=False,
+                                load_in_memory='auto'):
+    """
+    Internal routine that reads Silixa files. Use dtscalibration.read_silixa_files function instead.
+
+    Parameters
+    ----------
+    filepathlist
+    timezone_netcdf
+    timezone_ultima_xml
+    silent
+
+    Returns
+    -------
+
+    """
+    import dask
+    from xml.etree import ElementTree
+
+    sep = ':'
+    ns = {'s': 'http://www.witsml.org/schemas/1series'}
+
+    # Obtain metadata from the first file
+    attrs = read_silixa_attrs_singlefile(filepathlist[0], sep)
+
+
+    double_ended_flag = bool(int(attrs['customData:isDoubleEnded']))
+    chFW = int(attrs['customData:forwardMeasurementChannel']) - 1  # zero-based
+    if double_ended_flag:
+        chBW = int(attrs['customData:reverseMeasurementChannel']) - 1  # zero-based
+    else:
+        # no backward channel is negative value. writes better to netcdf
+        chBW = -1
+
+    # obtain basic data info
+    if double_ended_flag:
+        data_item_names = [attrs['logCurveInfo_{0}:mnemonic'.format(x)] for x in range(0,6)]
+    else:
+        data_item_names = [attrs['logCurveInfo_{0}:mnemonic'.format(x)] for x in range(0,4)]
+    
+    nitem = len(data_item_names)
+
+    x_start = np.float32(attrs['blockInfo:startIndex:#text'])
+    x_end = np.float32(attrs['blockInfo:endIndex:#text'])
+    dx = np.float32(attrs['blockInfo:stepIncrement:#text'])
+    nx = int((x_end - x_start) / dx)
+
+    ntime = len(filepathlist)
+
+    # print summary
+    if not silent:
+        print('%s files were found, each representing a single timestep' % ntime)
+        print('%s recorded vars were found: ' % nitem + ', '.join(data_item_names))
+        print('Recorded at %s points along the cable' % nx)
+
+        if double_ended_flag:
+            print('The measurement is double ended')
+        else:
+            print('The measurement is single ended')
+
+    # obtain timeseries from data
+    timeseries_loc_in_hierarchy = [
+        ('wellLog', 'customData', 'acquisitionTime'),
+        ('wellLog', 'customData', 'referenceTemperature'),
+        ('wellLog', 'customData', 'probe1Temperature'),
+        ('wellLog', 'customData', 'probe2Temperature'),
+        ('wellLog', 'customData', 'referenceProbeVoltage'),
+        ('wellLog', 'customData', 'probe1Voltage'),
+        ('wellLog', 'customData', 'probe2Voltage'),
+        ('wellLog', 'customData', 'UserConfiguration',
+         'ChannelConfiguration', 'AcquisitionConfiguration',
+         'AcquisitionTime', 'userAcquisitionTimeFW')
+        ]
+
+    if double_ended_flag:
+        timeseries_loc_in_hierarchy.append(
+            ('wellLog', 'customData', 'UserConfiguration',
+             'ChannelConfiguration', 'AcquisitionConfiguration',
+             'AcquisitionTime', 'userAcquisitionTimeBW'))
+
+    timeseries = {
+        item[-1]: dict(loc=item, array=np.zeros(ntime, dtype=np.float32))
+        for item in timeseries_loc_in_hierarchy
+        }
+
+    # add units to timeseries (unit of measurement)
+    for key, item in timeseries.items():
+        if f'customData:{key}:uom' in attrs:
+            item['uom'] = attrs[f'customData:{key}:uom']
+        else:
+            item['uom'] = ''
+
+    # Gather data
+    arr_path = 's:' + '/s:'.join(['wellLog', 'logData', 'data'])
+
+    @dask.delayed
+    def grab_data_per_file(file_handle):
+        with open(file_handle, 'r') as f_h:
+            eltree = ElementTree.parse(f_h)
+            arr_el = eltree.findall(arr_path, namespaces=ns)
+            
+            # remove the breaks on both sides of the string
+            # split the string on the comma
+            arr_str = [arr_eli.text.split(',') for arr_eli in arr_el]
+            
+            ## 0 values were replaced by an empty string by eltree
+            #str_arr = np.array(arr_str)
+            #str_arr[str_arr==''] = '0'
+        return np.array(arr_str, dtype=float)
+        #return str_arr.astype(float)
+
+    data_lst_dly = [grab_data_per_file(fp) for fp in filepathlist]
+    data_lst = [da.from_delayed(x, shape=(nx, nitem), dtype=np.float) for x in data_lst_dly]
+    data_arr = da.stack(data_lst).T  # .compute()
+
+    # Check whether to compute data_arr (if possible 25% faster)
+    data_arr_cnk = data_arr.rechunk({0: -1, 1: -1, 2: 'auto'})
+    if load_in_memory == 'auto' and data_arr_cnk.npartitions <= 5:
+        data_arr = data_arr_cnk.compute()
+    elif load_in_memory:
+        data_arr = data_arr_cnk.compute()
+    else:
+        data_arr = data_arr_cnk
+
+    data_vars = {}
+    for name, data_arri in zip(data_item_names, data_arr):
+        if name == 'LAF':
+            continue
+
+        if name in dim_attrs:
+            data_vars[name] = (['x', 'time'], data_arri, dim_attrs[name])
+
+        else:
+            raise ValueError('Dont know what to do with the {} data column'.format(name))
+
+    # Obtaining the timeseries data (reference temperature etc)
+    _ts_dtype = [(k, np.float32) for k in timeseries]
+    _time_dtype = [('filename_tstamp', np.int64),
+                   ('minDateTimeIndex', '<U29'),
+                   ('maxDateTimeIndex', '<U29')]
+    ts_dtype = np.dtype(_ts_dtype + _time_dtype)
+
+    @dask.delayed
+    def grab_timeseries_per_file(file_handle):
+        with open(file_handle, 'r') as f_h:
+            eltree = ElementTree.parse(f_h)
+
+            out = []
+            for k, v in timeseries.items():
+                # Get all the timeseries data
+                if 'userAcquisitionTimeFW' in v['loc']:
+                    # requires two namespace searches
+                    path1 = 's:' + '/s:'.join(v['loc'][:4])
+                    val1 = eltree.findall(path1, namespaces=ns)
+                    path2 = 's:' + '/s:'.join(v['loc'][4:6])
+                    val2 = val1[chFW].find(path2, namespaces=ns)
+                    out.append(val2.text)
+
+                elif 'userAcquisitionTimeBW' in v['loc']:
+                    # requires two namespace searches
+                    path1 = 's:' + '/s:'.join(v['loc'][:4])
+                    val1 = eltree.findall(path1, namespaces=ns)
+                    path2 = 's:' + '/s:'.join(v['loc'][4:6])
+                    val2 = val1[chBW].find(path2, namespaces=ns)
+                    out.append(val2.text)
+
+                else:
+                    path = 's:' + '/s:'.join(v['loc'])
+                    val = eltree.find(path, namespaces=ns)
+                    out.append(val.text)
+
+            # get all the time related data
+            startDateTimeIndex = eltree.find(
+                's:wellLog/s:minDateTimeIndex', namespaces=ns).text
+            endDateTimeIndex = eltree.find(
+                's:wellLog/s:maxDateTimeIndex', namespaces=ns).text
+
+            file_name = os.path.split(file_handle)[1]
+            tstamp = np.int64(file_name[10:-4])
+
+            out += [tstamp, startDateTimeIndex, endDateTimeIndex]
+        return np.array(tuple(out), dtype=ts_dtype)
+
+    ts_lst_dly = [grab_timeseries_per_file(fp) for fp in filepathlist]
+    ts_lst = [da.from_delayed(x, shape=tuple(), dtype=ts_dtype) for x in ts_lst_dly]
+    ts_arr = da.stack(ts_lst).compute()
+
+    for name in timeseries:
+        if name in dim_attrs:
+            data_vars[name] = (('time',), ts_arr[name], dim_attrs[name])
+
+        else:
+            data_vars[name] = (('time',), ts_arr[name])
+
+    # construct the coordinate dictionary
+    coords = {
+        'x':        ('x', data_arr[0, :, 0], dim_attrs['x']),
+        'filename': ('time', [os.path.split(f)[1] for f in filepathlist]),
+        'filename_tstamp': ('time', ts_arr['filename_tstamp'])}
+
+    maxTimeIndex = pd.DatetimeIndex(ts_arr['maxDateTimeIndex'])
+    dtFW = ts_arr['userAcquisitionTimeFW'].astype('timedelta64[s]')
+
+    if not double_ended_flag:
+        tcoords = coords_time(maxTimeIndex, timezone_netcdf, timezone_ultima_xml,
+                              dtFW=dtFW, double_ended_flag=double_ended_flag)
+    else:
+        dtBW = ts_arr['userAcquisitionTimeBW'].astype('timedelta64[s]')
+        tcoords = coords_time(maxTimeIndex, timezone_netcdf, timezone_ultima_xml,
+                              dtFW=dtFW, dtBW=dtBW, double_ended_flag=double_ended_flag)
+
+    coords.update(tcoords)
+
+    return data_vars, coords, attrs
+
 
 def read_silixa_attrs_singlefile(filename, sep):
     import xmltodict
