@@ -86,7 +86,7 @@ class DataStore(xr.Dataset):
 
         # Add sections to new preamble
         preamble_new += '\nSections:'
-        if self.sections:
+        if hasattr(self, '_sections') and self.sections:
             preamble_new += '\n'
             preamble_new += pprint.pformat(self.sections)
         else:
