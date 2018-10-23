@@ -7,6 +7,55 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+# Returns a dictionary with the attributes to the dimensions. The keys refer to the namin
+#     gin used in the raw files.
+_dim_attrs = {
+    ('x', 'distance'):          {
+        'name':             'distance',
+        'description':      'Length along fiber',
+        'long_describtion': 'Starting at connector of forward channel',
+        'units':            'm'},
+    ('TMP', 'temperature'):     {
+        'name':        'TMP',
+        'description': 'temperature calibrated by device',
+        'units':       'degC'},
+    ('ST',):                    {
+        'name':        'ST',
+        'description': 'Stokes intensity',
+        'units':       '-'},
+    ('AST',):                   {
+        'name':        'AST',
+        'description': 'anti-Stokes intensity',
+        'units':       '-'},
+    ('REV-ST',):                {
+        'name':        'REV-ST',
+        'description': 'reverse Stokes intensity',
+        'units':       '-'},
+    ('REV-AST',):               {
+        'name':        'REV-AST',
+        'description': 'reverse anti-Stokes intensity',
+        'units':       '-'},
+    ('acquisitionTime',):       {
+        'name':             'acquisitionTime',
+        'description':      'Measurement duration of forward channel',
+        'long_describtion': 'Actual measurement duration of forward channel',
+        'units':            'seconds'},
+    ('userAcquisitionTimeFW',): {
+        'name':             'userAcquisitionTimeFW',
+        'description':      'Measurement duration of forward channel',
+        'long_describtion': 'Desired measurement duration of forward channel',
+        'units':            'seconds'},
+    ('userAcquisitionTimeBW',): {
+        'name':             'userAcquisitionTimeBW',
+        'description':      'Measurement duration of backward channel',
+        'long_describtion': 'Desired measurement duration of backward channel',
+        'units':            'seconds'},
+    }
+
+# Because variations in the names exist between the different file
+#     formats. The tuple as key contains the possible keys, which is expanded below.
+dim_attrs = {k: v for kl, v in _dim_attrs.items() for k in kl}
+
 
 def read_data_from_fp_numpy(fp):
     """
@@ -68,40 +117,6 @@ def read_silixa_files_routine(filepathlist,
     """
     import dask
     from xml.etree import ElementTree
-
-    log_attrs = {
-        'x':                     {
-            'description':      'Length along fiber',
-            'long_describtion': 'Starting at connector of forward channel',
-            'units':            'm'},
-        'TMP':                   {
-            'description': 'temperature calibrated by device',
-            'units':       'degC'},
-        'ST':                    {
-            'description': 'Stokes intensity',
-            'units':       '-'},
-        'AST':                   {
-            'description': 'anti-Stokes intensity',
-            'units':       '-'},
-        'REV-ST':                {
-            'description': 'reverse Stokes intensity',
-            'units':       '-'},
-        'REV-AST':               {
-            'description': 'reverse anti-Stokes intensity',
-            'units':       '-'},
-        'acquisitionTime':       {
-            'description':      'Measurement duration of forward channel',
-            'long_describtion': 'Actual measurement duration of forward channel',
-            'units':            'seconds'},
-        'userAcquisitionTimeFW': {
-            'description':      'Measurement duration of forward channel',
-            'long_describtion': 'Desired measurement duration of forward channel',
-            'units':            'seconds'},
-        'userAcquisitionTimeBW': {
-            'description':      'Measurement duration of backward channel',
-            'long_describtion': 'Desired measurement duration of backward channel',
-            'units':            'seconds'},
-        }
 
     sep = ':'
     ns = {'s': 'http://www.witsml.org/schemas/1series'}
@@ -204,8 +219,8 @@ def read_silixa_files_routine(filepathlist,
         if name == 'LAF':
             continue
 
-        if name in log_attrs:
-            data_vars[name] = (['x', 'time'], data_arri, log_attrs[name])
+        if name in dim_attrs:
+            data_vars[name] = (['x', 'time'], data_arri, dim_attrs[name])
 
         else:
             raise ValueError('Dont know what to do with the {} data column'.format(name))
@@ -263,15 +278,15 @@ def read_silixa_files_routine(filepathlist,
     ts_arr = da.stack(ts_lst).compute()
 
     for name in timeseries:
-        if name in log_attrs:
-            data_vars[name] = (('time',), ts_arr[name], log_attrs[name])
+        if name in dim_attrs:
+            data_vars[name] = (('time',), ts_arr[name], dim_attrs[name])
 
         else:
             data_vars[name] = (('time',), ts_arr[name])
 
     # construct the coordinate dictionary
     coords = {
-        'x':        ('x', data_arr[0, :, 0], log_attrs['x']),
+        'x':        ('x', data_arr[0, :, 0], dim_attrs['x']),
         'filename': ('time', [os.path.split(f)[1] for f in filepathlist]),
         'filename_tstamp': ('time', ts_arr['filename_tstamp'])}
 
