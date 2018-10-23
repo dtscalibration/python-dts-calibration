@@ -191,3 +191,36 @@ def test_read_silixa_files_double_ended():
     assert ds._initialized
 
     pass
+
+    def read_data_from_fp_numpy(fp):
+    """
+    Read the data from a single Silixa xml file. Using a simple approach
+
+    Parameters
+    ----------
+    fp : file, str, or pathlib.Path
+        File path
+
+    Returns
+    -------
+    data : ndarray
+        The data of the file as numpy array of shape (nx, ncols)
+
+    Notes
+    -----
+    calculating i_first and i_last is fast compared to the rest
+    """
+
+    with open(fp) as fh:
+        s = fh.readlines()
+
+    s = [si.strip() for si in s]  # remove xml hierarchy spacing
+
+    i_first = s.index('<data>')
+    i_last = len(s) - s[::-1].index('</data>') - 1
+
+    lssl = slice(i_first + 1, i_last, 3)  # list of strings slice
+
+    data = np.loadtxt(s[lssl], delimiter=',', dtype=float)
+
+    return data
