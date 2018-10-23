@@ -1388,7 +1388,7 @@ def read_silixa_files(
                                     load_in_memory=load_in_memory)
 
     else:
-        raise NotImplementedError('Silixa xml version '+
+        raise NotImplementedError('Silixa xml version ' +
                                   '{0} not implemented'.format(xml_version))
 
     ds = DataStore(data_vars=data_vars,
