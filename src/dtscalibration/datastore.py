@@ -17,7 +17,9 @@ from .calibrate_utils import calibration_single_ended_ols
 from .calibrate_utils import calibration_single_ended_wls
 from .datastore_utils import check_dims
 from .datastore_utils import check_timestep_allclose
-from .datastore_utils import read_silixa_files_routine
+from .io import read_silixa_files_routine_v4
+from .io import read_silixa_files_routine_v6
+from .io import silixa_xml_version_check
 
 
 class DataStore(xr.Dataset):
@@ -1366,19 +1368,32 @@ def read_silixa_files(
     # Make sure that the list of files contains any files
     assert len(filepathlist) >= 1, 'No measurement files found in provided list/directory'
 
-    # read raw files:
-    data_vars, coords, attrs = read_silixa_files_routine(
-        filepathlist,
-        timezone_netcdf=timezone_netcdf,
-        timezone_ultima_xml=timezone_ultima_xml,
-        silent=silent,
-        load_in_memory=load_in_memory)
+    xml_version = silixa_xml_version_check(filepathlist)
+
+    if xml_version == 4:
+        data_vars, coords, attrs = read_silixa_files_routine_v4(
+                                    filepathlist,
+                                    timezone_netcdf=timezone_netcdf,
+                                    timezone_ultima_xml=timezone_ultima_xml,
+                                    silent=silent,
+                                    load_in_memory=load_in_memory)
+
+    elif xml_version == 6:
+        data_vars, coords, attrs = read_silixa_files_routine_v6(
+                                    filepathlist,
+                                    timezone_netcdf=timezone_netcdf,
+                                    timezone_ultima_xml=timezone_ultima_xml,
+                                    silent=silent,
+                                    load_in_memory=load_in_memory)
+
+    else:
+        raise NotImplementedError('Silixa xml version ' +
+                                  '{0} not implemented'.format(xml_version))
 
     ds = DataStore(data_vars=data_vars,
                    coords=coords,
                    attrs=attrs,
                    **kwargs)
-
     return ds
 
 
