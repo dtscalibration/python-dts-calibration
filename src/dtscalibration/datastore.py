@@ -1386,7 +1386,7 @@ def read_silixa_files(
         The newly created datastore.
     """
 
-    if not filepathlist:
+    if isinstance(filepathlist, type(None)):
         filepathlist = sorted(glob.glob(os.path.join(directory, file_ext)))
 
     # Make sure that the list of files contains any files
