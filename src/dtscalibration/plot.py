@@ -18,7 +18,7 @@ def plot_sigma_report(ds, temp_label, temp_var_label, itimes=None):
     for l, c in zip([2., 1.], colors):
         y1 = temp - l * stds
         y2 = temp + l * stds
-        label_str = r'{0:2.2f}$\sigma$ confidence interval'.format(l)
+        label_str = f'{0:2.2f}'.format(l) + r'$\sigma$ confidence interval'
         ax1.fill_between(y1.x, y1, y2,
                          facecolor=c, label=label_str, alpha=0.9,
                          linewidth=0.7, edgecolor=c)
@@ -44,8 +44,8 @@ def plot_sigma_report(ds, temp_label, temp_var_label, itimes=None):
                 linewidth=0.8, c='blue', linestyle='--')
             sig_dts = stds.sel(x=vi).mean()
             tbx, tby = (vi.start + vi.stop) / 2, val
-            tbt = r"$\sigma_{Est}$ = " + "{0:2.3f}$^\circ$C\n".format(sig_dts.data) + \
-                  r"$\sigma_{DTS}$ = " + "{0:2.3f}$^\circ$C".format(v_sei)
+            tbt = r"$\sigma_{Est}$ = " + f"{0:2.3f}".format(sig_dts.data) + r"$^\circ$C\n" + \
+                  r"$\sigma_{DTS}$ = " + f"{0:2.3f}".format(v_sei) + r"$^\circ$C"
             ax1.annotate(
                 tbt,
                 xy=(tbx, tby),
