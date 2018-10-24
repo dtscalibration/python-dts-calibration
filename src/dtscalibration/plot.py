@@ -18,7 +18,7 @@ def plot_sigma_report(ds, temp_label, temp_var_label, itimes=None):
     for l, c in zip([2., 1.], colors):
         y1 = temp - l * stds
         y2 = temp + l * stds
-        label_str = '{0:2.2f}$\sigma$ confidence interval'.format(l)
+        label_str = r'{0:2.2f}$\sigma$ confidence interval'.format(l)
         ax1.fill_between(y1.x, y1, y2,
                          facecolor=c, label=label_str, alpha=0.9,
                          linewidth=0.7, edgecolor=c)
@@ -44,8 +44,8 @@ def plot_sigma_report(ds, temp_label, temp_var_label, itimes=None):
                 linewidth=0.8, c='blue', linestyle='--')
             sig_dts = stds.sel(x=vi).mean()
             tbx, tby = (vi.start + vi.stop) / 2, val
-            tbt = "$\sigma_{Est}$ = " + "{0:2.3f}$^\circ$C\n".format(sig_dts.data) + \
-                  "$\sigma_{DTS}$ = " + "{0:2.3f}$^\circ$C".format(v_sei)
+            tbt = r"$\sigma_{Est}$ = " + "{0:2.3f}$^\circ$C\n".format(sig_dts.data) + \
+                  r"$\sigma_{DTS}$ = " + "{0:2.3f}$^\circ$C".format(v_sei)
             ax1.annotate(
                 tbt,
                 xy=(tbx, tby),
@@ -58,7 +58,7 @@ def plot_sigma_report(ds, temp_label, temp_var_label, itimes=None):
     ax1.set_title('Temperature and standard deviation averaged over '
                   'time per reference section')
     ax1.legend()
-    ax1.set_ylabel('Temperature [$^\circ$C]')
+    ax1.set_ylabel(r'Temperature [$^\circ$C]')
 
     err_ref = ds.ufunc_per_section(label=temp_label,
                                    func=None,
@@ -77,6 +77,6 @@ def plot_sigma_report(ds, temp_label, temp_var_label, itimes=None):
     ax2.set_ylim([0., 1.05 * stds.max()])
     ax2.set_title('Measured and projected standard deviation averaged over time')
     ax2.legend()
-    ax2.set_ylabel('Temperature [$^\circ$C]')
+    ax2.set_ylabel(r'Temperature [$^\circ$C]')
 
     plt.tight_layout()
