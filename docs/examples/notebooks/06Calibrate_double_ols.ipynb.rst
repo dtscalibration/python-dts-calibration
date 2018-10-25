@@ -181,7 +181,7 @@ considered equal here and no variance is calculated.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x11bf98cc0>
+    <matplotlib.legend.Legend at 0x120415320>
 
 
 
@@ -204,7 +204,7 @@ first.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x11c13b198>]
+    [<matplotlib.lines.Line2D at 0x11ffd72b0>]
 
 
 

@@ -187,6 +187,85 @@ class DataStore(xr.Dataset):
             }
         return d
 
+    def resample_datastore(self, how, freq=None, dim=None, skipna=None, closed=None,
+                           label=None, base=0, **indexer):
+        """Returns a resampled DataStore. Always define the how.
+        Handles both downsampling and upsampling. If any intervals contain no
+        values from the original object, they will be given the value ``NaN``.
+        Parameters
+        ----------
+        how : str
+            Any function that is available via groupby. E.g., 'mean'
+            http://pandas.pydata.org/pandas-docs/stable/groupby.html#groupby-dispatch
+        skipna : bool, optional
+            Whether to skip missing values when aggregating in downsampling.
+        closed : 'left' or 'right', optional
+            Side of each interval to treat as closed.
+        label : 'left or 'right', optional
+            Side of each interval to use for labeling.
+        base : int, optional
+            For frequencies that evenly subdivide 1 day, the "origin" of the
+            aggregated intervals. For example, for '24H' frequency, base could
+            range from 0 through 23.
+        keep_attrs : bool, optional
+            If True, the object's attributes (`attrs`) will be copied from
+            the original object to the new one.  If False (default), the new
+            object will be returned without attributes.
+        **indexer : {dim: freq}
+            Dictionary with a key indicating the dimension name to resample
+            over and a value corresponding to the resampling frequency.
+        Returns
+        -------
+        resampled : same type as caller
+            This object resampled.
+            """
+
+        from xarray.core.dataarray import DataArray
+        import pandas as pd
+
+        RESAMPLE_DIM = '__resample_dim__'
+        keep_attrs = False
+
+        if (freq and indexer) or (dim and indexer):
+            raise TypeError("If passing an 'indexer' then 'dim' "
+                            "and 'freq' should not be used")
+
+        if indexer:
+            dim, freq = indexer.popitem()
+
+        if isinstance(dim, str):
+            dim = self[dim]
+        else:
+            raise TypeError("Dimension name should be a string; "
+                            "was passed %r" % dim)
+
+        if how is None:
+            how = 'mean'
+
+        group = DataArray(dim, [(dim.dims, dim)], name=RESAMPLE_DIM)
+        grouper = pd.Grouper(freq=freq, how=how, closed=closed, label=label,
+                             base=base)
+        gb = self._groupby_cls(self, group, grouper=grouper)
+        if isinstance(how, str):
+            f = getattr(gb, how)
+            if how in ['first', 'last']:
+                result = f(skipna=skipna, keep_attrs=keep_attrs)
+            elif how == 'count':
+                result = f(dim=dim.name, keep_attrs=keep_attrs)
+            else:
+                result = f(dim=dim.name, skipna=skipna, keep_attrs=keep_attrs)
+        else:
+            result = gb.reduce(how, dim=dim.name, keep_attrs=keep_attrs)
+        result = result.rename({RESAMPLE_DIM: dim.name})
+
+        out = DataStore(
+            data_vars=result.data_vars,
+            coords=result.coords,
+            attrs=self.attrs
+            )
+
+        return out
+
     def to_netcdf(self, path=None, mode='w', format=None, group=None,
                   engine=None, encoding=None, unlimited_dims=None,
                   compute=True):
