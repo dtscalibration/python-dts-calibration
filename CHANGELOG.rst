@@ -5,12 +5,23 @@ Changelog
 Master
 ------
 
+*
+
+0.5.2 (2018-10-26)
+------------------
+
+* New resample_datastore method (see basic usage notebook)
+* New notebook on basic usage of DataStore
+* Support for Silixa v4 (Windows xp based system) and Silixa v6 (Windows 7) measurement files 
+* The representation string now includes the sections
+* Reorganized the IO related files
 * CI: Add appveyor to continuesly test on Windows platform
 * Auto load Silixa files to memory option, if size is small
 
 0.5.1 (2018-10-19)
 ------------------
 
+* Rewritten the routine that reads Silixa measurement files
 * dts-calibration is now citable
 * Refractored the MC confidence interval routine
 * MC confidence interval routine speed up, with full dask support
