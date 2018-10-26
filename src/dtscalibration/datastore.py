@@ -224,7 +224,6 @@ class DataStore(xr.Dataset):
         import pandas as pd
 
         RESAMPLE_DIM = '__resample_dim__'
-        keep_attrs = False
 
         if (freq and indexer) or (dim and indexer):
             raise TypeError("If passing an 'indexer' then 'dim' "
@@ -260,6 +259,8 @@ class DataStore(xr.Dataset):
 
         if keep_attrs:
             attrs = self.attrs
+        else:
+            attrs = None
 
         out = DataStore(
             data_vars=result.data_vars,
