@@ -250,7 +250,7 @@ def read_silixa_files_routine_v6(filepathlist,
                 's:log/s:endDateTimeIndex', namespaces=ns).text
 
             file_name = os.path.split(file_handle)[1]
-            tstamp = np.int64(file_name[10:-4])
+            tstamp = np.int64(file_name[10:27])
 
             out += [tstamp, startDateTimeIndex, endDateTimeIndex]
         return np.array(tuple(out), dtype=ts_dtype)
