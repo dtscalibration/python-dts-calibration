@@ -128,6 +128,11 @@ def calibration_double_ended_ols(ds, st_label, ast_label, rst_label,
     rast = ds.ufunc_per_section(label=rast_label, calc_per='all')
     z = ds.ufunc_per_section(label='x', calc_per='all')
 
+    assert not np.any(st <= 0.), 'There is uncontrolled noise in the ST signal'
+    assert not np.any(ast <= 0.), 'There is uncontrolled noise in the AST signal'
+    assert not np.any(rst <= 0.), 'There is uncontrolled noise in the REV-ST signal'
+    assert not np.any(rast <= 0.), 'There is uncontrolled noise in the REV-AST signal'
+
     nx = z.size
 
     _xsorted = np.argsort(ds.x.data)
@@ -239,6 +244,11 @@ def calibration_double_ended_wls(ds, st_label, ast_label, rst_label,
     rst = ds.ufunc_per_section(label=rst_label, calc_per='all')
     rast = ds.ufunc_per_section(label=rast_label, calc_per='all')
     z = ds.ufunc_per_section(label='x', calc_per='all')
+
+    assert not np.any(st <= 0.), 'There is uncontrolled noise in the ST signal'
+    assert not np.any(ast <= 0.), 'There is uncontrolled noise in the AST signal'
+    assert not np.any(rst <= 0.), 'There is uncontrolled noise in the REV-ST signal'
+    assert not np.any(rast <= 0.), 'There is uncontrolled noise in the REV-AST signal'
 
     nx = z.size
 
