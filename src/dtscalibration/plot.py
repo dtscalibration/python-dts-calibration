@@ -3,6 +3,71 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+def plot_stokes_noise(resid, fig=None, title=None):
+    """
+
+    Parameters
+    ----------
+    resid : DataArray
+        The residuals of the fit to estimate the noise in the measured
+        Stokes signal. is returned by ds.variance_stokes
+    fig : Figurehandle, optional
+    title : str, optional
+        Adds a title to the plot
+
+    Returns
+    -------
+    fig : Figurehandle
+
+    """
+    # Set up the axes with gridspec
+    if fig is None:
+        fig = plt.figure(figsize=(8, 6))
+
+    if title:
+        fig.suptitle('Residuals in ' + title)
+
+    grid = plt.GridSpec(10, 10, hspace=0.2, wspace=0.2)
+    main_ax = fig.add_subplot(grid[2:, 2:-1])
+    y_hist = fig.add_subplot(grid[2:, :2])  # xticklabels=[],
+    x_hist = fig.add_subplot(grid[:2, 2:-1])  # , sharex=main_ax
+    legend_ax = fig.add_subplot(grid[:2, :2], xticklabels=[], yticklabels=[])
+    cbar_ax = fig.add_subplot(grid[2:, -1], xticklabels=[], yticklabels=[])
+
+    resid.plot(ax=main_ax, cbar_ax=cbar_ax, cbar_kwargs={'aspect': 20})
+
+    # x_hist
+    x_hist2 = x_hist.twinx()
+    resid.std(dim='x').plot(ax=x_hist2, c='blue')
+    resid.mean(dim='x').plot(ax=x_hist2, c='orange')
+    x_hist2.axhline(0, linestyle='--', c='orange')
+    x_hist.set_xticklabels([])
+    x_hist.set_yticklabels([])
+    x_hist.set_xlim(main_ax.get_xlim())
+
+    # y_hist
+    dp = resid.std(dim='time')
+    x = dp.values
+    y = dp.x
+    y_hist.plot(x, y, c='blue')
+    dp = resid.mean(dim='time')
+    x = dp.values
+    y = dp.x
+    y_hist.plot(x, y, c='orange')
+    y_hist.set_ylim(main_ax.get_ylim())
+
+    y_hist.axvline(0, linestyle='--', c='orange')
+    # reverse axis
+    y_hist.set_xlim(y_hist.get_xlim()[::-1])
+
+    # legend
+    legend_ax.fill_between([], [], facecolor='blue', label='STD')
+    legend_ax.fill_between([], [], facecolor='orange', label='MEAN')
+    legend_ax.legend(loc='center')
+    legend_ax.axis('off')
+    return fig
+
+
 def plot_sigma_report(ds, temp_label, temp_var_label, itimes=None):
     assert 'CI' not in ds[temp_label].dims, 'use other plot report function'
 
