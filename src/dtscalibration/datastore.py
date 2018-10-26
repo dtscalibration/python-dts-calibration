@@ -188,7 +188,7 @@ class DataStore(xr.Dataset):
         return d
 
     def resample_datastore(self, how, freq=None, dim=None, skipna=None, closed=None,
-                           label=None, base=0, **indexer):
+                           label=None, base=0, keep_attrs=True, **indexer):
         """Returns a resampled DataStore. Always define the how.
         Handles both downsampling and upsampling. If any intervals contain no
         values from the original object, they will be given the value ``NaN``.
@@ -249,19 +249,22 @@ class DataStore(xr.Dataset):
         if isinstance(how, str):
             f = getattr(gb, how)
             if how in ['first', 'last']:
-                result = f(skipna=skipna, keep_attrs=keep_attrs)
+                result = f(skipna=skipna, keep_attrs=False)
             elif how == 'count':
-                result = f(dim=dim.name, keep_attrs=keep_attrs)
+                result = f(dim=dim.name, keep_attrs=False)
             else:
-                result = f(dim=dim.name, skipna=skipna, keep_attrs=keep_attrs)
+                result = f(dim=dim.name, skipna=skipna, keep_attrs=False)
         else:
-            result = gb.reduce(how, dim=dim.name, keep_attrs=keep_attrs)
+            result = gb.reduce(how, dim=dim.name, keep_attrs=False)
         result = result.rename({RESAMPLE_DIM: dim.name})
+
+        if keep_attrs:
+            attrs = self.attrs
 
         out = DataStore(
             data_vars=result.data_vars,
             coords=result.coords,
-            attrs=self.attrs
+            attrs=attrs
             )
 
         return out
