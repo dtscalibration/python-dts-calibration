@@ -772,7 +772,7 @@ class DataStore(xr.Dataset):
                                  ci_avg_time_flag=False,
                                  solver='sparse',
                                  da_random_state=None,
-                                 dtype32=False):
+                                 dtype=None):
         """
 
         Parameters
@@ -868,7 +868,7 @@ class DataStore(xr.Dataset):
 
             nt, z, p_sol, p_var, p_cov = calibration_double_ended_wls(
                 self, st_label, ast_label, rst_label, rast_label,
-                st_var, ast_var, rst_var, rast_var, solver=solver, dtype32=dtype32)
+                st_var, ast_var, rst_var, rast_var, solver=solver, dtype=dtype)
 
             gamma = p_sol[0]
             alphaint = p_sol[1]
