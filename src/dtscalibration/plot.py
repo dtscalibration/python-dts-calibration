@@ -3,14 +3,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def plot_stokes_noise(resid, fig=None, title=None):
+def plot_residuals_reference_sections(resid, fig=None, title=None):
     """
+    Analyze the residuals of the reference sections, between the Stokes signal and a best-fit
+    decaying exponential.
 
     Parameters
     ----------
     resid : DataArray
         The residuals of the fit to estimate the noise in the measured
-        Stokes signal. is returned by ds.variance_stokes
+        Stokes signal. is returned by `ds.variance_stokes`
     fig : Figurehandle, optional
     title : str, optional
         Adds a title to the plot
@@ -20,6 +22,7 @@ def plot_stokes_noise(resid, fig=None, title=None):
     fig : Figurehandle
 
     """
+
     # Set up the axes with gridspec
     if fig is None:
         fig = plt.figure(figsize=(8, 6))
