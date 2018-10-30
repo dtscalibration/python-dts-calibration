@@ -1,6 +1,6 @@
 
-02. Common DataStore functions
-==============================
+2. Common DataStore functions
+=============================
 
 Examples of how to do some of the more commonly used functions:
 
@@ -43,8 +43,8 @@ Examples of how to do some of the more commonly used functions:
     The measurement is single ended
 
 
-8.1 mean, min, max
-------------------
+1 mean, min, max
+----------------
 
 The first argument is the dimension. The function is taken along that
 dimension. ``dim`` can be any dimension (e.g., ``time``, ``x``). The

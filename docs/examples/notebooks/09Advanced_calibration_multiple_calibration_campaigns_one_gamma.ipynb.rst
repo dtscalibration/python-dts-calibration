@@ -12,10 +12,13 @@ to not have a uniform temperature, this might be the solution.
     
     from dtscalibration import read_silixa_files
     from dtscalibration.calibrate import calibration_multiple_fix_gamma
+    from matplotlib import pyplot as plt
     import time
+    
+    %matplotlib inline
 
 Load the data from the first measurement campain
-================================================
+------------------------------------------------
 
 A double-ended setup
 
@@ -63,7 +66,7 @@ A double-ended setup
 
 
 Load data from the second measurement campain
-=============================================
+---------------------------------------------
 
 Single-ended setup
 
@@ -88,7 +91,7 @@ Single-ended setup
 
 
 Configure calibration setting first measurement campain
-=======================================================
+-------------------------------------------------------
 
 A double-ended setup.
 
@@ -129,7 +132,7 @@ confidence interval should be called in a later stage
         dtype=None)
 
 Configure calibration setting second measurement campain
-========================================================
+--------------------------------------------------------
 
 A single-ended setup.
 
@@ -165,7 +168,7 @@ confidence interval should be called in a later stage
         dtype=None)
 
 Perform the actual calibration
-==============================
+------------------------------
 
 ``ds_input`` is a list that contains a tuple for each measurement
 campain. Each tuple contains three items. The first is the DataStore obj
@@ -187,7 +190,7 @@ updated with the calibrated temperature.
     calibration_multiple_fix_gamma(ds_input)
 
 Result is stored in the DataStore objects
-=========================================
+-----------------------------------------
 
 We can check the gamma is the same for both results
 
@@ -207,7 +210,7 @@ We can check the gamma is the same for both results
 
 
 Now we can compare single ended to double ended
-===============================================
+-----------------------------------------------
 
 .. code:: ipython3
 
@@ -219,8 +222,12 @@ Now we can compare single ended to double ended
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x11e5e02b0>]
+    [<matplotlib.lines.Line2D at 0x118f36c50>]
 
+
+
+
+.. image:: 09Advanced_calibration_multiple_calibration_campaigns_one_gamma.ipynb_files/09Advanced_calibration_multiple_calibration_campaigns_one_gamma.ipynb_15_1.png
 
 
 We can see the temperature at the internal reference sections to be
