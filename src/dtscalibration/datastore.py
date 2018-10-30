@@ -400,7 +400,7 @@ class DataStore(xr.Dataset):
 
         nt = self['time'].size
 
-        len_stretch_list = []
+        len_stretch_list = []  # number of reference points per section (spatial)
         y_list = []  # intensities of stokes
         x_list = []  # length rel to start of section. for alpha
 
@@ -412,8 +412,8 @@ class DataStore(xr.Dataset):
                 x_list.append(da.tile(_x, nt))
                 len_stretch_list.append(_x.size)
 
-        n_sections = len(len_stretch_list)
-        n_locs = sum(len_stretch_list)
+        n_sections = len(len_stretch_list)  # number of sections
+        n_locs = sum(len_stretch_list)  # total number of locations along cable used for reference.
 
         x = np.concatenate(x_list)  # coordinates are already in memory
         y = np.asarray(da.concatenate(y_list))
@@ -422,14 +422,17 @@ class DataStore(xr.Dataset):
         data2 = np.ones(sum(len_stretch_list) * nt)
         data = np.concatenate([data1, data2])
 
-        # alpha is the same for all -> one column
+        # alpha is NOT the same for all -> one column per section
         coords1row = np.arange(nt * n_locs)
-        coords1col = np.zeros_like(coords1row)
+        coords1col = np.hstack([
+            np.ones(in_locs * nt) * i
+            for i, in_locs in enumerate(len_stretch_list)
+            ])  # C for
 
         # second calibration parameter is different per section and per timestep
         coords2row = np.arange(nt * n_locs)
         coords2col = np.hstack([
-            np.repeat(np.arange(i * nt + 1, (i + 1) * nt + 1), in_locs)
+            np.repeat(np.arange(i * nt + n_sections, (i + 1) * nt + n_sections), in_locs)
             for i, in_locs in enumerate(len_stretch_list)
             ])  # C for
         coords = (np.concatenate([coords1row, coords2row]),
@@ -445,7 +448,7 @@ class DataStore(xr.Dataset):
             import statsmodels.api as sm
 
             X = sp.coo_matrix((data, coords),
-                              shape=(nt * n_locs, 1 + nt * n_sections),
+                              shape=(nt * n_locs, n_sections + nt * n_sections),
                               dtype=float,
                               copy=False)
 
@@ -457,24 +460,31 @@ class DataStore(xr.Dataset):
         else:
             wdata = data * np.hstack((w, w))
             wX = sp.coo_matrix((wdata, coords),
-                               shape=(nt * n_locs, 1 + nt * n_sections),
+                               shape=(nt * n_locs, n_sections + nt * n_sections),
                                dtype=float,
                                copy=False)
 
             wlny = (lny * w)
 
-            p0_est = np.asarray([0.] + nt * n_sections * [8])
+            p0_est = np.asarray(n_sections * [0.] + nt * n_sections * [8])
             # noinspection PyTypeChecker
             a = ln.lsqr(wX, wlny,
                         x0=p0_est,
                         show=not suppress_info,
                         calc_var=False)[0]
 
-        C_expand_to_sec = np.hstack([
-            np.repeat(a[i * nt + 1:(i + 1) * nt + 1], leni)
+        beta = a[:n_sections]
+        beta_expand_to_sec = np.hstack([
+            np.repeat(beta[i], leni * nt)
             for i, leni in enumerate(len_stretch_list)
             ])
-        I_est = np.exp(C_expand_to_sec) * np.exp(x * a[0])
+        G = a[n_sections:]
+        G_expand_to_sec = np.hstack([
+            np.repeat(G[i * nt:(i + 1) * nt], leni)
+            for i, leni in enumerate(len_stretch_list)
+            ])
+
+        I_est = np.exp(G_expand_to_sec) * np.exp(x * beta_expand_to_sec)
         resid = I_est - y
         var_I = resid.std(ddof=ddof) ** 2
 
@@ -486,7 +496,7 @@ class DataStore(xr.Dataset):
             for leni, lenis, lenie in zip(
                 len_stretch_list,
                 nt * np.cumsum([0] + len_stretch_list[:-1]),
-                    nt * np.cumsum(len_stretch_list)):
+                nt * np.cumsum(len_stretch_list)):
 
                 resid_res.append(resid[lenis:lenie].reshape(leni, nt))
 
@@ -597,6 +607,12 @@ class DataStore(xr.Dataset):
                                  ci_avg_time_flag=False,
                                  solver='sparse',
                                  da_random_state=None,
+                                 dtype=None,
+                                 nt=None,
+                                 z=None,
+                                 p_sol=None,
+                                 p_var=None,
+                                 p_cov=None
                                  ):
         """
 
@@ -674,13 +690,17 @@ class DataStore(xr.Dataset):
             dalphavar = None
             cvar = None
 
-        elif method == 'wls':
-            for vari in [st_var, ast_var]:
-                assert isinstance(vari, float)
+        elif method == 'wls' or method == 'external':
+            if method == 'wls':
+                for vari in [st_var, ast_var]:
+                    assert isinstance(vari, float)
 
-            nt, z, p_sol, p_var, p_cov = calibration_single_ended_wls(
-                self, st_label, ast_label,
-                st_var, ast_var, solver=solver)
+                nt, z, p_sol, p_var, p_cov = calibration_single_ended_wls(
+                    self, st_label, ast_label,
+                    st_var, ast_var, solver=solver, dtype=dtype)
+            else:
+                for input_item in [nt, z, p_sol, p_var, p_cov]:
+                    assert input_item is not None
 
             gamma = p_sol[0]
             dalpha = p_sol[1]
@@ -772,7 +792,12 @@ class DataStore(xr.Dataset):
                                  ci_avg_time_flag=False,
                                  solver='sparse',
                                  da_random_state=None,
-                                 dtype=None):
+                                 dtype=None,
+                                 nt=None,
+                                 z=None,
+                                 p_sol=None,
+                                 p_var=None,
+                                 p_cov=None):
         """
 
         Parameters
@@ -862,13 +887,18 @@ class DataStore(xr.Dataset):
             cvar = None
             alphavar = None
 
-        elif method == 'wls':
-            for vari in [st_var, ast_var, rst_var, rast_var]:
-                assert isinstance(vari, float)
+        elif method == 'wls' or method == 'external':
+            # External is also/always weighted
+            if method == 'wls':
+                for vari in [st_var, ast_var, rst_var, rast_var]:
+                    assert isinstance(vari, float)
 
-            nt, z, p_sol, p_var, p_cov = calibration_double_ended_wls(
-                self, st_label, ast_label, rst_label, rast_label,
-                st_var, ast_var, rst_var, rast_var, solver=solver, dtype=dtype)
+                nt, z, p_sol, p_var, p_cov = calibration_double_ended_wls(
+                    self, st_label, ast_label, rst_label, rast_label,
+                    st_var, ast_var, rst_var, rast_var, solver=solver, dtype=dtype)
+            else:
+                for input_item in [nt, z, p_sol, p_var, p_cov]:
+                    assert input_item is not None
 
             gamma = p_sol[0]
             alphaint = p_sol[1]
@@ -928,7 +958,7 @@ class DataStore(xr.Dataset):
             _p_cov = None
 
         if conf_ints:
-            assert method == 'wls'
+            assert method == 'wls' or method == 'external'
             self.conf_int_double_ended(
                 p_sol=_p_sol,
                 p_cov=_p_cov,
@@ -940,10 +970,6 @@ class DataStore(xr.Dataset):
                 ast_var=ast_var,
                 rst_var=rst_var,
                 rast_var=rast_var,
-                # store_c=store_c,
-                # store_gamma=store_gamma,
-                # store_alphaint=store_alphaint,
-                # store_alpha=store_alpha,
                 store_tmpf=store_tmpf,
                 store_tmpb=store_tmpb,
                 store_tempvar=store_tempvar,
@@ -1505,6 +1531,23 @@ def read_silixa_files(
 
 
 def plot_dask(arr, file_path=None):
+    """
+    For debugging the scheduling of the calculation of dask arrays. Requires additional libraries
+    to be installed.
+
+    Parameters
+    ----------
+    arr : Dask-Array
+        An uncomputed dask array
+    file_path : Path-like, str, optional
+        Path to save graph
+
+    Returns
+    -------
+    out : array-like
+        The calculated array
+
+    """
     from dask.diagnostics import Profiler, ResourceProfiler, CacheProfiler, visualize
 
     with Profiler() as prof, ResourceProfiler(dt=0.25) as rprof, CacheProfiler() as cprof:
