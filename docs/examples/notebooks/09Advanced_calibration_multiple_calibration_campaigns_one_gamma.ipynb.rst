@@ -30,7 +30,7 @@ A double-ended setup
         wd = os.getcwd()
     
     filepath = os.path.join(wd, '..', '..', 'tests', 'data', 'double_ended2')
-    timezone_netcdf = 'UTC',
+    timezone_netcdf = 'UTC'
     timezone_ultima_xml = 'Europe/Amsterdam'
     file_ext = '*.xml'
     
@@ -222,7 +222,7 @@ Now we can compare single ended to double ended
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x118f36c50>]
+    [<matplotlib.lines.Line2D at 0x1168ac1d0>]
 
 
 

@@ -39,7 +39,7 @@ the timezone of the Silixa Ultima computer.
 
 .. code:: ipython3
 
-    timezone_netcdf = 'UTC',
+    timezone_netcdf = 'UTC'
     timezone_ultima_xml = 'Europe/Amsterdam'
     file_ext = '*.xml'
 
@@ -93,15 +93,17 @@ the timezone of the Silixa Ultima computer.
       * x                      (x) float64 -80.5 -80.38 -80.25 ... 134.3 134.4 134.5
         filename               (time) <U31 'channel 1_20180328014052498.xml' ... 'channel 1_20180328014115480.xml'
         filename_tstamp        (time) int64 20180328014052498 ... 20180328014115480
-        timeFWstart            (time) datetime64[ns] 2018-03-27T22:40:52.097000 ... 2018-03-27T22:41:15.061000
-        timeFWend              (time) datetime64[ns] 2018-03-27T22:40:54.097000 ... 2018-03-27T22:41:17.061000
-        timeFW                 (time) datetime64[ns] 2018-03-27T22:40:53.097000 ... 2018-03-27T22:41:16.061000
-        timeBWstart            (time) datetime64[ns] 2018-03-27T22:40:54.097000 ... 2018-03-27T22:41:17.061000
-        timeBWend              (time) datetime64[ns] 2018-03-27T22:40:56.097000 ... 2018-03-27T22:41:19.061000
-        timeBW                 (time) datetime64[ns] 2018-03-27T22:40:55.097000 ... 2018-03-27T22:41:18.061000
-        timestart              (time) datetime64[ns] 2018-03-27T22:40:52.097000 ... 2018-03-27T22:41:15.061000
-        timeend                (time) datetime64[ns] 2018-03-27T22:40:56.097000 ... 2018-03-27T22:41:19.061000
-      * time                   (time) datetime64[ns] 2018-03-27T22:40:54.097000 ... 2018-03-27T22:41:17.061000
+        timeFWstart            (time) datetime64[ns] 2018-03-28T00:40:52.097000 ... 2018-03-28T00:41:15.061000
+        timeFWend              (time) datetime64[ns] 2018-03-28T00:40:54.097000 ... 2018-03-28T00:41:17.061000
+        timeFW                 (time) datetime64[ns] 2018-03-28T00:40:53.097000 ... 2018-03-28T00:41:16.061000
+        timeBWstart            (time) datetime64[ns] 2018-03-28T00:40:54.097000 ... 2018-03-28T00:41:17.061000
+        timeBWend              (time) datetime64[ns] 2018-03-28T00:40:56.097000 ... 2018-03-28T00:41:19.061000
+        timeBW                 (time) datetime64[ns] 2018-03-28T00:40:55.097000 ... 2018-03-28T00:41:18.061000
+        timestart              (time) datetime64[ns] 2018-03-28T00:40:52.097000 ... 2018-03-28T00:41:15.061000
+        timeend                (time) datetime64[ns] 2018-03-28T00:40:56.097000 ... 2018-03-28T00:41:19.061000
+      * time                   (time) datetime64[ns] 2018-03-28T00:40:54.097000 ... 2018-03-28T00:41:17.061000
+        acquisitiontimeFW      (time) timedelta64[ns] 00:00:02 00:00:02 ... 00:00:02
+        acquisitiontimeBW      (time) timedelta64[ns] 00:00:02 00:00:02 ... 00:00:02
     Data variables:
         ST                     (x, time) float64 1.281 -0.5321 ... -43.44 -41.08
         AST                    (x, time) float64 0.4917 1.243 ... -30.14 -32.09

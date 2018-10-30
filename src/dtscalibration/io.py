@@ -681,12 +681,12 @@ def coords_time(maxTimeIndex, timezone_ultima_xml, timezone_netcdf='UTC', dtFW=N
     # The units are already stored in the dtype
     coords['acquisitiontimeFW'] = (
         'time', dt1,
-        {'description': 'Acquisition time of the forward measurement',})
+        {'description': 'Acquisition time of the forward measurement'})
 
     if double_ended_flag:
         # The units are already stored in the dtype
         coords['acquisitiontimeBW'] = (
             'time', dt2,
-            {'description': 'Acquisition time of the backward measurement',})
+            {'description': 'Acquisition time of the backward measurement'})
 
     return coords

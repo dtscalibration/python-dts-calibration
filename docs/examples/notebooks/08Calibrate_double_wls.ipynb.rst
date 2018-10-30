@@ -27,7 +27,7 @@ defined.
         wd = os.getcwd()
     
     filepath = os.path.join(wd, '..', '..', 'tests', 'data', 'double_ended2')
-    timezone_netcdf = 'UTC',
+    timezone_netcdf = 'UTC'
     timezone_ultima_xml = 'Europe/Amsterdam'
     file_ext = '*.xml'
     
@@ -85,7 +85,7 @@ as an estimate of the variance in measured signals.
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x1204d9208>
+    <matplotlib.collections.QuadMesh at 0x11feab898>
 
 
 

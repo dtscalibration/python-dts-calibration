@@ -19,7 +19,7 @@
         wd = os.getcwd()
     
     filepath = os.path.join(wd, '..', '..', 'tests', 'data', 'double_ended2')
-    timezone_netcdf = 'UTC',
+    timezone_netcdf = 'UTC'
     timezone_ultima_xml = 'Europe/Amsterdam'
     file_ext = '*.xml'
     
