@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def plot_residuals_reference_sections(resid, fig=None, title=None):
+def plot_residuals_reference_sections(resid, fig=None, title=None, plot_names=True, sections=None):
     """
     Analyze the residuals of the reference sections, between the Stokes signal and a best-fit
     decaying exponential.
@@ -16,12 +16,19 @@ def plot_residuals_reference_sections(resid, fig=None, title=None):
     fig : Figurehandle, optional
     title : str, optional
         Adds a title to the plot
+    plot_names : bool, optional
+        Whether the names of the sections are plotted on top of the residuals
+    sections : Dict[str, List[slice]]
+        The sections obj is normally used to set DataStore.sections, now is used toobtain the
+        section names to plot the names on top of the residuals.
 
     Returns
     -------
     fig : Figurehandle
 
     """
+    if plot_names:
+        assert sections is not None, 'The sections names are obtained from the sections dict'
 
     # Set up the axes with gridspec
     if fig is None:
@@ -38,6 +45,7 @@ def plot_residuals_reference_sections(resid, fig=None, title=None):
     cbar_ax = fig.add_subplot(grid[2:, -1], xticklabels=[], yticklabels=[])
 
     resid.plot(ax=main_ax, cbar_ax=cbar_ax, cbar_kwargs={'aspect': 20})
+    main_ax.set_yticklabels([])
 
     # x_hist
     x_hist2 = x_hist.twinx()
@@ -68,6 +76,17 @@ def plot_residuals_reference_sections(resid, fig=None, title=None):
     legend_ax.fill_between([], [], facecolor='orange', label='MEAN')
     legend_ax.legend(loc='center')
     legend_ax.axis('off')
+
+    if plot_names:
+        xlim = main_ax.get_xlim()
+        xc = (xlim[1] + xlim[0]) / 2
+        for k, section in sections.items():
+            for stretch in section:
+                yc = (stretch.start + stretch.stop) / 2
+                main_ax.text(xc, yc, k,
+                             horizontalalignment='center',
+                             verticalalignment='center')
+
     return fig
 
 
