@@ -3,6 +3,8 @@ import glob
 import inspect
 import os
 import pprint
+from typing import Dict
+from typing import List
 
 import dask.array as da
 import numpy as np
@@ -113,7 +115,7 @@ class DataStore(xr.Dataset):
 
         Parameters
         ----------
-        sections : dict
+        sections : Dict[str, List[slice]]
             Sections are defined in a dictionary with its keywords of the names of the reference
             temperature time series. Its values are lists of slice objects, where each slice object
             is a stretch.
@@ -125,7 +127,7 @@ class DataStore(xr.Dataset):
         return yaml.load(self.attrs['_sections'])
 
     @sections.setter
-    def sections(self, sections):
+    def sections(self, sections: Dict[str, List[slice]]):
         if sections:
             assert isinstance(sections, dict)
 
@@ -496,7 +498,7 @@ class DataStore(xr.Dataset):
             for leni, lenis, lenie in zip(
                 len_stretch_list,
                 nt * np.cumsum([0] + len_stretch_list[:-1]),
-                nt * np.cumsum(len_stretch_list)):
+                    nt * np.cumsum(len_stretch_list)):
 
                 resid_res.append(resid[lenis:lenie].reshape(leni, nt))
 
