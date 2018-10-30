@@ -133,40 +133,6 @@ considered equal here and no variance is calculated.
                                    rast_label=rast_label,
                                    method='ols')
 
-
-.. parsed-literal::
-
-     
-    LSQR            Least-squares solution of  Ax = b
-    The matrix A has     8430 rows  and      795 cols
-    damp = 0.00000000000000e+00   calc_var =        1
-    atol = 1.00e-08                 conlim = 1.00e+08
-    btol = 1.00e-08               iter_lim =     1590
-     
-       Itn      x[0]       r1norm     r2norm   Compatible    LS      Norm A   Cond A
-         0  4.82000e+02   5.046e+00  5.046e+00    1.0e+00  7.5e+00
-         1  4.82000e+02   2.259e+00  2.259e+00    1.6e-01  6.3e-01   4.2e+01  1.0e+00
-         2  4.81999e+02   1.401e+00  1.401e+00    9.8e-02  3.3e-01   5.6e+01  2.2e+00
-         3  4.81999e+02   1.835e-01  1.835e-01    1.3e-02  5.5e-02   6.1e+01  4.3e+00
-         4  4.81999e+02   1.721e-01  1.721e-01    1.2e-02  1.3e-01   6.1e+01  7.8e+00
-         5  4.81999e+02   1.131e-01  1.131e-01    7.9e-03  2.3e-02   6.6e+01  1.7e+01
-         6  4.81999e+02   9.214e-02  9.214e-02    6.4e-03  3.1e-04   6.6e+01  3.1e+01
-         7  4.81999e+02   9.212e-02  9.212e-02    6.4e-03  7.0e-04   6.6e+01  7.4e+01
-         8  4.82000e+02   9.072e-02  9.072e-02    6.3e-03  7.3e-02   6.6e+01  6.2e+02
-         9  4.82001e+02   8.996e-02  8.996e-02    6.3e-03  1.2e-02   8.0e+01  9.3e+02
-        10  4.82001e+02   8.993e-02  8.993e-02    6.3e-03  3.5e-06   8.8e+01  1.0e+03
-        14  4.82563e+02   8.988e-02  8.988e-02    6.3e-03  4.0e-08   1.0e+02  1.9e+04
-        15  4.82563e+02   8.988e-02  8.988e-02    6.3e-03  7.8e-08   1.0e+02  2.0e+04
-        16  4.82563e+02   8.988e-02  8.988e-02    6.3e-03  1.4e-11   1.1e+02  2.1e+04
-     
-    LSQR finished
-    The least-squares solution is good enough, given atol     
-     
-    istop =       2   r1norm = 9.0e-02   anorm = 1.1e+02   arnorm = 1.4e-10
-    itn   =      16   r2norm = 9.0e-02   acond = 2.1e+04   xnorm  = 6.4e-01
-     
-
-
 .. code:: ipython3
 
     ds1 = ds100.isel(time=0)  # take only the first timestep
@@ -181,7 +147,7 @@ considered equal here and no variance is calculated.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x11eff33c8>
+    <matplotlib.legend.Legend at 0x11fabe550>
 
 
 
@@ -204,7 +170,7 @@ first.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x11f04d5f8>]
+    [<matplotlib.lines.Line2D at 0x11fc3a588>]
 
 
 

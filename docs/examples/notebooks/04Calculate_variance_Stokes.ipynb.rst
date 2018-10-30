@@ -94,7 +94,7 @@
 
 .. parsed-literal::
 
-    The variance of the Stokes signal along the reference sections is approximately 40.159973819523046 on a 2.0 sec acquisition time
+    The variance of the Stokes signal along the reference sections is approximately 12.021050418534966 on a 2.0 sec acquisition time
 
 
 .. code:: ipython3

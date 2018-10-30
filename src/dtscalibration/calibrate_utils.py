@@ -120,7 +120,7 @@ def calibration_single_ended_wls(ds, st_label, ast_label, st_var, ast_var,
         p_sol, p_var, p_cov = wls_stats(X, y, w=w, calc_cov=calc_cov)
 
     elif solver == 'external':
-        return X, y, w
+        return X, y, w, p0_est
 
     else:
         raise ValueError("Choose a valid solver")
@@ -376,7 +376,7 @@ def calibration_double_ended_wls(ds, st_label, ast_label, rst_label,
         p_sol, p_var, p_cov = wls_stats(X, y, w=w, calc_cov=calc_cov, verbose=verbose)
 
     elif solver == 'external':
-        return X, y, w
+        return X, y, w, p0_est
 
     if calc_cov:
         return nt, z, p_sol, p_var, p_cov

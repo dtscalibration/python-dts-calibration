@@ -36,6 +36,19 @@
     The measurement is double ended
 
 
+.. code:: ipython3
+
+    ds.probe1Temperature.plot()
+
+
+
+
+.. parsed-literal::
+
+    [<matplotlib.lines.Line2D at 0x11d332c18>]
+
+
+
 A calibration is needed to estimate temperature from Stokes and
 anti-Stokes measurements. There are three unknowns for a single ended
 calibration procedure :math:`\gamma`, :math:`C`, and :math:`\alpha`. The

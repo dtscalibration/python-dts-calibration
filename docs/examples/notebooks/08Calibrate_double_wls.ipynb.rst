@@ -76,6 +76,23 @@ as an estimate of the variance in measured signals.
     rst_var, _ = ds.variance_stokes(st_label=rst_label, suppress_info=1)
     rast_var, _ = ds.variance_stokes(st_label=rast_label, suppress_info=1)
 
+.. code:: ipython3
+
+    resid.plot()
+
+
+
+
+.. parsed-literal::
+
+    <matplotlib.collections.QuadMesh at 0x1161c9ac8>
+
+
+
+
+.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_7_1.png
+
+
 Similar to the ols procedure, we make a single function call to
 calibrate the temperature. If the method is ``wls`` and confidence
 intervals are passed to ``conf_ints``, confidence intervals calculated.
@@ -117,6 +134,7 @@ entire measurement period’.
 
 .. code:: ipython3
 
+    plt.figure( figsize=(12, 8))
     ds1 = ds.isel(time=-1)  # take only the first timestep
     ds1.TMPF.plot(linewidth=0.7)
     ds1.TMPF_MC.isel(CI=0).plot(linewidth=0.7, label='CI: 2.5%')
@@ -125,7 +143,7 @@ entire measurement period’.
 
 
 
-.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_9_0.png
+.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_10_0.png
 
 
 The DataArrays ``TMPF_MC`` and ``TMPB_MC`` and the dimension ``CI`` are
@@ -159,15 +177,15 @@ confidence interval ‘coordinates’.
         gamma                  float64 482.6
         alphaint               float64 -0.01034
         alpha                  (x) float64 -0.01233 -0.008471 ... -0.01044 -0.01034
-        c                      (time) float64 1.47 1.471 1.47 1.47 1.471 1.47
-        gamma_var              float64 0.03868
-        alphaint_var           float64 7.387e-07
-        alpha_var              (x) float64 3.563e-07 3.489e-07 ... 7.284e-07
-        c_var                  (time) float64 6.632e-07 6.632e-07 ... 6.632e-07
-        TMPF                   (x, time) float64 16.8 17.06 16.33 ... 13.48 13.78
-        TMPB                   (x, time) float64 16.81 16.84 16.88 ... 13.73 13.69
+        c                      (time) float64 1.47 1.471 1.47 1.47 1.47 1.47
+        gamma_var              float64 0.03716
+        alphaint_var           float64 7.369e-07
+        alpha_var              (x) float64 3.634e-07 3.556e-07 ... 7.267e-07
+        c_var                  (time) float64 6.44e-07 6.44e-07 ... 6.44e-07
+        TMPF                   (x, time) float64 16.8 17.05 16.32 ... 13.49 13.78
+        TMPB                   (x, time) float64 16.8 16.83 16.88 ... 13.74 13.69
         p_val                  (params1) float64 482.6 -0.01034 ... -0.01034
-        p_cov                  (params1, params2) float64 0.03868 ... 7.284e-07
+        p_cov                  (params1, params2) float64 0.03716 ... 7.267e-07
         TMPF_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 787, 6)>
         TMPB_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 787, 6)>
         TMPF_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 6)>
