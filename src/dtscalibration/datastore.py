@@ -500,7 +500,7 @@ class DataStore(xr.Dataset):
                 nt * np.cumsum([0] + len_stretch_list[:-1]),
                     nt * np.cumsum(len_stretch_list)):
 
-                resid_res.append(resid[lenis:lenie].reshape(leni, nt))
+                resid_res.append(resid[lenis:lenie].reshape((leni, nt), order='F'))
 
             _resid = np.concatenate(resid_res)
             _resid_x = self.ufunc_per_section(label='x', calc_per='all')
