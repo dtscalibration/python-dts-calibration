@@ -293,7 +293,7 @@ def test_single_ended_variance_estimate_synthetic():
 
 
 def test_variance_of_stokes():
-    correct_var = 40.16
+    correct_var = 12.03
     filepath = data_dir_double_ended2
     ds = read_silixa_files(
         directory=filepath,
