@@ -563,8 +563,33 @@ def read_silixa_attrs_singlefile(filename, sep):
     return metakey(dict(), doc, '', sep)
 
 
-def coords_time(maxTimeIndex, timezone_netcdf, timezone_ultima_xml, dtFW=None,
+def coords_time(maxTimeIndex, timezone_ultima_xml, timezone_netcdf='UTC', dtFW=None,
                 dtBW=None, double_ended_flag=False):
+    """
+    Prepares the time coordinates for the construction of DataStore instances with metadata
+
+    Parameters
+    ----------
+    maxTimeIndex : array-like (1-dimensional)
+        Is an array with timestamps of the end of the forward channel. If single ended
+        this is the end of the measurement. If double ended this is halfway the double ended
+        measurement.
+    timezone_ultima_xml : string, pytz.timezone, dateutil.tz.tzfile or None
+        A string of a timezone that is understood by pandas of maxTimeIndex.
+    timezone_netcdf : string, pytz.timezone, dateutil.tz.tzfile or None
+        A string of a timezone that is understood by pandas to write the netCDF to. Using UTC as
+        default, according to CF conventions.
+    dtFW : array-like (1-dimensional) of float
+        The acquisition time of the Forward channel in seconds
+    dtBW : array-like (1-dimensional) of float
+        The acquisition time of the Backward channel in seconds
+    double_ended_flag : bool
+        A flag whether the measurement is double ended
+
+    Returns
+    -------
+
+    """
     time_attrs = {
         'time':        {
             'description': 'time halfway the measurement',
@@ -652,5 +677,16 @@ def coords_time(maxTimeIndex, timezone_netcdf, timezone_ultima_xml, dtFW=None,
             timezone_netcdf).astype('datetime64[ns]'),
         time_attrs[k]) for k, v in coords_zip
         }
+
+    # The units are already stored in the dtype
+    coords['acquisitiontimeFW'] = (
+        'time', dt1,
+        {'description': 'Acquisition time of the forward measurement',})
+
+    if double_ended_flag:
+        # The units are already stored in the dtype
+        coords['acquisitiontimeBW'] = (
+            'time', dt2,
+            {'description': 'Acquisition time of the backward measurement',})
 
     return coords
