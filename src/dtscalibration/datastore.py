@@ -25,6 +25,7 @@ from .io import read_silixa_files_routine_v4
 from .io import read_silixa_files_routine_v6
 from .io import silixa_xml_version_check
 
+
 class DataStore(xr.Dataset):
     """The data class that stores the measurements, contains calibration methods to relate Stokes
     and anti-Stokes to temperature. The user should never initiate this class directly,
