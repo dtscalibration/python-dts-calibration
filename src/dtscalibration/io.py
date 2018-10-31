@@ -563,6 +563,43 @@ def read_silixa_attrs_singlefile(filename, sep):
     return metakey(dict(), doc, '', sep)
 
 
+def read_sensornet_single(filename):
+    headerlength = 26
+
+    with open(filename) as fileobject:
+        filelength = sum([1 for line in fileobject])
+    datalength = filelength - headerlength
+
+    meta = {}
+    with open(filename) as fileobject:
+        for ii in range(0, headerlength - 1):
+            fileline = fileobject.readline().split('\t')
+
+            meta[fileline[0]] = fileline[1].replace('\n', '').replace(',', '.')
+
+        # data_names = fileobject.readline().split('\t')
+
+        if meta['differential loss correction'] == 'single-ended':
+            data = {'x': np.zeros(datalength),
+                    'TMP': np.zeros(datalength),
+                    'ST': np.zeros(datalength),
+                    'AST': np.zeros(datalength)}
+
+            for ii in range(0, datalength):
+                fileline = fileobject.readline().replace(',', '.').split('\t')
+
+                data['x'][ii] = float(fileline[0])
+                data['TMP'][ii] = float(fileline[1])
+                data['ST'][ii] = float(fileline[2])
+                data['AST'][ii] = float(fileline[3])
+
+        else:
+            raise NotImplementedError('double-ended DDF files ' +
+                                      'are not implemented yet')
+
+    return data, meta
+
+
 def coords_time(maxTimeIndex, timezone_input_files, timezone_netcdf='UTC', dtFW=None,
                 dtBW=None, double_ended_flag=False):
     """
