@@ -20,10 +20,10 @@ from .calibrate_utils import calibration_single_ended_ols
 from .calibrate_utils import calibration_single_ended_wls
 from .datastore_utils import check_dims
 from .datastore_utils import check_timestep_allclose
+from .io import read_sensornet_files_routine_v3
 from .io import read_silixa_files_routine_v4
 from .io import read_silixa_files_routine_v6
 from .io import silixa_xml_version_check
-
 
 class DataStore(xr.Dataset):
     """The data class that stores the measurements, contains calibration methods to relate Stokes
@@ -1524,6 +1524,66 @@ def read_silixa_files(
     else:
         raise NotImplementedError('Silixa xml version ' +
                                   '{0} not implemented'.format(xml_version))
+
+    ds = DataStore(data_vars=data_vars,
+                   coords=coords,
+                   attrs=attrs,
+                   **kwargs)
+    return ds
+
+
+def read_sensornet_files(
+    filepathlist=None,
+    directory=None,
+    file_ext='*.ddf',
+    timezone_netcdf='UTC',
+    timezone_input_files='UTC',
+    silent=False,
+    load_in_memory='auto',
+        **kwargs):
+
+    """Read a folder with measurement files. Each measurement file contains
+    values for a single timestep. Remember to check which timezone
+    you are working in.
+
+    Parameters
+    ----------
+    filepathlist : list of str, optional
+        List of paths that point the the silixa files
+    directory : str, Path, optional
+        Path to folder
+    timezone_netcdf : str, optional
+        Timezone string of the netcdf file. UTC follows CF-conventions.
+    timezone_input_files : str, optional
+        Timezone string of the measurement files.
+        Remember to check when measurements are taken.
+        Also if summertime is used.
+    file_ext : str, optional
+        file extension of the measurement files
+    silent : bool
+        If set tot True, some verbose texts are not printed to stdout/screen
+    load_in_memory : {'auto', True, False}
+        If 'auto' the Stokes data is only loaded to memory for small files
+    kwargs : dict-like, optional
+        keyword-arguments are passed to DataStore initialization
+
+    Returns
+    -------
+    datastore : DataStore
+        The newly created datastore.
+    """
+
+    if isinstance(filepathlist, type(None)):
+        filepathlist = sorted(glob.glob(os.path.join(directory, file_ext)))
+
+    # Make sure that the list of files contains any files
+    assert len(filepathlist) >= 1, 'No measurement files found in provided list/directory'
+
+    data_vars, coords, attrs = read_sensornet_files_routine_v3(
+                                    filepathlist,
+                                    timezone_netcdf=timezone_netcdf,
+                                    timezone_input_files=timezone_input_files,
+                                    silent=silent)
 
     ds = DataStore(data_vars=data_vars,
                    coords=coords,
