@@ -106,6 +106,11 @@ def read_silixa_files_routine_v6(filepathlist,
     # Obtain metadata from the first file
     attrs = read_silixa_attrs_singlefile(filepathlist[0], sep)
 
+    # Add standardised required attributes
+    attrs['isDoubleEnded'] = attrs['customData:isDoubleEnded']
+    attrs['forwardMeasurementChannel'] = attrs['customData:forwardMeasurementChannel']
+    attrs['reverseMeasurementChannel'] = attrs['customData:reverseMeasurementChannel']
+
     # obtain basic data info
     data_item_names = attrs['logData:mnemonicList'].replace(" ", "").strip(' ').split(',')
     nitem = len(data_item_names)
@@ -117,10 +122,10 @@ def read_silixa_files_routine_v6(filepathlist,
 
     ntime = len(filepathlist)
 
-    double_ended_flag = bool(int(attrs['customData:isDoubleEnded']))
-    chFW = int(attrs['customData:forwardMeasurementChannel']) - 1  # zero-based
+    double_ended_flag = bool(int(attrs['isDoubleEnded']))
+    chFW = int(attrs['forwardMeasurementChannel']) - 1  # zero-based
     if double_ended_flag:
-        chBW = int(attrs['customData:reverseMeasurementChannel']) - 1  # zero-based
+        chBW = int(attrs['reverseMeasurementChannel']) - 1  # zero-based
     else:
         # no backward channel is negative value. writes better to netcdf
         chBW = -1
@@ -316,10 +321,15 @@ def read_silixa_files_routine_v4(filepathlist,
     # Obtain metadata from the first file
     attrs = read_silixa_attrs_singlefile(filepathlist[0], sep)
 
-    double_ended_flag = bool(int(attrs['customData:isDoubleEnded']))
-    chFW = int(attrs['customData:forwardMeasurementChannel']) - 1  # zero-based
+    # Add standardised required attributes
+    attrs['isDoubleEnded'] = attrs['customData:isDoubleEnded']
+    attrs['forwardMeasurementChannel'] = attrs['customData:forwardMeasurementChannel']
+    attrs['reverseMeasurementChannel'] = attrs['customData:reverseMeasurementChannel']
+
+    double_ended_flag = bool(int(attrs['isDoubleEnded']))
+    chFW = int(attrs['forwardMeasurementChannel']) - 1  # zero-based
     if double_ended_flag:
-        chBW = int(attrs['customData:reverseMeasurementChannel']) - 1  # zero-based
+        chBW = int(attrs['reverseMeasurementChannel']) - 1  # zero-based
     else:
         # no backward channel is negative value. writes better to netcdf
         chBW = -1

@@ -154,16 +154,16 @@ class DataStore(xr.Dataset):
 
     @property
     def is_double_ended(self):
-        return bool(int(self.attrs['customData:isDoubleEnded']))
+        return bool(int(self.attrs['isDoubleEnded']))
 
     @property
     def chfw(self):
-        return int(self.attrs['customData:forwardMeasurementChannel']) - 1  # zero-based
+        return int(self.attrs['forwardMeasurementChannel']) - 1  # zero-based
 
     @property
     def chbw(self):
         if self.is_double_ended:
-            return int(self.attrs['customData:reverseMeasurementChannel']) - 1  # zero-based
+            return int(self.attrs['reverseMeasurementChannel']) - 1  # zero-based
         else:
             return None
 
