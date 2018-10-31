@@ -25,13 +25,13 @@ Examples of how to do some of the more commonly used functions:
     
     filepath = os.path.join(wd, '..', '..', 'tests', 'data', 'single_ended')
     timezone_netcdf = 'UTC'
-    timezone_ultima_xml = 'Europe/Amsterdam'
+    timezone_input_files = 'Europe/Amsterdam'
     file_ext = '*.xml'
     
     ds = read_silixa_files(
         directory=filepath,
         timezone_netcdf=timezone_netcdf,
-        timezone_ultima_xml=timezone_ultima_xml,
+        timezone_input_files=timezone_input_files,
         file_ext=file_ext)
 
 
@@ -41,7 +41,7 @@ Examples of how to do some of the more commonly used functions:
     4 recorded vars were found: LAF, ST, AST, TMP
     Recorded at 1461 points along the cable
     The measurement is single ended
-
+    
 
 1 mean, min, max
 ----------------

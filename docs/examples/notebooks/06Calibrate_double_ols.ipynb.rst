@@ -24,13 +24,13 @@ considered equal here and no variance is calculated.
     
     filepath = os.path.join(wd, '..', '..', 'tests', 'data', 'double_ended2')
     timezone_netcdf = 'UTC'
-    timezone_ultima_xml = 'Europe/Amsterdam'
+    timezone_input_files = 'Europe/Amsterdam'
     file_ext = '*.xml'
     
     ds = read_silixa_files(
         directory=filepath,
         timezone_netcdf=timezone_netcdf,
-        timezone_ultima_xml=timezone_ultima_xml,
+        timezone_input_files=timezone_input_files,
         file_ext=file_ext)
     
     ds100 = ds.sel(x=slice(0, 100))  # only calibrate parts of the fiber
@@ -46,7 +46,7 @@ considered equal here and no variance is calculated.
     6 recorded vars were found: LAF, ST, AST, REV-ST, REV-AST, TMP
     Recorded at 1693 points along the cable
     The measurement is double ended
-
+    
 
 .. code:: ipython3
 
@@ -118,7 +118,7 @@ considered equal here and no variance is calculated.
             -------
     
             
-
+    
 
 .. code:: ipython3
 
@@ -147,12 +147,12 @@ considered equal here and no variance is calculated.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x11a73aa58>
+    <matplotlib.legend.Legend at 0x1a2d1b00>
 
 
 
 
-.. image:: 06Calibrate_double_ols.ipynb_files/06Calibrate_double_ols.ipynb_6_1.png
+.. image:: 06Calibrate_double_ols.ipynb_files%5C06Calibrate_double_ols.ipynb_6_1.png
 
 
 Lets compare our calibrated values with the device calibration. Lets
@@ -170,12 +170,12 @@ first.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x11a6892b0>]
+    [<matplotlib.lines.Line2D at 0x1a84ca20>]
 
 
 
 
-.. image:: 06Calibrate_double_ols.ipynb_files/06Calibrate_double_ols.ipynb_8_1.png
+.. image:: 06Calibrate_double_ols.ipynb_files%5C06Calibrate_double_ols.ipynb_8_1.png
 
 
 The device calibration sections and calibration sections defined by us

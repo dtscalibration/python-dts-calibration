@@ -108,8 +108,13 @@ def read_silixa_files_routine_v6(filepathlist,
 
     # Add standardised required attributes
     attrs['isDoubleEnded'] = attrs['customData:isDoubleEnded']
+    double_ended_flag = bool(int(attrs['isDoubleEnded']))
+
     attrs['forwardMeasurementChannel'] = attrs['customData:forwardMeasurementChannel']
-    attrs['reverseMeasurementChannel'] = attrs['customData:reverseMeasurementChannel']
+    if double_ended_flag:
+        attrs['backwardMeasurementChannel'] = attrs['customData:reverseMeasurementChannel']
+    else:
+        attrs['backwardMeasurementChannel'] = 'N/A'
 
     # obtain basic data info
     data_item_names = attrs['logData:mnemonicList'].replace(" ", "").strip(' ').split(',')
@@ -125,7 +130,7 @@ def read_silixa_files_routine_v6(filepathlist,
     double_ended_flag = bool(int(attrs['isDoubleEnded']))
     chFW = int(attrs['forwardMeasurementChannel']) - 1  # zero-based
     if double_ended_flag:
-        chBW = int(attrs['reverseMeasurementChannel']) - 1  # zero-based
+        chBW = int(attrs['backwardMeasurementChannel']) - 1  # zero-based
     else:
         # no backward channel is negative value. writes better to netcdf
         chBW = -1
@@ -323,13 +328,17 @@ def read_silixa_files_routine_v4(filepathlist,
 
     # Add standardised required attributes
     attrs['isDoubleEnded'] = attrs['customData:isDoubleEnded']
-    attrs['forwardMeasurementChannel'] = attrs['customData:forwardMeasurementChannel']
-    attrs['reverseMeasurementChannel'] = attrs['customData:reverseMeasurementChannel']
-
     double_ended_flag = bool(int(attrs['isDoubleEnded']))
+
+    attrs['forwardMeasurementChannel'] = attrs['customData:forwardMeasurementChannel']
+    if double_ended_flag:
+        attrs['backwardMeasurementChannel'] = attrs['customData:reverseMeasurementChannel']
+    else:
+        attrs['backwardMeasurementChannel'] = 'N/A'
+
     chFW = int(attrs['forwardMeasurementChannel']) - 1  # zero-based
     if double_ended_flag:
-        chBW = int(attrs['reverseMeasurementChannel']) - 1  # zero-based
+        chBW = int(attrs['backwardMeasurementChannel']) - 1  # zero-based
     else:
         # no backward channel is negative value. writes better to netcdf
         chBW = -1
@@ -553,9 +562,9 @@ def read_sensornet_files_routine_v3(filepathlist,
 
     attrs['forwardMeasurementChannel'] = meta['forward channel'][-1]
     if double_ended_flag:
-        attrs['reverseMeasurementChannel'] = 'N/A'
+        attrs['backwardMeasurementChannel'] = 'N/A'
     else:
-        attrs['reverseMeasurementChannel'] = meta['reverse channel'][-1]
+        attrs['backwardMeasurementChannel'] = meta['reverse channel'][-1]
 
     # obtain basic data info
     nx = data['x'].size
@@ -564,7 +573,7 @@ def read_sensornet_files_routine_v3(filepathlist,
 
     # chFW = int(attrs['forwardMeasurementChannel']) - 1  # zero-based
     # if double_ended_flag:
-    #     chBW = int(attrs['reverseMeasurementChannel']) - 1  # zero-based
+    #     chBW = int(attrs['backwardMeasurementChannel']) - 1  # zero-based
     # else:
     #     # no backward channel is negative value. writes better to netcdf
     #     chBW = -1

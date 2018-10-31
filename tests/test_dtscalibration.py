@@ -105,7 +105,7 @@ def test_double_ended_variance_estimate_synthetic():
             'x':    x,
             'time': time},
         attrs={
-            'customData:isDoubleEnded': '1'})
+            'isDoubleEnded': '1'})
 
     sections = {
         'cold': [slice(0., 0.5 * cable_len)],
@@ -129,7 +129,7 @@ def test_double_ended_variance_estimate_synthetic():
     rst_label = 'mrst'
     rast_label = 'mrast'
 
-    # MC variqnce
+    # MC variance
     ds.calibration_double_ended(sections=sections,
                                 st_label=st_label,
                                 ast_label=ast_label,
@@ -238,7 +238,7 @@ def test_single_ended_variance_estimate_synthetic():
             'x':    x,
             'time': time},
         attrs={
-            'customData:isDoubleEnded': '0'})
+            'isDoubleEnded': '0'})
 
     sections = {
         'cold': [slice(0., 0.5 * cable_len)],
@@ -355,7 +355,7 @@ def test_variance_of_stokes_synthetic():
         coords={
             'x':    x,
             'time': range(nt)},
-        attrs={'customData:isDoubleEnded': '0'})
+        attrs={'isDoubleEnded': '0'})
 
     sections = {'probe1Temperature': [slice(0., 20.), ]}
     test_ST_var, _ = ds.variance_stokes(st_label='test_ST',

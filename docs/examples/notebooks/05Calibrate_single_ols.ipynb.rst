@@ -26,13 +26,13 @@ calculated.
     
     filepath = os.path.join(wd, '..', '..', 'tests', 'data', 'single_ended')
     timezone_netcdf = 'UTC'
-    timezone_ultima_xml = 'Europe/Amsterdam'
+    timezone_input_files = 'Europe/Amsterdam'
     file_ext = '*.xml'
     
     ds = read_silixa_files(
         directory=filepath,
         timezone_netcdf=timezone_netcdf,
-        timezone_ultima_xml=timezone_ultima_xml,
+        timezone_input_files=timezone_input_files,
         file_ext=file_ext)
     
     ds100 = ds.sel(x=slice(-30, 101))  # only calibrate parts of the fiber
@@ -49,7 +49,7 @@ calculated.
     4 recorded vars were found: LAF, ST, AST, TMP
     Recorded at 1461 points along the cable
     The measurement is single ended
-
+    
 
 .. code:: ipython3
 
@@ -110,7 +110,7 @@ calculated.
             -------
     
             
-
+    
 
 .. code:: ipython3
 
@@ -137,17 +137,17 @@ calculated.
          2  4.81999e+02   1.868e-02  1.868e-02    4.4e-03  3.4e-02   3.1e+02  7.1e+01
          3  4.81999e+02   6.248e-03  6.248e-03    1.5e-03  2.7e-05   3.1e+02  7.6e+01
          4  4.81999e+02   6.248e-03  6.248e-03    1.5e-03  1.2e-08   4.4e+02  1.1e+02
-         5  4.81877e+02   6.248e-03  6.248e-03    1.5e-03  1.5e-08   4.4e+02  8.6e+05
-         6  4.81877e+02   6.248e-03  6.248e-03    1.5e-03  1.1e-08   5.0e+02  9.8e+05
-         7  4.81877e+02   6.248e-03  6.248e-03    1.5e-03  8.0e-09   5.3e+02  1.1e+06
+         5  4.81877e+02   6.248e-03  6.248e-03    1.5e-03  1.6e-08   4.4e+02  8.6e+05
+         6  4.81877e+02   6.248e-03  6.248e-03    1.5e-03  2.3e-08   4.7e+02  9.2e+05
+         7  4.81877e+02   6.248e-03  6.248e-03    1.5e-03  6.8e-09   5.3e+02  1.1e+06
      
     LSQR finished
     The least-squares solution is good enough, given atol     
      
-    istop =       2   r1norm = 6.2e-03   anorm = 5.3e+02   arnorm = 2.7e-08
+    istop =       2   r1norm = 6.2e-03   anorm = 5.3e+02   arnorm = 2.3e-08
     itn   =       7   r2norm = 6.2e-03   acond = 1.1e+06   xnorm  = 2.1e-01
      
-
+    
 
 Lets compare our calibrated values with the device calibration
 
@@ -165,10 +165,10 @@ Lets compare our calibrated values with the device calibration
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x121acd0f0>
+    <matplotlib.legend.Legend at 0x1a3228d0>
 
 
 
 
-.. image:: 05Calibrate_single_ols.ipynb_files/05Calibrate_single_ols.ipynb_7_1.png
+.. image:: 05Calibrate_single_ols.ipynb_files%5C05Calibrate_single_ols.ipynb_7_1.png
 
