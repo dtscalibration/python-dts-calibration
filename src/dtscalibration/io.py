@@ -80,7 +80,7 @@ def silixa_xml_version_check(filepathlist):
 
 def read_silixa_files_routine_v6(filepathlist,
                                  timezone_netcdf='UTC',
-                                 timezone_ultima_xml='UTC',
+                                 timezone_input_files='UTC',
                                  silent=False,
                                  load_in_memory='auto'):
     """
@@ -90,7 +90,7 @@ def read_silixa_files_routine_v6(filepathlist,
     ----------
     filepathlist
     timezone_netcdf
-    timezone_ultima_xml
+    timezone_input_files
     silent
 
     Returns
@@ -276,11 +276,11 @@ def read_silixa_files_routine_v6(filepathlist,
     dtFW = ts_arr['userAcquisitionTimeFW'].astype('timedelta64[s]')
 
     if not double_ended_flag:
-        tcoords = coords_time(maxTimeIndex, timezone_netcdf, timezone_ultima_xml,
+        tcoords = coords_time(maxTimeIndex, timezone_netcdf, timezone_input_files,
                               dtFW=dtFW, double_ended_flag=double_ended_flag)
     else:
         dtBW = ts_arr['userAcquisitionTimeBW'].astype('timedelta64[s]')
-        tcoords = coords_time(maxTimeIndex, timezone_netcdf, timezone_ultima_xml,
+        tcoords = coords_time(maxTimeIndex, timezone_netcdf, timezone_input_files,
                               dtFW=dtFW, dtBW=dtBW, double_ended_flag=double_ended_flag)
 
     coords.update(tcoords)
@@ -290,7 +290,7 @@ def read_silixa_files_routine_v6(filepathlist,
 
 def read_silixa_files_routine_v4(filepathlist,
                                  timezone_netcdf='UTC',
-                                 timezone_ultima_xml='UTC',
+                                 timezone_input_files='UTC',
                                  silent=False,
                                  load_in_memory='auto'):
     """
@@ -300,7 +300,7 @@ def read_silixa_files_routine_v4(filepathlist,
     ----------
     filepathlist
     timezone_netcdf
-    timezone_ultima_xml
+    timezone_input_files
     silent
 
     Returns
@@ -489,11 +489,11 @@ def read_silixa_files_routine_v4(filepathlist,
     dtFW = ts_arr['userAcquisitionTimeFW'].astype('timedelta64[s]')
 
     if not double_ended_flag:
-        tcoords = coords_time(maxTimeIndex, timezone_netcdf, timezone_ultima_xml,
+        tcoords = coords_time(maxTimeIndex, timezone_netcdf, timezone_input_files,
                               dtFW=dtFW, double_ended_flag=double_ended_flag)
     else:
         dtBW = ts_arr['userAcquisitionTimeBW'].astype('timedelta64[s]')
-        tcoords = coords_time(maxTimeIndex, timezone_netcdf, timezone_ultima_xml,
+        tcoords = coords_time(maxTimeIndex, timezone_netcdf, timezone_input_files,
                               dtFW=dtFW, dtBW=dtBW, double_ended_flag=double_ended_flag)
 
     coords.update(tcoords)
@@ -563,7 +563,7 @@ def read_silixa_attrs_singlefile(filename, sep):
     return metakey(dict(), doc, '', sep)
 
 
-def coords_time(maxTimeIndex, timezone_ultima_xml, timezone_netcdf='UTC', dtFW=None,
+def coords_time(maxTimeIndex, timezone_input_files, timezone_netcdf='UTC', dtFW=None,
                 dtBW=None, double_ended_flag=False):
     """
     Prepares the time coordinates for the construction of DataStore instances with metadata
@@ -574,7 +574,7 @@ def coords_time(maxTimeIndex, timezone_ultima_xml, timezone_netcdf='UTC', dtFW=N
         Is an array with timestamps of the end of the forward channel. If single ended
         this is the end of the measurement. If double ended this is halfway the double ended
         measurement.
-    timezone_ultima_xml : string, pytz.timezone, dateutil.tz.tzfile or None
+    timezone_input_files : string, pytz.timezone, dateutil.tz.tzfile or None
         A string of a timezone that is understood by pandas of maxTimeIndex.
     timezone_netcdf : string, pytz.timezone, dateutil.tz.tzfile or None
         A string of a timezone that is understood by pandas to write the netCDF to. Using UTC as
@@ -673,7 +673,7 @@ def coords_time(maxTimeIndex, timezone_ultima_xml, timezone_netcdf='UTC', dtFW=N
     coords = {k: (
         'time',
         pd.DatetimeIndex(v).tz_localize(
-            tz=timezone_ultima_xml).tz_convert(
+            tz=timezone_input_files).tz_convert(
             timezone_netcdf).astype('datetime64[ns]'),
         time_attrs[k]) for k, v in coords_zip
         }

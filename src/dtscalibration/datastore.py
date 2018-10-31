@@ -1463,7 +1463,7 @@ def read_silixa_files(
     directory=None,
     file_ext='*.xml',
     timezone_netcdf='UTC',
-    timezone_ultima_xml='UTC',
+    timezone_input_files='UTC',
     silent=False,
     load_in_memory='auto',
         **kwargs):
@@ -1479,7 +1479,7 @@ def read_silixa_files(
         Path to folder
     timezone_netcdf : str, optional
         Timezone string of the netcdf file. UTC follows CF-conventions.
-    timezone_ultima_xml : str, optional
+    timezone_input_files : str, optional
         Timezone string of the measurement files. Remember to check when measurements are taken.
         Also if summertime is used.
     file_ext : str, optional
@@ -1509,7 +1509,7 @@ def read_silixa_files(
         data_vars, coords, attrs = read_silixa_files_routine_v4(
                                     filepathlist,
                                     timezone_netcdf=timezone_netcdf,
-                                    timezone_ultima_xml=timezone_ultima_xml,
+                                    timezone_input_files=timezone_input_files,
                                     silent=silent,
                                     load_in_memory=load_in_memory)
 
@@ -1517,7 +1517,7 @@ def read_silixa_files(
         data_vars, coords, attrs = read_silixa_files_routine_v6(
                                     filepathlist,
                                     timezone_netcdf=timezone_netcdf,
-                                    timezone_ultima_xml=timezone_ultima_xml,
+                                    timezone_input_files=timezone_input_files,
                                     silent=silent,
                                     load_in_memory=load_in_memory)
 

@@ -171,7 +171,7 @@ def test_read_silixa_files_single_ended():
     ds = read_silixa_files(
         directory=filepath,
         timezone_netcdf='UTC',
-        timezone_ultima_xml='Europe/Amsterdam',
+        timezone_input_files='Europe/Amsterdam',
         file_ext='*.xml')
 
     assert ds._initialized
@@ -184,7 +184,7 @@ def test_read_silixa_files_double_ended():
     ds = read_silixa_files(
         directory=filepath,
         timezone_netcdf='UTC',
-        timezone_ultima_xml='Europe/Amsterdam',
+        timezone_input_files='Europe/Amsterdam',
         file_ext='*.xml')
 
     assert ds._initialized
