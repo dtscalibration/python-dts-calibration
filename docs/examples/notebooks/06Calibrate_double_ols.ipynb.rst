@@ -23,7 +23,7 @@ considered equal here and no variance is calculated.
         wd = os.getcwd()
     
     filepath = os.path.join(wd, '..', '..', 'tests', 'data', 'double_ended2')
-    timezone_netcdf = 'UTC',
+    timezone_netcdf = 'UTC'
     timezone_ultima_xml = 'Europe/Amsterdam'
     file_ext = '*.xml'
     
@@ -147,7 +147,7 @@ considered equal here and no variance is calculated.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x116c0beb8>
+    <matplotlib.legend.Legend at 0x11a73aa58>
 
 
 
@@ -170,7 +170,7 @@ first.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x116bb30b8>]
+    [<matplotlib.lines.Line2D at 0x11a6892b0>]
 
 
 

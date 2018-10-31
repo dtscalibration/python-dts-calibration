@@ -25,7 +25,7 @@ calculated.
         wd = os.getcwd()
     
     filepath = os.path.join(wd, '..', '..', 'tests', 'data', 'single_ended')
-    timezone_netcdf = 'UTC',
+    timezone_netcdf = 'UTC'
     timezone_ultima_xml = 'Europe/Amsterdam'
     file_ext = '*.xml'
     
@@ -165,7 +165,7 @@ Lets compare our calibrated values with the device calibration
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x11e783828>
+    <matplotlib.legend.Legend at 0x121acd0f0>
 
 
 
