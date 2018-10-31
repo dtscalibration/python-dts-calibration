@@ -11,7 +11,7 @@ _dim_attrs = {
     ('x', 'distance'):          {
         'name':             'distance',
         'description':      'Length along fiber',
-        'long_describtion': 'Starting at connector of forward channel',
+        'long_description': 'Starting at connector of forward channel',
         'units':            'm'},
     ('TMP', 'temperature'):     {
         'name':        'TMP',
@@ -36,17 +36,17 @@ _dim_attrs = {
     ('acquisitionTime',):       {
         'name':             'acquisitionTime',
         'description':      'Measurement duration of forward channel',
-        'long_describtion': 'Actual measurement duration of forward channel',
+        'long_description': 'Actual measurement duration of forward channel',
         'units':            'seconds'},
     ('userAcquisitionTimeFW',): {
         'name':             'userAcquisitionTimeFW',
         'description':      'Measurement duration of forward channel',
-        'long_describtion': 'Desired measurement duration of forward channel',
+        'long_description': 'Desired measurement duration of forward channel',
         'units':            'seconds'},
     ('userAcquisitionTimeBW',): {
         'name':             'userAcquisitionTimeBW',
         'description':      'Measurement duration of backward channel',
-        'long_describtion': 'Desired measurement duration of backward channel',
+        'long_description': 'Desired measurement duration of backward channel',
         'units':            'seconds'},
     }
 
