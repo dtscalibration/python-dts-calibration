@@ -775,12 +775,13 @@ def read_silixa_attrs_singlefile(filename, sep):
 def read_sensornet_single(filename):
     headerlength = 26
 
-    with open(filename) as fileobject:
-        filelength = sum([1 for line in fileobject])
+    # The $\circ$ Celsius symbol is unreadable in utf8
+    with open(filename, encoding='windows-1252') as fileobject:
+        filelength = sum([1 for _ in fileobject])
     datalength = filelength - headerlength
 
     meta = {}
-    with open(filename) as fileobject:
+    with open(filename, encoding='windows-1252') as fileobject:
         for ii in range(0, headerlength - 1):
             fileline = fileobject.readline().split('\t')
 
