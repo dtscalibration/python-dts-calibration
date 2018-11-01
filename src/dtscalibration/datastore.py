@@ -1035,16 +1035,22 @@ class DataStore(xr.Dataset):
             1: 'auto',
             2: -1}
 
-        self['r_st'] = (('MC', 'x', 'time'), state.normal(
-            loc=self[st_label].data,
-            scale=st_var ** 0.5,
-            size=rshape,
-            chunks=r2shape))
-        self['r_ast'] = (('MC', 'x', 'time'), state.normal(
-            loc=self[ast_label].data,
-            scale=ast_var ** 0.5,
-            size=rshape,
-            chunks=r2shape))
+        for k, st_labeli, st_vari in zip(['r_st', 'r_ast'],
+                                         [st_label, ast_label],
+                                         [st_var, ast_var]):
+            if hasattr(self[st_labeli].data, 'chunks'):
+                chunks = self[st_label].chunks
+                self[k] = (('MC', 'x', 'time'), state.normal(
+                    loc=da.rechunk(self[st_labeli].data, chunks=chunks),
+                    scale=st_vari ** 0.5,
+                    size=rshape,
+                    chunks=r2shape))
+            else:
+                self[k] = (('MC', 'x', 'time'), state.normal(
+                    loc=da.from_array(self[st_labeli].data, chunks={}),
+                    scale=st_vari ** 0.5,
+                    size=rshape,
+                    chunks=r2shape))
 
         self[store_tmpf + '_MC'] = self['gamma_MC'] / (xr.ufuncs.log(
             self['r_st'] / self['r_ast']) + self['c_MC'] + self[
@@ -1167,26 +1173,22 @@ class DataStore(xr.Dataset):
             1: 'auto',
             2: -1}
 
-        self['r_st'] = (('MC', 'x', 'time'), state.normal(
-            loc=self[st_label].data,
-            scale=st_var ** 0.5,
-            size=rshape,
-            chunks=r2shape))
-        self['r_ast'] = (('MC', 'x', 'time'), state.normal(
-            loc=self[ast_label].data,
-            scale=ast_var ** 0.5,
-            size=rshape,
-            chunks=r2shape))
-        self['r_rst'] = (('MC', 'x', 'time'), state.normal(
-            loc=self[rst_label].data,
-            scale=rst_var ** 0.5,
-            size=rshape,
-            chunks=r2shape))
-        self['r_rast'] = (('MC', 'x', 'time'), state.normal(
-            loc=self[rast_label].data,
-            scale=rast_var ** 0.5,
-            size=rshape,
-            chunks=r2shape))
+        for k, st_labeli, st_vari in zip(['r_st', 'r_ast', 'r_rst', 'r_rast'],
+                                         [st_label, ast_label, rst_label, rast_label],
+                                         [st_var, ast_var, rst_var, rast_var]):
+            if hasattr(self[st_labeli].data, 'chunks'):
+                chunks = self[st_label].chunks
+                self[k] = (('MC', 'x', 'time'), state.normal(
+                    loc=da.rechunk(self[st_labeli].data, chunks=chunks),
+                    scale=st_vari ** 0.5,
+                    size=rshape,
+                    chunks=r2shape))
+            else:
+                self[k] = (('MC', 'x', 'time'), state.normal(
+                    loc=da.from_array(self[st_labeli].data, chunks={}),
+                    scale=st_vari ** 0.5,
+                    size=rshape,
+                    chunks=r2shape))
 
         gamma = p_mc[:, 0]
         alphaint = p_mc[:, 1]
