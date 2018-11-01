@@ -1178,13 +1178,15 @@ class DataStore(xr.Dataset):
                                          [st_label, ast_label, rst_label, rast_label],
                                          [st_var, ast_var, rst_var, rast_var]):
             if hasattr(self[st_labeli].data, 'chunks'):
-                chunks = self[st_label].chunks
+                # if it is a dask array, we don't need to chunk it
                 self[k] = (('MC', 'x', 'time'), state.normal(
-                    loc=da.rechunk(self[st_labeli].data, chunks=chunks),
+                    loc=self[st_labeli].data,
                     scale=st_vari ** 0.5,
                     size=rshape,
                     chunks=r2shape))
             else:
+                # if it is a numpy array (it apparently fits in the memory so we dont need to
+                # chunk it)
                 self[k] = (('MC', 'x', 'time'), state.normal(
                     loc=da.from_array(self[st_labeli].data, chunks={}),
                     scale=st_vari ** 0.5,
