@@ -133,7 +133,7 @@ def calibration_multiple_fix_gamma(ds_inputs):
     for p_i, (dsi, single_double, kwargs) in zip(p_indices, ds_inputs):
         p_soli = p_sol[p_i]
         p_vari = p_var[p_i]
-        p_covi = p_cov[p_i, p_i]
+        p_covi = p_cov[p_i[:, np.newaxis], p_i]
 
         kwargs['nt'] = dsi.time.size
         kwargs['z'] = dsi.ufunc_per_section(label='x', calc_per='all')

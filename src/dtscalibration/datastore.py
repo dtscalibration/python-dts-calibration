@@ -443,7 +443,7 @@ class DataStore(xr.Dataset):
         lny = np.log(y)
         w = y.copy()  # 1/std.
 
-        ddof = 1 + nt * n_sections  # see numpy documentation on ddof
+        ddof = n_sections + nt * n_sections  # see numpy documentation on ddof
 
         if use_statsmodels:
             # returns the same answer with statsmodel
@@ -723,7 +723,7 @@ class DataStore(xr.Dataset):
         self[store_c] = (('time',), c)
 
         # store variances in DataStore
-        if method == 'wls':
+        if method == 'wls' or method == 'external':
             self[store_gamma + variance_suffix] = (tuple(), gammavar)
             self[store_dalpha + variance_suffix] = (tuple(), dalphavar)
             self[store_c + variance_suffix] = (('time',), cvar)
@@ -735,18 +735,18 @@ class DataStore(xr.Dataset):
                           + c + self.x.data[:, None] * dalpha) - 273.15
             self[store_tmpf] = (('x', 'time'), tempF_data)
 
-        if store_p_sol and method == 'wls':
+        if store_p_sol and (method == 'wls' or method == 'external'):
             self[store_p_sol] = (('params1',), p_sol)
             _p_sol = store_p_sol
-        elif method == 'wls':
+        elif method == 'wls' or method == 'external':
             _p_sol = p_sol
         else:
             _p_sol = None
 
-        if store_p_cov and method == 'wls':
+        if store_p_cov and (method == 'wls' or method == 'external'):
             self[store_p_cov] = (('params1', 'params2'), p_cov)
             _p_cov = store_p_cov
-        elif method == 'wls':
+        elif method == 'wls' or method == 'external':
             _p_cov = p_cov
         else:
             _p_cov = None
@@ -923,7 +923,7 @@ class DataStore(xr.Dataset):
         self[store_c] = (('time',), c)
 
         # store variances in DataStore
-        if method == 'wls':
+        if method == 'wls' or method == 'external':
             self[store_gamma + variance_suffix] = (tuple(), gammavar)
             self[store_alphaint + variance_suffix] = (tuple(), alphaintvar)
             self[store_alpha + variance_suffix] = (('x',), alphavar)
@@ -943,18 +943,18 @@ class DataStore(xr.Dataset):
                           + c - alpha[:, None] + alphaint) - 273.15
             self[store_tmpb] = (('x', 'time'), tempB_data)
 
-        if store_p_sol and method == 'wls':
+        if store_p_sol and (method == 'wls' or method == 'external'):
             self[store_p_sol] = (('params1',), p_sol)
             _p_sol = store_p_sol
-        elif method == 'wls':
+        elif method == 'wls' or method == 'external':
             _p_sol = p_sol
         else:
             _p_sol = None
 
-        if store_p_cov and method == 'wls':
+        if store_p_cov and (method == 'wls' or method == 'external'):
             self[store_p_cov] = (('params1', 'params2'), p_cov)
             _p_cov = store_p_cov
-        elif method == 'wls':
+        elif method == 'wls' or method == 'external':
             _p_cov = p_cov
         else:
             _p_cov = None
@@ -1105,9 +1105,9 @@ class DataStore(xr.Dataset):
 
         Parameters
         ----------
-        p_sol : array-like
+        p_sol : array-like or string
             parameter solution directly from calibration_double_ended_wls
-        p_cov : array-like
+        p_cov : array-like or string
             parameter covariance at the solution directly from calibration_double_ended_wls
         st_label
         ast_label
