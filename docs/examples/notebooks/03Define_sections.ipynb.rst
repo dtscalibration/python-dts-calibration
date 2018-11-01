@@ -18,13 +18,13 @@
     
     filepath = os.path.join(wd, '..', '..', 'tests', 'data', 'double_ended2')
     timezone_netcdf = 'UTC'
-    timezone_ultima_xml = 'Europe/Amsterdam'
+    timezone_input_files = 'Europe/Amsterdam'
     file_ext = '*.xml'
     
     ds = read_silixa_files(
         directory=filepath,
         timezone_netcdf=timezone_netcdf,
-        timezone_ultima_xml=timezone_ultima_xml,
+        timezone_input_files=timezone_input_files,
         file_ext=file_ext)
 
 
@@ -34,7 +34,7 @@
     6 recorded vars were found: LAF, ST, AST, REV-ST, REV-AST, TMP
     Recorded at 1693 points along the cable
     The measurement is double ended
-
+    
 
 .. code:: ipython3
 

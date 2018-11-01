@@ -28,13 +28,13 @@ defined.
     
     filepath = os.path.join(wd, '..', '..', 'tests', 'data', 'single_ended')
     timezone_netcdf = 'UTC'
-    timezone_ultima_xml = 'Europe/Amsterdam'
+    timezone_input_files = 'Europe/Amsterdam'
     file_ext = '*.xml'
     
     ds = read_silixa_files(
         directory=filepath,
         timezone_netcdf=timezone_netcdf,
-        timezone_ultima_xml=timezone_ultima_xml,
+        timezone_input_files=timezone_input_files,
         file_ext=file_ext)
     
     ds = ds.sel(x=slice(-30, 101))  # only calibrate parts of the fiber
@@ -52,7 +52,7 @@ defined.
     4 recorded vars were found: LAF, ST, AST, TMP
     Recorded at 1461 points along the cable
     The measurement is single ended
-
+    
 
 .. code:: ipython3
 
@@ -113,7 +113,7 @@ defined.
             -------
     
             
-
+    
 
 .. code:: ipython3
 
@@ -207,7 +207,7 @@ Lets compare our calibrated values with the device calibration
 
 
 
-.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_12_0.png
+.. image:: 07Calibrate_single_wls.ipynb_files%5C07Calibrate_single_wls.ipynb_12_0.png
 
 
 .. code:: ipython3
@@ -216,7 +216,7 @@ Lets compare our calibrated values with the device calibration
 
 
 
-.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_13_0.png
+.. image:: 07Calibrate_single_wls.ipynb_files%5C07Calibrate_single_wls.ipynb_13_0.png
 
 
 .. code:: ipython3
@@ -229,7 +229,7 @@ Lets compare our calibrated values with the device calibration
 
 
 
-.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_14_0.png
+.. image:: 07Calibrate_single_wls.ipynb_files%5C07Calibrate_single_wls.ipynb_14_0.png
 
 
 We can tell from the graph above that the 95% confidence interval widens
@@ -243,7 +243,7 @@ this should be around 0.005929 degC.
 
 
 
-.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_16_0.png
+.. image:: 07Calibrate_single_wls.ipynb_files%5C07Calibrate_single_wls.ipynb_16_0.png
 
 
 The variance of the temperature measurement appears to be larger than
@@ -263,7 +263,7 @@ Lets have a look at the Stokes and anti-Stokes signal.
 
 
 
-.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_18_0.png
+.. image:: 07Calibrate_single_wls.ipynb_files%5C07Calibrate_single_wls.ipynb_18_0.png
 
 
 Clearly there was a bad splice at 30 m that resulted in the sharp

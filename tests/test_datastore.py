@@ -7,6 +7,7 @@ import numpy as np
 
 from dtscalibration import DataStore
 from dtscalibration import open_datastore
+from dtscalibration import read_sensornet_files
 from dtscalibration import read_silixa_files
 
 np.random.seed(0)
@@ -24,12 +25,14 @@ if 1:
     data_dir_single_ended = os.path.join(wd, 'data', 'single_ended')
     data_dir_double_ended = os.path.join(wd, 'data', 'double_ended')
     data_dir_double_ended2 = os.path.join(wd, 'data', 'double_ended2')
+    data_dir_sensornet_single_ended = os.path.join(wd, 'data', 'sensornet_oryx_v3.7')
 
 else:
     # working dir is src
     data_dir_single_ended = os.path.join('..', '..', 'tests', 'data', 'single_ended')
     data_dir_double_ended = os.path.join('..', '..', 'tests', 'data', 'double_ended')
     data_dir_double_ended2 = os.path.join('..', '..', 'tests', 'data', 'double_ended2')
+    data_dir_sensornet_single_ended = os.path.join('..', '..', 'tests', 'data', 'sensornet_oryx_v3.7')
 
 
 def test_read_data_from_single_file_double_ended():
@@ -171,7 +174,7 @@ def test_read_silixa_files_single_ended():
     ds = read_silixa_files(
         directory=filepath,
         timezone_netcdf='UTC',
-        timezone_ultima_xml='Europe/Amsterdam',
+        timezone_input_files='Europe/Amsterdam',
         file_ext='*.xml')
 
     assert ds._initialized
@@ -184,8 +187,21 @@ def test_read_silixa_files_double_ended():
     ds = read_silixa_files(
         directory=filepath,
         timezone_netcdf='UTC',
-        timezone_ultima_xml='Europe/Amsterdam',
+        timezone_input_files='Europe/Amsterdam',
         file_ext='*.xml')
+
+    assert ds._initialized
+
+    pass
+
+
+def test_read_sensornet_files_single_ended():
+    filepath = data_dir_sensornet_single_ended
+    ds = read_sensornet_files(
+        directory=filepath,
+        timezone_netcdf='UTC',
+        timezone_input_files='UTC',
+        file_ext='*.ddf')
 
     assert ds._initialized
 

@@ -11,7 +11,7 @@ _dim_attrs = {
     ('x', 'distance'):          {
         'name':             'distance',
         'description':      'Length along fiber',
-        'long_describtion': 'Starting at connector of forward channel',
+        'long_description': 'Starting at connector of forward channel',
         'units':            'm'},
     ('TMP', 'temperature'):     {
         'name':        'TMP',
@@ -36,17 +36,17 @@ _dim_attrs = {
     ('acquisitionTime',):       {
         'name':             'acquisitionTime',
         'description':      'Measurement duration of forward channel',
-        'long_describtion': 'Actual measurement duration of forward channel',
+        'long_description': 'Actual measurement duration of forward channel',
         'units':            'seconds'},
     ('userAcquisitionTimeFW',): {
         'name':             'userAcquisitionTimeFW',
         'description':      'Measurement duration of forward channel',
-        'long_describtion': 'Desired measurement duration of forward channel',
+        'long_description': 'Desired measurement duration of forward channel',
         'units':            'seconds'},
     ('userAcquisitionTimeBW',): {
         'name':             'userAcquisitionTimeBW',
         'description':      'Measurement duration of backward channel',
-        'long_describtion': 'Desired measurement duration of backward channel',
+        'long_description': 'Desired measurement duration of backward channel',
         'units':            'seconds'},
     }
 
@@ -80,7 +80,7 @@ def silixa_xml_version_check(filepathlist):
 
 def read_silixa_files_routine_v6(filepathlist,
                                  timezone_netcdf='UTC',
-                                 timezone_ultima_xml='UTC',
+                                 timezone_input_files='UTC',
                                  silent=False,
                                  load_in_memory='auto'):
     """
@@ -90,7 +90,7 @@ def read_silixa_files_routine_v6(filepathlist,
     ----------
     filepathlist
     timezone_netcdf
-    timezone_ultima_xml
+    timezone_input_files
     silent
 
     Returns
@@ -106,6 +106,16 @@ def read_silixa_files_routine_v6(filepathlist,
     # Obtain metadata from the first file
     attrs = read_silixa_attrs_singlefile(filepathlist[0], sep)
 
+    # Add standardised required attributes
+    attrs['isDoubleEnded'] = attrs['customData:isDoubleEnded']
+    double_ended_flag = bool(int(attrs['isDoubleEnded']))
+
+    attrs['forwardMeasurementChannel'] = attrs['customData:forwardMeasurementChannel']
+    if double_ended_flag:
+        attrs['backwardMeasurementChannel'] = attrs['customData:reverseMeasurementChannel']
+    else:
+        attrs['backwardMeasurementChannel'] = 'N/A'
+
     # obtain basic data info
     data_item_names = attrs['logData:mnemonicList'].replace(" ", "").strip(' ').split(',')
     nitem = len(data_item_names)
@@ -117,10 +127,10 @@ def read_silixa_files_routine_v6(filepathlist,
 
     ntime = len(filepathlist)
 
-    double_ended_flag = bool(int(attrs['customData:isDoubleEnded']))
-    chFW = int(attrs['customData:forwardMeasurementChannel']) - 1  # zero-based
+    double_ended_flag = bool(int(attrs['isDoubleEnded']))
+    chFW = int(attrs['forwardMeasurementChannel']) - 1  # zero-based
     if double_ended_flag:
-        chBW = int(attrs['customData:reverseMeasurementChannel']) - 1  # zero-based
+        chBW = int(attrs['backwardMeasurementChannel']) - 1  # zero-based
     else:
         # no backward channel is negative value. writes better to netcdf
         chBW = -1
@@ -276,11 +286,11 @@ def read_silixa_files_routine_v6(filepathlist,
     dtFW = ts_arr['userAcquisitionTimeFW'].astype('timedelta64[s]')
 
     if not double_ended_flag:
-        tcoords = coords_time(maxTimeIndex, timezone_netcdf, timezone_ultima_xml,
+        tcoords = coords_time(maxTimeIndex, timezone_netcdf, timezone_input_files,
                               dtFW=dtFW, double_ended_flag=double_ended_flag)
     else:
         dtBW = ts_arr['userAcquisitionTimeBW'].astype('timedelta64[s]')
-        tcoords = coords_time(maxTimeIndex, timezone_netcdf, timezone_ultima_xml,
+        tcoords = coords_time(maxTimeIndex, timezone_netcdf, timezone_input_files,
                               dtFW=dtFW, dtBW=dtBW, double_ended_flag=double_ended_flag)
 
     coords.update(tcoords)
@@ -290,7 +300,7 @@ def read_silixa_files_routine_v6(filepathlist,
 
 def read_silixa_files_routine_v4(filepathlist,
                                  timezone_netcdf='UTC',
-                                 timezone_ultima_xml='UTC',
+                                 timezone_input_files='UTC',
                                  silent=False,
                                  load_in_memory='auto'):
     """
@@ -300,7 +310,7 @@ def read_silixa_files_routine_v4(filepathlist,
     ----------
     filepathlist
     timezone_netcdf
-    timezone_ultima_xml
+    timezone_input_files
     silent
 
     Returns
@@ -316,10 +326,19 @@ def read_silixa_files_routine_v4(filepathlist,
     # Obtain metadata from the first file
     attrs = read_silixa_attrs_singlefile(filepathlist[0], sep)
 
-    double_ended_flag = bool(int(attrs['customData:isDoubleEnded']))
-    chFW = int(attrs['customData:forwardMeasurementChannel']) - 1  # zero-based
+    # Add standardised required attributes
+    attrs['isDoubleEnded'] = attrs['customData:isDoubleEnded']
+    double_ended_flag = bool(int(attrs['isDoubleEnded']))
+
+    attrs['forwardMeasurementChannel'] = attrs['customData:forwardMeasurementChannel']
     if double_ended_flag:
-        chBW = int(attrs['customData:reverseMeasurementChannel']) - 1  # zero-based
+        attrs['backwardMeasurementChannel'] = attrs['customData:reverseMeasurementChannel']
+    else:
+        attrs['backwardMeasurementChannel'] = 'N/A'
+
+    chFW = int(attrs['forwardMeasurementChannel']) - 1  # zero-based
+    if double_ended_flag:
+        chBW = int(attrs['backwardMeasurementChannel']) - 1  # zero-based
     else:
         # no backward channel is negative value. writes better to netcdf
         chBW = -1
@@ -489,12 +508,197 @@ def read_silixa_files_routine_v4(filepathlist,
     dtFW = ts_arr['userAcquisitionTimeFW'].astype('timedelta64[s]')
 
     if not double_ended_flag:
-        tcoords = coords_time(maxTimeIndex, timezone_netcdf, timezone_ultima_xml,
+        tcoords = coords_time(maxTimeIndex, timezone_netcdf, timezone_input_files,
                               dtFW=dtFW, double_ended_flag=double_ended_flag)
     else:
         dtBW = ts_arr['userAcquisitionTimeBW'].astype('timedelta64[s]')
-        tcoords = coords_time(maxTimeIndex, timezone_netcdf, timezone_ultima_xml,
+        tcoords = coords_time(maxTimeIndex, timezone_netcdf, timezone_input_files,
                               dtFW=dtFW, dtBW=dtBW, double_ended_flag=double_ended_flag)
+
+    coords.update(tcoords)
+
+    return data_vars, coords, attrs
+
+
+def read_sensornet_files_routine_v3(filepathlist,
+                                    timezone_netcdf='UTC',
+                                    timezone_input_files='UTC',
+                                    silent=False):
+    """
+    Internal routine that reads Sensor files.
+    Use dtscalibration.read_sensornet_files function instead.
+
+    Parameters
+    ----------
+    filepathlist
+    timezone_netcdf
+    timezone_input_files
+    silent
+
+    Returns
+    -------
+
+    """
+
+    # Obtain metadata from the first file
+    data, meta = read_sensornet_single(filepathlist[0])
+
+    # Pop keys from the meta dict which are variable over time
+    popkeys = ('T ext. ref 1 (°C)',
+               'T ext. ref 2 (°C)',
+               'T internal ref (°C)',
+               'date',
+               'time',
+               'gamma',
+               'k internal',
+               'k external')
+    [meta.pop(key) for key in popkeys]
+    attrs = meta
+
+    # Add standardised required attributes
+    attrs['isDoubleEnded'] = str(1 - (meta['differential loss correction']
+                                      == 'single-ended'))
+    double_ended_flag = bool(int(attrs['isDoubleEnded']))
+
+    attrs['forwardMeasurementChannel'] = meta['forward channel'][-1]
+    if double_ended_flag:
+        attrs['backwardMeasurementChannel'] = 'N/A'
+    else:
+        attrs['backwardMeasurementChannel'] = meta['reverse channel'][-1]
+
+    # obtain basic data info
+    nx = data['x'].size
+
+    ntime = len(filepathlist)
+
+    # chFW = int(attrs['forwardMeasurementChannel']) - 1  # zero-based
+    # if double_ended_flag:
+    #     chBW = int(attrs['backwardMeasurementChannel']) - 1  # zero-based
+    # else:
+    #     # no backward channel is negative value. writes better to netcdf
+    #     chBW = -1
+
+    # print summary
+    if not silent:
+        print('%s files were found,' % ntime +
+              ' each representing a single timestep')
+        print('Recorded at %s points along the cable' % nx)
+
+        if double_ended_flag:
+            print('The measurement is double ended')
+        else:
+            print('The measurement is single ended')
+
+    #   Gather data
+    # x has already been read. should not change over time
+    x = data['x']
+
+    # Define all variables
+    referenceTemperature = np.zeros(ntime)
+    probe1temperature = np.zeros(ntime)
+    probe2temperature = np.zeros(ntime)
+    gamma_ddf = np.zeros(ntime)
+    k_internal = np.zeros(ntime)
+    k_external = np.zeros(ntime)
+    acquisitiontimeFW = np.zeros(ntime)
+    acquisitiontimeBW = np.zeros(ntime)
+
+    timestamp = ['']*ntime
+    ST = np.zeros((nx, ntime))
+    AST = np.zeros((nx, ntime))
+    TMP = np.zeros((nx, ntime))
+
+    if double_ended_flag:
+        REV_ST = np.zeros((nx, ntime))
+        REV_AST = np.zeros((nx, ntime))
+
+    for ii in range(ntime):
+        data, meta = read_sensornet_single(filepathlist[ii])
+
+        timestamp[ii] = pd.DatetimeIndex([meta['date']+' '+meta['time']])[0]
+        probe1temperature[ii] = float(meta['T ext. ref 1 (°C)'])
+        probe2temperature[ii] = float(meta['T ext. ref 2 (°C)'])
+        referenceTemperature[ii] = float(meta['T internal ref (°C)'])
+        gamma_ddf[ii] = float(meta['gamma'])
+        k_internal[ii] = float(meta['k internal'])
+        k_external[ii] = float(meta['k external'])
+        acquisitiontimeFW[ii] = float(meta['forward acquisition time'])
+        acquisitiontimeBW[ii] = float(meta['reverse acquisition time'])
+
+        ST[:, ii] = data['ST']
+        AST[:, ii] = data['AST']
+        TMP[:, ii] = data['TMP']
+
+        if double_ended_flag:
+            REV_ST[:, ii] = data['REV_ST']
+            REV_AST[:, ii] = data['REV_AST']
+
+    data_vars = {'ST': (['x', 'time'], ST, dim_attrs['ST']),
+                 'AST': (['x', 'time'], AST, dim_attrs['AST']),
+                 'TMP': (['x', 'time'], TMP, dim_attrs['TMP']),
+                 'probe1Temperature': ('time',
+                                       probe1temperature,
+                                       {'name': 'Probe 1 temperature',
+                                        'description':
+                                            'reference probe 1 temperature',
+                                        'units': 'degC'}),
+                 'probe2Temperature': ('time',
+                                       probe2temperature,
+                                       {'name': 'Probe 2 temperature',
+                                        'description':
+                                            'reference probe 2 temperature',
+                                        'units': 'degC'}),
+                 'referenceTemperature': ('time',
+                                          referenceTemperature,
+                                          {'name': 'reference temperature',
+                                           'description':
+                                              'Internal reference temperature',
+                                           'units': 'degC'}),
+                 'gamma_ddf': ('time',
+                               gamma_ddf,
+                               {'name': 'gamma ddf',
+                                'description': 'machine calibrated gamma',
+                                'units': '-'}),
+                 'k_internal': ('time',
+                                k_internal,
+                                {'name': 'k internal',
+                                 'description':
+                                     'machine calibrated internal k',
+                                 'units': '-'}),
+                 'k_external': ('time',
+                                k_external,
+                                {'name': 'reference temperature',
+                                 'description':
+                                     'machine calibrated external k',
+                                 'units': '-'}),
+                 'userAcquisitionTimeFW': ('time',
+                                           acquisitiontimeFW,
+                                           dim_attrs['userAcquisitionTimeFW']),
+                 'userAcquisitionTimeBW': ('time',
+                                           acquisitiontimeBW,
+                                           dim_attrs['userAcquisitionTimeBW'])}
+
+    if double_ended_flag:
+        data_vars['REV-ST'] = (['x', 'time'], REV_ST, dim_attrs['REV-ST'])
+        data_vars['REV-AST'] = (['x', 'time'], REV_AST, dim_attrs['REV-AST'])
+
+    filenamelist = [os.path.split(f)[-1] for f in filepathlist]
+
+    coords = {'x':        ('x', x, dim_attrs['x']),
+              'filename': ('time', filenamelist)}
+
+    dtFW = data_vars['userAcquisitionTimeFW'][1].astype('timedelta64[s]')
+    dtBW = data_vars['userAcquisitionTimeBW'][1].astype('timedelta64[s]')
+    if not double_ended_flag:
+        tcoords = coords_time(np.array(timestamp).astype('datetime64[ns]'),
+                              timezone_netcdf,
+                              timezone_input_files, dtFW=dtFW,
+                              double_ended_flag=double_ended_flag)
+    else:
+        tcoords = coords_time(np.array(timestamp).astype('datetime64[ns]'),
+                              timezone_netcdf,
+                              timezone_input_files, dtFW=dtFW, dtBW=dtBW,
+                              double_ended_flag=double_ended_flag)
 
     coords.update(tcoords)
 
@@ -506,11 +710,13 @@ def read_silixa_attrs_singlefile(filename, sep):
 
     def metakey(meta, dict_to_parse, prefix, sep):
         """
-        Fills the metadata dictionairy with data from dict_to_parse. The dict_to_parse is the raw
-        data from a silixa xml-file. dict_to_parse is a nested dictionary to represent the
-        different levels of hierarchy. For example, toplevel = {lowlevel: {key: value}} . This
-        function returns {'toplevel:lowlevel:key': value}. where prefix is the flattened
-        hierarchy.
+        Fills the metadata dictionairy with data from dict_to_parse.
+        The dict_to_parse is the raw data from a silixa xml-file.
+        dict_to_parse is a nested dictionary to represent the
+        different levels of hierarchy. For example,
+        toplevel = {lowlevel: {key: value}}.
+        This function returns {'toplevel:lowlevel:key': value}.
+        Where prefix is the flattened hierarchy.
 
         Parameters
         ----------
@@ -533,13 +739,16 @@ def read_silixa_attrs_singlefile(filename, sep):
             else:
                 prefix_parse = sep.join([prefix, key.replace('@', '')])
 
-            if prefix_parse == sep.join(('logData', 'data')):  # u'logData:data':
+            if prefix_parse == sep.join(('logData', 'data')):
                 # skip the LAF , ST data
                 continue
 
             if hasattr(dict_to_parse[key], 'keys'):
                 # Nested dictionaries, flatten hierarchy.
-                meta.update(metakey(meta, dict_to_parse[key], prefix_parse, sep))
+                meta.update(metakey(meta,
+                                    dict_to_parse[key],
+                                    prefix_parse,
+                                    sep))
 
             elif isinstance(dict_to_parse[key], list):
                 # if the key has values for the multiple channels
@@ -563,7 +772,46 @@ def read_silixa_attrs_singlefile(filename, sep):
     return metakey(dict(), doc, '', sep)
 
 
-def coords_time(maxTimeIndex, timezone_ultima_xml, timezone_netcdf='UTC', dtFW=None,
+def read_sensornet_single(filename):
+    headerlength = 26
+
+    # The $\circ$ Celsius symbol is unreadable in utf8
+    with open(filename, encoding='windows-1252') as fileobject:
+        filelength = sum([1 for _ in fileobject])
+    datalength = filelength - headerlength
+
+    meta = {}
+    with open(filename, encoding='windows-1252') as fileobject:
+        for ii in range(0, headerlength - 1):
+            fileline = fileobject.readline().split('\t')
+
+            meta[fileline[0]] = fileline[1].replace('\n', '').replace(',', '.')
+
+        # data_names =
+        fileobject.readline().split('\t')
+
+        if meta['differential loss correction'] == 'single-ended':
+            data = {'x': np.zeros(datalength),
+                    'TMP': np.zeros(datalength),
+                    'ST': np.zeros(datalength),
+                    'AST': np.zeros(datalength)}
+
+            for ii in range(0, datalength):
+                fileline = fileobject.readline().replace(',', '.').split('\t')
+
+                data['x'][ii] = float(fileline[0])
+                data['TMP'][ii] = float(fileline[1])
+                data['ST'][ii] = float(fileline[2])
+                data['AST'][ii] = float(fileline[3])
+
+        else:
+            raise NotImplementedError('double-ended DDF files ' +
+                                      'are not implemented yet')
+
+    return data, meta
+
+
+def coords_time(maxTimeIndex, timezone_input_files, timezone_netcdf='UTC', dtFW=None,
                 dtBW=None, double_ended_flag=False):
     """
     Prepares the time coordinates for the construction of DataStore instances with metadata
@@ -571,10 +819,10 @@ def coords_time(maxTimeIndex, timezone_ultima_xml, timezone_netcdf='UTC', dtFW=N
     Parameters
     ----------
     maxTimeIndex : array-like (1-dimensional)
-        Is an array with timestamps of the end of the forward channel. If single ended
-        this is the end of the measurement. If double ended this is halfway the double ended
-        measurement.
-    timezone_ultima_xml : string, pytz.timezone, dateutil.tz.tzfile or None
+        Is an array with 'datetime64[ns]' timestamps of the end of the
+        forward channel. If single ended this is the end of the measurement.
+        If double ended this is halfway the double ended measurement.
+    timezone_input_files : string, pytz.timezone, dateutil.tz.tzfile or None
         A string of a timezone that is understood by pandas of maxTimeIndex.
     timezone_netcdf : string, pytz.timezone, dateutil.tz.tzfile or None
         A string of a timezone that is understood by pandas to write the netCDF to. Using UTC as
@@ -673,7 +921,7 @@ def coords_time(maxTimeIndex, timezone_ultima_xml, timezone_netcdf='UTC', dtFW=N
     coords = {k: (
         'time',
         pd.DatetimeIndex(v).tz_localize(
-            tz=timezone_ultima_xml).tz_convert(
+            tz=timezone_input_files).tz_convert(
             timezone_netcdf).astype('datetime64[ns]'),
         time_attrs[k]) for k, v in coords_zip
         }
