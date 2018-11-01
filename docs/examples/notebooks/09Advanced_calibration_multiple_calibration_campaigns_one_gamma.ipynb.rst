@@ -222,8 +222,7 @@ Now we can compare single ended to double ended
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x1a2bd400>]
-
+    [<matplotlib.lines.Line2D at 0x11925c198>]
 
 
 

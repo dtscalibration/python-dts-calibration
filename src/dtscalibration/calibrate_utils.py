@@ -425,7 +425,7 @@ def wls_sparse(X, y, w=1., calc_cov=False, dtype=None, verbose=False, **kwargs):
         if sp.issparse(arg):
             arg = arg.todense()
 
-        p_cov = np.linalg.inv(arg) * err_var
+        p_cov = np.array(np.linalg.inv(arg) * err_var)
 
         p_var = np.diagonal(p_cov)
         return p_sol, p_var, p_cov
