@@ -3,7 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def plot_residuals_reference_sections(resid, fig=None, title=None, plot_names=True, sections=None):
+def plot_residuals_reference_sections(resid, fig=None, title=None,
+                                      plot_avg_std=None, plot_names=True, sections=None):
     """
     Analyze the residuals of the reference sections, between the Stokes signal and a best-fit
     decaying exponential.
@@ -39,37 +40,44 @@ def plot_residuals_reference_sections(resid, fig=None, title=None, plot_names=Tr
 
     grid = plt.GridSpec(10, 10, hspace=0.2, wspace=0.2)
     main_ax = fig.add_subplot(grid[2:, 2:-1])
-    y_hist = fig.add_subplot(grid[2:, :2])  # xticklabels=[],
-    x_hist = fig.add_subplot(grid[:2, 2:-1])  # , sharex=main_ax
+    y_ax_avg = fig.add_subplot(grid[2:, :2])  # xticklabels=[],
+    x_ax_avg = fig.add_subplot(grid[:2, 2:-1])  # , sharex=main_ax
     legend_ax = fig.add_subplot(grid[:2, :2], xticklabels=[], yticklabels=[])
     cbar_ax = fig.add_subplot(grid[2:, -1], xticklabels=[], yticklabels=[])
 
     resid.plot(ax=main_ax, cbar_ax=cbar_ax, cbar_kwargs={'aspect': 20})
     main_ax.set_yticklabels([])
+    main_ax.set_ylabel('')
 
-    # x_hist
-    x_hist2 = x_hist.twinx()
-    resid.std(dim='x').plot(ax=x_hist2, c='blue')
-    resid.mean(dim='x').plot(ax=x_hist2, c='orange')
-    x_hist2.axhline(0, linestyle='--', c='orange')
-    x_hist.set_xticklabels([])
-    x_hist.set_yticklabels([])
-    x_hist.set_xlim(main_ax.get_xlim())
+    # x_ax_avg
+    x_ax_avg2 = x_ax_avg.twinx()
+    resid.std(dim='x').plot(ax=x_ax_avg2, c='blue')
+    resid.mean(dim='x').plot(ax=x_ax_avg2, c='orange')
+    x_ax_avg2.axhline(0, linestyle='--', c='orange')
+    if plot_avg_std is not None:
+        x_ax_avg2.axhline(plot_avg_std, linestyle='--', c='blue')
 
-    # y_hist
+    x_ax_avg.set_xticklabels([])
+    x_ax_avg.set_yticklabels([])
+    x_ax_avg.set_xlim(main_ax.get_xlim())
+
+    # y_ax_avg
     dp = resid.std(dim='time')
     x = dp.values
     y = dp.x
-    y_hist.plot(x, y, c='blue')
+    y_ax_avg.plot(x, y, c='blue')
     dp = resid.mean(dim='time')
     x = dp.values
     y = dp.x
-    y_hist.plot(x, y, c='orange')
-    y_hist.set_ylim(main_ax.get_ylim())
+    y_ax_avg.plot(x, y, c='orange')
+    y_ax_avg.set_ylim(main_ax.get_ylim())
+    y_ax_avg.set_ylabel('x [m]')
+    if plot_avg_std is not None:
+        y_ax_avg.axvline(plot_avg_std, linestyle='--', c='blue')
 
-    y_hist.axvline(0, linestyle='--', c='orange')
+    y_ax_avg.axvline(0, linestyle='--', c='orange')
     # reverse axis
-    y_hist.set_xlim(y_hist.get_xlim()[::-1])
+    y_ax_avg.set_xlim(y_ax_avg.get_xlim()[::-1])
 
     # legend
     legend_ax.fill_between([], [], facecolor='blue', label='STD')
