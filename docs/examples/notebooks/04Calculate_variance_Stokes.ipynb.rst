@@ -20,13 +20,13 @@
     
     filepath = os.path.join(wd, '..', '..', 'tests', 'data', 'double_ended2')
     timezone_netcdf = 'UTC'
-    timezone_ultima_xml = 'Europe/Amsterdam'
+    timezone_input_files = 'Europe/Amsterdam'
     file_ext = '*.xml'
     
     ds = read_silixa_files(
         directory=filepath,
         timezone_netcdf=timezone_netcdf,
-        timezone_ultima_xml=timezone_ultima_xml,
+        timezone_input_files=timezone_input_files,
         file_ext=file_ext)
     sections = {
         'probe1Temperature': [slice(7.5, 17.), slice(70., 80.)],  # cold bath
@@ -40,7 +40,7 @@
     6 recorded vars were found: LAF, ST, AST, REV-ST, REV-AST, TMP
     Recorded at 1693 points along the cable
     The measurement is double ended
-
+    
 
 .. code:: ipython3
 
@@ -81,7 +81,7 @@
             resid : array_like
                 Residuals between measured and best fit
             
-
+    
 
 .. code:: ipython3
 
@@ -94,8 +94,8 @@
 
 .. parsed-literal::
 
-    The variance of the Stokes signal along the reference sections is approximately 12.021050418534966 on a 2.0 sec acquisition time
-
+    The variance of the Stokes signal along the reference sections is approximately 12.021050418534964 on a 2.0 sec acquisition time
+    
 
 .. code:: ipython3
 
@@ -103,7 +103,7 @@
 
 
 
-.. image:: 04Calculate_variance_Stokes.ipynb_files/04Calculate_variance_Stokes.ipynb_5_0.png
+.. image:: 04Calculate_variance_Stokes.ipynb_files%5C04Calculate_variance_Stokes.ipynb_5_0.png
 
 
 The residuals should be normally distributed and independent from
@@ -118,5 +118,5 @@ by coils/sharp bends in cable - Attenuation caused by a splice
 
 
 
-.. image:: 04Calculate_variance_Stokes.ipynb_files/04Calculate_variance_Stokes.ipynb_7_0.png
+.. image:: 04Calculate_variance_Stokes.ipynb_files%5C04Calculate_variance_Stokes.ipynb_7_0.png
 

@@ -31,13 +31,13 @@ A double-ended setup
     
     filepath = os.path.join(wd, '..', '..', 'tests', 'data', 'double_ended2')
     timezone_netcdf = 'UTC'
-    timezone_ultima_xml = 'Europe/Amsterdam'
+    timezone_input_files = 'Europe/Amsterdam'
     file_ext = '*.xml'
     
     ds1 = read_silixa_files(
         directory=filepath,
         timezone_netcdf=timezone_netcdf,
-        timezone_ultima_xml=timezone_ultima_xml,
+        timezone_input_files=timezone_input_files,
         file_ext=file_ext).sel(x=slice(-24., 123.))
     
     st_label = 'ST'
@@ -63,7 +63,7 @@ A double-ended setup
     6 recorded vars were found: LAF, ST, AST, REV-ST, REV-AST, TMP
     Recorded at 1693 points along the cable
     The measurement is double ended
-
+    
 
 Load data from the second measurement campain
 ---------------------------------------------
@@ -76,7 +76,7 @@ Single-ended setup
     ds2 = read_silixa_files(
         directory=filepath,
         timezone_netcdf=timezone_netcdf,
-        timezone_ultima_xml=timezone_ultima_xml,
+        timezone_input_files=timezone_input_files,
         file_ext=file_ext).sel(x=slice(-24., 123.))
     section_ds2 = sections.copy()
     ds2.sections = section_ds2
@@ -88,7 +88,7 @@ Single-ended setup
     6 recorded vars were found: LAF, ST, AST, REV-ST, REV-AST, TMP
     Recorded at 1693 points along the cable
     The measurement is double ended
-
+    
 
 Configure calibration setting first measurement campain
 -------------------------------------------------------
@@ -226,8 +226,7 @@ Now we can compare single ended to double ended
 
 
 
-
-.. image:: 09Advanced_calibration_multiple_calibration_campaigns_one_gamma.ipynb_files/09Advanced_calibration_multiple_calibration_campaigns_one_gamma.ipynb_15_1.png
+.. image:: 09Advanced_calibration_multiple_calibration_campaigns_one_gamma.ipynb_files%5C09Advanced_calibration_multiple_calibration_campaigns_one_gamma.ipynb_15_1.png
 
 
 We can see the temperature at the internal reference sections to be

@@ -28,13 +28,13 @@ defined.
     
     filepath = os.path.join(wd, '..', '..', 'tests', 'data', 'double_ended2')
     timezone_netcdf = 'UTC'
-    timezone_ultima_xml = 'Europe/Amsterdam'
+    timezone_input_files = 'Europe/Amsterdam'
     file_ext = '*.xml'
     
     ds_ = read_silixa_files(
         directory=filepath,
         timezone_netcdf=timezone_netcdf,
-        timezone_ultima_xml=timezone_ultima_xml,
+        timezone_input_files=timezone_input_files,
         file_ext=file_ext)
     
     ds = ds_.sel(x=slice(0, 100))  # only calibrate parts of the fiber
@@ -51,7 +51,7 @@ defined.
     6 recorded vars were found: LAF, ST, AST, REV-ST, REV-AST, TMP
     Recorded at 1693 points along the cable
     The measurement is double ended
-
+    
 
 .. code:: ipython3
 
@@ -89,8 +89,7 @@ as an estimate of the variance in measured signals.
 
 
 
-
-.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_7_1.png
+.. image:: 08Calibrate_double_wls.ipynb_files%5C08Calibrate_double_wls.ipynb_7_1.png
 
 
 Similar to the ols procedure, we make a single function call to
@@ -143,7 +142,7 @@ entire measurement period’.
 
 
 
-.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_10_0.png
+.. image:: 08Calibrate_double_wls.ipynb_files%5C08Calibrate_double_wls.ipynb_10_0.png
 
 
 The DataArrays ``TMPF_MC`` and ``TMPB_MC`` and the dimension ``CI`` are
