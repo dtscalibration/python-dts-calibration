@@ -5,8 +5,8 @@ import dask.array as da
 import numpy as np
 import pandas as pd
 
-# Returns a dictionary with the attributes to the dimensions. The keys refer to the namin
-#     gin used in the raw files.
+# Returns a dictionary with the attributes to the dimensions.
+#  The keys refer to the naming used in the raw files.
 _dim_attrs = {
     ('x', 'distance'):          {
         'name':             'distance',
@@ -50,8 +50,8 @@ _dim_attrs = {
         'units':            'seconds'},
     }
 
-# Because variations in the names exist between the different file
-#     formats. The tuple as key contains the possible keys, which is expanded below.
+# Because variations in the names exist between the different file formats. The
+#   tuple as key contains the possible keys, which is expanded below.
 dim_attrs = {k: v for kl, v in _dim_attrs.items() for k in kl}
 
 
@@ -84,7 +84,8 @@ def read_silixa_files_routine_v6(filepathlist,
                                  silent=False,
                                  load_in_memory='auto'):
     """
-    Internal routine that reads Silixa files. Use dtscalibration.read_silixa_files function instead.
+    Internal routine that reads Silixa files.
+    Use dtscalibration.read_silixa_files function instead.
 
     Parameters
     ----------
@@ -100,8 +101,19 @@ def read_silixa_files_routine_v6(filepathlist,
     import dask
     from xml.etree import ElementTree
 
+    # Open the first xml file using ET, get the name space and amount of data
+    xml_tree = ElementTree.parse(filepathlist[0])
+    namespace = get_xml_namespace(xml_tree.getroot())
+
+    logtree = xml_tree.find('./{0}log'.format(namespace))
+    logdata_tree = logtree.find('./{0}logData'.format(namespace))
+
+    # Amount of datapoints is the size of the logdata tree, corrected for
+    #  the mnemonic list and unit list
+    nx = len(logdata_tree) - 2
+
     sep = ':'
-    ns = {'s': 'http://www.witsml.org/schemas/1series'}
+    ns = {'s': namespace[1:-1]}
 
     # Obtain metadata from the first file
     attrs = read_silixa_attrs_singlefile(filepathlist[0], sep)
@@ -119,11 +131,6 @@ def read_silixa_files_routine_v6(filepathlist,
     # obtain basic data info
     data_item_names = attrs['logData:mnemonicList'].replace(" ", "").strip(' ').split(',')
     nitem = len(data_item_names)
-
-    x_start = np.float32(attrs['startIndex:#text'])
-    x_end = np.float32(attrs['endIndex:#text'])
-    dx = np.float32(attrs['stepIncrement:#text'])
-    nx = int((x_end - x_start) / dx)
 
     ntime = len(filepathlist)
 
@@ -194,7 +201,8 @@ def read_silixa_files_routine_v6(filepathlist,
         return np.array(arr_str, dtype=np.float)
 
     data_lst_dly = [grab_data_per_file(fp) for fp in filepathlist]
-    data_lst = [da.from_delayed(x, shape=(nx, nitem), dtype=np.float) for x in data_lst_dly]
+    data_lst = [da.from_delayed(x, shape=(nx, nitem), dtype=np.float)
+                for x in data_lst_dly]
     data_arr = da.stack(data_lst).T  # .compute()
 
     # Check whether to compute data_arr (if possible 25% faster)
@@ -215,7 +223,8 @@ def read_silixa_files_routine_v6(filepathlist,
             data_vars[name] = (['x', 'time'], data_arri, dim_attrs[name])
 
         else:
-            raise ValueError('Dont know what to do with the {} data column'.format(name))
+            raise ValueError('Dont know what to do with the' +
+                             ' {} data column'.format(name))
 
     # Obtaining the timeseries data (reference temperature etc)
     _ts_dtype = [(k, np.float32) for k in timeseries]
@@ -266,7 +275,8 @@ def read_silixa_files_routine_v6(filepathlist,
         return np.array(tuple(out), dtype=ts_dtype)
 
     ts_lst_dly = [grab_timeseries_per_file(fp) for fp in filepathlist]
-    ts_lst = [da.from_delayed(x, shape=tuple(), dtype=ts_dtype) for x in ts_lst_dly]
+    ts_lst = [da.from_delayed(x, shape=tuple(), dtype=ts_dtype)
+              for x in ts_lst_dly]
     ts_arr = da.stack(ts_lst).compute()
 
     for name in timeseries:
@@ -286,12 +296,14 @@ def read_silixa_files_routine_v6(filepathlist,
     dtFW = ts_arr['userAcquisitionTimeFW'].astype('timedelta64[s]')
 
     if not double_ended_flag:
-        tcoords = coords_time(maxTimeIndex, timezone_netcdf, timezone_input_files,
-                              dtFW=dtFW, double_ended_flag=double_ended_flag)
+        tcoords = coords_time(maxTimeIndex, timezone_netcdf,
+                              timezone_input_files, dtFW=dtFW,
+                              double_ended_flag=double_ended_flag)
     else:
         dtBW = ts_arr['userAcquisitionTimeBW'].astype('timedelta64[s]')
-        tcoords = coords_time(maxTimeIndex, timezone_netcdf, timezone_input_files,
-                              dtFW=dtFW, dtBW=dtBW, double_ended_flag=double_ended_flag)
+        tcoords = coords_time(maxTimeIndex, timezone_netcdf,
+                              timezone_input_files, dtFW=dtFW, dtBW=dtBW,
+                              double_ended_flag=double_ended_flag)
 
     coords.update(tcoords)
 
@@ -304,7 +316,8 @@ def read_silixa_files_routine_v4(filepathlist,
                                  silent=False,
                                  load_in_memory='auto'):
     """
-    Internal routine that reads Silixa files. Use dtscalibration.read_silixa_files function instead.
+    Internal routine that reads Silixa files.
+    Use dtscalibration.read_silixa_files function instead.
 
     Parameters
     ----------
@@ -320,8 +333,18 @@ def read_silixa_files_routine_v4(filepathlist,
     import dask
     from xml.etree import ElementTree
 
+    # Open the first xml file using ET, get the name space and amount of data
+    xml_tree = ElementTree.parse(filepathlist[0])
+    namespace = get_xml_namespace(xml_tree.getroot())
+
+    logtree = xml_tree.find('./{0}wellLog'.format(namespace))
+    logdata_tree = logtree.find('./{0}logData'.format(namespace))
+
+    # Amount of datapoints is the size of the logdata tree
+    nx = len(logdata_tree)
+
     sep = ':'
-    ns = {'s': 'http://www.witsml.org/schemas/1series'}
+    ns = {'s': namespace[1:-1]}
 
     # Obtain metadata from the first file
     attrs = read_silixa_attrs_singlefile(filepathlist[0], sep)
@@ -345,16 +368,13 @@ def read_silixa_files_routine_v4(filepathlist,
 
     # obtain basic data info
     if double_ended_flag:
-        data_item_names = [attrs['logCurveInfo_{0}:mnemonic'.format(x)] for x in range(0, 6)]
+        data_item_names = [attrs['logCurveInfo_{0}:mnemonic'.format(x)]
+                           for x in range(0, 6)]
     else:
-        data_item_names = [attrs['logCurveInfo_{0}:mnemonic'.format(x)] for x in range(0, 4)]
+        data_item_names = [attrs['logCurveInfo_{0}:mnemonic'.format(x)]
+                           for x in range(0, 4)]
 
     nitem = len(data_item_names)
-
-    x_start = np.float32(attrs['blockInfo:startIndex:#text'])
-    x_end = np.float32(attrs['blockInfo:endIndex:#text'])
-    dx = np.float32(attrs['blockInfo:stepIncrement:#text'])
-    nx = int((x_end - x_start) / dx)
 
     ntime = len(filepathlist)
 
@@ -416,7 +436,8 @@ def read_silixa_files_routine_v4(filepathlist,
         return np.array(arr_str, dtype=float)
 
     data_lst_dly = [grab_data_per_file(fp) for fp in filepathlist]
-    data_lst = [da.from_delayed(x, shape=(nx, nitem), dtype=np.float) for x in data_lst_dly]
+    data_lst = [da.from_delayed(x, shape=(nx, nitem), dtype=np.float)
+                for x in data_lst_dly]
     data_arr = da.stack(data_lst).T  # .compute()
 
     # Check whether to compute data_arr (if possible 25% faster)
@@ -437,7 +458,8 @@ def read_silixa_files_routine_v4(filepathlist,
             data_vars[name] = (['x', 'time'], data_arri, dim_attrs[name])
 
         else:
-            raise ValueError('Dont know what to do with the {} data column'.format(name))
+            raise ValueError('Dont know what to do with the' +
+                             ' {} data column'.format(name))
 
     # Obtaining the timeseries data (reference temperature etc)
     _ts_dtype = [(k, np.float32) for k in timeseries]
@@ -488,7 +510,8 @@ def read_silixa_files_routine_v4(filepathlist,
         return np.array(tuple(out), dtype=ts_dtype)
 
     ts_lst_dly = [grab_timeseries_per_file(fp) for fp in filepathlist]
-    ts_lst = [da.from_delayed(x, shape=tuple(), dtype=ts_dtype) for x in ts_lst_dly]
+    ts_lst = [da.from_delayed(x, shape=tuple(), dtype=ts_dtype)
+              for x in ts_lst_dly]
     ts_arr = da.stack(ts_lst).compute()
 
     for name in timeseries:
@@ -508,12 +531,14 @@ def read_silixa_files_routine_v4(filepathlist,
     dtFW = ts_arr['userAcquisitionTimeFW'].astype('timedelta64[s]')
 
     if not double_ended_flag:
-        tcoords = coords_time(maxTimeIndex, timezone_netcdf, timezone_input_files,
-                              dtFW=dtFW, double_ended_flag=double_ended_flag)
+        tcoords = coords_time(maxTimeIndex, timezone_netcdf,
+                              timezone_input_files, dtFW=dtFW,
+                              double_ended_flag=double_ended_flag)
     else:
         dtBW = ts_arr['userAcquisitionTimeBW'].astype('timedelta64[s]')
-        tcoords = coords_time(maxTimeIndex, timezone_netcdf, timezone_input_files,
-                              dtFW=dtFW, dtBW=dtBW, double_ended_flag=double_ended_flag)
+        tcoords = coords_time(maxTimeIndex, timezone_netcdf,
+                              timezone_input_files, dtFW=dtFW, dtBW=dtBW,
+                              double_ended_flag=double_ended_flag)
 
     coords.update(tcoords)
 
@@ -811,10 +836,17 @@ def read_sensornet_single(filename):
     return data, meta
 
 
-def coords_time(maxTimeIndex, timezone_input_files, timezone_netcdf='UTC', dtFW=None,
-                dtBW=None, double_ended_flag=False):
+def get_xml_namespace(element):
+    import re
+    m = re.match('\\{.*\\}', element.tag)
+    return m.group(0) if m else ''
+
+
+def coords_time(maxTimeIndex, timezone_input_files, timezone_netcdf='UTC',
+                dtFW=None, dtBW=None, double_ended_flag=False):
     """
-    Prepares the time coordinates for the construction of DataStore instances with metadata
+    Prepares the time coordinates for the construction of DataStore
+    instances with metadata
 
     Parameters
     ----------
@@ -825,8 +857,8 @@ def coords_time(maxTimeIndex, timezone_input_files, timezone_netcdf='UTC', dtFW=
     timezone_input_files : string, pytz.timezone, dateutil.tz.tzfile or None
         A string of a timezone that is understood by pandas of maxTimeIndex.
     timezone_netcdf : string, pytz.timezone, dateutil.tz.tzfile or None
-        A string of a timezone that is understood by pandas to write the netCDF to. Using UTC as
-        default, according to CF conventions.
+        A string of a timezone that is understood by pandas to write the
+        netCDF to. Using UTC as default, according to CF conventions.
     dtFW : array-like (1-dimensional) of float
         The acquisition time of the Forward channel in seconds
     dtBW : array-like (1-dimensional) of float
