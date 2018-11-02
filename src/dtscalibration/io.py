@@ -838,7 +838,7 @@ def read_sensornet_single(filename):
 
 def get_xml_namespace(element):
     import re
-    m = re.match('\{.*\}', element.tag)
+    m = re.match('\\{.*\\}', element.tag)
     return m.group(0) if m else ''
 
 
