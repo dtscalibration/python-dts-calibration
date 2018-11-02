@@ -25,16 +25,29 @@ if 1:
     data_dir_single_ended = os.path.join(wd, 'data', 'single_ended')
     data_dir_double_ended = os.path.join(wd, 'data', 'double_ended')
     data_dir_double_ended2 = os.path.join(wd, 'data', 'double_ended2')
-    data_dir_silixa_long = os.path.join(wd, 'data', 'double_single_ended','channel_1')
-    data_dir_sensornet_single_ended = os.path.join(wd, 'data', 'sensornet_oryx_v3.7')
+    data_dir_silixa_long = os.path.join(wd,
+                                        'data',
+                                        'double_single_ended', 'channel_1')
+    data_dir_sensornet_single_ended = os.path.join(wd,
+                                                   'data',
+                                                   'sensornet_oryx_v3.7')
 
 else:
     # working dir is src
-    data_dir_single_ended = os.path.join('..', '..', 'tests', 'data', 'single_ended')
-    data_dir_double_ended = os.path.join('..', '..', 'tests', 'data', 'double_ended')
-    data_dir_double_ended2 = os.path.join('..', '..', 'tests', 'data', 'double_ended2')
-    data_dir_silixa_long = os.path.join('..', '..', 'tests', 'data', 'double_single_ended','channel_1')
-    data_dir_sensornet_single_ended = os.path.join('..', '..', 'tests', 'data', 'sensornet_oryx_v3.7')
+    data_dir_single_ended = os.path.join('..', '..',
+                                         'tests', 'data', 'single_ended')
+    data_dir_double_ended = os.path.join('..', '..',
+                                         'tests', 'data', 'double_ended')
+    data_dir_double_ended2 = os.path.join('..', '..',
+                                          'tests', 'data', 'double_ended2')
+    data_dir_silixa_long = os.path.join('..', '..',
+                                        'tests',
+                                        'data',
+                                        'double_single_ended', 'channel_1')
+    data_dir_sensornet_single_ended = os.path.join('..', '..',
+                                                   'tests',
+                                                   'data',
+                                                   'sensornet_oryx_v3.7')
 
 
 def test_read_data_from_single_file_double_ended():
