@@ -1006,8 +1006,49 @@ class DataStore(xr.Dataset):
                               conf_ints=None,
                               conf_ints_size=100,
                               ci_avg_time_flag=False,
-                              da_random_state=None
+                              da_random_state=None,
+                              remove_mc_set_flag=True
                               ):
+        """
+
+        Parameters
+        ----------
+        p_sol : array-like or string
+            parameter solution directly from calibration_double_ended_wls
+        p_cov : array-like or string
+            parameter covariance at the solution directly from calibration_double_ended_wls
+        st_label : str
+            Key of the forward Stokes
+        ast_label : str
+            Key of the forward anti-Stokes
+        st_var : float
+            Float of the variance of the Stokes signal
+        ast_var : float
+            Float of the variance of the anti-Stokes signal
+        store_tmpf : str
+            Key of how to store the Forward calculated temperature. Is calculated using the
+            forward Stokes and anti-Stokes observations.
+        store_tempvar : str
+            a string that is appended to the store_tmp_ keys. and the variance is calculated
+            for those store_tmp_ keys
+        conf_ints : iterable object of float
+            A list with the confidence boundaries that are calculated. Valid values are between
+            [0, 1].
+        conf_ints_size : int
+            Size of the monte carlo parameter set used to calculate the confidence interval
+        ci_avg_time_flag : bool
+            The confidence intervals differ per time step. If you would like to calculate confidence
+            intervals of all time steps together. ‘We can say with 95% confidence that the
+            temperature remained between this line and this line during the entire measurement
+            period’.
+        da_random_state
+            For testing purposes. Similar to random seed. The seed for dask.
+            Makes random not so random. To produce reproducable results for
+            testing environments.
+        remove_mc_set_flag : bool
+            Remove the monte carlo data set, from which the CI and the variance are calculated.
+        """
+
         assert conf_ints
 
         if da_random_state:
@@ -1068,16 +1109,6 @@ class DataStore(xr.Dataset):
             self['r_st'] / self['r_ast']) + self['c_MC'] + self[
                                                            'dalpha_MC'] * self.x) - 273.15
 
-        del p_mc
-        drop_var = ['gamma_MC',
-                    'dalpha_MC',
-                    'c_MC',
-                    'MC',
-                    'r_st',
-                    'r_ast']
-        for k in drop_var:
-            del self[k]
-
         if ci_avg_time_flag:
             avg_dims = ['MC', 'time']
         else:
@@ -1085,9 +1116,8 @@ class DataStore(xr.Dataset):
 
         avg_axis = self[store_tmpf + '_MC'].get_axis_num(avg_dims)
 
-        if store_tempvar:
-            self[store_tmpf + '_MC' + store_tempvar] = (self[store_tmpf + '_MC'] - self[
-                store_tmpf]).std(dim=avg_dims) ** 2
+        self[store_tmpf + '_MC' + store_tempvar] = (self[store_tmpf + '_MC'] - self[
+            store_tmpf]).std(dim=avg_dims) ** 2
 
         if ci_avg_time_flag:
             new_chunks = ((len(conf_ints),),) + self[store_tmpf + '_MC'].chunks[1]
@@ -1100,6 +1130,18 @@ class DataStore(xr.Dataset):
             drop_axis=avg_axis,  # avg dimesnions are dropped from input arr
             new_axis=0)  # The new CI dimension is added as first axis
         self[store_tmpf + '_MC'] = (('CI', 'x', 'time'), q)
+
+        if remove_mc_set_flag:
+            drop_var = ['gamma_MC',
+                        'dalpha_MC',
+                        'c_MC',
+                        'MC',
+                        'r_st',
+                        'r_ast']
+            for k in drop_var:
+                del self[k]
+
+        pass
 
     def conf_int_double_ended(self,
                               p_sol=None,
@@ -1119,7 +1161,8 @@ class DataStore(xr.Dataset):
                               conf_ints=None,
                               conf_ints_size=100,
                               ci_avg_time_flag=False,
-                              da_random_state=None):
+                              da_random_state=None,
+                              remove_mc_set_flag=True):
         """
 
         Parameters
@@ -1128,25 +1171,52 @@ class DataStore(xr.Dataset):
             parameter solution directly from calibration_double_ended_wls
         p_cov : array-like or string
             parameter covariance at the solution directly from calibration_double_ended_wls
-        st_label
-        ast_label
-        rst_label
-        rast_label
-        st_var
-        ast_var
-        rst_var
-        rast_var
-        store_c
-        store_gamma
-        store_alphaint
-        store_alpha
-        store_tmpf
-        store_tmpb
-        store_tempvar
-        conf_ints
-        conf_ints_size
-        ci_avg_time_flag
+        st_label : str
+            Key of the forward Stokes
+        ast_label : str
+            Key of the forward anti-Stokes
+        rst_label : str
+            Key of the backward Stokes
+        rast_label : str
+            Key of the backward anti-Stokes
+        st_var : float
+            Float of the variance of the Stokes signal
+        ast_var : float
+            Float of the variance of the anti-Stokes signal
+        rst_var : float
+            Float of the variance of the backward Stokes signal
+        rast_var : float
+            Float of the variance of the backward anti-Stokes signal
+        store_tmpf : str
+            Key of how to store the Forward calculated temperature. Is calculated using the
+            forward Stokes and anti-Stokes observations.
+        store_tmpb : str
+            Key of how to store the Backward calculated temperature. Is calculated using the
+            backward Stokes and anti-Stokes observations.
+        store_tmpw : str
+            Key of how to store the forward-backward-weighted temperature. First, the variance of
+            TMPF and TMPB are calculated. The Monte Carlo set of TMPF and TMPB are averaged,
+            weighted by their variance. The median of this set is thought to be the a reasonable
+            estimate of the temperature
+        store_tempvar : str
+            a string that is appended to the store_tmp_ keys. and the variance is calculated
+            for those store_tmp_ keys
+        conf_ints : iterable object of float
+            A list with the confidence boundaries that are calculated. Valid values are between
+            [0, 1].
+        conf_ints_size : int
+            Size of the monte carlo parameter set used to calculate the confidence interval
+        ci_avg_time_flag : bool
+            The confidence intervals differ per time step. If you would like to calculate confidence
+            intervals of all time steps together. ‘We can say with 95% confidence that the
+            temperature remained between this line and this line during the entire measurement
+            period’.
         da_random_state
+            For testing purposes. Similar to random seed. The seed for dask.
+            Makes random not so random. To produce reproducable results for
+            testing environments.
+        remove_mc_set_flag : bool
+            Remove the monte carlo data set, from which the CI and the variance are calculated.
 
         Returns
         -------
@@ -1284,23 +1354,28 @@ class DataStore(xr.Dataset):
         # Calculate the median of the weighted MC_set
         self[store_tmpw] = (('x', 'time'), self[store_tmpw + '_MC'].sel(CI=0.5).data)
 
+        # Calculate the variance of the weighted MC_set
+        self[store_tmpw + '_MC' + store_tempvar] = (self[store_tmpw + '_MC'] - self[
+            store_tmpw]).std(dim=avg_dims) ** 2
+
         # Clean up the garbage. All arrays with a Monte Carlo dimension.
         # remove_MC_set = [k for k, v in self.data_vars.items() if 'MC' in v.dims]
-        remove_MC_set = [
-            'r_st',
-            'r_ast',
-            'r_rst',
-            'r_rast',
-            'gamma_MC',
-            'alphaint_MC',
-            'alpha_MC',
-            'c_MC',
-            'TMPF_MC_set',
-            'TMPB_MC_set',
-            'TMPW_MC_set',
-            'MC']
-        for k in remove_MC_set:
-            del self[k]
+        if remove_mc_set_flag:
+            remove_MC_set = [
+                'r_st',
+                'r_ast',
+                'r_rst',
+                'r_rast',
+                'gamma_MC',
+                'alphaint_MC',
+                'alpha_MC',
+                'c_MC',
+                'TMPF_MC_set',
+                'TMPB_MC_set',
+                'TMPW_MC_set',
+                'MC']
+            for k in remove_MC_set:
+                del self[k]
 
     def ufunc_per_section(self,
                           func=None,
