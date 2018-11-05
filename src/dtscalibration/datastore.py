@@ -155,7 +155,18 @@ class DataStore(xr.Dataset):
 
     @property
     def is_double_ended(self):
-        return bool(int(self.attrs['isDoubleEnded']))
+        if 'isDoubleEnded' in self.attrs:
+            return bool(int(self.attrs['isDoubleEnded']))
+        elif 'customData:isDoubleEnded' in self.attrs:
+            # backward compatible to when only silixa files were supported
+            return bool(int(self.attrs['customData:isDoubleEnded']))
+        else:
+            assert 0
+
+    @is_double_ended.setter
+    def is_double_ended(self, flag: bool):
+        self.attrs['isDoubleEnded'] = flag
+        pass
 
     @property
     def chfw(self):
@@ -1103,6 +1114,7 @@ class DataStore(xr.Dataset):
                               rast_var=None,
                               store_tmpf='TMPF',
                               store_tmpb='TMPB',
+                              store_tmpw='TMPW',
                               store_tempvar='_var',
                               conf_ints=None,
                               conf_ints_size=100,
@@ -1162,6 +1174,12 @@ class DataStore(xr.Dataset):
             p_cov = self[p_cov].data
         assert p_cov.shape == (npar, npar)
 
+        # make sure the median is in conf_ints
+        #   needed for valculating tmpw
+        if 0.5 not in conf_ints:
+            conf_ints = list(conf_ints) + [0.5]
+            conf_ints.sort()
+
         p_mc = sst.multivariate_normal.rvs(mean=p_sol,
                                            cov=p_cov,
                                            size=conf_ints_size)  # this one takes long
@@ -1203,58 +1221,86 @@ class DataStore(xr.Dataset):
         self['alpha_MC'] = (('MC', 'x',), alpha)
         self['c_MC'] = (('MC', 'time',), c)
 
-        self[store_tmpf + '_MC'] = self['gamma_MC'] / (xr.ufuncs.log(
+        self[store_tmpf + '_MC_set'] = self['gamma_MC'] / (xr.ufuncs.log(
             self['r_st'] / self['r_ast']) + self['c_MC'] + self[
                                                            'alpha_MC']) - 273.15
-        self[store_tmpb + '_MC'] = self['gamma_MC'] / (xr.ufuncs.log(
+        self[store_tmpb + '_MC_set'] = self['gamma_MC'] / (xr.ufuncs.log(
             self['r_rst'] / self['r_rast']) + self['c_MC'] - self[
                                                            'alpha_MC'] + self[
                                                            'alphaint_MC']) - 273.15
-
-        del p_mc
-        drop_var = ['gamma_MC',
-                    'alphaint_MC',
-                    'alpha_MC',
-                    'c_MC',
-                    'MC',
-                    'r_st',
-                    'r_ast',
-                    'r_rst',
-                    'r_rast']
-        for k in drop_var:
-            del self[k]
 
         if ci_avg_time_flag:
             avg_dims = ['MC', 'time']
         else:
             avg_dims = ['MC']
 
-        avg_axis = self[store_tmpf + '_MC'].get_axis_num(avg_dims)
+        avg_axis = self[store_tmpf + '_MC_set'].get_axis_num(avg_dims)
 
-        if store_tempvar:
-            self[store_tmpf + '_MC' + store_tempvar] = (self[store_tmpf + '_MC'] - self[
-                store_tmpf]).std(dim=avg_dims) ** 2
-            self[store_tmpb + '_MC' + store_tempvar] = (self[store_tmpb + '_MC'] - self[
-                store_tmpb]).std(dim=avg_dims) ** 2
+        self[store_tmpf + '_MC' + store_tempvar] = (self[store_tmpf + '_MC_set'] - self[
+            store_tmpf]).std(dim=avg_dims) ** 2
+        self[store_tmpb + '_MC' + store_tempvar] = (self[store_tmpb + '_MC_set'] - self[
+            store_tmpb]).std(dim=avg_dims) ** 2
 
         if ci_avg_time_flag:
-            new_chunks = ((len(conf_ints),),) + self[store_tmpf + '_MC'].chunks[1]
+            new_chunks = ((len(conf_ints),),) + self[store_tmpf + '_MC_set'].chunks[1]
         else:
-            new_chunks = ((len(conf_ints),),) + self[store_tmpf + '_MC'].chunks[1:]
+            new_chunks = ((len(conf_ints),),) + self[store_tmpf + '_MC_set'].chunks[1:]
 
-        q = self[store_tmpf + '_MC'].data.map_blocks(
+        q = self[store_tmpf + '_MC_set'].data.map_blocks(
             lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
             chunks=new_chunks,  #
             drop_axis=avg_axis,  # avg dimesnions are dropped from input arr
             new_axis=0)  # The new CI dimension is added as first axis
         self[store_tmpf + '_MC'] = (('CI', 'x', 'time'), q)
 
-        q = self[store_tmpb + '_MC'].data.map_blocks(
+        q = self[store_tmpb + '_MC_set'].data.map_blocks(
             lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
             chunks=new_chunks,  #
             drop_axis=avg_axis,  # avg dimesnions are dropped from input arr
             new_axis=0)  # The new CI dimension is added as first axis
         self[store_tmpb + '_MC'] = (('CI', 'x', 'time'), q)
+
+        # Calculate the weighted MC_set
+        weightf = 1 / (1 / self[store_tmpf + '_MC' + store_tempvar] +
+                       1 / self[store_tmpb + '_MC' + store_tempvar]) / \
+            self[store_tmpf + '_MC' + store_tempvar]
+
+        weightb = 1 / (1 / self[store_tmpf + '_MC' + store_tempvar] +
+                       1 / self[store_tmpb + '_MC' + store_tempvar]) / \
+            self[store_tmpb + '_MC' + store_tempvar]
+
+        self[store_tmpw + '_MC_set'] = (weightf * self[store_tmpf + '_MC_set'] +
+                                        weightb * self[store_tmpb + '_MC_set']
+                                        ).transpose('MC', 'x', 'time')
+
+        # Calculate the CI of the weighted MC_set
+        q = self[store_tmpw + '_MC_set'].data.map_blocks(
+            lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
+            chunks=new_chunks,  #
+            drop_axis=avg_axis,  # avg dimensions are dropped from input arr
+            new_axis=0)  # The new CI dimension is added as first axis
+        self[store_tmpw + '_MC'] = (('CI', 'x', 'time'), q)
+
+        # Calculate the median of the weighted MC_set
+        self[store_tmpw] = (('x', 'time'), self[store_tmpw + '_MC'].sel(CI=0.5).data)
+
+        # Clean up the garbage. All arrays with a Monte Carlo dimension.
+        # remove_MC_set = [k for k, v in self.data_vars.items() if 'MC' in v.dims]
+        remove_MC_set = [
+            'r_st',
+            'r_ast',
+            'r_rst',
+            'r_rast',
+            'gamma_MC',
+            'alphaint_MC',
+            'alpha_MC',
+            'c_MC',
+            'TMPF_MC_set',
+            'TMPB_MC_set',
+            'TMPW_MC_set',
+            'MC']
+        for k in remove_MC_set:
+            del self[k]
 
     def ufunc_per_section(self,
                           func=None,
