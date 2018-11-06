@@ -11,6 +11,17 @@ signal strength of the measured Stokes and anti-Stokes signals.
 The confidence intervals can be calculated as the weights are correctly
 defined.
 
+The confidence intervals consist of two sources of uncertainty.
+
+1. Measurement noise in the measured Stokes and anti-Stokes signals.
+   Expressed in a single variance value.
+2. Inherent to least squares procedures / overdetermined systems, the
+   parameters are estimated with limited certainty and all parameters
+   are correlated. Which is expressen in the covariance matrix.
+
+Both sources of uncertainty are propagated to an uncertainty in the
+estimated temperature via Monte Carlo.
+
 .. code:: ipython3
 
     import os
@@ -52,7 +63,7 @@ defined.
     4 recorded vars were found: LAF, ST, AST, TMP
     Recorded at 1461 points along the cable
     The measurement is single ended
-    
+
 
 .. code:: ipython3
 
@@ -91,20 +102,6 @@ defined.
                 String appended for storing the variance. Only used when method is wls.
             method : {'ols', 'wls'}
                 Use 'ols' for ordinary least squares and 'wls' for weighted least squares
-            store_tempvar : str
-                If defined, the variance of the error is calculated
-            conf_ints : iterable object of float, optional
-                A list with the confidence boundaries that are calculated. E.g., to cal
-            conf_ints_size : int, optional
-                Size of the monte carlo parameter set used to calculate the confidence interval
-            ci_avg_time_flag : bool, optional
-                The confidence intervals differ per time step. If you would like to calculate confidence
-                intervals of all time steps together. ‘We can say with 95% confidence that the
-                temperature remained between this line and this line during the entire measurement
-                period’.
-            da_random_state : dask.array.random.RandomState
-                The seed for dask. Makes random not so random. To produce reproducable results for
-                testing environments.
             solver : {'sparse', 'stats'}
                 Either use the homemade weighted sparse solver or the weighted dense matrix solver of
                 statsmodels
@@ -113,7 +110,7 @@ defined.
             -------
     
             
-    
+
 
 .. code:: ipython3
 
@@ -186,28 +183,42 @@ entire measurement period’.
                                st_var=st_var,
                                ast_var=ast_var,
                                method='wls',
-                               ci_avg_time_flag=0,
-                               store_tempvar='_var',
-                               conf_ints=[2.5, 50., 97.5],
                                solver='sparse',
-                               store_p_cov='p_cov',
-                               store_p_sol='p_val',
+                                store_p_val='p_val',
+                               store_p_cov='p_cov'
                                )
+
+.. code:: ipython3
+
+    ds.conf_int_single_ended(
+        p_val='p_val',
+        p_cov='p_cov',
+        st_label=st_label,
+        ast_label=ast_label,
+        st_var=st_var,
+        ast_var=ast_var,
+        store_tmpf='TMPF',
+        store_tempvar='_var',
+        conf_ints=[2.5, 97.5],
+        conf_ints_size=500,
+        ci_avg_time_flag=False)
 
 Lets compare our calibrated values with the device calibration
 
 .. code:: ipython3
 
-    ds1 = ds.isel(time=0)  # take only the first timestep
+    plt.figure(figsize=(12, 8))
     
-    ds1.TMPF.plot(linewidth=1, label='User calibrated')  # plot the temperature calibrated by us
-    ds1.TMP.plot(linewidth=1, label='Device calibrated')  # plot the temperature calibrated by the device
+    ds1 = ds.isel(time=0)  # take only the first timestep
+    ds1.TMPF.plot(linewidth=0.8, label='User calibrated')  # plot the temperature calibrated by us
+    ds1.TMP.plot(linewidth=0.8, label='Device calibrated')  # plot the temperature calibrated by the device
+    ds1.TMPF_MC.plot(linewidth=0.8, hue='CI')
     plt.title('Temperature at the first time step')
     plt.legend();
 
 
 
-.. image:: 07Calibrate_single_wls.ipynb_files%5C07Calibrate_single_wls.ipynb_12_0.png
+.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_13_0.png
 
 
 .. code:: ipython3
@@ -216,7 +227,7 @@ Lets compare our calibrated values with the device calibration
 
 
 
-.. image:: 07Calibrate_single_wls.ipynb_files%5C07Calibrate_single_wls.ipynb_13_0.png
+.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_14_0.png
 
 
 .. code:: ipython3
@@ -229,7 +240,7 @@ Lets compare our calibrated values with the device calibration
 
 
 
-.. image:: 07Calibrate_single_wls.ipynb_files%5C07Calibrate_single_wls.ipynb_14_0.png
+.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_15_0.png
 
 
 We can tell from the graph above that the 95% confidence interval widens
@@ -243,7 +254,7 @@ this should be around 0.005929 degC.
 
 
 
-.. image:: 07Calibrate_single_wls.ipynb_files%5C07Calibrate_single_wls.ipynb_16_0.png
+.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_17_0.png
 
 
 The variance of the temperature measurement appears to be larger than
@@ -263,7 +274,7 @@ Lets have a look at the Stokes and anti-Stokes signal.
 
 
 
-.. image:: 07Calibrate_single_wls.ipynb_files%5C07Calibrate_single_wls.ipynb_18_0.png
+.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_19_0.png
 
 
 Clearly there was a bad splice at 30 m that resulted in the sharp

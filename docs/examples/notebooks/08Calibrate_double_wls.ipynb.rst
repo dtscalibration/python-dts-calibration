@@ -11,6 +11,17 @@ signal strength of the measured Stokes and anti-Stokes signals.
 The confidence intervals can be calculated as the weights are correctly
 defined.
 
+The confidence intervals consist of two sources of uncertainty.
+
+1. Measurement noise in the measured Stokes and anti-Stokes signals.
+   Expressed in a single variance value.
+2. Inherent to least squares procedures / overdetermined systems, the
+   parameters are estimated with limited certainty and all parameters
+   are correlated. Which is expressen in the covariance matrix.
+
+Both sources of uncertainty are propagated to an uncertainty in the
+estimated temperature via Monte Carlo.
+
 .. code:: ipython3
 
     import os
@@ -51,7 +62,7 @@ defined.
     6 recorded vars were found: LAF, ST, AST, REV-ST, REV-AST, TMP
     Recorded at 1693 points along the cable
     The measurement is double ended
-    
+
 
 .. code:: ipython3
 
@@ -85,21 +96,43 @@ as an estimate of the variance in measured signals.
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x11f0a0b00>
+    <matplotlib.collections.QuadMesh at 0x11d93f0b8>
 
 
 
-.. image:: 08Calibrate_double_wls.ipynb_files%5C08Calibrate_double_wls.ipynb_7_1.png
+
+.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_8_1.png
 
 
-Similar to the ols procedure, we make a single function call to
-calibrate the temperature. If the method is ``wls`` and confidence
-intervals are passed to ``conf_ints``, confidence intervals calculated.
-As weigths are correctly passed to the least squares procedure, the
-covariance matrix can be used. This matrix holds the covariances between
-all the parameters. A large parameter set is generated from this matrix,
-assuming the parameter space is normally distributed with their mean at
-the best estimate of the least squares procedure.
+We calibrate the measurement with a single method call. The labels refer
+to the keys in the DataStore object containing the Stokes, anti-Stokes,
+reverse Stokes and reverse anti-Stokes. The variance in those
+measurements were calculated in the previous step. We use a sparse
+solver because it saves us memory.
+
+.. code:: ipython3
+
+    ds.calibration_double_ended(
+        st_label=st_label,
+        ast_label=ast_label,
+        rst_label=rst_label,
+        rast_label=rast_label,
+        st_var=st_var,
+        ast_var=ast_var,
+        rst_var=rst_var,
+        rast_var=rast_var,
+        method='wls',
+        solver='sparse')
+
+With another method call we estimate the confidence intervals. If the
+method is ``wls`` and confidence intervals are passed to ``conf_ints``,
+confidence intervals calculated. As weigths are correctly passed to the
+least squares procedure, the covariance matrix can be used as an
+estimator for the uncertainty in the parameters. This matrix holds the
+covariances between all the parameters. A large parameter set is
+generated from this matrix as part of the Monte Carlo routine, assuming
+the parameter space is normally distributed with their mean at the best
+estimate of the least squares procedure.
 
 The large parameter set is used to calculate a large set of
 temperatures. By using ``percentiles`` or ``quantile`` the 95%
@@ -110,12 +143,14 @@ The confidence intervals differ per time step. If you would like to
 calculate confidence intervals of all time steps together you have the
 option ``ci_avg_time_flag=True``. ‘We can say with 95% confidence that
 the temperature remained between this line and this line during the
-entire measurement period’.
+entire measurement period’. This is ideal if you’d like to calculate the
+background temperature with a confidence interval.
 
 .. code:: ipython3
 
-    ds.calibration_double_ended(
-        sections=sections,
+    ds.conf_int_double_ended(
+        p_val='p_val',
+        p_cov='p_cov',
         st_label=st_label,
         ast_label=ast_label,
         rst_label=rst_label,
@@ -124,25 +159,26 @@ entire measurement period’.
         ast_var=ast_var,
         rst_var=rst_var,
         rast_var=rast_var,
-        method='wls',
+        store_tmpf='TMPF',
+        store_tmpb='TMPB',
+        store_tmpw='TMPW',  # <- 
+        store_tempvar='_var',
         conf_ints=[2.5, 50., 97.5],
         conf_ints_size=500,
-        ci_avg_time_flag=False,
-        store_tempvar='_var',
-        solver='sparse')
+        ci_avg_time_flag=False)
 
 .. code:: ipython3
 
     plt.figure( figsize=(12, 8))
     ds1 = ds.isel(time=-1)  # take only the first timestep
-    ds1.TMPF.plot(linewidth=0.7)
-    ds1.TMPF_MC.isel(CI=0).plot(linewidth=0.7, label='CI: 2.5%')
-    ds1.TMPF_MC.isel(CI=2).plot(linewidth=0.7, label='CI: 97.5%')
+    ds1.TMPW.plot(linewidth=0.7)
+    ds1.TMPW_MC.isel(CI=0).plot(linewidth=0.7, label='CI: 2.5%')
+    ds1.TMPW_MC.isel(CI=2).plot(linewidth=0.7, label='CI: 97.5%')
     plt.legend();
 
 
 
-.. image:: 08Calibrate_double_wls.ipynb_files%5C08Calibrate_double_wls.ipynb_10_0.png
+.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_13_0.png
 
 
 The DataArrays ``TMPF_MC`` and ``TMPB_MC`` and the dimension ``CI`` are
@@ -185,9 +221,12 @@ confidence interval ‘coordinates’.
         TMPB                   (x, time) float64 16.8 16.83 16.88 ... 13.74 13.69
         p_val                  (params1) float64 482.6 -0.01034 ... -0.01034
         p_cov                  (params1, params2) float64 0.03716 ... 7.267e-07
-        TMPF_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 787, 6)>
-        TMPB_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 787, 6)>
         TMPF_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 6)>
         TMPB_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 6)>
+        TMPF_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 787, 6)>
+        TMPB_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 787, 6)>
+        TMPW_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 787, 6)>
+        TMPW                   (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 6)>
+        TMPW_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 6)>
 
 

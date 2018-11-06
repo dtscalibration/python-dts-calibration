@@ -31,8 +31,8 @@ The data files are located in ``./python-dts-calibration/tests/data``
 
 .. parsed-literal::
 
-    D:\github\pydts\python-dts-calibration\examples\notebooks\..\..\tests\data\double_ended2
-    
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration/examples/notebooks/../../tests/data/double_ended2
+
 
 Define in which timezone the measurements are taken. In this case it is
 the timezone of the Silixa Ultima computer.
@@ -61,7 +61,7 @@ the timezone of the Silixa Ultima computer.
     channel 1_20180328014106243.xml
     channel 1_20180328014110917.xml
     channel 1_20180328014115480.xml
-    
+
 
 .. code:: ipython3
 
@@ -77,7 +77,7 @@ the timezone of the Silixa Ultima computer.
     6 recorded vars were found: LAF, ST, AST, REV-ST, REV-AST, TMP
     Recorded at 1693 points along the cable
     The measurement is double ended
-    
+
 
 .. code:: ipython3
 
@@ -471,4 +471,4 @@ the timezone of the Silixa Ultima computer.
         forwardMeasurementChannel:                                               ...
         backwardMeasurementChannel:                                              ...
         _sections:                                                               ...
-    
+
