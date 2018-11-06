@@ -44,6 +44,8 @@ def get_netcdf_encoding(ds, zlib=True, complevel=5, **kwargs):
 
     Parameters
     ----------
+    zlib
+    complevel
     ds : DataStore
 
     Returns
@@ -68,8 +70,6 @@ def check_timestep_allclose(ds, eps=0.01):
     Parameters
     ----------
     ds : DataStore
-    dim : str
-        Label of the acquisition timeseries
     eps : float
         Default accepts 1% of relative variation between min and max acquisition time.
 

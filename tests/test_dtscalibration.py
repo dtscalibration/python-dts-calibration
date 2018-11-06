@@ -140,13 +140,27 @@ def test_double_ended_variance_estimate_synthetic():
                                 rst_var=mrst_var,
                                 rast_var=mrast_var,
                                 method='wls',
-                                # conf_ints=[0.00135, 0.025, 0.15865, 0.5, 0.84135, 0.975, 0.99865],
-                                conf_ints=[0.025, 0.5, 0.975],
-                                ci_avg_time_flag=0,
-                                store_tempvar='_var',
-                                conf_ints_size=500,
-                                solver='sparse',
-                                da_random_state=state)
+                                solver='sparse')
+
+    ds.conf_int_double_ended(
+        p_val='p_val',
+        p_cov='p_cov',
+        st_label=st_label,
+        ast_label=ast_label,
+        rst_label=rst_label,
+        rast_label=rast_label,
+        st_var=mst_var,
+        ast_var=mast_var,
+        rst_var=mrst_var,
+        rast_var=mrast_var,
+        store_tmpf='TMPF',
+        store_tmpb='TMPB',
+        store_tmpw='TMPW',
+        store_tempvar='_var',
+        conf_ints=[2.5, 50., 97.5],
+        conf_ints_size=500,
+        ci_avg_time_flag=False,
+        da_random_state=state)
 
     # Calibrated variance
     stdsf1 = ds.ufunc_per_section(label='TMPF',
@@ -261,13 +275,22 @@ def test_single_ended_variance_estimate_synthetic():
                                 st_var=mst_var,
                                 ast_var=mast_var,
                                 method='wls',
-                                # conf_ints=[0.00135, 0.025, 0.15865, 0.5, 0.84135, 0.975, 0.99865],
-                                conf_ints=[0.025, 0.5, 0.975],
-                                ci_avg_time_flag=0,
-                                store_tempvar='_var',
-                                conf_ints_size=500,
-                                solver='sparse',
-                                da_random_state=state)
+                                solver='sparse')
+
+    ds.conf_int_single_ended(
+        p_val='p_val',
+        p_cov='p_cov',
+        st_label=st_label,
+        ast_label=ast_label,
+        st_var=mst_var,
+        ast_var=mast_var,
+        store_tmpf='TMPF',
+        store_tempvar='_var',
+        conf_ints=[2.5, 50., 97.5],
+        conf_ints_size=500,
+        ci_avg_time_flag=False,
+        da_random_state=state
+        )
 
     # Calibrated variance
     stdsf1 = ds.ufunc_per_section(label='TMPF',

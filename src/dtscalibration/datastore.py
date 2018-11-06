@@ -155,6 +155,12 @@ class DataStore(xr.Dataset):
 
     @property
     def is_double_ended(self):
+        """
+
+        Returns
+        -------
+
+        """
         if 'isDoubleEnded' in self.attrs:
             return bool(int(self.attrs['isDoubleEnded']))
         elif 'customData:isDoubleEnded' in self.attrs:
@@ -170,10 +176,22 @@ class DataStore(xr.Dataset):
 
     @property
     def chfw(self):
+        """
+
+        Returns
+        -------
+
+        """
         return int(self.attrs['forwardMeasurementChannel']) - 1  # zero-based
 
     @property
     def chbw(self):
+        """
+
+        Returns
+        -------
+
+        """
         if self.is_double_ended:
             return int(self.attrs['reverseMeasurementChannel']) - 1  # zero-based
         else:
@@ -181,6 +199,12 @@ class DataStore(xr.Dataset):
 
     @property
     def channel_configuration(self):
+        """
+
+        Returns
+        -------
+
+        """
         d = {
             'chfw': {
                 'st_label':              'ST',
@@ -208,6 +232,8 @@ class DataStore(xr.Dataset):
         values from the original object, they will be given the value ``NaN``.
         Parameters
         ----------
+        freq
+        dim
         how : str
             Any function that is available via groupby. E.g., 'mean'
             http://pandas.pydata.org/pandas-docs/stable/groupby.html#groupby-dispatch
@@ -362,6 +388,12 @@ class DataStore(xr.Dataset):
             compute=compute)
 
     def get_default_encoding(self):
+        """
+
+        Returns
+        -------
+
+        """
         # TODO: set scale parameter
         compdata = dict(zlib=True, complevel=6, shuffle=False)  # , least_significant_digit=None
         compcoords = dict(zlib=True, complevel=4)
@@ -389,6 +421,7 @@ class DataStore(xr.Dataset):
 
         Parameters
         ----------
+        reshape_residuals
         use_statsmodels
         suppress_info
         st_label : str
@@ -612,19 +645,14 @@ class DataStore(xr.Dataset):
                                  store_alpha='alpha',
                                  store_tmpf='TMPF',
                                  store_p_cov='p_cov',
-                                 store_p_sol='p_val',
+                                 store_p_val='p_val',
                                  variance_suffix='_var',
                                  method='ols',
-                                 store_tempvar=None,
-                                 conf_ints=None,
-                                 conf_ints_size=100,
-                                 ci_avg_time_flag=False,
                                  solver='sparse',
-                                 da_random_state=None,
                                  dtype=None,
                                  nt=None,
                                  z=None,
-                                 p_sol=None,
+                                 p_val=None,
                                  p_var=None,
                                  p_cov=None
                                  ):
@@ -632,6 +660,14 @@ class DataStore(xr.Dataset):
 
         Parameters
         ----------
+        store_p_cov
+        store_p_val
+        dtype
+        nt
+        z
+        p_val
+        p_var
+        p_cov
         sections : dict, optional
         st_label : str
             Label of the forward stokes measurement
@@ -658,20 +694,6 @@ class DataStore(xr.Dataset):
             String appended for storing the variance. Only used when method is wls.
         method : {'ols', 'wls'}
             Use 'ols' for ordinary least squares and 'wls' for weighted least squares
-        store_tempvar : str
-            If defined, the variance of the error is calculated
-        conf_ints : iterable object of float, optional
-            A list with the confidence boundaries that are calculated. E.g., to cal
-        conf_ints_size : int, optional
-            Size of the monte carlo parameter set used to calculate the confidence interval
-        ci_avg_time_flag : bool, optional
-            The confidence intervals differ per time step. If you would like to calculate confidence
-            intervals of all time steps together. ‘We can say with 95% confidence that the
-            temperature remained between this line and this line during the entire measurement
-            period’.
-        da_random_state : dask.array.random.RandomState
-            The seed for dask. Makes random not so random. To produce reproducable results for
-            testing environments.
         solver : {'sparse', 'stats'}
             Either use the homemade weighted sparse solver or the weighted dense matrix solver of
             statsmodels
@@ -709,16 +731,16 @@ class DataStore(xr.Dataset):
                 for vari in [st_var, ast_var]:
                     assert isinstance(vari, float)
 
-                nt, z, p_sol, p_var, p_cov = calibration_single_ended_wls(
+                nt, z, p_val, p_var, p_cov = calibration_single_ended_wls(
                     self, st_label, ast_label,
                     st_var, ast_var, solver=solver, dtype=dtype)
             else:
-                for input_item in [nt, z, p_sol, p_var, p_cov]:
+                for input_item in [nt, z, p_val, p_var, p_cov]:
                     assert input_item is not None
 
-            gamma = p_sol[0]
-            dalpha = p_sol[1]
-            c = p_sol[2:nt + 2]
+            gamma = p_val[0]
+            dalpha = p_val[1]
+            c = p_val[2:nt + 2]
 
             # Estimate of the standard error - sqrt(diag of the COV matrix) - is not squared
             gammavar = p_var[0]
@@ -747,13 +769,13 @@ class DataStore(xr.Dataset):
                           + c + self.x.data[:, None] * dalpha) - 273.15
             self[store_tmpf] = (('x', 'time'), tempF_data)
 
-        if store_p_sol and (method == 'wls' or method == 'external'):
-            self[store_p_sol] = (('params1',), p_sol)
-            _p_sol = store_p_sol
+        if store_p_val and (method == 'wls' or method == 'external'):
+            self[store_p_val] = (('params1',), p_val)
+            _p_val = store_p_val
         elif method == 'wls' or method == 'external':
-            _p_sol = p_sol
+            _p_val = p_val
         else:
-            _p_sol = None
+            _p_val = None
 
         if store_p_cov and (method == 'wls' or method == 'external'):
             self[store_p_cov] = (('params1', 'params2'), p_cov)
@@ -763,21 +785,6 @@ class DataStore(xr.Dataset):
         else:
             _p_cov = None
 
-        if conf_ints:
-            assert method == 'wls'
-            self.conf_int_single_ended(
-                p_sol=_p_sol,
-                p_cov=_p_cov,
-                st_label=st_label,
-                ast_label=ast_label,
-                st_var=st_var,
-                ast_var=ast_var,
-                store_tmpf=store_tmpf,
-                store_tempvar=store_tempvar,
-                conf_ints=conf_ints,
-                conf_ints_size=conf_ints_size,
-                ci_avg_time_flag=ci_avg_time_flag,
-                da_random_state=da_random_state)
         pass
 
     def calibration_double_ended(self,
@@ -797,25 +804,28 @@ class DataStore(xr.Dataset):
                                  store_tmpf='TMPF',
                                  store_tmpb='TMPB',
                                  store_p_cov='p_cov',
-                                 store_p_sol='p_val',
+                                 store_p_val='p_val',
                                  variance_suffix='_var',
                                  method='ols',
-                                 store_tempvar=None,
-                                 conf_ints=None,
-                                 conf_ints_size=100,
-                                 ci_avg_time_flag=False,
                                  solver='sparse',
-                                 da_random_state=None,
                                  dtype=None,
                                  nt=None,
                                  z=None,
-                                 p_sol=None,
+                                 p_val=None,
                                  p_var=None,
                                  p_cov=None):
         """
 
         Parameters
         ----------
+        store_p_cov
+        store_p_val
+        dtype
+        nt
+        z
+        p_val
+        p_var
+        p_cov
         sections : dict, optional
         st_label : str
             Label of the forward stokes measurement
@@ -853,20 +863,6 @@ class DataStore(xr.Dataset):
             String appended for storing the variance. Only used when method is wls.
         method : {'ols', 'wls'}
             Use 'ols' for ordinary least squares and 'wls' for weighted least squares
-        store_tempvar : str
-            If defined, the variance of the error is calculated
-        conf_ints : iterable object of float, optional
-            A list with the confidence boundaries that are calculated. E.g., to cal
-        conf_ints_size : int, optional
-            Size of the monte carlo parameter set used to calculate the confidence interval
-        ci_avg_time_flag : bool, optional
-            The confidence intervals differ per time step. If you would like to calculate confidence
-            intervals of all time steps together. ‘We can say with 95% confidence that the
-            temperature remained between this line and this line during the entire measurement
-            period’.
-        da_random_state : dask.array.random.RandomState
-            The seed for dask. Makes random not so random. To produce reproducable results for
-            testing environments.
         solver : {'sparse', 'stats'}
             Either use the homemade weighted sparse solver or the weighted dense matrix solver of
             statsmodels
@@ -907,17 +903,17 @@ class DataStore(xr.Dataset):
                 for vari in [st_var, ast_var, rst_var, rast_var]:
                     assert isinstance(vari, float)
 
-                nt, z, p_sol, p_var, p_cov = calibration_double_ended_wls(
+                nt, z, p_val, p_var, p_cov = calibration_double_ended_wls(
                     self, st_label, ast_label, rst_label, rast_label,
                     st_var, ast_var, rst_var, rast_var, solver=solver, dtype=dtype)
             else:
-                for input_item in [nt, z, p_sol, p_var, p_cov]:
+                for input_item in [nt, z, p_val, p_var, p_cov]:
                     assert input_item is not None
 
-            gamma = p_sol[0]
-            alphaint = p_sol[1]
-            c = p_sol[2:nt + 2]
-            alpha = p_sol[nt + 2:]
+            gamma = p_val[0]
+            alphaint = p_val[1]
+            c = p_val[2:nt + 2]
+            alpha = p_val[nt + 2:]
 
             # Estimate of the standard error - sqrt(diag of the COV matrix) - is not squared
             gammavar = p_var[0]
@@ -955,13 +951,13 @@ class DataStore(xr.Dataset):
                           + c - alpha[:, None] + alphaint) - 273.15
             self[store_tmpb] = (('x', 'time'), tempB_data)
 
-        if store_p_sol and (method == 'wls' or method == 'external'):
-            self[store_p_sol] = (('params1',), p_sol)
-            _p_sol = store_p_sol
+        if store_p_val and (method == 'wls' or method == 'external'):
+            self[store_p_val] = (('params1',), p_val)
+            _p_val = store_p_val
         elif method == 'wls' or method == 'external':
-            _p_sol = p_sol
+            _p_val = p_val
         else:
-            _p_sol = None
+            _p_val = None
 
         if store_p_cov and (method == 'wls' or method == 'external'):
             self[store_p_cov] = (('params1', 'params2'), p_cov)
@@ -971,31 +967,10 @@ class DataStore(xr.Dataset):
         else:
             _p_cov = None
 
-        if conf_ints:
-            assert method == 'wls' or method == 'external'
-            self.conf_int_double_ended(
-                p_sol=_p_sol,
-                p_cov=_p_cov,
-                st_label=st_label,
-                ast_label=ast_label,
-                rst_label=rst_label,
-                rast_label=rast_label,
-                st_var=st_var,
-                ast_var=ast_var,
-                rst_var=rst_var,
-                rast_var=rast_var,
-                store_tmpf=store_tmpf,
-                store_tmpb=store_tmpb,
-                store_tempvar=store_tempvar,
-                conf_ints=conf_ints,
-                conf_ints_size=conf_ints_size,
-                ci_avg_time_flag=ci_avg_time_flag,
-                da_random_state=da_random_state)
-
         pass
 
     def conf_int_single_ended(self,
-                              p_sol,
+                              p_val,
                               p_cov,
                               st_label='ST',
                               ast_label='AST',
@@ -1013,7 +988,7 @@ class DataStore(xr.Dataset):
 
         Parameters
         ----------
-        p_sol : array-like or string
+        p_val : array-like or string
             parameter solution directly from calibration_double_ended_wls
         p_cov : array-like or string
             parameter covariance at the solution directly from calibration_double_ended_wls
@@ -1059,17 +1034,17 @@ class DataStore(xr.Dataset):
         no, nt = self[st_label].data.shape
         npar = nt + 2  # number of parameters
 
-        assert isinstance(p_sol, (str, np.ndarray, np.generic))
-        if isinstance(p_sol, str):
-            p_sol = self[p_sol].data
-        assert p_sol.shape == (npar,)
+        assert isinstance(p_val, (str, np.ndarray, np.generic))
+        if isinstance(p_val, str):
+            p_val = self[p_val].data
+        assert p_val.shape == (npar,)
 
         assert isinstance(p_cov, (str, np.ndarray, np.generic))
         if isinstance(p_cov, str):
             p_cov = self[p_cov].data
         assert p_cov.shape == (npar, npar)
 
-        p_mc = sst.multivariate_normal.rvs(mean=p_sol,
+        p_mc = sst.multivariate_normal.rvs(mean=p_val,
                                            cov=p_cov,
                                            size=conf_ints_size)
         self.coords['MC'] = range(conf_ints_size)
@@ -1144,7 +1119,7 @@ class DataStore(xr.Dataset):
         pass
 
     def conf_int_double_ended(self,
-                              p_sol=None,
+                              p_val=None,
                               p_cov=None,
                               st_label='ST',
                               ast_label='AST',
@@ -1167,7 +1142,7 @@ class DataStore(xr.Dataset):
 
         Parameters
         ----------
-        p_sol : array-like or string
+        p_val : array-like or string
             parameter solution directly from calibration_double_ended_wls
         p_cov : array-like or string
             parameter covariance at the solution directly from calibration_double_ended_wls
@@ -1234,23 +1209,17 @@ class DataStore(xr.Dataset):
         no, nt = self[st_label].data.shape
         npar = nt + 2 + no  # number of parameters
 
-        assert isinstance(p_sol, (str, np.ndarray, np.generic))
-        if isinstance(p_sol, str):
-            p_sol = self[p_sol].data
-        assert p_sol.shape == (npar,)
+        assert isinstance(p_val, (str, np.ndarray, np.generic))
+        if isinstance(p_val, str):
+            p_val = self[p_val].data
+        assert p_val.shape == (npar,)
 
         assert isinstance(p_cov, (str, np.ndarray, np.generic))
         if isinstance(p_cov, str):
             p_cov = self[p_cov].data
         assert p_cov.shape == (npar, npar)
 
-        # make sure the median is in conf_ints
-        #   needed for valculating tmpw
-        if 0.5 not in conf_ints:
-            conf_ints = list(conf_ints) + [0.5]
-            conf_ints.sort()
-
-        p_mc = sst.multivariate_normal.rvs(mean=p_sol,
+        p_mc = sst.multivariate_normal.rvs(mean=p_val,
                                            cov=p_cov,
                                            size=conf_ints_size)  # this one takes long
         self.coords['MC'] = range(conf_ints_size)
@@ -1339,6 +1308,8 @@ class DataStore(xr.Dataset):
                        1 / self[store_tmpb + '_MC' + store_tempvar]) / \
             self[store_tmpb + '_MC' + store_tempvar]
 
+        # np.testing.assert_almost_equal(np.all(weightf + weightb), 1)
+
         self[store_tmpw + '_MC_set'] = (weightf * self[store_tmpf + '_MC_set'] +
                                         weightb * self[store_tmpb + '_MC_set']
                                         ).transpose('MC', 'x', 'time')
@@ -1352,10 +1323,10 @@ class DataStore(xr.Dataset):
         self[store_tmpw + '_MC'] = (('CI', 'x', 'time'), q)
 
         # Calculate the median of the weighted MC_set
-        self[store_tmpw] = (('x', 'time'), self[store_tmpw + '_MC'].sel(CI=0.5).data)
+        self[store_tmpw] = (('x', 'time'), self[store_tmpw + '_MC_set'].mean(dim='MC').data)
 
         # Calculate the variance of the weighted MC_set
-        self[store_tmpw + '_MC' + store_tempvar] = (self[store_tmpw + '_MC'] - self[
+        self[store_tmpw + '_MC' + store_tempvar] = (self[store_tmpw + '_MC_set'] - self[
             store_tmpw]).std(dim=avg_dims) ** 2
 
         # Clean up the garbage. All arrays with a Monte Carlo dimension.
@@ -1412,10 +1383,30 @@ class DataStore(xr.Dataset):
 
         if not func:
             def func(a):
+                """
+
+                Parameters
+                ----------
+                a
+
+                Returns
+                -------
+
+                """
                 return a
 
         elif isinstance(func, str) and func == 'var':
             def func(a):
+                """
+
+                Parameters
+                ----------
+                a
+
+                Returns
+                -------
+
+                """
                 return np.std(a) ** 2
 
         else:
@@ -1665,7 +1656,6 @@ def read_sensornet_files(
     timezone_netcdf='UTC',
     timezone_input_files='UTC',
     silent=False,
-    load_in_memory='auto',
         **kwargs):
 
     """Read a folder with measurement files. Each measurement file contains
@@ -1688,8 +1678,6 @@ def read_sensornet_files(
         file extension of the measurement files
     silent : bool
         If set tot True, some verbose texts are not printed to stdout/screen
-    load_in_memory : {'auto', True, False}
-        If 'auto' the Stokes data is only loaded to memory for small files
     kwargs : dict-like, optional
         keyword-arguments are passed to DataStore initialization
 

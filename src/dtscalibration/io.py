@@ -88,6 +88,7 @@ def read_silixa_files_routine_v6(filepathlist,
 
     Parameters
     ----------
+    load_in_memory
     filepathlist
     timezone_netcdf
     timezone_input_files
@@ -183,6 +184,16 @@ def read_silixa_files_routine_v6(filepathlist,
 
     @dask.delayed
     def grab_data_per_file(file_handle):
+        """
+
+        Parameters
+        ----------
+        file_handle
+
+        Returns
+        -------
+
+        """
         with open(file_handle, 'r') as f_h:
             eltree = ElementTree.parse(f_h)
             arr_el = eltree.findall(arr_path, namespaces=ns)
@@ -226,6 +237,16 @@ def read_silixa_files_routine_v6(filepathlist,
 
     @dask.delayed
     def grab_timeseries_per_file(file_handle):
+        """
+
+        Parameters
+        ----------
+        file_handle
+
+        Returns
+        -------
+
+        """
         with open(file_handle, 'r') as f_h:
             eltree = ElementTree.parse(f_h)
 
@@ -308,6 +329,7 @@ def read_silixa_files_routine_v4(filepathlist,
 
     Parameters
     ----------
+    load_in_memory
     filepathlist
     timezone_netcdf
     timezone_input_files
@@ -406,6 +428,16 @@ def read_silixa_files_routine_v4(filepathlist,
 
     @dask.delayed
     def grab_data_per_file(file_handle):
+        """
+
+        Parameters
+        ----------
+        file_handle
+
+        Returns
+        -------
+
+        """
         with open(file_handle, 'r') as f_h:
             eltree = ElementTree.parse(f_h)
             arr_el = eltree.findall(arr_path, namespaces=ns)
@@ -448,6 +480,16 @@ def read_silixa_files_routine_v4(filepathlist,
 
     @dask.delayed
     def grab_timeseries_per_file(file_handle):
+        """
+
+        Parameters
+        ----------
+        file_handle
+
+        Returns
+        -------
+
+        """
         with open(file_handle, 'r') as f_h:
             eltree = ElementTree.parse(f_h)
 
@@ -706,6 +748,17 @@ def read_sensornet_files_routine_v3(filepathlist,
 
 
 def read_silixa_attrs_singlefile(filename, sep):
+    """
+
+    Parameters
+    ----------
+    filename
+    sep
+
+    Returns
+    -------
+
+    """
     import xmltodict
 
     def metakey(meta, dict_to_parse, prefix, sep):
@@ -773,6 +826,16 @@ def read_silixa_attrs_singlefile(filename, sep):
 
 
 def read_sensornet_single(filename):
+    """
+
+    Parameters
+    ----------
+    filename
+
+    Returns
+    -------
+
+    """
     headerlength = 26
 
     # The $\circ$ Celsius symbol is unreadable in utf8
