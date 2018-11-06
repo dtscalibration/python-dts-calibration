@@ -771,19 +771,13 @@ class DataStore(xr.Dataset):
 
         if store_p_val and (method == 'wls' or method == 'external'):
             self[store_p_val] = (('params1',), p_val)
-            _p_val = store_p_val
-        elif method == 'wls' or method == 'external':
-            _p_val = p_val
         else:
-            _p_val = None
+            pass
 
         if store_p_cov and (method == 'wls' or method == 'external'):
             self[store_p_cov] = (('params1', 'params2'), p_cov)
-            _p_cov = store_p_cov
-        elif method == 'wls' or method == 'external':
-            _p_cov = p_cov
         else:
-            _p_cov = None
+            pass
 
         pass
 
@@ -953,19 +947,13 @@ class DataStore(xr.Dataset):
 
         if store_p_val and (method == 'wls' or method == 'external'):
             self[store_p_val] = (('params1',), p_val)
-            _p_val = store_p_val
-        elif method == 'wls' or method == 'external':
-            _p_val = p_val
         else:
-            _p_val = None
+            pass
 
         if store_p_cov and (method == 'wls' or method == 'external'):
             self[store_p_cov] = (('params1', 'params2'), p_cov)
-            _p_cov = store_p_cov
-        elif method == 'wls' or method == 'external':
-            _p_cov = p_cov
         else:
-            _p_cov = None
+            pass
 
         pass
 
