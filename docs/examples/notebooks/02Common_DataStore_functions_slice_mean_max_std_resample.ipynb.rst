@@ -41,7 +41,7 @@ Examples of how to do some of the more commonly used functions:
     4 recorded vars were found: LAF, ST, AST, TMP
     Recorded at 1461 points along the cable
     The measurement is single ended
-    
+
 
 1 mean, min, max
 ----------------

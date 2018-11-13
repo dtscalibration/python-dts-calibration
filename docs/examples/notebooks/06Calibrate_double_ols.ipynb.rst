@@ -46,7 +46,7 @@ considered equal here and no variance is calculated.
     6 recorded vars were found: LAF, ST, AST, REV-ST, REV-AST, TMP
     Recorded at 1693 points along the cable
     The measurement is double ended
-    
+
 
 .. code:: ipython3
 
@@ -96,20 +96,6 @@ considered equal here and no variance is calculated.
                 String appended for storing the variance. Only used when method is wls.
             method : {'ols', 'wls'}
                 Use 'ols' for ordinary least squares and 'wls' for weighted least squares
-            store_tempvar : str
-                If defined, the variance of the error is calculated
-            conf_ints : iterable object of float, optional
-                A list with the confidence boundaries that are calculated. E.g., to cal
-            conf_ints_size : int, optional
-                Size of the monte carlo parameter set used to calculate the confidence interval
-            ci_avg_time_flag : bool, optional
-                The confidence intervals differ per time step. If you would like to calculate confidence
-                intervals of all time steps together. ‘We can say with 95% confidence that the
-                temperature remained between this line and this line during the entire measurement
-                period’.
-            da_random_state : dask.array.random.RandomState
-                The seed for dask. Makes random not so random. To produce reproducable results for
-                testing environments.
             solver : {'sparse', 'stats'}
                 Either use the homemade weighted sparse solver or the weighted dense matrix solver of
                 statsmodels
@@ -118,7 +104,7 @@ considered equal here and no variance is calculated.
             -------
     
             
-    
+
 
 .. code:: ipython3
 
@@ -147,11 +133,12 @@ considered equal here and no variance is calculated.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x113b28d68>
+    <matplotlib.legend.Legend at 0x1128ebf98>
 
 
 
-.. image:: 06Calibrate_double_ols.ipynb_files%5C06Calibrate_double_ols.ipynb_6_1.png
+
+.. image:: 06Calibrate_double_ols.ipynb_files/06Calibrate_double_ols.ipynb_6_1.png
 
 
 Lets compare our calibrated values with the device calibration. Lets
@@ -169,11 +156,12 @@ first.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x113b881d0>]
+    [<matplotlib.lines.Line2D at 0x112b06208>]
 
 
 
-.. image:: 06Calibrate_double_ols.ipynb_files%5C06Calibrate_double_ols.ipynb_8_1.png
+
+.. image:: 06Calibrate_double_ols.ipynb_files/06Calibrate_double_ols.ipynb_8_1.png
 
 
 The device calibration sections and calibration sections defined by us

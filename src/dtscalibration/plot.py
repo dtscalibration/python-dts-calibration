@@ -11,6 +11,7 @@ def plot_residuals_reference_sections(resid, fig=None, title=None,
 
     Parameters
     ----------
+    plot_avg_std
     resid : DataArray
         The residuals of the fit to estimate the noise in the measured
         Stokes signal. is returned by `ds.variance_stokes`
@@ -99,6 +100,15 @@ def plot_residuals_reference_sections(resid, fig=None, title=None,
 
 
 def plot_sigma_report(ds, temp_label, temp_var_label, itimes=None):
+    """
+
+    Parameters
+    ----------
+    ds
+    temp_label
+    temp_var_label
+    itimes
+    """
     assert 'CI' not in ds[temp_label].dims, 'use other plot report function'
 
     fig, (ax1, ax2) = plt.subplots(nrows=2, sharex=True, figsize=(12, 8))

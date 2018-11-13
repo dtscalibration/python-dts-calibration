@@ -155,14 +155,43 @@ class DataStore(xr.Dataset):
 
     @property
     def is_double_ended(self):
-        return bool(int(self.attrs['isDoubleEnded']))
+        """
+
+        Returns
+        -------
+
+        """
+        if 'isDoubleEnded' in self.attrs:
+            return bool(int(self.attrs['isDoubleEnded']))
+        elif 'customData:isDoubleEnded' in self.attrs:
+            # backward compatible to when only silixa files were supported
+            return bool(int(self.attrs['customData:isDoubleEnded']))
+        else:
+            assert 0
+
+    @is_double_ended.setter
+    def is_double_ended(self, flag: bool):
+        self.attrs['isDoubleEnded'] = flag
+        pass
 
     @property
     def chfw(self):
+        """
+
+        Returns
+        -------
+
+        """
         return int(self.attrs['forwardMeasurementChannel']) - 1  # zero-based
 
     @property
     def chbw(self):
+        """
+
+        Returns
+        -------
+
+        """
         if self.is_double_ended:
             return int(self.attrs['reverseMeasurementChannel']) - 1  # zero-based
         else:
@@ -170,6 +199,12 @@ class DataStore(xr.Dataset):
 
     @property
     def channel_configuration(self):
+        """
+
+        Returns
+        -------
+
+        """
         d = {
             'chfw': {
                 'st_label':              'ST',
@@ -197,6 +232,8 @@ class DataStore(xr.Dataset):
         values from the original object, they will be given the value ``NaN``.
         Parameters
         ----------
+        freq
+        dim
         how : str
             Any function that is available via groupby. E.g., 'mean'
             http://pandas.pydata.org/pandas-docs/stable/groupby.html#groupby-dispatch
@@ -351,6 +388,12 @@ class DataStore(xr.Dataset):
             compute=compute)
 
     def get_default_encoding(self):
+        """
+
+        Returns
+        -------
+
+        """
         # TODO: set scale parameter
         compdata = dict(zlib=True, complevel=6, shuffle=False)  # , least_significant_digit=None
         compcoords = dict(zlib=True, complevel=4)
@@ -378,6 +421,7 @@ class DataStore(xr.Dataset):
 
         Parameters
         ----------
+        reshape_residuals
         use_statsmodels
         suppress_info
         st_label : str
@@ -601,19 +645,14 @@ class DataStore(xr.Dataset):
                                  store_alpha='alpha',
                                  store_tmpf='TMPF',
                                  store_p_cov='p_cov',
-                                 store_p_sol='p_val',
+                                 store_p_val='p_val',
                                  variance_suffix='_var',
                                  method='ols',
-                                 store_tempvar=None,
-                                 conf_ints=None,
-                                 conf_ints_size=100,
-                                 ci_avg_time_flag=False,
                                  solver='sparse',
-                                 da_random_state=None,
                                  dtype=None,
                                  nt=None,
                                  z=None,
-                                 p_sol=None,
+                                 p_val=None,
                                  p_var=None,
                                  p_cov=None
                                  ):
@@ -621,6 +660,14 @@ class DataStore(xr.Dataset):
 
         Parameters
         ----------
+        store_p_cov
+        store_p_val
+        dtype
+        nt
+        z
+        p_val
+        p_var
+        p_cov
         sections : dict, optional
         st_label : str
             Label of the forward stokes measurement
@@ -647,20 +694,6 @@ class DataStore(xr.Dataset):
             String appended for storing the variance. Only used when method is wls.
         method : {'ols', 'wls'}
             Use 'ols' for ordinary least squares and 'wls' for weighted least squares
-        store_tempvar : str
-            If defined, the variance of the error is calculated
-        conf_ints : iterable object of float, optional
-            A list with the confidence boundaries that are calculated. E.g., to cal
-        conf_ints_size : int, optional
-            Size of the monte carlo parameter set used to calculate the confidence interval
-        ci_avg_time_flag : bool, optional
-            The confidence intervals differ per time step. If you would like to calculate confidence
-            intervals of all time steps together. ‘We can say with 95% confidence that the
-            temperature remained between this line and this line during the entire measurement
-            period’.
-        da_random_state : dask.array.random.RandomState
-            The seed for dask. Makes random not so random. To produce reproducable results for
-            testing environments.
         solver : {'sparse', 'stats'}
             Either use the homemade weighted sparse solver or the weighted dense matrix solver of
             statsmodels
@@ -698,16 +731,16 @@ class DataStore(xr.Dataset):
                 for vari in [st_var, ast_var]:
                     assert isinstance(vari, float)
 
-                nt, z, p_sol, p_var, p_cov = calibration_single_ended_wls(
+                nt, z, p_val, p_var, p_cov = calibration_single_ended_wls(
                     self, st_label, ast_label,
                     st_var, ast_var, solver=solver, dtype=dtype)
             else:
-                for input_item in [nt, z, p_sol, p_var, p_cov]:
+                for input_item in [nt, z, p_val, p_var, p_cov]:
                     assert input_item is not None
 
-            gamma = p_sol[0]
-            dalpha = p_sol[1]
-            c = p_sol[2:nt + 2]
+            gamma = p_val[0]
+            dalpha = p_val[1]
+            c = p_val[2:nt + 2]
 
             # Estimate of the standard error - sqrt(diag of the COV matrix) - is not squared
             gammavar = p_var[0]
@@ -736,37 +769,16 @@ class DataStore(xr.Dataset):
                           + c + self.x.data[:, None] * dalpha) - 273.15
             self[store_tmpf] = (('x', 'time'), tempF_data)
 
-        if store_p_sol and (method == 'wls' or method == 'external'):
-            self[store_p_sol] = (('params1',), p_sol)
-            _p_sol = store_p_sol
-        elif method == 'wls' or method == 'external':
-            _p_sol = p_sol
+        if store_p_val and (method == 'wls' or method == 'external'):
+            self[store_p_val] = (('params1',), p_val)
         else:
-            _p_sol = None
+            pass
 
         if store_p_cov and (method == 'wls' or method == 'external'):
             self[store_p_cov] = (('params1', 'params2'), p_cov)
-            _p_cov = store_p_cov
-        elif method == 'wls' or method == 'external':
-            _p_cov = p_cov
         else:
-            _p_cov = None
+            pass
 
-        if conf_ints:
-            assert method == 'wls'
-            self.conf_int_single_ended(
-                p_sol=_p_sol,
-                p_cov=_p_cov,
-                st_label=st_label,
-                ast_label=ast_label,
-                st_var=st_var,
-                ast_var=ast_var,
-                store_tmpf=store_tmpf,
-                store_tempvar=store_tempvar,
-                conf_ints=conf_ints,
-                conf_ints_size=conf_ints_size,
-                ci_avg_time_flag=ci_avg_time_flag,
-                da_random_state=da_random_state)
         pass
 
     def calibration_double_ended(self,
@@ -786,25 +798,28 @@ class DataStore(xr.Dataset):
                                  store_tmpf='TMPF',
                                  store_tmpb='TMPB',
                                  store_p_cov='p_cov',
-                                 store_p_sol='p_val',
+                                 store_p_val='p_val',
                                  variance_suffix='_var',
                                  method='ols',
-                                 store_tempvar=None,
-                                 conf_ints=None,
-                                 conf_ints_size=100,
-                                 ci_avg_time_flag=False,
                                  solver='sparse',
-                                 da_random_state=None,
                                  dtype=None,
                                  nt=None,
                                  z=None,
-                                 p_sol=None,
+                                 p_val=None,
                                  p_var=None,
                                  p_cov=None):
         """
 
         Parameters
         ----------
+        store_p_cov
+        store_p_val
+        dtype
+        nt
+        z
+        p_val
+        p_var
+        p_cov
         sections : dict, optional
         st_label : str
             Label of the forward stokes measurement
@@ -842,20 +857,6 @@ class DataStore(xr.Dataset):
             String appended for storing the variance. Only used when method is wls.
         method : {'ols', 'wls'}
             Use 'ols' for ordinary least squares and 'wls' for weighted least squares
-        store_tempvar : str
-            If defined, the variance of the error is calculated
-        conf_ints : iterable object of float, optional
-            A list with the confidence boundaries that are calculated. E.g., to cal
-        conf_ints_size : int, optional
-            Size of the monte carlo parameter set used to calculate the confidence interval
-        ci_avg_time_flag : bool, optional
-            The confidence intervals differ per time step. If you would like to calculate confidence
-            intervals of all time steps together. ‘We can say with 95% confidence that the
-            temperature remained between this line and this line during the entire measurement
-            period’.
-        da_random_state : dask.array.random.RandomState
-            The seed for dask. Makes random not so random. To produce reproducable results for
-            testing environments.
         solver : {'sparse', 'stats'}
             Either use the homemade weighted sparse solver or the weighted dense matrix solver of
             statsmodels
@@ -896,17 +897,17 @@ class DataStore(xr.Dataset):
                 for vari in [st_var, ast_var, rst_var, rast_var]:
                     assert isinstance(vari, float)
 
-                nt, z, p_sol, p_var, p_cov = calibration_double_ended_wls(
+                nt, z, p_val, p_var, p_cov = calibration_double_ended_wls(
                     self, st_label, ast_label, rst_label, rast_label,
                     st_var, ast_var, rst_var, rast_var, solver=solver, dtype=dtype)
             else:
-                for input_item in [nt, z, p_sol, p_var, p_cov]:
+                for input_item in [nt, z, p_val, p_var, p_cov]:
                     assert input_item is not None
 
-            gamma = p_sol[0]
-            alphaint = p_sol[1]
-            c = p_sol[2:nt + 2]
-            alpha = p_sol[nt + 2:]
+            gamma = p_val[0]
+            alphaint = p_val[1]
+            c = p_val[2:nt + 2]
+            alpha = p_val[nt + 2:]
 
             # Estimate of the standard error - sqrt(diag of the COV matrix) - is not squared
             gammavar = p_var[0]
@@ -944,47 +945,20 @@ class DataStore(xr.Dataset):
                           + c - alpha[:, None] + alphaint) - 273.15
             self[store_tmpb] = (('x', 'time'), tempB_data)
 
-        if store_p_sol and (method == 'wls' or method == 'external'):
-            self[store_p_sol] = (('params1',), p_sol)
-            _p_sol = store_p_sol
-        elif method == 'wls' or method == 'external':
-            _p_sol = p_sol
+        if store_p_val and (method == 'wls' or method == 'external'):
+            self[store_p_val] = (('params1',), p_val)
         else:
-            _p_sol = None
+            pass
 
         if store_p_cov and (method == 'wls' or method == 'external'):
             self[store_p_cov] = (('params1', 'params2'), p_cov)
-            _p_cov = store_p_cov
-        elif method == 'wls' or method == 'external':
-            _p_cov = p_cov
         else:
-            _p_cov = None
-
-        if conf_ints:
-            assert method == 'wls' or method == 'external'
-            self.conf_int_double_ended(
-                p_sol=_p_sol,
-                p_cov=_p_cov,
-                st_label=st_label,
-                ast_label=ast_label,
-                rst_label=rst_label,
-                rast_label=rast_label,
-                st_var=st_var,
-                ast_var=ast_var,
-                rst_var=rst_var,
-                rast_var=rast_var,
-                store_tmpf=store_tmpf,
-                store_tmpb=store_tmpb,
-                store_tempvar=store_tempvar,
-                conf_ints=conf_ints,
-                conf_ints_size=conf_ints_size,
-                ci_avg_time_flag=ci_avg_time_flag,
-                da_random_state=da_random_state)
+            pass
 
         pass
 
     def conf_int_single_ended(self,
-                              p_sol,
+                              p_val,
                               p_cov,
                               st_label='ST',
                               ast_label='AST',
@@ -995,8 +969,49 @@ class DataStore(xr.Dataset):
                               conf_ints=None,
                               conf_ints_size=100,
                               ci_avg_time_flag=False,
-                              da_random_state=None
+                              da_random_state=None,
+                              remove_mc_set_flag=True
                               ):
+        """
+
+        Parameters
+        ----------
+        p_val : array-like or string
+            parameter solution directly from calibration_double_ended_wls
+        p_cov : array-like or string
+            parameter covariance at the solution directly from calibration_double_ended_wls
+        st_label : str
+            Key of the forward Stokes
+        ast_label : str
+            Key of the forward anti-Stokes
+        st_var : float
+            Float of the variance of the Stokes signal
+        ast_var : float
+            Float of the variance of the anti-Stokes signal
+        store_tmpf : str
+            Key of how to store the Forward calculated temperature. Is calculated using the
+            forward Stokes and anti-Stokes observations.
+        store_tempvar : str
+            a string that is appended to the store_tmp_ keys. and the variance is calculated
+            for those store_tmp_ keys
+        conf_ints : iterable object of float
+            A list with the confidence boundaries that are calculated. Valid values are between
+            [0, 1].
+        conf_ints_size : int
+            Size of the monte carlo parameter set used to calculate the confidence interval
+        ci_avg_time_flag : bool
+            The confidence intervals differ per time step. If you would like to calculate confidence
+            intervals of all time steps together. ‘We can say with 95% confidence that the
+            temperature remained between this line and this line during the entire measurement
+            period’.
+        da_random_state
+            For testing purposes. Similar to random seed. The seed for dask.
+            Makes random not so random. To produce reproducable results for
+            testing environments.
+        remove_mc_set_flag : bool
+            Remove the monte carlo data set, from which the CI and the variance are calculated.
+        """
+
         assert conf_ints
 
         if da_random_state:
@@ -1007,17 +1022,17 @@ class DataStore(xr.Dataset):
         no, nt = self[st_label].data.shape
         npar = nt + 2  # number of parameters
 
-        assert isinstance(p_sol, (str, np.ndarray, np.generic))
-        if isinstance(p_sol, str):
-            p_sol = self[p_sol].data
-        assert p_sol.shape == (npar,)
+        assert isinstance(p_val, (str, np.ndarray, np.generic))
+        if isinstance(p_val, str):
+            p_val = self[p_val].data
+        assert p_val.shape == (npar,)
 
         assert isinstance(p_cov, (str, np.ndarray, np.generic))
         if isinstance(p_cov, str):
             p_cov = self[p_cov].data
         assert p_cov.shape == (npar, npar)
 
-        p_mc = sst.multivariate_normal.rvs(mean=p_sol,
+        p_mc = sst.multivariate_normal.rvs(mean=p_val,
                                            cov=p_cov,
                                            size=conf_ints_size)
         self.coords['MC'] = range(conf_ints_size)
@@ -1057,16 +1072,6 @@ class DataStore(xr.Dataset):
             self['r_st'] / self['r_ast']) + self['c_MC'] + self[
                                                            'dalpha_MC'] * self.x) - 273.15
 
-        del p_mc
-        drop_var = ['gamma_MC',
-                    'dalpha_MC',
-                    'c_MC',
-                    'MC',
-                    'r_st',
-                    'r_ast']
-        for k in drop_var:
-            del self[k]
-
         if ci_avg_time_flag:
             avg_dims = ['MC', 'time']
         else:
@@ -1074,9 +1079,8 @@ class DataStore(xr.Dataset):
 
         avg_axis = self[store_tmpf + '_MC'].get_axis_num(avg_dims)
 
-        if store_tempvar:
-            self[store_tmpf + '_MC' + store_tempvar] = (self[store_tmpf + '_MC'] - self[
-                store_tmpf]).std(dim=avg_dims) ** 2
+        self[store_tmpf + '_MC' + store_tempvar] = (self[store_tmpf + '_MC'] - self[
+            store_tmpf]).std(dim=avg_dims) ** 2
 
         if ci_avg_time_flag:
             new_chunks = ((len(conf_ints),),) + self[store_tmpf + '_MC'].chunks[1]
@@ -1090,8 +1094,20 @@ class DataStore(xr.Dataset):
             new_axis=0)  # The new CI dimension is added as first axis
         self[store_tmpf + '_MC'] = (('CI', 'x', 'time'), q)
 
+        if remove_mc_set_flag:
+            drop_var = ['gamma_MC',
+                        'dalpha_MC',
+                        'c_MC',
+                        'MC',
+                        'r_st',
+                        'r_ast']
+            for k in drop_var:
+                del self[k]
+
+        pass
+
     def conf_int_double_ended(self,
-                              p_sol=None,
+                              p_val=None,
                               p_cov=None,
                               st_label='ST',
                               ast_label='AST',
@@ -1103,38 +1119,67 @@ class DataStore(xr.Dataset):
                               rast_var=None,
                               store_tmpf='TMPF',
                               store_tmpb='TMPB',
+                              store_tmpw='TMPW',
                               store_tempvar='_var',
                               conf_ints=None,
                               conf_ints_size=100,
                               ci_avg_time_flag=False,
-                              da_random_state=None):
+                              da_random_state=None,
+                              remove_mc_set_flag=True):
         """
 
         Parameters
         ----------
-        p_sol : array-like or string
+        p_val : array-like or string
             parameter solution directly from calibration_double_ended_wls
         p_cov : array-like or string
             parameter covariance at the solution directly from calibration_double_ended_wls
-        st_label
-        ast_label
-        rst_label
-        rast_label
-        st_var
-        ast_var
-        rst_var
-        rast_var
-        store_c
-        store_gamma
-        store_alphaint
-        store_alpha
-        store_tmpf
-        store_tmpb
-        store_tempvar
-        conf_ints
-        conf_ints_size
-        ci_avg_time_flag
+        st_label : str
+            Key of the forward Stokes
+        ast_label : str
+            Key of the forward anti-Stokes
+        rst_label : str
+            Key of the backward Stokes
+        rast_label : str
+            Key of the backward anti-Stokes
+        st_var : float
+            Float of the variance of the Stokes signal
+        ast_var : float
+            Float of the variance of the anti-Stokes signal
+        rst_var : float
+            Float of the variance of the backward Stokes signal
+        rast_var : float
+            Float of the variance of the backward anti-Stokes signal
+        store_tmpf : str
+            Key of how to store the Forward calculated temperature. Is calculated using the
+            forward Stokes and anti-Stokes observations.
+        store_tmpb : str
+            Key of how to store the Backward calculated temperature. Is calculated using the
+            backward Stokes and anti-Stokes observations.
+        store_tmpw : str
+            Key of how to store the forward-backward-weighted temperature. First, the variance of
+            TMPF and TMPB are calculated. The Monte Carlo set of TMPF and TMPB are averaged,
+            weighted by their variance. The median of this set is thought to be the a reasonable
+            estimate of the temperature
+        store_tempvar : str
+            a string that is appended to the store_tmp_ keys. and the variance is calculated
+            for those store_tmp_ keys
+        conf_ints : iterable object of float
+            A list with the confidence boundaries that are calculated. Valid values are between
+            [0, 1].
+        conf_ints_size : int
+            Size of the monte carlo parameter set used to calculate the confidence interval
+        ci_avg_time_flag : bool
+            The confidence intervals differ per time step. If you would like to calculate confidence
+            intervals of all time steps together. ‘We can say with 95% confidence that the
+            temperature remained between this line and this line during the entire measurement
+            period’.
         da_random_state
+            For testing purposes. Similar to random seed. The seed for dask.
+            Makes random not so random. To produce reproducable results for
+            testing environments.
+        remove_mc_set_flag : bool
+            Remove the monte carlo data set, from which the CI and the variance are calculated.
 
         Returns
         -------
@@ -1152,17 +1197,17 @@ class DataStore(xr.Dataset):
         no, nt = self[st_label].data.shape
         npar = nt + 2 + no  # number of parameters
 
-        assert isinstance(p_sol, (str, np.ndarray, np.generic))
-        if isinstance(p_sol, str):
-            p_sol = self[p_sol].data
-        assert p_sol.shape == (npar,)
+        assert isinstance(p_val, (str, np.ndarray, np.generic))
+        if isinstance(p_val, str):
+            p_val = self[p_val].data
+        assert p_val.shape == (npar,)
 
         assert isinstance(p_cov, (str, np.ndarray, np.generic))
         if isinstance(p_cov, str):
             p_cov = self[p_cov].data
         assert p_cov.shape == (npar, npar)
 
-        p_mc = sst.multivariate_normal.rvs(mean=p_sol,
+        p_mc = sst.multivariate_normal.rvs(mean=p_val,
                                            cov=p_cov,
                                            size=conf_ints_size)  # this one takes long
         self.coords['MC'] = range(conf_ints_size)
@@ -1203,58 +1248,93 @@ class DataStore(xr.Dataset):
         self['alpha_MC'] = (('MC', 'x',), alpha)
         self['c_MC'] = (('MC', 'time',), c)
 
-        self[store_tmpf + '_MC'] = self['gamma_MC'] / (xr.ufuncs.log(
+        self[store_tmpf + '_MC_set'] = self['gamma_MC'] / (xr.ufuncs.log(
             self['r_st'] / self['r_ast']) + self['c_MC'] + self[
                                                            'alpha_MC']) - 273.15
-        self[store_tmpb + '_MC'] = self['gamma_MC'] / (xr.ufuncs.log(
+        self[store_tmpb + '_MC_set'] = self['gamma_MC'] / (xr.ufuncs.log(
             self['r_rst'] / self['r_rast']) + self['c_MC'] - self[
                                                            'alpha_MC'] + self[
                                                            'alphaint_MC']) - 273.15
-
-        del p_mc
-        drop_var = ['gamma_MC',
-                    'alphaint_MC',
-                    'alpha_MC',
-                    'c_MC',
-                    'MC',
-                    'r_st',
-                    'r_ast',
-                    'r_rst',
-                    'r_rast']
-        for k in drop_var:
-            del self[k]
 
         if ci_avg_time_flag:
             avg_dims = ['MC', 'time']
         else:
             avg_dims = ['MC']
 
-        avg_axis = self[store_tmpf + '_MC'].get_axis_num(avg_dims)
+        avg_axis = self[store_tmpf + '_MC_set'].get_axis_num(avg_dims)
 
-        if store_tempvar:
-            self[store_tmpf + '_MC' + store_tempvar] = (self[store_tmpf + '_MC'] - self[
-                store_tmpf]).std(dim=avg_dims) ** 2
-            self[store_tmpb + '_MC' + store_tempvar] = (self[store_tmpb + '_MC'] - self[
-                store_tmpb]).std(dim=avg_dims) ** 2
+        self[store_tmpf + '_MC' + store_tempvar] = (self[store_tmpf + '_MC_set'] - self[
+            store_tmpf]).std(dim=avg_dims) ** 2
+        self[store_tmpb + '_MC' + store_tempvar] = (self[store_tmpb + '_MC_set'] - self[
+            store_tmpb]).std(dim=avg_dims) ** 2
 
         if ci_avg_time_flag:
-            new_chunks = ((len(conf_ints),),) + self[store_tmpf + '_MC'].chunks[1]
+            new_chunks = ((len(conf_ints),),) + self[store_tmpf + '_MC_set'].chunks[1]
         else:
-            new_chunks = ((len(conf_ints),),) + self[store_tmpf + '_MC'].chunks[1:]
+            new_chunks = ((len(conf_ints),),) + self[store_tmpf + '_MC_set'].chunks[1:]
 
-        q = self[store_tmpf + '_MC'].data.map_blocks(
+        q = self[store_tmpf + '_MC_set'].data.map_blocks(
             lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
             chunks=new_chunks,  #
             drop_axis=avg_axis,  # avg dimesnions are dropped from input arr
             new_axis=0)  # The new CI dimension is added as first axis
         self[store_tmpf + '_MC'] = (('CI', 'x', 'time'), q)
 
-        q = self[store_tmpb + '_MC'].data.map_blocks(
+        q = self[store_tmpb + '_MC_set'].data.map_blocks(
             lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
             chunks=new_chunks,  #
             drop_axis=avg_axis,  # avg dimesnions are dropped from input arr
             new_axis=0)  # The new CI dimension is added as first axis
         self[store_tmpb + '_MC'] = (('CI', 'x', 'time'), q)
+
+        # Calculate the weighted MC_set
+        weightf = 1 / (1 / self[store_tmpf + '_MC' + store_tempvar] +
+                       1 / self[store_tmpb + '_MC' + store_tempvar]) / \
+            self[store_tmpf + '_MC' + store_tempvar]
+
+        weightb = 1 / (1 / self[store_tmpf + '_MC' + store_tempvar] +
+                       1 / self[store_tmpb + '_MC' + store_tempvar]) / \
+            self[store_tmpb + '_MC' + store_tempvar]
+
+        # np.testing.assert_almost_equal(np.all(weightf + weightb), 1)
+
+        self[store_tmpw + '_MC_set'] = (weightf * self[store_tmpf + '_MC_set'] +
+                                        weightb * self[store_tmpb + '_MC_set']
+                                        ).transpose('MC', 'x', 'time')
+
+        # Calculate the CI of the weighted MC_set
+        q = self[store_tmpw + '_MC_set'].data.map_blocks(
+            lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
+            chunks=new_chunks,  #
+            drop_axis=avg_axis,  # avg dimensions are dropped from input arr
+            new_axis=0)  # The new CI dimension is added as first axis
+        self[store_tmpw + '_MC'] = (('CI', 'x', 'time'), q)
+
+        # Calculate the median of the weighted MC_set
+        self[store_tmpw] = (('x', 'time'), self[store_tmpw + '_MC_set'].mean(dim='MC').data)
+
+        # Calculate the variance of the weighted MC_set
+        self[store_tmpw + '_MC' + store_tempvar] = (self[store_tmpw + '_MC_set'] - self[
+            store_tmpw]).std(dim=avg_dims) ** 2
+
+        # Clean up the garbage. All arrays with a Monte Carlo dimension.
+        # remove_MC_set = [k for k, v in self.data_vars.items() if 'MC' in v.dims]
+        if remove_mc_set_flag:
+            remove_MC_set = [
+                'r_st',
+                'r_ast',
+                'r_rst',
+                'r_rast',
+                'gamma_MC',
+                'alphaint_MC',
+                'alpha_MC',
+                'c_MC',
+                'TMPF_MC_set',
+                'TMPB_MC_set',
+                'TMPW_MC_set',
+                'MC']
+            for k in remove_MC_set:
+                del self[k]
 
     def ufunc_per_section(self,
                           func=None,
@@ -1291,10 +1371,30 @@ class DataStore(xr.Dataset):
 
         if not func:
             def func(a):
+                """
+
+                Parameters
+                ----------
+                a
+
+                Returns
+                -------
+
+                """
                 return a
 
         elif isinstance(func, str) and func == 'var':
             def func(a):
+                """
+
+                Parameters
+                ----------
+                a
+
+                Returns
+                -------
+
+                """
                 return np.std(a) ** 2
 
         else:
@@ -1544,7 +1644,6 @@ def read_sensornet_files(
     timezone_netcdf='UTC',
     timezone_input_files='UTC',
     silent=False,
-    load_in_memory='auto',
         **kwargs):
 
     """Read a folder with measurement files. Each measurement file contains
@@ -1567,8 +1666,6 @@ def read_sensornet_files(
         file extension of the measurement files
     silent : bool
         If set tot True, some verbose texts are not printed to stdout/screen
-    load_in_memory : {'auto', True, False}
-        If 'auto' the Stokes data is only loaded to memory for small files
     kwargs : dict-like, optional
         keyword-arguments are passed to DataStore initialization
 

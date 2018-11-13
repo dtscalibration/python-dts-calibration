@@ -49,7 +49,7 @@ calculated.
     4 recorded vars were found: LAF, ST, AST, TMP
     Recorded at 1461 points along the cable
     The measurement is single ended
-    
+
 
 .. code:: ipython3
 
@@ -88,20 +88,6 @@ calculated.
                 String appended for storing the variance. Only used when method is wls.
             method : {'ols', 'wls'}
                 Use 'ols' for ordinary least squares and 'wls' for weighted least squares
-            store_tempvar : str
-                If defined, the variance of the error is calculated
-            conf_ints : iterable object of float, optional
-                A list with the confidence boundaries that are calculated. E.g., to cal
-            conf_ints_size : int, optional
-                Size of the monte carlo parameter set used to calculate the confidence interval
-            ci_avg_time_flag : bool, optional
-                The confidence intervals differ per time step. If you would like to calculate confidence
-                intervals of all time steps together. ‘We can say with 95% confidence that the
-                temperature remained between this line and this line during the entire measurement
-                period’.
-            da_random_state : dask.array.random.RandomState
-                The seed for dask. Makes random not so random. To produce reproducable results for
-                testing environments.
             solver : {'sparse', 'stats'}
                 Either use the homemade weighted sparse solver or the weighted dense matrix solver of
                 statsmodels
@@ -110,7 +96,7 @@ calculated.
             -------
     
             
-    
+
 
 .. code:: ipython3
 
@@ -137,17 +123,17 @@ calculated.
          2  4.81999e+02   1.868e-02  1.868e-02    4.4e-03  3.4e-02   3.1e+02  7.1e+01
          3  4.81999e+02   6.248e-03  6.248e-03    1.5e-03  2.7e-05   3.1e+02  7.6e+01
          4  4.81999e+02   6.248e-03  6.248e-03    1.5e-03  1.2e-08   4.4e+02  1.1e+02
-         5  4.81877e+02   6.248e-03  6.248e-03    1.5e-03  1.6e-08   4.4e+02  8.6e+05
-         6  4.81877e+02   6.248e-03  6.248e-03    1.5e-03  2.3e-08   4.7e+02  9.2e+05
-         7  4.81877e+02   6.248e-03  6.248e-03    1.5e-03  6.8e-09   5.3e+02  1.1e+06
+         5  4.81877e+02   6.248e-03  6.248e-03    1.5e-03  1.5e-08   4.4e+02  8.6e+05
+         6  4.81877e+02   6.248e-03  6.248e-03    1.5e-03  1.1e-08   5.0e+02  9.8e+05
+         7  4.81877e+02   6.248e-03  6.248e-03    1.5e-03  8.0e-09   5.3e+02  1.1e+06
      
     LSQR finished
     The least-squares solution is good enough, given atol     
      
-    istop =       2   r1norm = 6.2e-03   anorm = 5.3e+02   arnorm = 2.3e-08
+    istop =       2   r1norm = 6.2e-03   anorm = 5.3e+02   arnorm = 2.7e-08
     itn   =       7   r2norm = 6.2e-03   acond = 1.1e+06   xnorm  = 2.1e-01
      
-    
+
 
 Lets compare our calibrated values with the device calibration
 
@@ -165,9 +151,10 @@ Lets compare our calibrated values with the device calibration
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x11a76c0b8>
+    <matplotlib.legend.Legend at 0x11337b5f8>
 
 
 
-.. image:: 05Calibrate_single_ols.ipynb_files%5C05Calibrate_single_ols.ipynb_7_1.png
+
+.. image:: 05Calibrate_single_ols.ipynb_files/05Calibrate_single_ols.ipynb_7_1.png
 

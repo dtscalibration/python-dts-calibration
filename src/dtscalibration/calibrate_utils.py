@@ -6,6 +6,19 @@ from scipy.sparse import linalg as ln
 
 
 def calibration_single_ended_ols(ds, st_label, ast_label, dtype=None):
+    """
+
+    Parameters
+    ----------
+    ds
+    st_label
+    ast_label
+    dtype
+
+    Returns
+    -------
+
+    """
     if dtype is None:
         dtype = np.float
 
@@ -61,6 +74,23 @@ def calibration_single_ended_ols(ds, st_label, ast_label, dtype=None):
 
 def calibration_single_ended_wls(ds, st_label, ast_label, st_var, ast_var,
                                  calc_cov=True, dtype=None, solver='sparse'):
+    """
+
+    Parameters
+    ----------
+    ds
+    st_label
+    ast_label
+    st_var
+    ast_var
+    calc_cov
+    dtype
+    solver
+
+    Returns
+    -------
+
+    """
     if dtype is None:
         dtype = np.float
 
@@ -133,7 +163,22 @@ def calibration_single_ended_wls(ds, st_label, ast_label, st_var, ast_var,
 
 def calibration_double_ended_ols(ds, st_label, ast_label, rst_label,
                                  rast_label, verbose=False, dtype=None):
+    """
 
+    Parameters
+    ----------
+    ds
+    st_label
+    ast_label
+    rst_label
+    rast_label
+    verbose
+    dtype
+
+    Returns
+    -------
+
+    """
     if dtype is None:
         dtype = np.float
 
@@ -227,6 +272,8 @@ def calibration_double_ended_wls(ds, st_label, ast_label, rst_label,
 
     Parameters
     ----------
+    dtype
+    verbose
     ds : DataStore
     st_label
     ast_label
@@ -385,6 +432,22 @@ def calibration_double_ended_wls(ds, st_label, ast_label, rst_label,
 
 
 def wls_sparse(X, y, w=1., calc_cov=False, dtype=None, verbose=False, **kwargs):
+    """
+
+    Parameters
+    ----------
+    X
+    y
+    w
+    calc_cov
+    dtype
+    verbose
+    kwargs
+
+    Returns
+    -------
+
+    """
     # The var returned by ln.lsqr is normalized by the variance of the error. To
     # obtain the correct variance, it needs to be scaled by the variance of the error.
 
@@ -436,6 +499,20 @@ def wls_sparse(X, y, w=1., calc_cov=False, dtype=None, verbose=False, **kwargs):
 
 
 def wls_stats(X, y, w=1., calc_cov=False, verbose=False):
+    """
+
+    Parameters
+    ----------
+    X
+    y
+    w
+    calc_cov
+    verbose
+
+    Returns
+    -------
+
+    """
     import statsmodels.api as sm
 
     if sp.issparse(X):

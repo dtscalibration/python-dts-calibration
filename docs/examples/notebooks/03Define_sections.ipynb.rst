@@ -34,7 +34,7 @@
     6 recorded vars were found: LAF, ST, AST, REV-ST, REV-AST, TMP
     Recorded at 1693 points along the cable
     The measurement is double ended
-    
+
 
 .. code:: ipython3
 
@@ -45,7 +45,7 @@
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x1144f0cf8>]
+    [<matplotlib.lines.Line2D at 0x11cb7a7b8>]
 
 
 
