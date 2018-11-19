@@ -263,7 +263,7 @@ def calibration_double_ended_ols(ds, st_label, ast_label, rst_label,
     return nt, z, p0
 
 
-def calibration_double_ended_wls(ds, st_label, ast_label, rst_label,
+def calibration_double_ended_wls_old(ds, st_label, ast_label, rst_label,
                                  rast_label, st_var, ast_var, rst_var, rast_var,
                                  calc_cov=True, solver='sparse', dtype=None,
                                  verbose=False):
@@ -382,6 +382,175 @@ def calibration_double_ended_wls(ds, st_label, ast_label, rst_label,
     X = sp.coo_matrix(
         (data, coords),
         shape=(2 * nx * nt + nt * no, nt + 2 + no),
+        dtype=dtype,
+        copy=False)
+
+    # Spooky way to interleave and ravel arrays in correct order. Works!
+    y1F = da.log(st / ast).T.ravel()
+    y1B = da.log(rst / rast).T.ravel()
+    y1 = da.stack([y1F, y1B]).T.ravel()
+
+    y2F = da.log(ds[st_label].data /
+                 ds[ast_label].data).T.ravel()
+    y2B = da.log(ds[rst_label].data /
+                 ds[rast_label].data).T.ravel()
+    y2 = (y2B - y2F) / 2
+    y = da.concatenate([y1, y2]).astype(dtype).compute()
+
+    assert not np.any(np.isnan(y)), 'There are nan values in the measured (anti-) Stokes'
+
+    # Calculate the reprocical of the variance (not std)
+    w1F = (1 / st ** 2 * st_var +
+           1 / ast ** 2 * ast_var
+           ).T.ravel()
+    w1B = (1 / rst ** 2 * rst_var +
+           1 / rast ** 2 * rast_var
+           ).T.ravel()
+    w1 = da.stack([w1F, w1B]).T.ravel()
+
+    w2 = (0.5 / ds[st_label].data ** 2 * st_var +
+          0.5 / ds[ast_label].data ** 2 * ast_var +
+          0.5 / ds[rst_label].data ** 2 * rst_var +
+          0.5 / ds[rast_label].data ** 2 * rast_var
+          ).T.ravel()
+    w = da.concatenate([w1, w2]).astype(dtype).compute()
+
+    if solver == 'sparse':
+        p_sol, p_var, p_cov = wls_sparse(X, y, w=w, x0=p0_est, calc_cov=calc_cov, dtype=dtype,
+                                         verbose=verbose)
+
+    elif solver == 'stats':
+        p_sol, p_var, p_cov = wls_stats(X, y, w=w, calc_cov=calc_cov, verbose=verbose)
+
+    elif solver == 'external':
+        return X, y, w, p0_est
+
+    if calc_cov:
+        return nt, z, p_sol, p_var, p_cov
+    else:
+        return nt, z, p_sol, p_var
+
+
+def calibration_double_ended_wls(ds, st_label, ast_label, rst_label,
+                                 rast_label, st_var, ast_var, rst_var, rast_var,
+                                 calc_cov=True, solver='sparse', dtype=None,
+                                 verbose=False):
+    """
+
+
+    Parameters
+    ----------
+    dtype
+    verbose
+    ds : DataStore
+    st_label
+    ast_label
+    rst_label
+    rast_label
+    st_var
+    ast_var
+    rst_var
+    rast_var
+    calc_cov
+    solver : {'sparse', 'stats'}
+
+    Returns
+    -------
+
+    """
+
+    # x_alpha_set_zero=0.,
+    # set one alpha for all times to zero
+    # x_alpha_set_zeroi = np.argmin(np.abs(ds.x.data - x_alpha_set_zero))
+    # x_alpha_set_zeroidata = np.arange(nt) * no + x_alpha_set_zeroi
+
+    if dtype is None:
+        dtype = np.float
+
+    cal_ref = ds.ufunc_per_section(label=st_label,
+                                   ref_temp_broadcasted=True,
+                                   calc_per='all')
+
+    st = ds.ufunc_per_section(label=st_label, calc_per='all')
+    ast = ds.ufunc_per_section(label=ast_label, calc_per='all')
+    rst = ds.ufunc_per_section(label=rst_label, calc_per='all')
+    rast = ds.ufunc_per_section(label=rast_label, calc_per='all')
+    z = ds.ufunc_per_section(label='x', calc_per='all')
+
+    assert not np.any(st <= 0.), 'There is uncontrolled noise in the ST signal'
+    assert not np.any(ast <= 0.), 'There is uncontrolled noise in the AST signal'
+    assert not np.any(rst <= 0.), 'There is uncontrolled noise in the REV-ST signal'
+    assert not np.any(rast <= 0.), 'There is uncontrolled noise in the REV-AST signal'
+
+    nx = z.size
+
+    _xsorted = np.argsort(ds.x.data)
+    _ypos = np.searchsorted(ds.x.data[_xsorted], z)
+    x_index = _xsorted[_ypos]
+
+    no, nt = ds[st_label].data.shape
+
+    p0_est = np.asarray([482.] + nt * [1.4] + no * [0.])
+
+    # Data for F and B temperature, 2 * nt * nx items
+    data1 = da.repeat(1 / (cal_ref.T.ravel().astype(dtype) + 273.15), 2)  # gamma
+    # data2 = da.tile(np.array([0., -1.]), nt * nx)  # alphaint
+    # data2 = da.stack((da.zeros(nt * nx, chunks=nt * nx, dtype=dtype),
+    #                   -da.ones(nt * nx, chunks=nt * nx, dtype=dtype))
+    #                  ).T.ravel()
+    # data3 = da.tile(np.array([-1., -1.]), nt * nx)  # C
+    data3 = -da.ones(2 * nt * nx, chunks=2 * nt * nx, dtype=dtype)
+    # data5 = da.tile(np.array([-1., 1.]), nt * nx)  # alph
+    data5 = da.stack((-da.ones(nt * nx, chunks=nt * nx, dtype=dtype),
+                      da.ones(nt * nx, chunks=nt * nx, dtype=dtype))
+                     ).T.ravel()
+
+    # Data for alpha, nt * no items
+    # data6 = da.repeat(np.array([-0.5]), nt * no)  # alphaint
+    # data6 = da.ones(nt * no, dtype=dtype, chunks=(nt * no,)) * -0.5  # alphaint
+    data9 = da.ones(nt * no, dtype=dtype, chunks=(nt * no,))  # alpha
+
+    # alpha should start at zero. But then the sparse solver crashes
+    # data9[x_alpha_set_zeroidata] = 0.
+
+    data = da.concatenate(
+        [data1, data3, data5, data9]
+        ).astype(dtype).compute()
+
+    # Coords (irow, icol)
+    coord1row = da.arange(2 * nt * nx, dtype=int, chunks=(nt * nx,))  # gamma
+    # coord2row = da.arange(2 * nt * nx, dtype=int, chunks=(nt * nx,))  # alphaint
+    coord3row = da.arange(2 * nt * nx, dtype=int, chunks=(nt * nx,))  # C
+    coord5row = da.arange(2 * nt * nx, dtype=int, chunks=(nt * nx,))  # alpha
+
+    # coord6row = da.arange(2 * nt * nx,
+    #                       2 * nt * nx + nt * no,
+    #                       dtype=int,
+    #                       chunks=(nt * no,))  # alphaint
+    coord9row = da.arange(2 * nt * nx,
+                          2 * nt * nx + nt * no,
+                          dtype=int,
+                          chunks=(nt * no,))  # alpha
+
+    coord1col = da.zeros(2 * nt * nx, dtype=int, chunks=(nt * nx,))  # gamma
+    # coord2col = da.ones(2 * nt * nx, dtype=int, chunks=(nt * nx,)) * (2 + nt + no - 1)  # alphaint
+    coord3col = da.repeat(da.arange(nt, dtype=int, chunks=(nt,)) + 1, 2 * nx).rechunk(nt * nx)  # C
+    coord5col = da.tile(np.repeat(x_index, 2) + nt + 1, nt).rechunk(nt * nx)  # alpha
+
+    # coord6col = da.ones(nt * no, dtype=int, chunks=(nt * no,))  # * (2 + nt + no - 1)  # alphaint
+    coord9col = da.tile(da.arange(no, dtype=int, chunks=(nt * no,)) + nt + 1, nt)  # alpha
+
+    rows = [coord1row, coord3row,
+            coord5row, coord9row]
+    cols = [coord1col, coord3col,
+            coord5col, coord9col]
+    coords = (da.concatenate(rows).compute(),
+              da.concatenate(cols).compute())
+
+    # try scipy.sparse.bsr_matrix
+    X = sp.coo_matrix(
+        (data, coords),
+        shape=(2 * nx * nt + nt * no, nt + 1 + no),
         dtype=dtype,
         copy=False)
 
