@@ -45,7 +45,7 @@
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x11cb7a7b8>]
+    [<matplotlib.lines.Line2D at 0x11be1f8d0>]
 
 
 
