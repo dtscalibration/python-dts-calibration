@@ -786,181 +786,181 @@ class DataStore(xr.Dataset):
 
         pass
 
-    def calibration_double_ended_old(self,
-                                 sections=None,
-                                 st_label='ST',
-                                 ast_label='AST',
-                                 rst_label='REV-ST',
-                                 rast_label='REV-AST',
-                                 st_var=None,
-                                 ast_var=None,
-                                 rst_var=None,
-                                 rast_var=None,
-                                 store_c='c',
-                                 store_gamma='gamma',
-                                 store_alphaint='alphaint',
-                                 store_alpha='alpha',
-                                 store_tmpf='TMPF',
-                                 store_tmpb='TMPB',
-                                 store_p_cov='p_cov',
-                                 store_p_val='p_val',
-                                 variance_suffix='_var',
-                                 method='ols',
-                                 solver='sparse',
-                                 dtype=None,
-                                 nt=None,
-                                 z=None,
-                                 p_val=None,
-                                 p_var=None,
-                                 p_cov=None):
-        """
-
-        Parameters
-        ----------
-        store_p_cov
-        store_p_val
-        dtype
-        nt
-        z
-        p_val
-        p_var
-        p_cov
-        sections : dict, optional
-        st_label : str
-            Label of the forward stokes measurement
-        ast_label : str
-            Label of the anti-Stoke measurement
-        rst_label : str
-            Label of the reversed Stoke measurement
-        rast_label : str
-            Label of the reversed anti-Stoke measurement
-        st_var : float, optional
-            The variance of the measurement noise of the Stokes signals in the forward
-            direction Required if method is wls.
-        ast_var : float, optional
-            The variance of the measurement noise of the anti-Stokes signals in the forward
-            direction. Required if method is wls.
-        rst_var : float, optional
-            The variance of the measurement noise of the Stokes signals in the backward
-            direction. Required if method is wls.
-        rast_var : float, optional
-            The variance of the measurement noise of the anti-Stokes signals in the backward
-            direction. Required if method is wls.
-        store_c : str
-            Label of where to store C
-        store_gamma : str
-            Label of where to store gamma
-        store_alphaint : str
-            Label of where to store alphaint
-        store_alpha : str
-            Label of where to store alpha
-        store_tmpf : str
-            Label of where to store the calibrated temperature of the forward direction
-        store_tmpb : str
-            Label of where to store the calibrated temperature of the backward direction
-        variance_suffix : str, optional
-            String appended for storing the variance. Only used when method is wls.
-        method : {'ols', 'wls', 'external'}
-            Use 'ols' for ordinary least squares and 'wls' for weighted least squares
-        solver : {'sparse', 'stats'}
-            Either use the homemade weighted sparse solver or the weighted dense matrix solver of
-            statsmodels
-
-        Returns
-        -------
-
-        """
-
-        if sections:
-            self.sections = sections
-        else:
-            assert self.sections, 'sections are not defined'
-
-        check_dims(self,
-                   [st_label, ast_label, rst_label, rast_label],
-                   correct_dims=('x', 'time'))
-
-        if method == 'ols':
-            nt, z, p0_ = calibration_double_ended_ols(
-                self, st_label, ast_label, rst_label, rast_label)
-
-            p0 = p0_[0]
-            gamma = p0[0]
-            alphaint = p0[1]
-            c = p0[2:nt + 2]
-            alpha = p0[nt + 2:]
-
-            # Can not estimate parameter variance with ols
-            gammavar = None
-            alphaintvar = None
-            cvar = None
-            alphavar = None
-
-        elif method == 'wls' or method == 'external':
-            # External is also/always weighted
-            if method == 'wls':
-                for vari in [st_var, ast_var, rst_var, rast_var]:
-                    assert isinstance(vari, float)
-
-                nt, z, p_val, p_var, p_cov = calibration_double_ended_wls(
-                    self, st_label, ast_label, rst_label, rast_label,
-                    st_var, ast_var, rst_var, rast_var, solver=solver, dtype=dtype)
-            else:
-                for input_item in [nt, z, p_val, p_var, p_cov]:
-                    assert input_item is not None
-
-            gamma = p_val[0]
-            alphaint = p_val[1]
-            c = p_val[2:nt + 2]
-            alpha = p_val[nt + 2:]
-
-            # Estimate of the standard error - sqrt(diag of the COV matrix) - is not squared
-            gammavar = p_var[0]
-            alphaintvar = p_var[1]
-            cvar = p_var[2:nt + 2]
-            alphavar = p_var[nt + 2:]
-
-        else:
-            raise ValueError('Choose a valid method')
-
-        # store calibration parameters in DataStore
-        self[store_gamma] = (tuple(), gamma)
-        self[store_alphaint] = (tuple(), alphaint)
-        self[store_alpha] = (('x',), alpha)
-        self[store_c] = (('time',), c)
-
-        # store variances in DataStore
-        if method == 'wls' or method == 'external':
-            self[store_gamma + variance_suffix] = (tuple(), gammavar)
-            self[store_alphaint + variance_suffix] = (tuple(), alphaintvar)
-            self[store_alpha + variance_suffix] = (('x',), alphavar)
-            self[store_c + variance_suffix] = (('time',), cvar)
-
-        # deal with FW
-        if store_tmpf:
-            tempF_data = gamma / \
-                         (np.log(self[st_label].data / self[ast_label].data)
-                          + c + alpha[:, None]) - 273.15
-            self[store_tmpf] = (('x', 'time'), tempF_data)
-
-        # deal with BW
-        if store_tmpb:
-            tempB_data = gamma / \
-                         (np.log(self[rst_label].data / self[rast_label].data)
-                          + c - alpha[:, None] + alphaint) - 273.15
-            self[store_tmpb] = (('x', 'time'), tempB_data)
-
-        if store_p_val and (method == 'wls' or method == 'external'):
-            self[store_p_val] = (('params1',), p_val)
-        else:
-            pass
-
-        if store_p_cov and (method == 'wls' or method == 'external'):
-            self[store_p_cov] = (('params1', 'params2'), p_cov)
-        else:
-            pass
-
-        pass
+    # def calibration_double_ended_old(self,
+    #                              sections=None,
+    #                              st_label='ST',
+    #                              ast_label='AST',
+    #                              rst_label='REV-ST',
+    #                              rast_label='REV-AST',
+    #                              st_var=None,
+    #                              ast_var=None,
+    #                              rst_var=None,
+    #                              rast_var=None,
+    #                              store_c='c',
+    #                              store_gamma='gamma',
+    #                              store_alphaint='alphaint',
+    #                              store_alpha='alpha',
+    #                              store_tmpf='TMPF',
+    #                              store_tmpb='TMPB',
+    #                              store_p_cov='p_cov',
+    #                              store_p_val='p_val',
+    #                              variance_suffix='_var',
+    #                              method='ols',
+    #                              solver='sparse',
+    #                              dtype=None,
+    #                              nt=None,
+    #                              z=None,
+    #                              p_val=None,
+    #                              p_var=None,
+    #                              p_cov=None):
+    #     """
+    #
+    #     Parameters
+    #     ----------
+    #     store_p_cov
+    #     store_p_val
+    #     dtype
+    #     nt
+    #     z
+    #     p_val
+    #     p_var
+    #     p_cov
+    #     sections : dict, optional
+    #     st_label : str
+    #         Label of the forward stokes measurement
+    #     ast_label : str
+    #         Label of the anti-Stoke measurement
+    #     rst_label : str
+    #         Label of the reversed Stoke measurement
+    #     rast_label : str
+    #         Label of the reversed anti-Stoke measurement
+    #     st_var : float, optional
+    #         The variance of the measurement noise of the Stokes signals in the forward
+    #         direction Required if method is wls.
+    #     ast_var : float, optional
+    #         The variance of the measurement noise of the anti-Stokes signals in the forward
+    #         direction. Required if method is wls.
+    #     rst_var : float, optional
+    #         The variance of the measurement noise of the Stokes signals in the backward
+    #         direction. Required if method is wls.
+    #     rast_var : float, optional
+    #         The variance of the measurement noise of the anti-Stokes signals in the backward
+    #         direction. Required if method is wls.
+    #     store_c : str
+    #         Label of where to store C
+    #     store_gamma : str
+    #         Label of where to store gamma
+    #     store_alphaint : str
+    #         Label of where to store alphaint
+    #     store_alpha : str
+    #         Label of where to store alpha
+    #     store_tmpf : str
+    #         Label of where to store the calibrated temperature of the forward direction
+    #     store_tmpb : str
+    #         Label of where to store the calibrated temperature of the backward direction
+    #     variance_suffix : str, optional
+    #         String appended for storing the variance. Only used when method is wls.
+    #     method : {'ols', 'wls', 'external'}
+    #         Use 'ols' for ordinary least squares and 'wls' for weighted least squares
+    #     solver : {'sparse', 'stats'}
+    #         Either use the homemade weighted sparse solver or the weighted dense matrix solver of
+    #         statsmodels
+    #
+    #     Returns
+    #     -------
+    #
+    #     """
+    #
+    #     if sections:
+    #         self.sections = sections
+    #     else:
+    #         assert self.sections, 'sections are not defined'
+    #
+    #     check_dims(self,
+    #                [st_label, ast_label, rst_label, rast_label],
+    #                correct_dims=('x', 'time'))
+    #
+    #     if method == 'ols':
+    #         nt, z, p0_ = calibration_double_ended_ols(
+    #             self, st_label, ast_label, rst_label, rast_label)
+    #
+    #         p0 = p0_[0]
+    #         gamma = p0[0]
+    #         alphaint = p0[1]
+    #         c = p0[2:nt + 2]
+    #         alpha = p0[nt + 2:]
+    #
+    #         # Can not estimate parameter variance with ols
+    #         gammavar = None
+    #         alphaintvar = None
+    #         cvar = None
+    #         alphavar = None
+    #
+    #     elif method == 'wls' or method == 'external':
+    #         # External is also/always weighted
+    #         if method == 'wls':
+    #             for vari in [st_var, ast_var, rst_var, rast_var]:
+    #                 assert isinstance(vari, float)
+    #
+    #             nt, z, p_val, p_var, p_cov = calibration_double_ended_wls(
+    #                 self, st_label, ast_label, rst_label, rast_label,
+    #                 st_var, ast_var, rst_var, rast_var, solver=solver, dtype=dtype)
+    #         else:
+    #             for input_item in [nt, z, p_val, p_var, p_cov]:
+    #                 assert input_item is not None
+    #
+    #         gamma = p_val[0]
+    #         alphaint = p_val[1]
+    #         c = p_val[2:nt + 2]
+    #         alpha = p_val[nt + 2:]
+    #
+    #         # Estimate of the standard error - sqrt(diag of the COV matrix) - is not squared
+    #         gammavar = p_var[0]
+    #         alphaintvar = p_var[1]
+    #         cvar = p_var[2:nt + 2]
+    #         alphavar = p_var[nt + 2:]
+    #
+    #     else:
+    #         raise ValueError('Choose a valid method')
+    #
+    #     # store calibration parameters in DataStore
+    #     self[store_gamma] = (tuple(), gamma)
+    #     self[store_alphaint] = (tuple(), alphaint)
+    #     self[store_alpha] = (('x',), alpha)
+    #     self[store_c] = (('time',), c)
+    #
+    #     # store variances in DataStore
+    #     if method == 'wls' or method == 'external':
+    #         self[store_gamma + variance_suffix] = (tuple(), gammavar)
+    #         self[store_alphaint + variance_suffix] = (tuple(), alphaintvar)
+    #         self[store_alpha + variance_suffix] = (('x',), alphavar)
+    #         self[store_c + variance_suffix] = (('time',), cvar)
+    #
+    #     # deal with FW
+    #     if store_tmpf:
+    #         tempF_data = gamma / \
+    #                      (np.log(self[st_label].data / self[ast_label].data)
+    #                       + c + alpha[:, None]) - 273.15
+    #         self[store_tmpf] = (('x', 'time'), tempF_data)
+    #
+    #     # deal with BW
+    #     if store_tmpb:
+    #         tempB_data = gamma / \
+    #                      (np.log(self[rst_label].data / self[rast_label].data)
+    #                       + c - alpha[:, None] + alphaint) - 273.15
+    #         self[store_tmpb] = (('x', 'time'), tempB_data)
+    #
+    #     if store_p_val and (method == 'wls' or method == 'external'):
+    #         self[store_p_val] = (('params1',), p_val)
+    #     else:
+    #         pass
+    #
+    #     if store_p_cov and (method == 'wls' or method == 'external'):
+    #         self[store_p_cov] = (('params1', 'params2'), p_cov)
+    #     else:
+    #         pass
+    #
+    #     pass
 
     def calibration_double_ended(self,
                                  sections=None,
