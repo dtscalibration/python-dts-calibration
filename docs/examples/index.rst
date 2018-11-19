@@ -10,3 +10,4 @@ Learn by Examples
     notebooks/06Calibrate_double_ols.ipynb.rst
     notebooks/07Calibrate_single_wls.ipynb.rst
     notebooks/08Calibrate_double_wls.ipynb.rst
+    notebooks/09Import_timeseries.ipynb.rst
