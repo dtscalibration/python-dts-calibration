@@ -66,6 +66,7 @@
     
             Parameters
             ----------
+            reshape_residuals
             use_statsmodels
             suppress_info
             st_label : str

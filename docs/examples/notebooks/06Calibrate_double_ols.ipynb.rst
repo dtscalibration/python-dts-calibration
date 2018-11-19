@@ -59,6 +59,14 @@ considered equal here and no variance is calculated.
     
             Parameters
             ----------
+            store_p_cov
+            store_p_val
+            dtype
+            nt
+            z
+            p_val
+            p_var
+            p_cov
             sections : dict, optional
             st_label : str
                 Label of the forward stokes measurement
@@ -94,7 +102,7 @@ considered equal here and no variance is calculated.
                 Label of where to store the calibrated temperature of the backward direction
             variance_suffix : str, optional
                 String appended for storing the variance. Only used when method is wls.
-            method : {'ols', 'wls'}
+            method : {'ols', 'wls', 'external'}
                 Use 'ols' for ordinary least squares and 'wls' for weighted least squares
             solver : {'sparse', 'stats'}
                 Either use the homemade weighted sparse solver or the weighted dense matrix solver of
@@ -133,7 +141,7 @@ considered equal here and no variance is calculated.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x1128ebf98>
+    <matplotlib.legend.Legend at 0x11e532ba8>
 
 
 
@@ -156,7 +164,7 @@ first.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x112b06208>]
+    [<matplotlib.lines.Line2D at 0x11e573208>]
 
 
 

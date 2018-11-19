@@ -76,6 +76,19 @@ estimated temperature via Monte Carlo.
     
             Parameters
             ----------
+            store_p_cov : str
+                Key to store the covariance matrix of the calibrated parameters
+            store_p_val : str
+                Key to store the values of the calibrated parameters
+            dtype : dtype
+                Currently not working. Tries to save results
+            nt : int, optional
+                Number of timesteps. Should be defined if method=='external'
+            z : array-like, optional
+                Distances. Should be defined if method=='external'
+            p_val
+            p_var
+            p_cov
             sections : dict, optional
             st_label : str
                 Label of the forward stokes measurement

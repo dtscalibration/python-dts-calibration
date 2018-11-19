@@ -45,7 +45,7 @@ the timezone of the Silixa Ultima computer.
 
 .. code:: ipython3
 
-    # Just to show which files are in the folder
+    # Bonus: Just to show which files are in the folder
     filepathlist = sorted(glob.glob(os.path.join(filepath, file_ext)))
     filenamelist = [os.path.basename(path) for path in filepathlist]
     
@@ -66,9 +66,9 @@ the timezone of the Silixa Ultima computer.
 .. code:: ipython3
 
     ds = read_silixa_files(directory=filepath,
-                      timezone_netcdf=timezone_netcdf,
-                      timezone_input_files=timezone_input_files,
-                      file_ext=file_ext)
+                           timezone_netcdf=timezone_netcdf,
+                           timezone_input_files=timezone_input_files,
+                           file_ext=file_ext)
 
 
 .. parsed-literal::

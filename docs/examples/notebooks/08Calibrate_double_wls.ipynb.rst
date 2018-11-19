@@ -96,7 +96,7 @@ as an estimate of the variance in measured signals.
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x11d93f0b8>
+    <matplotlib.collections.QuadMesh at 0x118bbb470>
 
 
 
@@ -210,17 +210,15 @@ confidence interval ‘coordinates’.
         userAcquisitionTimeFW  (time) float32 2.0 2.0 2.0 2.0 2.0 2.0
         userAcquisitionTimeBW  (time) float32 2.0 2.0 2.0 2.0 2.0 2.0
         gamma                  float64 482.6
-        alphaint               float64 -0.01034
-        alpha                  (x) float64 -0.01233 -0.008471 ... -0.01044 -0.01034
-        c                      (time) float64 1.47 1.471 1.47 1.47 1.47 1.47
-        gamma_var              float64 0.03716
-        alphaint_var           float64 7.369e-07
-        alpha_var              (x) float64 3.634e-07 3.556e-07 ... 7.267e-07
-        c_var                  (time) float64 6.44e-07 6.44e-07 ... 6.44e-07
+        alpha                  (x) float64 -0.007159 -0.003301 ... -0.005167
+        d                      (time) float64 1.465 1.465 1.464 1.465 1.465 1.465
+        gamma_var              float64 0.03715
+        alpha_var              (x) float64 1.792e-07 1.714e-07 ... 1.808e-07
+        d_var                  (time) float64 4.621e-07 4.621e-07 ... 4.621e-07
         TMPF                   (x, time) float64 16.8 17.05 16.32 ... 13.49 13.78
         TMPB                   (x, time) float64 16.8 16.83 16.88 ... 13.74 13.69
-        p_val                  (params1) float64 482.6 -0.01034 ... -0.01034
-        p_cov                  (params1, params2) float64 0.03716 ... 7.267e-07
+        p_val                  (params1) float64 482.6 1.465 ... -0.00527 -0.005167
+        p_cov                  (params1, params2) float64 0.03715 ... 1.808e-07
         TMPF_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 6)>
         TMPB_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 6)>
         TMPF_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 787, 6)>
