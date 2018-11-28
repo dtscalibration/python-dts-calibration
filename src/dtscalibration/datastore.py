@@ -786,182 +786,6 @@ class DataStore(xr.Dataset):
 
         pass
 
-    # def calibration_double_ended_old(self,
-    #                              sections=None,
-    #                              st_label='ST',
-    #                              ast_label='AST',
-    #                              rst_label='REV-ST',
-    #                              rast_label='REV-AST',
-    #                              st_var=None,
-    #                              ast_var=None,
-    #                              rst_var=None,
-    #                              rast_var=None,
-    #                              store_c='c',
-    #                              store_gamma='gamma',
-    #                              store_alphaint='alphaint',
-    #                              store_alpha='alpha',
-    #                              store_tmpf='TMPF',
-    #                              store_tmpb='TMPB',
-    #                              store_p_cov='p_cov',
-    #                              store_p_val='p_val',
-    #                              variance_suffix='_var',
-    #                              method='ols',
-    #                              solver='sparse',
-    #                              dtype=None,
-    #                              nt=None,
-    #                              z=None,
-    #                              p_val=None,
-    #                              p_var=None,
-    #                              p_cov=None):
-    #     """
-    #
-    #     Parameters
-    #     ----------
-    #     store_p_cov
-    #     store_p_val
-    #     dtype
-    #     nt
-    #     z
-    #     p_val
-    #     p_var
-    #     p_cov
-    #     sections : dict, optional
-    #     st_label : str
-    #         Label of the forward stokes measurement
-    #     ast_label : str
-    #         Label of the anti-Stoke measurement
-    #     rst_label : str
-    #         Label of the reversed Stoke measurement
-    #     rast_label : str
-    #         Label of the reversed anti-Stoke measurement
-    #     st_var : float, optional
-    #         The variance of the measurement noise of the Stokes signals in the forward
-    #         direction Required if method is wls.
-    #     ast_var : float, optional
-    #         The variance of the measurement noise of the anti-Stokes signals in the forward
-    #         direction. Required if method is wls.
-    #     rst_var : float, optional
-    #         The variance of the measurement noise of the Stokes signals in the backward
-    #         direction. Required if method is wls.
-    #     rast_var : float, optional
-    #         The variance of the measurement noise of the anti-Stokes signals in the backward
-    #         direction. Required if method is wls.
-    #     store_c : str
-    #         Label of where to store C
-    #     store_gamma : str
-    #         Label of where to store gamma
-    #     store_alphaint : str
-    #         Label of where to store alphaint
-    #     store_alpha : str
-    #         Label of where to store alpha
-    #     store_tmpf : str
-    #         Label of where to store the calibrated temperature of the forward direction
-    #     store_tmpb : str
-    #         Label of where to store the calibrated temperature of the backward direction
-    #     variance_suffix : str, optional
-    #         String appended for storing the variance. Only used when method is wls.
-    #     method : {'ols', 'wls', 'external'}
-    #         Use 'ols' for ordinary least squares and 'wls' for weighted least squares
-    #     solver : {'sparse', 'stats'}
-    #         Either use the homemade weighted sparse solver or the weighted dense matrix solver of
-    #         statsmodels
-    #
-    #     Returns
-    #     -------
-    #
-    #     """
-    #
-    #     if sections:
-    #         self.sections = sections
-    #     else:
-    #         assert self.sections, 'sections are not defined'
-    #
-    #     check_dims(self,
-    #                [st_label, ast_label, rst_label, rast_label],
-    #                correct_dims=('x', 'time'))
-    #
-    #     if method == 'ols':
-    #         nt, z, p0_ = calibration_double_ended_ols(
-    #             self, st_label, ast_label, rst_label, rast_label)
-    #
-    #         p0 = p0_[0]
-    #         gamma = p0[0]
-    #         alphaint = p0[1]
-    #         c = p0[2:nt + 2]
-    #         alpha = p0[nt + 2:]
-    #
-    #         # Can not estimate parameter variance with ols
-    #         gammavar = None
-    #         alphaintvar = None
-    #         cvar = None
-    #         alphavar = None
-    #
-    #     elif method == 'wls' or method == 'external':
-    #         # External is also/always weighted
-    #         if method == 'wls':
-    #             for vari in [st_var, ast_var, rst_var, rast_var]:
-    #                 assert isinstance(vari, float)
-    #
-    #             nt, z, p_val, p_var, p_cov = calibration_double_ended_wls(
-    #                 self, st_label, ast_label, rst_label, rast_label,
-    #                 st_var, ast_var, rst_var, rast_var, solver=solver, dtype=dtype)
-    #         else:
-    #             for input_item in [nt, z, p_val, p_var, p_cov]:
-    #                 assert input_item is not None
-    #
-    #         gamma = p_val[0]
-    #         alphaint = p_val[1]
-    #         c = p_val[2:nt + 2]
-    #         alpha = p_val[nt + 2:]
-    #
-    #         # Estimate of the standard error - sqrt(diag of the COV matrix) - is not squared
-    #         gammavar = p_var[0]
-    #         alphaintvar = p_var[1]
-    #         cvar = p_var[2:nt + 2]
-    #         alphavar = p_var[nt + 2:]
-    #
-    #     else:
-    #         raise ValueError('Choose a valid method')
-    #
-    #     # store calibration parameters in DataStore
-    #     self[store_gamma] = (tuple(), gamma)
-    #     self[store_alphaint] = (tuple(), alphaint)
-    #     self[store_alpha] = (('x',), alpha)
-    #     self[store_c] = (('time',), c)
-    #
-    #     # store variances in DataStore
-    #     if method == 'wls' or method == 'external':
-    #         self[store_gamma + variance_suffix] = (tuple(), gammavar)
-    #         self[store_alphaint + variance_suffix] = (tuple(), alphaintvar)
-    #         self[store_alpha + variance_suffix] = (('x',), alphavar)
-    #         self[store_c + variance_suffix] = (('time',), cvar)
-    #
-    #     # deal with FW
-    #     if store_tmpf:
-    #         tempF_data = gamma / \
-    #                      (np.log(self[st_label].data / self[ast_label].data)
-    #                       + c + alpha[:, None]) - 273.15
-    #         self[store_tmpf] = (('x', 'time'), tempF_data)
-    #
-    #     # deal with BW
-    #     if store_tmpb:
-    #         tempB_data = gamma / \
-    #                      (np.log(self[rst_label].data / self[rast_label].data)
-    #                       + c - alpha[:, None] + alphaint) - 273.15
-    #         self[store_tmpb] = (('x', 'time'), tempB_data)
-    #
-    #     if store_p_val and (method == 'wls' or method == 'external'):
-    #         self[store_p_val] = (('params1',), p_val)
-    #     else:
-    #         pass
-    #
-    #     if store_p_cov and (method == 'wls' or method == 'external'):
-    #         self[store_p_cov] = (('params1', 'params2'), p_cov)
-    #     else:
-    #         pass
-    #
-    #     pass
-
     def calibration_double_ended(self,
                                  sections=None,
                                  st_label='ST',
@@ -1021,8 +845,9 @@ class DataStore(xr.Dataset):
         rast_var : float, optional
             The variance of the measurement noise of the anti-Stokes signals in the backward
             direction. Required if method is wls.
-        store_c : str
-            Label of where to store C
+        store_d : str
+            Label of where to store D. Equals the integrated differential attenuation at x=0
+            And should be equal to half the total integrated differential attenuation.
         store_gamma : str
             Label of where to store gamma
         store_alphaint : str
@@ -1134,190 +959,9 @@ class DataStore(xr.Dataset):
 
         pass
 
-    # def calibration_double_ended2(self,
-    #                              sections=None,
-    #                              st_label='ST',
-    #                              ast_label='AST',
-    #                              rst_label='REV-ST',
-    #                              rast_label='REV-AST',
-    #                              st_var=None,
-    #                              ast_var=None,
-    #                              rst_var=None,
-    #                              rast_var=None,
-    #                              store_c='c',
-    #                              store_gamma='gamma',
-    #                              store_alphaint='alphaint',
-    #                               store_alphaf='alphaf',
-    #                               store_alphab='alphab',
-    #                              store_tmpf='TMPF',
-    #                              store_tmpb='TMPB',
-    #                              store_p_cov='p_cov',
-    #                              store_p_val='p_val',
-    #                              variance_suffix='_var',
-    #                              method='ols',
-    #                              solver='sparse',
-    #                              dtype=None,
-    #                              nt=None,
-    #                              z=None,
-    #                              p_val=None,
-    #                              p_var=None,
-    #                              p_cov=None):
-    #     """
-    #
-    #     Parameters
-    #     ----------
-    #     store_p_cov
-    #     store_p_val
-    #     dtype
-    #     nt
-    #     z
-    #     p_val
-    #     p_var
-    #     p_cov
-    #     sections : dict, optional
-    #     st_label : str
-    #         Label of the forward stokes measurement
-    #     ast_label : str
-    #         Label of the anti-Stoke measurement
-    #     rst_label : str
-    #         Label of the reversed Stoke measurement
-    #     rast_label : str
-    #         Label of the reversed anti-Stoke measurement
-    #     st_var : float, optional
-    #         The variance of the measurement noise of the Stokes signals in the forward
-    #         direction Required if method is wls.
-    #     ast_var : float, optional
-    #         The variance of the measurement noise of the anti-Stokes signals in the forward
-    #         direction. Required if method is wls.
-    #     rst_var : float, optional
-    #         The variance of the measurement noise of the Stokes signals in the backward
-    #         direction. Required if method is wls.
-    #     rast_var : float, optional
-    #         The variance of the measurement noise of the anti-Stokes signals in the backward
-    #         direction. Required if method is wls.
-    #     store_c : str
-    #         Label of where to store C
-    #     store_gamma : str
-    #         Label of where to store gamma
-    #     store_alphaint : str
-    #         Label of where to store alphaint
-    #     store_alpha : str
-    #         Label of where to store alpha
-    #     store_tmpf : str
-    #         Label of where to store the calibrated temperature of the forward direction
-    #     store_tmpb : str
-    #         Label of where to store the calibrated temperature of the backward direction
-    #     variance_suffix : str, optional
-    #         String appended for storing the variance. Only used when method is wls.
-    #     method : {'ols', 'wls', 'external'}
-    #         Use 'ols' for ordinary least squares and 'wls' for weighted least squares
-    #     solver : {'sparse', 'stats'}
-    #         Either use the homemade weighted sparse solver or the weighted dense matrix solver of
-    #         statsmodels
-    #
-    #     Returns
-    #     -------
-    #
-    #     """
-    #
-    #     if sections:
-    #         self.sections = sections
-    #     else:
-    #         assert self.sections, 'sections are not defined'
-    #
-    #     check_dims(self,
-    #                [st_label, ast_label, rst_label, rast_label],
-    #                correct_dims=('x', 'time'))
-    #
-    #     if method == 'ols':
-    #         nt, z, p0_ = calibration_double_ended_ols(
-    #             self, st_label, ast_label, rst_label, rast_label)
-    #         nz = len(z)
-    #
-    #         p0 = p0_[0]
-    #         gamma = p0[0]
-    #         c = p0[1:nt + 1]
-    #         alphaf = p0[nt + 1:nt + 1 + nz]
-    #         alphab = p0[nt + 1 + nz:]
-    #
-    #         # Can not estimate parameter variance with ols
-    #         gammavar = None
-    #         cvar = None
-    #         alphafvar = None
-    #         alphabvar = None
-    #
-    #     elif method == 'wls' or method == 'external':
-    #         # External is also/always weighted
-    #         if method == 'wls':
-    #             for vari in [st_var, ast_var, rst_var, rast_var]:
-    #                 assert isinstance(vari, float)
-    #
-    #             nt, z, p_val, p_var, p_cov = calibration_double_ended_wls(
-    #                 self, st_label, ast_label, rst_label, rast_label,
-    #                 st_var, ast_var, rst_var, rast_var, solver=solver, dtype=dtype)
-    #         else:
-    #             for input_item in [nt, z, p_val, p_var, p_cov]:
-    #                 assert input_item is not None
-    #
-    #         nz = len(z)
-    #
-    #         gamma = p_val[0]
-    #         c = p_val[1:nt + 1]
-    #         alphaf = p_val[nt + 1:nt + 1 + nz]
-    #         alphab = p_val[nt + 1 + nz:]
-    #
-    #         # Estimate of the standard error - sqrt(diag of the COV matrix) - is not squared
-    #         gammavar = p_var[0]
-    #         cvar = p_var[1:nt + 1]
-    #         alphafvar = p_var[nt + 1:nt + 1 + nz]
-    #         alphabvar = p_var[nt + 1 + nz:]
-    #
-    #     else:
-    #         raise ValueError('Choose a valid method')
-    #
-    #     # store calibration parameters in DataStore
-    #     self[store_gamma] = (tuple(), gamma)
-    #     self[store_alphaf] = (('x',), alphaf)
-    #     self[store_alphab] = (('x',), alphab)
-    #     self[store_c] = (('time',), c)
-    #
-    #     # store variances in DataStore
-    #     if method == 'wls' or method == 'external':
-    #         self[store_gamma + variance_suffix] = (tuple(), gammavar)
-    #         self[store_alphaint + variance_suffix] = (tuple(), alphaintvar)
-    #         self[store_alphaf + variance_suffix] = (('x',), alphafvar)
-    #         self[store_alphab + variance_suffix] = (('x',), alphabvar)
-    #         self[store_c + variance_suffix] = (('time',), cvar)
-    #
-    #     # deal with FW
-    #     if store_tmpf:
-    #         tempF_data = gamma / \
-    #                      (np.log(self[st_label].data / self[ast_label].data)
-    #                       + c + alphaf[:, None]) - 273.15
-    #         self[store_tmpf] = (('x', 'time'), tempF_data)
-    #
-    #     # deal with BW
-    #     if store_tmpb:
-    #         tempB_data = gamma / \
-    #                      (np.log(self[rst_label].data / self[rast_label].data)
-    #                       + c + alphab[:, None]) - 273.15
-    #         self[store_tmpb] = (('x', 'time'), tempB_data)
-    #
-    #     if store_p_val and (method == 'wls' or method == 'external'):
-    #         self[store_p_val] = (('params1',), p_val)
-    #     else:
-    #         pass
-    #
-    #     if store_p_cov and (method == 'wls' or method == 'external'):
-    #         self[store_p_cov] = (('params1', 'params2'), p_cov)
-    #     else:
-    #         pass
-    #
-    #     pass
-
     def conf_int_single_ended(self,
-                              p_val,
-                              p_cov,
+                              p_val='p_val',
+                              p_cov='p_cov',
                               st_label='ST',
                               ast_label='AST',
                               st_var=None,
@@ -1336,8 +980,11 @@ class DataStore(xr.Dataset):
         ----------
         p_val : array-like or string
             parameter solution directly from calibration_double_ended_wls
-        p_cov : array-like or string
+        p_cov : array-like or string or bool
             parameter covariance at the solution directly from calibration_double_ended_wls
+            If set to False, no uncertainty in the parameters is propagated into the confidence
+            intervals. Similar to the spec sheets of the DTS manufacturers. And similar to
+            passing an array filled with zeros
         st_label : str
             Key of the forward Stokes
         ast_label : str
@@ -1380,28 +1027,43 @@ class DataStore(xr.Dataset):
         no, nt = self[st_label].data.shape
         npar = nt + 2  # number of parameters
 
+        self.coords['MC'] = range(conf_ints_size)
+        self.coords['CI'] = conf_ints
+
         assert isinstance(p_val, (str, np.ndarray, np.generic))
         if isinstance(p_val, str):
             p_val = self[p_val].data
         assert p_val.shape == (npar,)
 
-        assert isinstance(p_cov, (str, np.ndarray, np.generic))
-        if isinstance(p_cov, str):
-            p_cov = self[p_cov].data
-        assert p_cov.shape == (npar, npar)
+        assert isinstance(p_cov, (str, np.ndarray, np.generic, bool))
+        if isinstance(p_cov, bool) and not p_cov:
+            gamma = p_val[0]
+            dalpha = p_val[1]
+            c = p_val[2:nt + 2]
+            self['gamma_MC'] = (tuple(), gamma)
+            self['dalpha_MC'] = (tuple(), dalpha)
+            self['c_MC'] = (('time',), c)
 
-        p_mc = sst.multivariate_normal.rvs(mean=p_val,
-                                           cov=p_cov,
-                                           size=conf_ints_size)
-        self.coords['MC'] = range(conf_ints_size)
-        self.coords['CI'] = conf_ints
+        elif isinstance(p_cov, bool) and p_cov:
+            raise NotImplementedError(
+                'Not an implemented option. Check p_cov argument')
 
-        gamma = p_mc[:, 0]
-        dalpha = p_mc[:, 1]
-        c = p_mc[:, 2:nt + 2]
-        self['gamma_MC'] = (('MC',), gamma)
-        self['dalpha_MC'] = (('MC',), dalpha)
-        self['c_MC'] = (('MC', 'time',), c)
+        else:
+            if isinstance(p_cov, str):
+                p_cov = self[p_cov].data
+            assert p_cov.shape == (npar, npar)
+
+            p_mc = sst.multivariate_normal.rvs(mean=p_val,
+                                               cov=p_cov,
+                                               size=conf_ints_size)
+
+            gamma = p_mc[:, 0]
+            dalpha = p_mc[:, 1]
+            c = p_mc[:, 2:nt + 2]
+
+            self['gamma_MC'] = (('MC',), gamma)
+            self['dalpha_MC'] = (('MC',), dalpha)
+            self['c_MC'] = (('MC', 'time',), c)
 
         rshape = (self.MC.size, self.x.size, self.time.size)
         r2shape = {
@@ -1465,8 +1127,8 @@ class DataStore(xr.Dataset):
         pass
 
     def conf_int_double_ended(self,
-                              p_val=None,
-                              p_cov=None,
+                              p_val='p_val',
+                              p_cov='p_cov',
                               st_label='ST',
                               ast_label='AST',
                               rst_label='REV-ST',
@@ -1492,6 +1154,9 @@ class DataStore(xr.Dataset):
             parameter solution directly from calibration_double_ended_wls
         p_cov : array-like or string
             parameter covariance at the solution directly from calibration_double_ended_wls
+            If set to False, no uncertainty in the parameters is propagated into the confidence
+            intervals. Similar to the spec sheets of the DTS manufacturers. And similar to
+            passing an array filled with zeros
         st_label : str
             Key of the forward Stokes
         ast_label : str
@@ -1555,21 +1220,45 @@ class DataStore(xr.Dataset):
         no, nt = self[st_label].data.shape
         npar = nt + 1 + no  # number of parameters
 
+        self.coords['MC'] = range(conf_ints_size)
+        self.coords['CI'] = conf_ints
+
         assert isinstance(p_val, (str, np.ndarray, np.generic))
         if isinstance(p_val, str):
             p_val = self[p_val].data
         assert p_val.shape == (npar,)
 
-        assert isinstance(p_cov, (str, np.ndarray, np.generic))
-        if isinstance(p_cov, str):
-            p_cov = self[p_cov].data
-        assert p_cov.shape == (npar, npar)
+        assert isinstance(p_cov, (str, np.ndarray, np.generic, bool))
 
-        p_mc = sst.multivariate_normal.rvs(mean=p_val,
-                                           cov=p_cov,
-                                           size=conf_ints_size)  # this one takes long
-        self.coords['MC'] = range(conf_ints_size)
-        self.coords['CI'] = conf_ints
+        if isinstance(p_cov, bool) and not p_cov:
+            gamma = p_val[0]
+            d = p_val[1:nt + 1]
+            alpha = p_val[nt + 1:]
+
+            self['gamma_MC'] = (tuple(), gamma)
+            self['alpha_MC'] = (('x',), alpha)
+            self['d_MC'] = (('time',), d)
+
+        elif isinstance(p_cov, bool) and p_cov:
+            raise NotImplementedError(
+                'Not an implemented option. Check p_cov argument')
+
+        else:
+            if isinstance(p_cov, str):
+                p_cov = self[p_cov].data
+            assert p_cov.shape == (npar, npar)
+
+            p_mc = sst.multivariate_normal.rvs(mean=p_val,
+                                               cov=p_cov,
+                                               size=conf_ints_size)  # this one takes long
+
+            gamma = p_mc[:, 0]
+            d = p_mc[:, 1:nt + 1]
+            alpha = p_mc[:, nt + 1:]
+
+            self['gamma_MC'] = (('MC',), gamma)
+            self['alpha_MC'] = (('MC', 'x',), alpha)
+            self['d_MC'] = (('MC', 'time',), d)
 
         rshape = (self.MC.size, self.x.size, self.time.size)
         r2shape = {
@@ -1595,14 +1284,6 @@ class DataStore(xr.Dataset):
                     scale=st_vari ** 0.5,
                     size=rshape,
                     chunks=r2shape))
-
-        gamma = p_mc[:, 0]
-        d = p_mc[:, 1:nt + 1]
-        alpha = p_mc[:, nt + 1:]
-
-        self['gamma_MC'] = (('MC',), gamma)
-        self['alpha_MC'] = (('MC', 'x',), alpha)
-        self['d_MC'] = (('MC', 'time',), d)
 
         self[store_tmpf + '_MC_set'] = self['gamma_MC'] / (xr.ufuncs.log(
             self['r_st'] / self['r_ast']) + self['d_MC'] + self[
@@ -1690,6 +1371,33 @@ class DataStore(xr.Dataset):
             for k in remove_MC_set:
                 del self[k]
 
+    def temperature_residuals(self, label=None):
+        """
+
+        Parameters
+        ----------
+        label : str
+            The key of the temperature DataArray
+
+        Returns
+        -------
+        resid_da : xarray.DataArray
+            The residuals as DataArray
+        """
+        resid_temp = self.ufunc_per_section(label=label, temp_err=True, calc_per='all')
+        resid_x = self.ufunc_per_section(label='x', calc_per='all')
+
+        resid_ix = np.array([np.argmin(np.abs(ai - self.x.data)) for ai in resid_x])
+
+        resid_sorted = np.full(shape=self[label].shape, fill_value=np.nan)
+        resid_sorted[resid_ix, :] = resid_temp
+        resid_da = xr.DataArray(data=resid_sorted,
+                                dims=('x', 'time'),
+                                coords={
+                                    'x':    self.x,
+                                    'time': self.time})
+        return resid_da
+
     def ufunc_per_section(self,
                           func=None,
                           label=None,
@@ -1707,7 +1415,7 @@ class DataStore(xr.Dataset):
 
         Parameters
         ----------
-        func : callable
+        func : callable, str
             A numpy function, or lambda function to apple to each 'calc_per'.
         label
         subtract_from_label
@@ -1720,6 +1428,43 @@ class DataStore(xr.Dataset):
 
         Returns
         -------
+
+        Examples
+        --------
+        # Calculate the variance of the residuals in the along ALL the
+        # reference sections wrt the temperature of the water baths
+        TMPF_var = d.ufunc_per_section(
+            func='var',
+            calc_per='all',
+            label='TMPF',
+            temp_err=True
+            )
+
+        # Calculate the variance of the residuals in the along PER
+        # reference section wrt the temperature of the water baths
+        TMPF_var = d.ufunc_per_section(
+            func='var',
+            calc_per='stretch',
+            label='TMPF',
+            temp_err=True
+            )
+
+        # Calculate the variance of the residuals in the along PER
+        # water bath wrt the temperature of the water baths
+        TMPF_var = d.ufunc_per_section(
+            func='var',
+            calc_per='section',
+            label='TMPF',
+            temp_err=True
+            )
+
+        Note
+        ----
+        If self[label] or self[subtract_from_label] is a Dask array, a Dask array is returned
+        Else a numpy array is returned
+
+        # x_coords of all stretches
+
 
         """
 
@@ -1754,10 +1499,16 @@ class DataStore(xr.Dataset):
         else:
             assert callable(func)
 
+        if hasattr(self[label].data, 'chunks') or \
+            (subtract_from_label and
+             hasattr(self[subtract_from_label].data, 'chunks')):
+            concat = da.concatenate
+        else:
+            concat = np.concatenate
+
         out = dict()
 
         for k, section in self.sections.items():
-
             out[k] = []
             for stretch in section:
                 arg1 = self[label].sel(x=stretch).data
@@ -1791,13 +1542,15 @@ class DataStore(xr.Dataset):
                 out[k] = [func(argi, **func_kwargs) for argi in out[k]]
 
             elif calc_per == 'section':
-                out[k] = func(da.concatenate(out[k]), **func_kwargs)
+                out[k] = func(concat(out[k]), **func_kwargs)
 
         if calc_per == 'all':
-            out = {k: da.concatenate(section) for k, section in out.items()}
-            out = func(da.concatenate(list(out.values()), axis=0), **func_kwargs)
+            out = {k: concat(section) for k, section in out.items()}
+            out = func(concat(list(out.values()), axis=0), **func_kwargs)
 
-            if hasattr(out, 'chunks') and 'x' in self[label].dims:
+            if hasattr(out, 'chunks') and \
+                len(out.chunks) > 0 and \
+                'x' in self[label].dims:
                 # also sum the chunksize in the x dimension
                 # first find out where the x dim is
                 ixdim = self[label].dims.index('x')
@@ -1958,6 +1711,10 @@ def read_silixa_files(
 
     if isinstance(filepathlist, type(None)):
         filepathlist = sorted(glob.glob(os.path.join(directory, file_ext)))
+
+        # Make sure that the list of files contains any files
+        assert len(filepathlist) >= 1, 'No measurement files found in provided directory: \n' + \
+            str(directory)
 
     # Make sure that the list of files contains any files
     assert len(filepathlist) >= 1, 'No measurement files found in provided list/directory'

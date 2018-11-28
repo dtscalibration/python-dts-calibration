@@ -393,7 +393,7 @@ def test_calibration_ols():
     """Testing ordinary least squares procedure. And compare with device calibrated temperature.
     The measurements were calibrated by the device using only section 8--17.m. Those temperatures
     are compared up to 2 decimals. Silixa only uses a single calibration constant (I think they
-    fix gamma).
+    fix gamma), or a different formulation, see Shell primer.
     """
     filepath = data_dir_double_ended2
     ds = read_silixa_files(

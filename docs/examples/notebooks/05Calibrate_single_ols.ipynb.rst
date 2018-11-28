@@ -164,7 +164,7 @@ Lets compare our calibrated values with the device calibration
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x11ceab160>
+    <matplotlib.legend.Legend at 0x11bd66908>
 
 
 

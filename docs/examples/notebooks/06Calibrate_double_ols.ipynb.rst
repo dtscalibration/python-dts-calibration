@@ -88,8 +88,9 @@ considered equal here and no variance is calculated.
             rast_var : float, optional
                 The variance of the measurement noise of the anti-Stokes signals in the backward
                 direction. Required if method is wls.
-            store_c : str
-                Label of where to store C
+            store_d : str
+                Label of where to store D. Equals the integrated differential attenuation at x=0
+                And should be equal to half the total integrated differential attenuation.
             store_gamma : str
                 Label of where to store gamma
             store_alphaint : str
@@ -141,7 +142,7 @@ considered equal here and no variance is calculated.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x11e532ba8>
+    <matplotlib.legend.Legend at 0x11442cd68>
 
 
 
@@ -164,7 +165,7 @@ first.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x11e573208>]
+    [<matplotlib.lines.Line2D at 0x11448e208>]
 
 
 
