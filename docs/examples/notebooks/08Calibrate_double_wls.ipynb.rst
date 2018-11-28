@@ -96,7 +96,7 @@ as an estimate of the variance in measured signals.
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x118bbb470>
+    <matplotlib.collections.QuadMesh at 0x112855e10>
 
 
 
