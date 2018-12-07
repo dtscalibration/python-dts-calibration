@@ -5,7 +5,7 @@ import scipy.sparse as sp
 from scipy.sparse import linalg as ln
 
 
-def calibration_single_ended_ols(ds, st_label, ast_label, dtype=None):
+def calibration_single_ended_ols(ds, st_label, ast_label):
     """
 
     Parameters
@@ -13,19 +13,14 @@ def calibration_single_ended_ols(ds, st_label, ast_label, dtype=None):
     ds
     st_label
     ast_label
-    dtype
 
     Returns
     -------
 
     """
-    if dtype is None:
-        dtype = np.float
-
     cal_ref = ds.ufunc_per_section(label=st_label,
                                    ref_temp_broadcasted=True,
                                    calc_per='all')
-
     st = ds.ufunc_per_section(label=st_label, calc_per='all')
     ast = ds.ufunc_per_section(label=ast_label, calc_per='all')
     z = ds.ufunc_per_section(label='x', calc_per='all')
@@ -62,10 +57,9 @@ def calibration_single_ended_ols(ds, st_label, ast_label, dtype=None):
     X = sp.coo_matrix(
         (data, coords),
         shape=(nt * nx, nt + 2),
-        dtype=dtype,
         copy=False)
 
-    y = np.log(st / ast).T.ravel().astype(dtype).compute()
+    y = np.log(st / ast).T.ravel()
     # noinspection PyTypeChecker
     p0 = ln.lsqr(X, y, x0=p0_est, show=True, calc_var=True)
 
@@ -73,7 +67,7 @@ def calibration_single_ended_ols(ds, st_label, ast_label, dtype=None):
 
 
 def calibration_single_ended_wls(ds, st_label, ast_label, st_var, ast_var,
-                                 calc_cov=True, dtype=None, solver='sparse'):
+                                 calc_cov=True, solver='sparse'):
     """
 
     Parameters
@@ -84,16 +78,12 @@ def calibration_single_ended_wls(ds, st_label, ast_label, st_var, ast_var,
     st_var
     ast_var
     calc_cov
-    dtype
     solver
 
     Returns
     -------
 
     """
-    if dtype is None:
-        dtype = np.float
-
     cal_ref = ds.ufunc_per_section(label=st_label,
                                    ref_temp_broadcasted=True,
                                    calc_per='all')
@@ -134,14 +124,13 @@ def calibration_single_ended_wls(ds, st_label, ast_label, st_var, ast_var,
     X = sp.coo_matrix(
         (data, coords),
         shape=(nt * nx, nt + 2),
-        dtype=dtype,
         copy=False)
 
-    y = np.log(st / ast).T.ravel().astype(dtype).compute()
+    y = np.log(st / ast).T.ravel()
 
     w = (1 / st ** 2 * st_var +
          1 / ast ** 2 * ast_var
-         ).T.ravel().astype(dtype).compute()
+         ).T.ravel()
 
     if solver == 'sparse':
         p_sol, p_var, p_cov = wls_sparse(X, y, w=w, x0=p0_est, calc_cov=calc_cov)
@@ -162,7 +151,7 @@ def calibration_single_ended_wls(ds, st_label, ast_label, st_var, ast_var,
 
 
 def calibration_double_ended_ols(ds, st_label, ast_label, rst_label,
-                                 rast_label, verbose=False, dtype=None):
+                                 rast_label, verbose=False):
     """
 
     Parameters
@@ -173,15 +162,11 @@ def calibration_double_ended_ols(ds, st_label, ast_label, rst_label,
     rst_label
     rast_label
     verbose
-    dtype
 
     Returns
     -------
 
     """
-    if dtype is None:
-        dtype = np.float
-
     cal_ref = ds.ufunc_per_section(label=st_label,
                                    ref_temp_broadcasted=True,
                                    calc_per='all')
@@ -210,29 +195,22 @@ def calibration_double_ended_ols(ds, st_label, ast_label, rst_label,
 
     # Eqs for F and B temperature
     data1 = np.repeat(1 / (cal_ref.T.ravel() + 273.15), 2)  # gamma
-    # data2 = np.tile([0., -1.], nt * nx)  # alphaint
     data3 = np.tile([-1., -1.], nt * nx)  # C
     data5 = np.tile([-1., 1.], nt * nx)  # alpha
-    # Eqs for alpha
-    # data6 = np.repeat(-0.5, nt * no)  # alphaint
     data9 = np.ones(nt * no, dtype=float)  # alpha
     data = np.concatenate([data1, data3, data5, data9])
 
     # (irow, icol)
     coord1row = np.arange(2 * nt * nx, dtype=int)
-    # coord2row = np.arange(2 * nt * nx, dtype=int)
     coord3row = np.arange(2 * nt * nx, dtype=int)
     coord5row = np.arange(2 * nt * nx, dtype=int)
 
-    # coord6row = np.arange(2 * nt * nx, 2 * nt * nx + nt * no, dtype=int)
     coord9row = np.arange(2 * nt * nx, 2 * nt * nx + nt * no, dtype=int)
 
     coord1col = np.zeros(2 * nt * nx, dtype=int)
-    # coord2col = np.ones(2 * nt * nx, dtype=int) * (2 + nt + no - 1)
     coord3col = np.repeat(np.arange(nt, dtype=int) + 1, 2 * nx)
     coord5col = np.tile(np.repeat(x_index, 2) + nt + 1, nt)
 
-    # coord6col = np.ones(nt * no, dtype=int)
     coord9col = np.tile(np.arange(no, dtype=int) + nt + 1, nt)
 
     rows = [coord1row, coord3row,
@@ -245,7 +223,6 @@ def calibration_double_ended_ols(ds, st_label, ast_label, rst_label,
     X = sp.coo_matrix(
         (data, coords),
         shape=(2 * nx * nt + nt * no, nt + 1 + no),
-        dtype=dtype,
         copy=False)
 
     y1F = np.log(st / ast).T.ravel()
@@ -254,7 +231,7 @@ def calibration_double_ended_ols(ds, st_label, ast_label, rst_label,
     y2F = np.log(ds[st_label].data / ds[ast_label].data).T.ravel()
     y2B = np.log(ds[rst_label].data / ds[rast_label].data).T.ravel()
     y2 = (y2B - y2F) / 2
-    y = da.concatenate([y1, y2]).astype(dtype).compute()
+    y = da.concatenate([y1, y2])
     # noinspection PyTypeChecker
     assert not np.any(np.isnan(y)), 'There are nan values in the measured (anti-) Stokes'
 
@@ -265,14 +242,13 @@ def calibration_double_ended_ols(ds, st_label, ast_label, rst_label,
 
 def calibration_double_ended_wls(ds, st_label, ast_label, rst_label,
                                  rast_label, st_var, ast_var, rst_var, rast_var,
-                                 calc_cov=True, solver='sparse', dtype=None,
+                                 calc_cov=True, solver='sparse',
                                  verbose=False):
     """
 
 
     Parameters
     ----------
-    dtype
     verbose
     ds : DataStore
     st_label
@@ -290,14 +266,6 @@ def calibration_double_ended_wls(ds, st_label, ast_label, rst_label,
     -------
 
     """
-
-    # x_alpha_set_zero=0.,
-    # set one alpha for all times to zero
-    # x_alpha_set_zeroi = np.argmin(np.abs(ds.x.data - x_alpha_set_zero))
-    # x_alpha_set_zeroidata = np.arange(nt) * no + x_alpha_set_zeroi
-
-    if dtype is None:
-        dtype = np.float
 
     cal_ref = ds.ufunc_per_section(label=st_label,
                                    ref_temp_broadcasted=True,
@@ -325,51 +293,33 @@ def calibration_double_ended_wls(ds, st_label, ast_label, rst_label,
     p0_est = np.asarray([482.] + nt * [1.4] + no * [0.])
 
     # Data for F and B temperature, 2 * nt * nx items
-    data1 = da.repeat(1 / (cal_ref.T.ravel().astype(dtype) + 273.15), 2)  # gamma
-    # data2 = da.tile(np.array([0., -1.]), nt * nx)  # alphaint
-    # data2 = da.stack((da.zeros(nt * nx, chunks=nt * nx, dtype=dtype),
-    #                   -da.ones(nt * nx, chunks=nt * nx, dtype=dtype))
-    #                  ).T.ravel()
-    # data3 = da.tile(np.array([-1., -1.]), nt * nx)  # C
-    data3 = -da.ones(2 * nt * nx, chunks=2 * nt * nx, dtype=dtype)
-    # data5 = da.tile(np.array([-1., 1.]), nt * nx)  # alph
-    data5 = da.stack((-da.ones(nt * nx, chunks=nt * nx, dtype=dtype),
-                      da.ones(nt * nx, chunks=nt * nx, dtype=dtype))
+    data1 = np.repeat(1 / (cal_ref.T.ravel() + 273.15), 2)  # gamma
+    data3 = -da.ones(2 * nt * nx, chunks=2 * nt * nx)
+    data5 = da.stack((-da.ones(nt * nx, chunks=nt * nx),
+                      da.ones(nt * nx, chunks=nt * nx))
                      ).T.ravel()
 
     # Data for alpha, nt * no items
-    # data6 = da.repeat(np.array([-0.5]), nt * no)  # alphaint
-    # data6 = da.ones(nt * no, dtype=dtype, chunks=(nt * no,)) * -0.5  # alphaint
-    data9 = da.ones(nt * no, dtype=dtype, chunks=(nt * no,))  # alpha
-
-    # alpha should start at zero. But then the sparse solver crashes
-    # data9[x_alpha_set_zeroidata] = 0.
+    data9 = da.ones(nt * no, chunks=(nt * no,))  # alpha
 
     data = da.concatenate(
         [data1, data3, data5, data9]
-        ).astype(dtype).compute()
+        )
 
     # Coords (irow, icol)
     coord1row = da.arange(2 * nt * nx, dtype=int, chunks=(nt * nx,))  # gamma
-    # coord2row = da.arange(2 * nt * nx, dtype=int, chunks=(nt * nx,))  # alphaint
     coord3row = da.arange(2 * nt * nx, dtype=int, chunks=(nt * nx,))  # C
     coord5row = da.arange(2 * nt * nx, dtype=int, chunks=(nt * nx,))  # alpha
 
-    # coord6row = da.arange(2 * nt * nx,
-    #                       2 * nt * nx + nt * no,
-    #                       dtype=int,
-    #                       chunks=(nt * no,))  # alphaint
     coord9row = da.arange(2 * nt * nx,
                           2 * nt * nx + nt * no,
                           dtype=int,
                           chunks=(nt * no,))  # alpha
 
     coord1col = da.zeros(2 * nt * nx, dtype=int, chunks=(nt * nx,))  # gamma
-    # coord2col = da.ones(2 * nt * nx, dtype=int, chunks=(nt * nx,)) * (2 + nt + no - 1)  # alphaint
-    coord3col = da.repeat(da.arange(nt, dtype=int, chunks=(nt,)) + 1, 2 * nx).rechunk(nt * nx)  # C
+    coord3col = np.repeat(da.arange(nt, dtype=int, chunks=(nt,)) + 1, 2 * nx).rechunk(nt * nx)  # C
     coord5col = da.tile(np.repeat(x_index, 2) + nt + 1, nt).rechunk(nt * nx)  # alpha
 
-    # coord6col = da.ones(nt * no, dtype=int, chunks=(nt * no,))  # * (2 + nt + no - 1)  # alphaint
     coord9col = da.tile(da.arange(no, dtype=int, chunks=(nt * no,)) + nt + 1, nt)  # alpha
 
     rows = [coord1row, coord3row,
@@ -383,7 +333,6 @@ def calibration_double_ended_wls(ds, st_label, ast_label, rst_label,
     X = sp.coo_matrix(
         (data, coords),
         shape=(2 * nx * nt + nt * no, nt + 1 + no),
-        dtype=dtype,
         copy=False)
 
     # Spooky way to interleave and ravel arrays in correct order. Works!
@@ -396,7 +345,7 @@ def calibration_double_ended_wls(ds, st_label, ast_label, rst_label,
     y2B = np.log(ds[rst_label].data /
                  ds[rast_label].data).T.ravel()
     y2 = (y2B - y2F) / 2
-    y = da.concatenate([y1, y2]).astype(dtype).compute()
+    y = da.concatenate([y1, y2])
 
     assert not np.any(np.isnan(y)), 'There are nan values in the measured (anti-) Stokes'
 
@@ -414,10 +363,10 @@ def calibration_double_ended_wls(ds, st_label, ast_label, rst_label,
           0.5 / ds[rst_label].data ** 2 * rst_var +
           0.5 / ds[rast_label].data ** 2 * rast_var
           ).T.ravel()
-    w = da.concatenate([w1, w2]).astype(dtype).compute()
+    w = da.concatenate([w1, w2])
 
     if solver == 'sparse':
-        p_sol, p_var, p_cov = wls_sparse(X, y, w=w, x0=p0_est, calc_cov=calc_cov, dtype=dtype,
+        p_sol, p_var, p_cov = wls_sparse(X, y, w=w, x0=p0_est, calc_cov=calc_cov,
                                          verbose=verbose)
 
     elif solver == 'stats':
@@ -432,7 +381,7 @@ def calibration_double_ended_wls(ds, st_label, ast_label, rst_label,
         return nt, z, p_sol, p_var
 
 
-def wls_sparse(X, y, w=1., calc_cov=False, dtype=None, verbose=False, **kwargs):
+def wls_sparse(X, y, w=1., calc_cov=False, verbose=False, **kwargs):
     """
 
     Parameters
@@ -441,7 +390,6 @@ def wls_sparse(X, y, w=1., calc_cov=False, dtype=None, verbose=False, **kwargs):
     y
     w
     calc_cov
-    dtype
     verbose
     kwargs
 
@@ -451,12 +399,6 @@ def wls_sparse(X, y, w=1., calc_cov=False, dtype=None, verbose=False, **kwargs):
     """
     # The var returned by ln.lsqr is normalized by the variance of the error. To
     # obtain the correct variance, it needs to be scaled by the variance of the error.
-
-    # x0=p0_est,
-    if dtype is not None:
-        X = X.astype(dtype)
-        w = w.astype(dtype)
-        y = y.astype(dtype)
 
     w_std = np.asarray(np.sqrt(w))
     wy = np.asarray(w_std * y)
@@ -515,6 +457,9 @@ def wls_stats(X, y, w=1., calc_cov=False, verbose=False):
 
     """
     import statsmodels.api as sm
+
+    y = np.asarray(y)
+    w = np.asarray(w)
 
     if sp.issparse(X):
         X = X.todense()

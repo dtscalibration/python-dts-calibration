@@ -649,7 +649,6 @@ class DataStore(xr.Dataset):
                                  variance_suffix='_var',
                                  method='ols',
                                  solver='sparse',
-                                 dtype=None,
                                  nt=None,
                                  z=None,
                                  p_val=None,
@@ -664,8 +663,6 @@ class DataStore(xr.Dataset):
             Key to store the covariance matrix of the calibrated parameters
         store_p_val : str
             Key to store the values of the calibrated parameters
-        dtype : dtype
-            Currently not working. Tries to save results
         nt : int, optional
             Number of timesteps. Should be defined if method=='external'
         z : array-like, optional
@@ -738,7 +735,7 @@ class DataStore(xr.Dataset):
 
                 nt, z, p_val, p_var, p_cov = calibration_single_ended_wls(
                     self, st_label, ast_label,
-                    st_var, ast_var, solver=solver, dtype=dtype)
+                    st_var, ast_var, solver=solver)
             else:
                 for input_item in [nt, z, p_val, p_var, p_cov]:
                     assert input_item is not None
@@ -806,7 +803,6 @@ class DataStore(xr.Dataset):
                                  variance_suffix='_var',
                                  method='ols',
                                  solver='sparse',
-                                 dtype=None,
                                  nt=None,
                                  z=None,
                                  p_val=None,
@@ -818,7 +814,6 @@ class DataStore(xr.Dataset):
         ----------
         store_p_cov
         store_p_val
-        dtype
         nt
         z
         p_val
@@ -902,7 +897,7 @@ class DataStore(xr.Dataset):
 
                 nt, z, p_val, p_var, p_cov = calibration_double_ended_wls(
                     self, st_label, ast_label, rst_label, rast_label,
-                    st_var, ast_var, rst_var, rast_var, solver=solver, dtype=dtype)
+                    st_var, ast_var, rst_var, rast_var, solver=solver)
             else:
                 for input_item in [nt, z, p_val, p_var, p_cov]:
                     assert input_item is not None
@@ -1285,17 +1280,19 @@ class DataStore(xr.Dataset):
                     size=rshape,
                     chunks=r2shape))
 
-        self[store_tmpf + '_MC_set'] = self['gamma_MC'] / (xr.ufuncs.log(
+        self[store_tmpf + '_MC_set'] = self['gamma_MC'] / (np.log(
             self['r_st'] / self['r_ast']) + self['d_MC'] + self[
                                                            'alpha_MC']) - 273.15
-        self[store_tmpb + '_MC_set'] = self['gamma_MC'] / (xr.ufuncs.log(
+        self[store_tmpb + '_MC_set'] = self['gamma_MC'] / (np.log(
             self['r_rst'] / self['r_rast']) + self['d_MC'] - self[
                                                            'alpha_MC']) - 273.15
 
         if ci_avg_time_flag:
             avg_dims = ['MC', 'time']
+            ci_dims = ('CI', 'x')
         else:
             avg_dims = ['MC']
+            ci_dims = ('CI', 'x', 'time')
 
         avg_axis = self[store_tmpf + '_MC_set'].get_axis_num(avg_dims)
 
@@ -1305,7 +1302,7 @@ class DataStore(xr.Dataset):
             store_tmpb]).std(dim=avg_dims) ** 2
 
         if ci_avg_time_flag:
-            new_chunks = ((len(conf_ints),),) + self[store_tmpf + '_MC_set'].chunks[1]
+            new_chunks = ((len(conf_ints),),) + (self[store_tmpf + '_MC_set'].chunks[1],)
         else:
             new_chunks = ((len(conf_ints),),) + self[store_tmpf + '_MC_set'].chunks[1:]
 
@@ -1314,14 +1311,14 @@ class DataStore(xr.Dataset):
             chunks=new_chunks,  #
             drop_axis=avg_axis,  # avg dimesnions are dropped from input arr
             new_axis=0)  # The new CI dimension is added as first axis
-        self[store_tmpf + '_MC'] = (('CI', 'x', 'time'), q)
+        self[store_tmpf + '_MC'] = (ci_dims, q)
 
         q = self[store_tmpb + '_MC_set'].data.map_blocks(
             lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
             chunks=new_chunks,  #
             drop_axis=avg_axis,  # avg dimesnions are dropped from input arr
             new_axis=0)  # The new CI dimension is added as first axis
-        self[store_tmpb + '_MC'] = (('CI', 'x', 'time'), q)
+        self[store_tmpb + '_MC'] = (ci_dims, q)
 
         # Calculate the weighted MC_set
         weightf = 1 / (1 / self[store_tmpf + '_MC' + store_tempvar] +
@@ -1344,7 +1341,7 @@ class DataStore(xr.Dataset):
             chunks=new_chunks,  #
             drop_axis=avg_axis,  # avg dimensions are dropped from input arr
             new_axis=0)  # The new CI dimension is added as first axis
-        self[store_tmpw + '_MC'] = (('CI', 'x', 'time'), q)
+        self[store_tmpw + '_MC'] = (ci_dims, q)
 
         # Calculate the mean of the weighted MC_set
         self[store_tmpw] = (('x', 'time'), self[store_tmpw + '_MC_set'].mean(dim='MC').data)
@@ -1550,7 +1547,7 @@ class DataStore(xr.Dataset):
 
             if hasattr(out, 'chunks') and \
                 len(out.chunks) > 0 and \
-                'x' in self[label].dims:
+                    'x' in self[label].dims:
                 # also sum the chunksize in the x dimension
                 # first find out where the x dim is
                 ixdim = self[label].dims.index('x')
