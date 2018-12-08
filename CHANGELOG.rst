@@ -2,10 +2,17 @@
 Changelog
 =========
 
-Master
-------
+0.6.0 (2018-12-08)
+------------------
+* Reworked the double-ended calibration routine and the routine for confidence intervals. The integrated differential attenuation is not zero at x=0 anymore.
+* Verbose commands carpentry
+* Bug fixed that would make the read_silixa routine crash if there are copies of the same file in the same folder
+* Routine to read sensornet files. Only single-ended configurations supported for now. Anyone has double-ended measurements?
+* Lazy calculation of the confidence intervals
+* Bug solved. The x-coordinates where not calculated correctly. The bug only appeared for measurements along long cables.
+* Example notebook of importing a timeseries. For example, importing measurments from an external temperature sensor for calibration.
+* Updated documentation
 
-*
 
 0.5.3 (2018-10-26)
 ------------------
