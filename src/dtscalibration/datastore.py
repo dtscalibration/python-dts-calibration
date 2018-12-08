@@ -1083,7 +1083,7 @@ class DataStore(xr.Dataset):
                     size=rshape,
                     chunks=r2shape))
 
-        self[store_tmpf + '_MC'] = self['gamma_MC'] / (xr.ufuncs.log(
+        self[store_tmpf + '_MC'] = self['gamma_MC'] / (np.log(
             self['r_st'] / self['r_ast']) + self['c_MC'] + self[
                                                            'dalpha_MC'] * self.x) - 273.15
 
@@ -1560,7 +1560,7 @@ class DataStore(xr.Dataset):
 
 
 def open_datastore(filename_or_obj, group=None, decode_cf=True,
-                   mask_and_scale=None, decode_times=True, autoclose=False,
+                   mask_and_scale=None, decode_times=True,
                    concat_characters=True, decode_coords=True, engine=None,
                    chunks=None, lock=None, cache=None, drop_variables=None,
                    backend_kwargs=None, **kwargs):
@@ -1591,10 +1591,6 @@ def open_datastore(filename_or_obj, group=None, decode_cf=True,
     decode_times : bool, optional
         If True, decode times encoded in the standard NetCDF datetime format
         into datetime objects. Otherwise, leave them encoded as numbers.
-    autoclose : bool, optional
-        If True, automatically close files to avoid OS Error of too many files
-        being open.  However, this option doesn't work with streams, e.g.,
-        BytesIO.
     concat_characters : bool, optional
         If True, concatenate along the last dimension of character arrays to
         form string arrays. Dimensions will only be concatenated over (and
@@ -1652,7 +1648,7 @@ def open_datastore(filename_or_obj, group=None, decode_cf=True,
 
     ds_xr = xr.open_dataset(
         filename_or_obj, group=group, decode_cf=decode_cf,
-        mask_and_scale=mask_and_scale, decode_times=decode_times, autoclose=autoclose,
+        mask_and_scale=mask_and_scale, decode_times=decode_times,
         concat_characters=concat_characters, decode_coords=decode_coords, engine=engine,
         chunks=chunks, lock=lock, cache=cache, drop_variables=drop_variables,
         backend_kwargs=backend_kwargs)
