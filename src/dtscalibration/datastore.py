@@ -225,6 +225,13 @@ class DataStore(xr.Dataset):
             }
         return d
 
+    @property
+    def timeseries_keys(self):
+        """
+        Returns the keys of all timeseires that can be used for calibration.
+        """
+        return [k for k, v in self.data_vars.items() if v.dims == ('time',)]
+
     def resample_datastore(self, how, freq=None, dim=None, skipna=None, closed=None,
                            label=None, base=0, keep_attrs=True, **indexer):
         """Returns a resampled DataStore. Always define the how.
