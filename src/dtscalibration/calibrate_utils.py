@@ -5,7 +5,7 @@ import scipy.sparse as sp
 from scipy.sparse import linalg as ln
 
 
-def calibration_single_ended_ols(ds, st_label, ast_label):
+def calibration_single_ended_ols(ds, st_label, ast_label, verbose=False):
     """
 
     Parameters
@@ -61,13 +61,13 @@ def calibration_single_ended_ols(ds, st_label, ast_label):
 
     y = np.log(st / ast).T.ravel()
     # noinspection PyTypeChecker
-    p0 = ln.lsqr(X, y, x0=p0_est, show=True, calc_var=True)
+    p0 = ln.lsqr(X, y, x0=p0_est, show=verbose, calc_var=True)
 
     return nt, z, p0
 
 
 def calibration_single_ended_wls(ds, st_label, ast_label, st_var, ast_var,
-                                 calc_cov=True, solver='sparse'):
+                                 calc_cov=True, solver='sparse', verbose=False):
     """
 
     Parameters
@@ -133,10 +133,10 @@ def calibration_single_ended_wls(ds, st_label, ast_label, st_var, ast_var,
          ).T.ravel()
 
     if solver == 'sparse':
-        p_sol, p_var, p_cov = wls_sparse(X, y, w=w, x0=p0_est, calc_cov=calc_cov)
+        p_sol, p_var, p_cov = wls_sparse(X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=verbose)
 
     elif solver == 'stats':
-        p_sol, p_var, p_cov = wls_stats(X, y, w=w, calc_cov=calc_cov)
+        p_sol, p_var, p_cov = wls_stats(X, y, w=w, calc_cov=calc_cov, verbose=verbose)
 
     elif solver == 'external':
         return X, y, w, p0_est
