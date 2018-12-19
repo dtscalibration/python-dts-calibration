@@ -3,9 +3,13 @@
 ===================================================
 
 A double ended calibration is performed with ordinary least squares.
-Over all timesteps simultaneous. :math:`\gamma` and :math:`\alpha`
-remain constant, while :math:`C` varies over time. The weights are
-considered equal here and no variance is calculated.
+Over all timesteps simultaneous. :math:`\gamma` and
+:math:`\int_0^l\alpha`\ d\ :math:`x` remain constant, while :math:`C`
+varies over time. The weights are considered equal here and no variance
+is calculated.
+
+Before starting the calibration procedure, the forward and the backward
+channel should be aligned.
 
 .. code:: ipython3
 
@@ -17,21 +21,13 @@ considered equal here and no variance is calculated.
 
 .. code:: ipython3
 
-    try:
-        wd = os.path.dirname(os.path.realpath(__file__))
-    except:
-        wd = os.getcwd()
-    
-    filepath = os.path.join(wd, '..', '..', 'tests', 'data', 'double_ended2')
-    timezone_netcdf = 'UTC'
-    timezone_input_files = 'Europe/Amsterdam'
-    file_ext = '*.xml'
+    filepath = os.path.join('..', '..', 'tests', 'data', 'double_ended2')
     
     ds = read_silixa_files(
         directory=filepath,
-        timezone_netcdf=timezone_netcdf,
-        timezone_input_files=timezone_input_files,
-        file_ext=file_ext)
+        timezone_netcdf='UTC',
+        timezone_input_files='Europe/Amsterdam',
+        file_ext='*.xml')
     
     ds100 = ds.sel(x=slice(0, 100))  # only calibrate parts of the fiber
     sections = {
@@ -127,26 +123,26 @@ considered equal here and no variance is calculated.
                                    rast_label=rast_label,
                                    method='ols')
 
+After calibration, two data variables are added to the ``DataStore``
+object: - ``TMPF``, temperature calculated along the forward direction -
+``TMPB``, temperature calculated along the backward direction
+
+A better estimate, with a lower expected variance, of the temperature
+along the fiber is the average of the two. We cannot weigh on more than
+the other, as we do not have more information about the weighing.
+
 .. code:: ipython3
 
     ds1 = ds100.isel(time=0)  # take only the first timestep
     
-    ds1.TMPF.plot(linewidth=1, label='User cali. Forward')  # plot the temperature calibrated by us
+    ds1.TMPF.plot(linewidth=1, label='User cali. Forward', figsize=(12, 8))  # plot the temperature calibrated by us
     ds1.TMPB.plot(linewidth=1, label='User cali. Backward')  # plot the temperature calibrated by us
     ds1.TMP.plot(linewidth=1, label='Device calibrated')  # plot the temperature calibrated by the device
-    plt.legend()
+    plt.legend();
 
 
 
-
-.. parsed-literal::
-
-    <matplotlib.legend.Legend at 0x10f981198>
-
-
-
-
-.. image:: 06Calibrate_double_ols.ipynb_files/06Calibrate_double_ols.ipynb_6_1.png
+.. image:: 06Calibrate_double_ols.ipynb_files/06Calibrate_double_ols.ipynb_7_0.png
 
 
 Lets compare our calibrated values with the device calibration. Lets
@@ -157,19 +153,12 @@ first.
 
     ds1['TMPAVG'] = (ds1.TMPF + ds1.TMPB) / 2
     ds1_diff = ds1.TMP - ds1.TMPAVG
-    ds1_diff.plot()
+    
+    ds1_diff.plot(figsize=(12, 8));
 
 
 
-
-.. parsed-literal::
-
-    [<matplotlib.lines.Line2D at 0x120bb3550>]
-
-
-
-
-.. image:: 06Calibrate_double_ols.ipynb_files/06Calibrate_double_ols.ipynb_8_1.png
+.. image:: 06Calibrate_double_ols.ipynb_files/06Calibrate_double_ols.ipynb_9_0.png
 
 
 The device calibration sections and calibration sections defined by us

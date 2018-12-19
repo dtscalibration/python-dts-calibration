@@ -32,21 +32,12 @@ estimated temperature via Monte Carlo.
 
 .. code:: ipython3
 
-    try:
-        wd = os.path.dirname(os.path.realpath(__file__))
-    except:
-        wd = os.getcwd()
-    
-    filepath = os.path.join(wd, '..', '..', 'tests', 'data', 'single_ended')
-    timezone_netcdf = 'UTC'
-    timezone_input_files = 'Europe/Amsterdam'
-    file_ext = '*.xml'
-    
+    filepath = os.path.join('..', '..', 'tests', 'data', 'single_ended')
     ds = read_silixa_files(
         directory=filepath,
-        timezone_netcdf=timezone_netcdf,
-        timezone_input_files=timezone_input_files,
-        file_ext=file_ext)
+        timezone_netcdf='UTC',
+        timezone_input_files='Europe/Amsterdam',
+        file_ext='*.xml')
     
     ds = ds.sel(x=slice(-30, 101))  # only calibrate parts of the fiber
     sections = {
@@ -125,30 +116,6 @@ estimated temperature via Monte Carlo.
 
 .. code:: ipython3
 
-    ds.data_vars
-
-
-
-
-.. parsed-literal::
-
-    Data variables:
-        ST                     (x, time) float64 6.267e+03 6.272e+03 ... 2.619e+03
-        AST                    (x, time) float64 5.473e+03 5.473e+03 ... 2.09e+03
-        TMP                    (x, time) float64 24.9 24.81 24.92 ... 10.63 10.71
-        acquisitionTime        (time) float32 30.71 30.702 30.716
-        referenceTemperature   (time) float32 24.5187 24.5168 24.5138
-        probe1Temperature      (time) float32 18.0204 18.0211 18.0216
-        probe2Temperature      (time) float32 6.61986 6.61692 6.61695
-        referenceProbeVoltage  (time) float32 0.123199 0.123198 0.123198
-        probe1Voltage          (time) float32 0.12 0.12 0.12
-        probe2Voltage          (time) float32 0.115 0.115 0.115
-        userAcquisitionTimeFW  (time) float32 30.0 30.0 30.0
-
-
-
-.. code:: ipython3
-
     st_label = 'ST'
     ast_label = 'AST'
 
@@ -189,15 +156,15 @@ entire measurement period’.
 .. code:: ipython3
 
     ds.calibration_single_ended(sections=sections,
-                               st_label=st_label,
-                               ast_label=ast_label,
-                               st_var=st_var,
-                               ast_var=ast_var,
-                               method='wls',
-                               solver='sparse',
+                                st_label=st_label,
+                                ast_label=ast_label,
+                                st_var=st_var,
+                                ast_var=ast_var,
+                                method='wls',
+                                solver='sparse',
                                 store_p_val='p_val',
-                               store_p_cov='p_cov'
-                               )
+                                store_p_cov='p_cov'
+                                )
 
 .. code:: ipython3
 
@@ -218,14 +185,21 @@ Lets compare our calibrated values with the device calibration
 
 .. code:: ipython3
 
-    plt.figure(figsize=(12, 8))
-    
     ds1 = ds.isel(time=0)  # take only the first timestep
-    ds1.TMPF.plot(linewidth=0.8, label='User calibrated')  # plot the temperature calibrated by us
+    ds1.TMPF.plot(linewidth=0.8, figsize=(12, 8), label='User calibrated')  # plot the temperature calibrated by us
     ds1.TMP.plot(linewidth=0.8, label='Device calibrated')  # plot the temperature calibrated by the device
-    ds1.TMPF_MC.plot(linewidth=0.8, hue='CI')
+    ds1.TMPF_MC.plot(linewidth=0.8, hue='CI', label='CI device')
     plt.title('Temperature at the first time step')
     plt.legend();
+
+
+
+.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_12_0.png
+
+
+.. code:: ipython3
+
+    ds.TMPF_MC_var.plot(figsize=(12, 8));
 
 
 
@@ -234,16 +208,7 @@ Lets compare our calibrated values with the device calibration
 
 .. code:: ipython3
 
-    ds.TMPF_MC_var.plot();
-
-
-
-.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_14_0.png
-
-
-.. code:: ipython3
-
-    ds1.TMPF_MC.sel(CI=2.5).plot(label = '2.5% CI')
+    ds1.TMPF_MC.sel(CI=2.5).plot(label = '2.5% CI', figsize=(12, 8))
     ds1.TMPF_MC.sel(CI=97.5).plot(label = '97.5% CI')
     ds1.TMPF.plot(label='User calibrated')
     plt.title('User calibrated temperature with 95% confidence interval')
@@ -251,7 +216,7 @@ Lets compare our calibrated values with the device calibration
 
 
 
-.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_15_0.png
+.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_14_0.png
 
 
 We can tell from the graph above that the 95% confidence interval widens
@@ -261,11 +226,11 @@ this should be around 0.0059 degC.
 
 .. code:: ipython3
 
-    ds1.TMPF_MC_var.plot();
+    ds1.TMPF_MC_var.plot(figsize=(12, 8));
 
 
 
-.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_17_0.png
+.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_16_0.png
 
 
 The variance of the temperature measurement appears to be larger than
@@ -280,12 +245,12 @@ Lets have a look at the Stokes and anti-Stokes signal.
 
 .. code:: ipython3
 
-    ds1.ST.plot()
+    ds1.ST.plot(figsize=(12, 8))
     ds1.AST.plot();
 
 
 
-.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_19_0.png
+.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_18_0.png
 
 
 Clearly there was a bad splice at 30 m that resulted in the sharp

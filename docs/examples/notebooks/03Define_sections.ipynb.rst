@@ -2,30 +2,25 @@
 3. Define calibration sections
 ==============================
 
+The goal of this notebook is to show how you can define calibration
+sections. That means that we define certain parts of the fiber to a
+timeseries of temperature measurements. Here, we assume the temperature
+timeseries is already part of the ``DataStore`` object.
+
 .. code:: ipython3
 
     import os
-    import glob
     
     from dtscalibration import read_silixa_files
 
 .. code:: ipython3
 
-    try:
-        wd = os.path.dirname(os.path.realpath(__file__))
-    except:
-        wd = os.getcwd()
-    
-    filepath = os.path.join(wd, '..', '..', 'tests', 'data', 'double_ended2')
-    timezone_netcdf = 'UTC'
-    timezone_input_files = 'Europe/Amsterdam'
-    file_ext = '*.xml'
-    
+    filepath = os.path.join('..', '..', 'tests', 'data', 'double_ended2')
     ds = read_silixa_files(
         directory=filepath,
-        timezone_netcdf=timezone_netcdf,
-        timezone_input_files=timezone_input_files,
-        file_ext=file_ext)
+        timezone_netcdf='UTC',
+        timezone_input_files='Europe/Amsterdam',
+        file_ext='*.xml')
 
 
 .. parsed-literal::
@@ -36,17 +31,24 @@
     The measurement is double ended
 
 
+First we have a look at which temperature timeseries are available for
+calibration. Therefore we access ``ds.data_vars`` and we find
+``probe1Temperature`` and ``probe2Temperature`` that refer to the
+temperature measurement timeseries of the two probes attached to the
+Ultima.
+
+Alternatively, we can access the ``ds.timeseries_keys`` property to list
+all timeseries that can be used for calibration.
+
 .. code:: ipython3
 
-    ds.probe1Temperature.plot()
-
-
+    print(ds.timeseries_keys)    # list the available timeseeries
+    ds.probe1Temperature.plot(figsize=(12, 8));  # plot one of the timeseries
 
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x12094cac8>]
-
+    ['acquisitionTime', 'referenceTemperature', 'probe1Temperature', 'probe2Temperature', 'referenceProbeVoltage', 'probe1Voltage', 'probe2Voltage', 'userAcquisitionTimeFW', 'userAcquisitionTimeBW']
 
 
 A calibration is needed to estimate temperature from Stokes and
@@ -58,9 +60,14 @@ while :math:`C` may vary.
 At least two calibration sections of different temperatures are needed
 to perform a decent calibration procedure.
 
+This setup has two baths, named ‘cold’ and ‘warm’. Each bath has 2
+sections. ``probe1Temperature`` is the temperature timeseries of the
+cold bath and ``probe2Temperature`` is the temperature timeseries of the
+warm bath.
+
 +---------+---------------------------+-------------+-----------------+
 | Name    | Name reference            | Number of   | Location of     |
-| section | temperature time series   | stretches   | sections (m)    |
+| section | temperature time series   | sections    | sections (m)    |
 +=========+===========================+=============+=================+
 | Cold    | probe1Temperature         | 2           | 7.5-17.0;       |
 | bath    |                           |             | 70.0-80.0       |
@@ -69,13 +76,9 @@ to perform a decent calibration procedure.
 | bath    |                           |             | 85.0-95.0       |
 +---------+---------------------------+-------------+-----------------+
 
-Each section requires a reference temperature time series, such as the
-temperature measured by an external temperature sensor. They should
-already be part of the DataStore object.
-
 Sections are defined in a dictionary with its keywords of the names of
 the reference temperature time series. Its values are lists of slice
-objects, where each slice object is a stretch.
+objects, where each slice object is a section.
 
 Note that slice is part of the standard Python library and no import is
 required.

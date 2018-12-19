@@ -17,20 +17,15 @@ DTS measurement (required for calibration)
     
     from dtscalibration import read_silixa_files
 
+Step 1: load the measurement files
+----------------------------------
+
 .. code:: ipython3
 
-    # The path is different for testing environments vs locally
-    try:
-        # this file is excecuted as script
-        wd = os.path.dirname(os.path.realpath(__file__))
-        
-    except:
-        # Excecuted from console. pwd = ./docs
-        wd = os.getcwd()
-    
-    filepath = os.path.join(wd, '..', '..', 'tests', 'data', 
+    filepath = os.path.join('..', '..', 'tests', 'data', 
                             'external_temperature_timeseries', 
                             'Loodswaternet2018-03-28 02h.csv')
+    
     # Bonus:
     print(filepath, '\n')
     with open(filepath, 'r') as f:
@@ -40,7 +35,7 @@ DTS measurement (required for calibration)
 
 .. parsed-literal::
 
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration/examples/notebooks/../../tests/data/external_temperature_timeseries/Loodswaternet2018-03-28 02h.csv 
+    ../../tests/data/external_temperature_timeseries/Loodswaternet2018-03-28 02h.csv 
     
     "time","Pt100 2"
      2018-03-28 02:00:05, 12.748
@@ -75,18 +70,16 @@ DTS measurement (required for calibration)
 
 
 
-Now we quickly create a DataStore from xml files
+Now we quickly create a DataStore from xml-files with Stokes
+measurements to add the external timeseries to
 
 .. code:: ipython3
 
-    timezone_netcdf = 'UTC'
-    timezone_input_files = 'Europe/Amsterdam'
-    file_ext = '*.xml'
-    filepath_ds = os.path.join(wd, '..', '..', 'tests', 'data', 'double_ended2')
+    filepath_ds = os.path.join('..', '..', 'tests', 'data', 'double_ended2')
     ds = read_silixa_files(directory=filepath_ds,
-                           timezone_netcdf=timezone_netcdf,
-                           timezone_input_files=timezone_input_files,
-                           file_ext=file_ext)
+                           timezone_netcdf='UTC',
+                           timezone_input_files='Europe/Amsterdam',
+                           file_ext='*.xml')
 
 
 .. parsed-literal::
@@ -97,8 +90,8 @@ Now we quickly create a DataStore from xml files
     The measurement is double ended
 
 
-Step 2: Add the temperature measurements of the external probe to the
-DataStore.
+Step 2: Add the temperature measurements of the external probe to the DataStore.
+--------------------------------------------------------------------------------
 
 First add the coordinates
 
@@ -112,8 +105,11 @@ Second we add the measured values
 
     ds['external_probe'] = (('time_external',), ts)
 
-Third, we linearly interpolate the measurements of the external sensor
-to the times we have DTS measurements
+Step 3: Align the time of the external measurements to the Stokes measurement times
+-----------------------------------------------------------------------------------
+
+We linearly interpolate the measurements of the external sensor to the
+times we have DTS measurements
 
 .. code:: ipython3
 

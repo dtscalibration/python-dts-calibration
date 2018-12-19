@@ -32,21 +32,13 @@ estimated temperature via Monte Carlo.
 
 .. code:: ipython3
 
-    try:
-        wd = os.path.dirname(os.path.realpath(__file__))
-    except:
-        wd = os.getcwd()
-    
-    filepath = os.path.join(wd, '..', '..', 'tests', 'data', 'double_ended2')
-    timezone_netcdf = 'UTC'
-    timezone_input_files = 'Europe/Amsterdam'
-    file_ext = '*.xml'
+    filepath = os.path.join('..', '..', 'tests', 'data', 'double_ended2')
     
     ds_ = read_silixa_files(
         directory=filepath,
-        timezone_netcdf=timezone_netcdf,
-        timezone_input_files=timezone_input_files,
-        file_ext=file_ext)
+        timezone_netcdf='UTC',
+        timezone_input_files='Europe/Amsterdam',
+        file_ext='*.xml')
     
     ds = ds_.sel(x=slice(0, 100))  # only calibrate parts of the fiber
     sections = {
@@ -89,19 +81,11 @@ as an estimate of the variance in measured signals.
 
 .. code:: ipython3
 
-    resid.plot()
+    resid.plot(figsize=(12, 8));
 
 
 
-
-.. parsed-literal::
-
-    <matplotlib.collections.QuadMesh at 0x115c1fb00>
-
-
-
-
-.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_8_1.png
+.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_8_0.png
 
 
 We calibrate the measurement with a single method call. The labels refer
@@ -169,9 +153,8 @@ background temperature with a confidence interval.
 
 .. code:: ipython3
 
-    plt.figure( figsize=(12, 8))
     ds1 = ds.isel(time=-1)  # take only the first timestep
-    ds1.TMPW.plot(linewidth=0.7)
+    ds1.TMPW.plot(linewidth=0.7, figsize=(12, 8))
     ds1.TMPW_MC.isel(CI=0).plot(linewidth=0.7, label='CI: 2.5%')
     ds1.TMPW_MC.isel(CI=2).plot(linewidth=0.7, label='CI: 97.5%')
     plt.legend();
@@ -187,19 +170,12 @@ confidence interval ‘coordinates’.
 
 .. code:: ipython3
 
-    (ds1.TMPW_MC_var**0.5).plot()
+    (ds1.TMPW_MC_var**0.5).plot(figsize=(12, 4));
+    plt.ylabel('$\sigma$ ($^\circ$C)');
 
 
 
-
-.. parsed-literal::
-
-    [<matplotlib.lines.Line2D at 0x115c1e828>]
-
-
-
-
-.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_15_1.png
+.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_15_0.png
 
 
 .. code:: ipython3

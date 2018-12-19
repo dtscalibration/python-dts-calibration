@@ -2,11 +2,16 @@
 5. Calibration of double ended measurement with OLS
 ===================================================
 
-A double ended calibration is performed with ordinary least squares.
+A double ended calibration is performed with Ordinary Least Squares.
 Over all timesteps simultaneous. :math:`\gamma` and :math:`\alpha`
 remain constant, while :math:`C` varies over time. The weights are
 considered equal here and no variance or confidence interval is
 calculated.
+
+Note that the internal reference section can not be used since there is
+a connector between the internal and external fiber and therefore the
+integrated differential attenuation cannot be considered to be linear
+anymore.
 
 .. code:: ipython3
 
@@ -19,28 +24,20 @@ calculated.
 
 .. code:: ipython3
 
-    try:
-        wd = os.path.dirname(os.path.realpath(__file__))
-    except:
-        wd = os.getcwd()
-    
-    filepath = os.path.join(wd, '..', '..', 'tests', 'data', 'single_ended')
-    timezone_netcdf = 'UTC'
-    timezone_input_files = 'Europe/Amsterdam'
-    file_ext = '*.xml'
+    filepath = os.path.join('..', '..', 'tests', 'data', 'single_ended')
     
     ds = read_silixa_files(
         directory=filepath,
-        timezone_netcdf=timezone_netcdf,
-        timezone_input_files=timezone_input_files,
-        file_ext=file_ext)
+        timezone_netcdf='UTC',
+        timezone_input_files='Europe/Amsterdam',
+        file_ext='*.xml')
     
-    ds100 = ds.sel(x=slice(-30, 101))  # only calibrate parts of the fiber
+    ds100 = ds.sel(x=slice(-30, 101))  # only calibrate parts of the fiber, in meters
     sections = {
                 'probe1Temperature':    [slice(20, 25.5)],  # warm bath
                 'probe2Temperature':    [slice(5.5, 15.5)],  # cold bath
-    #             'referenceTemperature': [slice(-24., -4)]  # The internal coil is not so uniform
                 }
+    ds100.sections = sections
 
 
 .. parsed-literal::
@@ -111,40 +108,9 @@ calculated.
 
 .. code:: ipython3
 
-    st_label = 'ST'
-    ast_label = 'AST'
-    ds100.calibration_single_ended(sections=sections,
-                                   st_label=st_label,
-                                   ast_label=ast_label,
+    ds100.calibration_single_ended(st_label='ST',
+                                   ast_label='AST',
                                    method='ols')
-
-
-.. parsed-literal::
-
-     
-    LSQR            Least-squares solution of  Ax = b
-    The matrix A has      366 rows  and        5 cols
-    damp = 0.00000000000000e+00   calc_var =        1
-    atol = 1.00e-08                 conlim = 1.00e+08
-    btol = 1.00e-08               iter_lim =       10
-     
-       Itn      x[0]       r1norm     r2norm   Compatible    LS      Norm A   Cond A
-         0  4.82000e+02   2.948e+01  2.948e+01    1.0e+00  1.0e+01
-         1  4.82000e+02   6.004e-01  6.004e-01    1.4e-01  1.4e-02   3.1e+02  1.0e+00
-         2  4.81999e+02   1.868e-02  1.868e-02    4.4e-03  3.4e-02   3.1e+02  7.1e+01
-         3  4.81999e+02   6.248e-03  6.248e-03    1.5e-03  2.7e-05   3.1e+02  7.6e+01
-         4  4.81999e+02   6.248e-03  6.248e-03    1.5e-03  1.2e-08   4.4e+02  1.1e+02
-         5  4.81877e+02   6.248e-03  6.248e-03    1.5e-03  1.5e-08   4.4e+02  8.6e+05
-         6  4.81877e+02   6.248e-03  6.248e-03    1.5e-03  1.1e-08   5.0e+02  9.8e+05
-         7  4.81877e+02   6.248e-03  6.248e-03    1.5e-03  8.0e-09   5.3e+02  1.1e+06
-     
-    LSQR finished
-    The least-squares solution is good enough, given atol     
-     
-    istop =       2   r1norm = 6.2e-03   anorm = 5.3e+02   arnorm = 2.7e-08
-    itn   =       7   r2norm = 6.2e-03   acond = 1.1e+06   xnorm  = 2.1e-01
-     
-
 
 Lets compare our calibrated values with the device calibration
 
@@ -152,20 +118,12 @@ Lets compare our calibrated values with the device calibration
 
     ds1 = ds100.isel(time=0)  # take only the first timestep
     
-    ds1.TMPF.plot(linewidth=1, label='User calibrated')  # plot the temperature calibrated by us
+    ds1.TMPF.plot(linewidth=1, figsize=(12, 8), label='User calibrated')  # plot the temperature calibrated by us
     ds1.TMP.plot(linewidth=1, label='Device calibrated')  # plot the temperature calibrated by the device
     plt.title('Temperature at the first time step')
-    plt.legend()
+    plt.legend();
 
 
 
-
-.. parsed-literal::
-
-    <matplotlib.legend.Legend at 0x113968e10>
-
-
-
-
-.. image:: 05Calibrate_single_ols.ipynb_files/05Calibrate_single_ols.ipynb_7_1.png
+.. image:: 05Calibrate_single_ols.ipynb_files/05Calibrate_single_ols.ipynb_7_0.png
 

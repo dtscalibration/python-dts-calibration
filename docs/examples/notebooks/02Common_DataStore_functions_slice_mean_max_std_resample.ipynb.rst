@@ -16,23 +16,18 @@ Examples of how to do some of the more commonly used functions:
     
     from dtscalibration import read_silixa_files
 
+First we load the raw measurements into a ``DataStore`` object, as we
+learned from the previous notebook.
+
 .. code:: ipython3
 
-    try:
-        wd = os.path.dirname(os.path.realpath(__file__))
-    except:
-        wd = os.getcwd()
-    
-    filepath = os.path.join(wd, '..', '..', 'tests', 'data', 'single_ended')
-    timezone_netcdf = 'UTC'
-    timezone_input_files = 'Europe/Amsterdam'
-    file_ext = '*.xml'
+    filepath = os.path.join('..', '..', 'tests', 'data', 'single_ended')
     
     ds = read_silixa_files(
         directory=filepath,
-        timezone_netcdf=timezone_netcdf,
-        timezone_input_files=timezone_input_files,
-        file_ext=file_ext)
+        timezone_netcdf='UTC',
+        timezone_input_files='Europe/Amsterdam',
+        file_ext='*.xml')
 
 
 .. parsed-literal::
@@ -86,16 +81,7 @@ http://xarray.pydata.org/en/stable/indexing.html
 
 .. code:: ipython3
 
-    ds['TMP'].plot()
-
-
-
-
-.. parsed-literal::
-
-    <matplotlib.collections.QuadMesh at 0x11d477a90>
-
-
+    ds['TMP'].plot(figsize=(12, 8));
 
 1 mean, min, max
 ----------------
@@ -144,7 +130,7 @@ What if you would like to have the measurement at approximately
 
 .. code:: ipython3
 
-    section_of_interest = ds.sel(x=20., method='nearest')
+    point_of_interest = ds.sel(x=20., method='nearest')
 
 3 Selecting by index
 --------------------
@@ -154,18 +140,18 @@ We can use isel (index select)
 
 .. code:: ipython3
 
-    section_of_interest = ds.isel(x=0)
+    section_of_interest = ds.isel(time=slice(0, 2))  # The first two time steps
 
 .. code:: ipython3
 
-    section_of_interest = ds.isel(time=slice(0, 2))  # The first two time steps
+    section_of_interest = ds.isel(x=0)
 
 4 Downsample (time dimension)
 -----------------------------
 
 We currently have measurements at 3 time steps, with 30.001 seconds
 inbetween. For our next exercise we would like to down sample the
-measurements to 2 time steps with 46 seconds inbetween. The calculated
+measurements to 2 time steps with 47 seconds inbetween. The calculated
 variances are not valid anymore. We use the function
 ``resample_datastore``.
 

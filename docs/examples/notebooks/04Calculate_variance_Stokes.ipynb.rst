@@ -2,6 +2,12 @@
 4. Calculate variance of Stokes and anti-Stokes measurements
 ============================================================
 
+The goal of this notebook is to estimate the variance of the noise of
+the Stokes measurement. The measured Stokes and anti-Stokes signals
+contain noise that is distributed approximately normal. We need to
+estimate the variance of the noise to: - Perform a weighted calibration
+- Construct confidence intervals
+
 .. code:: ipython3
 
     import os
@@ -13,25 +19,13 @@
 
 .. code:: ipython3
 
-    try:
-        wd = os.path.dirname(os.path.realpath(__file__))
-    except:
-        wd = os.getcwd()
-    
-    filepath = os.path.join(wd, '..', '..', 'tests', 'data', 'double_ended2')
-    timezone_netcdf = 'UTC'
-    timezone_input_files = 'Europe/Amsterdam'
-    file_ext = '*.xml'
+    filepath = os.path.join('..', '..', 'tests', 'data', 'double_ended2')
     
     ds = read_silixa_files(
         directory=filepath,
-        timezone_netcdf=timezone_netcdf,
-        timezone_input_files=timezone_input_files,
-        file_ext=file_ext)
-    sections = {
-        'probe1Temperature': [slice(7.5, 17.), slice(70., 80.)],  # cold bath
-        'probe2Temperature': [slice(24., 34.), slice(85., 95.)],  # warm bath
-        }
+        timezone_netcdf='UTC',
+        timezone_input_files='Europe/Amsterdam',
+        file_ext='*.xml')
 
 
 .. parsed-literal::
@@ -42,9 +36,23 @@
     The measurement is double ended
 
 
+And we define the sections as we learned from the previous notebook.
+Sections are required to calculate the variance in the Stokes.
+
 .. code:: ipython3
 
-    print(ds.variance_stokes.__doc__)
+    sections = {
+        'probe1Temperature': [slice(7.5, 17.), slice(70., 80.)],  # cold bath
+        'probe2Temperature': [slice(24., 34.), slice(85., 95.)],  # warm bath
+        }
+    ds.sections = sections
+
+Lets first read the documentation about the ``ds.variance_stokes``
+method.
+
+.. code:: ipython3
+
+    print(ds.variance_stokes.__doc__) 
 
 
 .. parsed-literal::
@@ -86,9 +94,7 @@
 
 .. code:: ipython3
 
-    I_var, residuals = ds.variance_stokes(st_label='ST', 
-                                          sections=sections, 
-                                          use_statsmodels=False)
+    I_var, residuals = ds.variance_stokes(st_label='ST')
     print("The variance of the Stokes signal along the reference sections "
           "is approximately {} on a {} sec acquisition time".format(I_var, ds.userAcquisitionTimeFW.data[0]))
 
@@ -104,7 +110,7 @@
 
 
 
-.. image:: 04Calculate_variance_Stokes.ipynb_files/04Calculate_variance_Stokes.ipynb_5_0.png
+.. image:: 04Calculate_variance_Stokes.ipynb_files/04Calculate_variance_Stokes.ipynb_9_0.png
 
 
 The residuals should be normally distributed and independent from
@@ -115,9 +121,13 @@ by coils/sharp bends in cable - Attenuation caused by a splice
 
 .. code:: ipython3
 
-    residuals.plot.hist(bins=50);
+    residuals.plot.hist(bins=50, figsize=(12, 8));
 
 
 
-.. image:: 04Calculate_variance_Stokes.ipynb_files/04Calculate_variance_Stokes.ipynb_7_0.png
+.. image:: 04Calculate_variance_Stokes.ipynb_files/04Calculate_variance_Stokes.ipynb_11_0.png
 
+
+We can follow the same steps to calculate the variance from the noise in
+the anti-Stokes measurments by setting ``st_label='AST`` and redo the
+steps.
