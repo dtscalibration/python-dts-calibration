@@ -43,6 +43,60 @@ Examples of how to do some of the more commonly used functions:
     The measurement is single ended
 
 
+0 Access the data
+-----------------
+
+The implemented read routines try to read as much data from the raw DTS
+files as possible. Usually they would have coordinates (time and space)
+and Stokes and anti Stokes measurements. We can access the data by key.
+It is presented as a DataArray. More examples are found at
+http://xarray.pydata.org/en/stable/indexing.html
+
+.. code:: ipython3
+
+    ds['ST']  # is the data stored, presented as a DataArray
+
+
+
+
+.. parsed-literal::
+
+    <xarray.DataArray 'ST' (x: 1461, time: 3)>
+    array([[-8.05791e-01,  4.28741e-01, -5.13021e-01],
+           [-4.58870e-01, -1.24484e-01,  9.68469e-03],
+           [ 4.89174e-01, -9.57734e-02,  5.62837e-02],
+           ...,
+           [ 4.68457e+01,  4.72201e+01,  4.79139e+01],
+           [ 3.76634e+01,  3.74649e+01,  3.83160e+01],
+           [ 2.79879e+01,  2.78331e+01,  2.88055e+01]])
+    Coordinates:
+      * x                  (x) float64 -80.74 -80.62 -80.49 ... 104.6 104.7 104.8
+        filename           (time) <U31 'channel 2_20180504132202074.xml' ... 'channel 2_20180504132303723.xml'
+        filename_tstamp    (time) int64 20180504132202074 ... 20180504132303723
+        timestart          (time) datetime64[ns] 2018-05-04T12:22:02.710000 ... 2018-05-04T12:23:03.716000
+        timeend            (time) datetime64[ns] 2018-05-04T12:22:32.710000 ... 2018-05-04T12:23:33.716000
+      * time               (time) datetime64[ns] 2018-05-04T12:22:17.710000 ... 2018-05-04T12:23:18.716000
+        acquisitiontimeFW  (time) timedelta64[ns] 00:00:30 00:00:30 00:00:30
+    Attributes:
+        name:         ST
+        description:  Stokes intensity
+        units:        -
+
+
+
+.. code:: ipython3
+
+    ds['TMP'].plot()
+
+
+
+
+.. parsed-literal::
+
+    <matplotlib.collections.QuadMesh at 0x11d477a90>
+
+
+
 1 mean, min, max
 ----------------
 
@@ -51,22 +105,23 @@ dimension. ``dim`` can be any dimension (e.g., ``time``, ``x``). The
 returned ``DataStore`` does not contain that dimension anymore.
 
 Normally, you would like to keep the attributes (the informative texts
-from the loaded files), so set ``keep_attrs`` to ``True``.
+from the loaded files), so set ``keep_attrs`` to ``True``. They don’t
+take any space compared to your Stokes data, so keep them.
 
 Note that also the sections are stored as attribute. If you delete the
 attributes, you would have to redefine the sections.
 
 .. code:: ipython3
 
-    ds_min = ds.mean(dim='time', keep_attrs=True)
+    ds_min = ds.mean(dim='time', keep_attrs=True)  # take the minimum of all data variables (e.g., Stokes, Temperature) along the time dimension
 
 .. code:: ipython3
 
-    ds_max = ds.max(dim='x', keep_attrs=True)
+    ds_max = ds.max(dim='x', keep_attrs=True)  # Take the maximum of all data variables (e.g., Stokes, Temperature) along the x dimension
 
 .. code:: ipython3
 
-    ds_std = ds.std(dim='time', keep_attrs=True)
+    ds_std = ds.std(dim='time', keep_attrs=True)  # Calculate the standard deviation along the time dimension
 
 2 Selecting
 -----------

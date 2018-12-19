@@ -5,6 +5,13 @@
 This notebook is located in
 https://github.com/bdestombe/python-dts-calibration/tree/master/examples/notebooks
 
+The goal of this notebook is to show the different options of loading
+measurements from raw DTS files. The current supported devices are: -
+Silixa - Sensornet
+
+This example loads Silixa files. Both single-ended and double-ended
+measurements are supported.
+
 .. code:: ipython3
 
     import os
@@ -12,26 +19,27 @@ https://github.com/bdestombe/python-dts-calibration/tree/master/examples/noteboo
     
     from dtscalibration import read_silixa_files
 
-The data files are located in ``./python-dts-calibration/tests/data``
+The data files are located in ``./python-dts-calibration/tests/data``.
 
 .. code:: ipython3
 
     # The path is different for testing environments vs locally
-    try:
-        # this file is excecuted as script
-        wd = os.path.dirname(os.path.realpath(__file__))
+    # try:
+    #     # this file is excecuted as script
+    #     wd = os.path.dirname(os.path.realpath(__file__))
         
-    except:
-        # Excecuted from console. pwd = ./docs
-        wd = os.getcwd()
-    
-    filepath = os.path.join(wd, '..', '..', 'tests', 'data', 'double_ended2')
+    # except:
+    #     # Excecuted from console. pwd = ./docs
+    #     wd = os.getcwd()
+    wd = os.getcwd()
+    # filepath = os.path.join(wd, '..', '..', 'tests', 'data', 'double_ended2')
+    filepath = os.path.join('..', '..', 'tests', 'data', 'double_ended2')
     print(filepath)
 
 
 .. parsed-literal::
 
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration/examples/notebooks/../../tests/data/double_ended2
+    ../../tests/data/double_ended2
 
 
 Define in which timezone the measurements are taken. In this case it is

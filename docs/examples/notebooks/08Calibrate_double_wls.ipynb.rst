@@ -96,7 +96,7 @@ as an estimate of the variance in measured signals.
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x115ad3898>
+    <matplotlib.collections.QuadMesh at 0x115c1fb00>
 
 
 
@@ -184,6 +184,23 @@ background temperature with a confidence interval.
 The DataArrays ``TMPF_MC`` and ``TMPB_MC`` and the dimension ``CI`` are
 added. ``MC`` stands for monte carlo and the ``CI`` dimension holds the
 confidence interval ‘coordinates’.
+
+.. code:: ipython3
+
+    (ds1.TMPW_MC_var**0.5).plot()
+
+
+
+
+.. parsed-literal::
+
+    [<matplotlib.lines.Line2D at 0x115c1e828>]
+
+
+
+
+.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_15_1.png
+
 
 .. code:: ipython3
 

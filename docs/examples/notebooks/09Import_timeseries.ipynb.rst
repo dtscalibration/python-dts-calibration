@@ -1,4 +1,7 @@
 
+9. Import a time series
+=======================
+
 In this tutorial we are adding a timeseries to the DataStore object.
 This might be useful if the temperature in one of the calibration baths
 was measured with an external device. It requires three steps to add the
