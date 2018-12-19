@@ -25,7 +25,7 @@ Overview
       - |example-notebooks|
 
 .. |docs| image:: https://readthedocs.org/projects/python-dts-calibration/badge/?style=flat
-    :target: https://readthedocs.org/projects/python-dts-calibration
+    :target: https://python-dts-calibration.readthedocs.io/en/latest/
     :alt: Documentation Status
 
 .. |travis| image:: https://travis-ci.org/bdestombe/python-dts-calibration.svg?branch=master
