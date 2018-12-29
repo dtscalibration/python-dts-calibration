@@ -571,9 +571,10 @@ class DataStore(xr.Dataset):
             # added to ds
             resid_res = []
             for leni, lenis, lenie in zip(
-                len_stretch_list,
-                nt * np.cumsum([0] + len_stretch_list[:-1]),
-                nt * np.cumsum(len_stretch_list)):
+                    len_stretch_list,
+                    nt * np.cumsum([0] + len_stretch_list[:-1]),
+                    nt * np.cumsum(len_stretch_list)
+                    ):
 
                 resid_res.append(
                     resid[lenis:lenie].reshape((leni, nt), order='F'))
@@ -1422,11 +1423,11 @@ class DataStore(xr.Dataset):
         # Calculate the weighted MC_set
         weightf = 1 / (1 / self[store_tmpf + '_MC' + store_tempvar] +
                        1 / self[store_tmpb + '_MC' + store_tempvar]) / \
-                  self[store_tmpf + '_MC' + store_tempvar]
+            self[store_tmpf + '_MC' + store_tempvar]
 
         weightb = 1 / (1 / self[store_tmpf + '_MC' + store_tempvar] +
                        1 / self[store_tmpb + '_MC' + store_tempvar]) / \
-                  self[store_tmpb + '_MC' + store_tempvar]
+            self[store_tmpb + '_MC' + store_tempvar]
 
         # np.testing.assert_almost_equal(np.all(weightf + weightb), 1)
 
@@ -1448,11 +1449,8 @@ class DataStore(xr.Dataset):
 
         # Calculate the variance of the weighted MC_set
         self[store_tmpw + '_MC' + store_tempvar] = (
-                                                       self[
-                                                           store_tmpw +
-                                                           '_MC_set'] -
-                                                       self[store_tmpw]).std(
-            dim=avg_dims) ** 2
+            self[store_tmpw + '_MC_set'] - self[store_tmpw]).std(
+                dim=avg_dims) ** 2
 
         # Clean up the garbage. All arrays with a Monte Carlo dimension.
         # remove_MC_set = [k for k, v in self.data_vars.items() if 'MC' in
@@ -1658,8 +1656,8 @@ class DataStore(xr.Dataset):
             out = func(concat(list(out.values()), axis=0), **func_kwargs)
 
             if hasattr(out, 'chunks') and \
-                len(out.chunks) > 0 and \
-                'x' in self[label].dims:
+                    len(out.chunks) > 0 and \
+                    'x' in self[label].dims:
                 # also sum the chunksize in the x dimension
                 # first find out where the x dim is
                 ixdim = self[label].dims.index('x')
@@ -1785,7 +1783,7 @@ def read_silixa_files(
     timezone_input_files='UTC',
     silent=False,
     load_in_memory='auto',
-    **kwargs):
+        **kwargs):
     """Read a folder with measurement files. Each measurement file contains
     values for a
     single timestep. Remember to check which timezone you are working in.
@@ -1867,7 +1865,7 @@ def read_sensornet_files(
     timezone_netcdf='UTC',
     timezone_input_files='UTC',
     silent=False,
-    **kwargs):
+        **kwargs):
     """Read a folder with measurement files. Each measurement file contains
     values for a single timestep. Remember to check which timezone
     you are working in.
@@ -1941,7 +1939,7 @@ def plot_dask(arr, file_path=None):
         visualize
 
     with Profiler() as prof, ResourceProfiler(
-        dt=0.25) as rprof, CacheProfiler() as cprof:
+            dt=0.25) as rprof, CacheProfiler() as cprof:
         out = arr.compute()
 
     arr.visualize(file_path)
