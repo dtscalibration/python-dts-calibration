@@ -786,7 +786,7 @@ def read_silixa_attrs_singlefile(filename, sep):
     """
     import xmltodict
 
-    def metakey(meta, dict_to_parse, prefix, sep):
+    def metakey(meta, dict_to_parse, prefix):
         """
         Fills the metadata dictionairy with data from dict_to_parse.
         The dict_to_parse is the raw data from a silixa xml-file.
@@ -801,9 +801,7 @@ def read_silixa_attrs_singlefile(filename, sep):
         meta : dict
             the output dictionairy with prcessed metadata
         dict_to_parse : dict
-
         prefix
-        sep
 
         Returns
         -------
@@ -900,6 +898,16 @@ def read_sensornet_single(filename):
 
 
 def get_xml_namespace(element):
+    """
+
+    Parameters
+    ----------
+    element
+
+    Returns
+    -------
+
+    """
     import re
     m = re.match('\\{.*\\}', element.tag)
     return m.group(0) if m else ''

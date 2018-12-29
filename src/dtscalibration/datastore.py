@@ -852,8 +852,6 @@ class DataStore(xr.Dataset):
             And should be equal to half the total integrated differential attenuation.
         store_gamma : str
             Label of where to store gamma
-        store_alphaint : str
-            Label of where to store alphaint
         store_alpha : str
             Label of where to store alpha
         store_tmpf : str

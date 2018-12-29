@@ -7,3 +7,6 @@ from .datastore import read_silixa_files
 
 __version__ = '0.6.0'
 __all__ = ["DataStore", "open_datastore", "read_sensornet_files", "read_silixa_files", "plot_dask"]
+
+"""A Python package to load raw Distributed Temperature Sensing (DTS) files, perform a calibration, 
+and plot the result"""

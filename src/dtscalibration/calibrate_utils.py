@@ -10,9 +10,10 @@ def calibration_single_ended_ols(ds, st_label, ast_label, verbose=False):
 
     Parameters
     ----------
-    ds
-    st_label
-    ast_label
+    ds : DataStore
+    st_label : str
+    ast_label : str
+    verbose : bool
 
     Returns
     -------
@@ -72,13 +73,17 @@ def calibration_single_ended_wls(ds, st_label, ast_label, st_var, ast_var,
 
     Parameters
     ----------
-    ds
+    ds : DataStore
     st_label
     ast_label
     st_var
     ast_var
-    calc_cov
-    solver
+    calc_cov : bool
+      whether to calculate the covariance matrix. Required for calculation of confidence
+      boiundaries. But uses a lot of memory.
+    solver : {'sparse', 'stats'}
+      Always use sparse to save memory. The statsmodel can be used to validate sparse solver
+    verbose : bool
 
     Returns
     -------
@@ -373,6 +378,7 @@ def calibration_double_ended_wls(ds, st_label, ast_label, rst_label,
         p_sol, p_var, p_cov = wls_stats(X, y, w=w, calc_cov=calc_cov, verbose=verbose)
 
     elif solver == 'external':
+        p_sol, p_var, p_cov = None, None, None
         return X, y, w, p0_est
 
     if calc_cov:
