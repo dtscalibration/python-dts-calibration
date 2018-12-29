@@ -27,9 +27,10 @@ from .io import silixa_xml_version_check
 
 
 class DataStore(xr.Dataset):
-    """The data class that stores the measurements, contains calibration methods to relate Stokes
-    and anti-Stokes to temperature. The user should never initiate this class directly,
-    but use read_xml_dir or open_datastore functions instead.
+    """The data class that stores the measurements, contains calibration
+    methods to relate Stokes and anti-Stokes to temperature. The user should
+    never initiate this class directly, but use read_xml_dir or open_datastore
+    functions instead.
 
         Parameters
         ----------
@@ -52,14 +53,13 @@ class DataStore(xr.Dataset):
         attrs : dict-like, optional
             Global attributes to save on this datastore.
         sections : dict, optional
-            Sections for calibration. The dictionary should contain key-var couples
-            in which the key is the name of the calibration temp time series. And
-            the var is a list of slice objects as 'slice(start, stop)'; start and
-            stop in meter (float).
+            Sections for calibration. The dictionary should contain key-var
+            couples in which the key is the name of the calibration temp time
+            series. And the var is a list of slice objects as 'slice(start,
+            stop)'; start and stop in meter (float).
         compat : {'broadcast_equals', 'equals', 'identical'}, optional
             String indicating how to compare variables of the same name for
             potential conflicts when initializing this datastore:
-
             - 'broadcast_equals': all values must be equal when variables are
               broadcast against each other to ensure common dimensions.
             - 'equals': all values and dimensions must be the same.
@@ -69,7 +69,8 @@ class DataStore(xr.Dataset):
         See Also
         --------
         dtscalibration.read_xml_dir : Load measurements stored in XML-files
-        dtscalibration.open_datastore : Load (calibrated) measurements from netCDF-like file
+        dtscalibration.open_datastore : Load (calibrated) measurements from
+        netCDF-like file
         """
 
     def __init__(self, *args, **kwargs):
@@ -108,17 +109,21 @@ class DataStore(xr.Dataset):
     @property
     def sections(self):
         """
-        Define calibration sections. Each section requires a reference temperature time series,
-        such as the temperature measured by an external temperature sensor. They should already be
-        part of the DataStore object.
+        Define calibration sections. Each section requires a reference
+        temperature time series, such as the temperature measured by an
+        external temperature sensor. They should already be part of the
+        DataStore object.
 
-        Please look at the example notebook on `sections` if you encounter difficulties.
+        Please look at the example notebook on `sections` if you encounter
+        difficulties.
 
         Parameters
         ----------
         sections : Dict[str, List[slice]]
-            Sections are defined in a dictionary with its keywords of the names of the reference
-            temperature time series. Its values are lists of slice objects, where each slice object
+            Sections are defined in a dictionary with its keywords of the
+            names of the reference
+            temperature time series. Its values are lists of slice objects,
+            where each slice object
             is a stretch.
         Returns
         -------
@@ -133,17 +138,22 @@ class DataStore(xr.Dataset):
             assert isinstance(sections, dict)
 
             for key in sections:
-                assert key in self.data_vars, 'The keys of the sections-dictionary should refer ' \
-                                              'to a valid timeserie already stored in ds.data_vars'
+                assert key in self.data_vars, 'The keys of the ' \
+                                              'sections-dictionary should ' \
+                                              'refer ' \
+                                              'to a valid timeserie already ' \
+                                              'stored in ds.data_vars'
             check_dims(self, sections, ('time',))
 
             for k, v in sections.items():
-                assert isinstance(v, (list, tuple)), 'The values of the sections-dictionary ' \
-                                                     'should be lists of slice objects.'
+                assert isinstance(v, (list, tuple)), \
+                    'The values of the sections-dictionary ' \
+                    'should be lists of slice objects.'
 
                 for vi in v:
-                    assert isinstance(vi, slice), 'The values of the sections-dictionary should ' \
-                                                  'be lists of slice objects.'
+                    assert isinstance(vi, slice), \
+                        'The values of the sections-dictionary should ' \
+                        'be lists of slice objects.'
 
         self.attrs['_sections'] = yaml.dump(sections)
         pass
@@ -193,7 +203,8 @@ class DataStore(xr.Dataset):
 
         """
         if self.is_double_ended:
-            return int(self.attrs['reverseMeasurementChannel']) - 1  # zero-based
+            return int(
+                self.attrs['reverseMeasurementChannel']) - 1  # zero-based
         else:
             return None
 
@@ -232,7 +243,8 @@ class DataStore(xr.Dataset):
         """
         return [k for k, v in self.data_vars.items() if v.dims == ('time',)]
 
-    def resample_datastore(self, how, freq=None, dim=None, skipna=None, closed=None,
+    def resample_datastore(self, how, freq=None, dim=None, skipna=None,
+                           closed=None,
                            label=None, base=0, keep_attrs=True, **indexer):
         """Returns a resampled DataStore. Always define the how.
         Handles both downsampling and upsampling. If any intervals contain no
@@ -243,7 +255,8 @@ class DataStore(xr.Dataset):
         dim
         how : str
             Any function that is available via groupby. E.g., 'mean'
-            http://pandas.pydata.org/pandas-docs/stable/groupby.html#groupby-dispatch
+            http://pandas.pydata.org/pandas-docs/stable/groupby.html#groupby
+            -dispatch
         skipna : bool, optional
             Whether to skip missing values when aggregating in downsampling.
         closed : 'left' or 'right', optional
@@ -333,7 +346,8 @@ class DataStore(xr.Dataset):
             Write ('w') or append ('a') mode. If mode='w', any existing file at
             this location will be overwritten. If mode='a', existing variables
             will be overwritten.
-        format : {'NETCDF4', 'NETCDF4_CLASSIC', 'NETCDF3_64BIT','NETCDF3_CLASSIC'}, optional
+        format : {'NETCDF4', 'NETCDF4_CLASSIC', 'NETCDF3_64BIT',
+        'NETCDF3_CLASSIC'}, optional
             File format for the resulting netCDF file:
             * NETCDF4: Data is stored in an HDF5 file, using netCDF4 API
               features.
@@ -358,7 +372,8 @@ class DataStore(xr.Dataset):
             default engine is chosen based on available dependencies, with a
             preference for 'netcdf4' if writing to a file on disk.
         encoding : dict, optional
-            defaults to reasonable compression. Use encoding={} to disable encoding.
+            defaults to reasonable compression. Use encoding={} to disable
+            encoding.
             Nested dictionary with variable names as keys and dictionaries of
             variable specific encodings as values, e.g.,
             ``{'my_variable': {'dtype': 'int16', 'scale_factor': 0.1,
@@ -402,7 +417,8 @@ class DataStore(xr.Dataset):
 
         """
         # TODO: set scale parameter
-        compdata = dict(zlib=True, complevel=6, shuffle=False)  # , least_significant_digit=None
+        compdata = dict(zlib=True, complevel=6,
+                        shuffle=False)  # , least_significant_digit=None
         compcoords = dict(zlib=True, complevel=4)
 
         encoding = {var: compdata for var in self.data_vars}
@@ -411,19 +427,20 @@ class DataStore(xr.Dataset):
 
     def variance_stokes(self, st_label, sections=None, use_statsmodels=False,
                         suppress_info=True, reshape_residuals=True):
-        """
-        Calculates the variance between the measurements and a best fit exponential at each
-        reference section. This fits a two-parameter exponential to the stokes measurements. The
-        temperature is constant and there are no splices/sharp bends in each reference section.
-        Therefore all signal decrease is due to differential attenuation, which is the same for
-        each reference section. The scale of the exponential does differ per reference section.
+        """Calculates the variance between the measurements and a best fit
+        exponential at each reference section. This fits a two-parameter
+        exponential to the stokes measurements. The temperature is constant
+        and there are no splices/sharp bends in each reference section.
+        Therefore all signal decrease is due to differential attenuation,
+        which is the same for each reference section. The scale of the
+        exponential does differ per reference section.
 
-        Assumptions: 1) the temperature is the same along a reference section. 2) no sharp bends
-        and splices in the reference sections. 3) Same type of optical cable in each reference
-        section.
+        Assumptions: 1) the temperature is the same along a reference
+        section. 2) no sharp bends and splices in the reference sections. 3)
+        Same type of optical cable in each reference section.
 
-        Idea from discussion at page 127 in Richter, P. H. (1995). Estimating errors in
-        least-squares fitting. For weights used error propagation:
+        Idea from discussion at page 127 in Richter, P. H. (1995). Estimating
+        errors in least-squares fitting. For weights used error propagation:
         w^2 = 1/sigma(lny)^2 = y^2/sigma(y)^2 = y^2
 
         Parameters
@@ -454,7 +471,8 @@ class DataStore(xr.Dataset):
 
         nt = self['time'].size
 
-        len_stretch_list = []  # number of reference points per section (spatial)
+        len_stretch_list = []  # number of reference points per section (
+        # spatial)
         y_list = []  # intensities of stokes
         x_list = []  # length rel to start of section. for alpha
 
@@ -467,7 +485,9 @@ class DataStore(xr.Dataset):
                 len_stretch_list.append(_x.size)
 
         n_sections = len(len_stretch_list)  # number of sections
-        n_locs = sum(len_stretch_list)  # total number of locations along cable used for reference.
+        n_locs = sum(
+            len_stretch_list)  # total number of locations along cable used
+        # for reference.
 
         x = np.concatenate(x_list)  # coordinates are already in memory
         y = np.asarray(da.concatenate(y_list))
@@ -486,7 +506,8 @@ class DataStore(xr.Dataset):
         # second calibration parameter is different per section and per timestep
         coords2row = np.arange(nt * n_locs)
         coords2col = np.hstack([
-            np.repeat(np.arange(i * nt + n_sections, (i + 1) * nt + n_sections), in_locs)
+            np.repeat(np.arange(i * nt + n_sections, (i + 1) * nt + n_sections),
+                      in_locs)
             for i, in_locs in enumerate(len_stretch_list)
             ])  # C for
         coords = (np.concatenate([coords1row, coords2row]),
@@ -514,7 +535,8 @@ class DataStore(xr.Dataset):
         else:
             wdata = data * np.hstack((w, w))
             wX = sp.coo_matrix((wdata, coords),
-                               shape=(nt * n_locs, n_sections + nt * n_sections),
+                               shape=(
+                                   nt * n_locs, n_sections + nt * n_sections),
                                dtype=float,
                                copy=False)
 
@@ -545,14 +567,16 @@ class DataStore(xr.Dataset):
         if not reshape_residuals:
             return var_I, resid
         else:
-            # restructure the residuals, such that they can be plotted and added to ds
+            # restructure the residuals, such that they can be plotted and
+            # added to ds
             resid_res = []
             for leni, lenis, lenie in zip(
                 len_stretch_list,
                 nt * np.cumsum([0] + len_stretch_list[:-1]),
-                    nt * np.cumsum(len_stretch_list)):
+                nt * np.cumsum(len_stretch_list)):
 
-                resid_res.append(resid[lenis:lenie].reshape((leni, nt), order='F'))
+                resid_res.append(
+                    resid[lenis:lenie].reshape((leni, nt), order='F'))
 
             _resid = np.concatenate(resid_res)
             _resid_x = self.ufunc_per_section(label='x', calc_per='all')
@@ -560,9 +584,11 @@ class DataStore(xr.Dataset):
             resid_x = _resid_x[isort]
             resid = _resid[isort, :]
 
-            ix_resid = np.array([np.argmin(np.abs(ai - self.x.data)) for ai in resid_x])
+            ix_resid = np.array(
+                [np.argmin(np.abs(ai - self.x.data)) for ai in resid_x])
 
-            resid_sorted = np.full(shape=self[st_label].shape, fill_value=np.nan)
+            resid_sorted = np.full(shape=self[st_label].shape,
+                                   fill_value=np.nan)
             resid_sorted[ix_resid, :] = resid
             resid_da = xr.DataArray(data=resid_sorted,
                                     dims=('x', 'time'),
@@ -580,8 +606,10 @@ class DataStore(xr.Dataset):
                                        tmpw_store='TMPW',
                                        tmpw_var_store='TMPW_var'):
         """
-        Average two temperature datasets with the inverse of the variance as weights. The two
-        temperature datasets `tmp1` and `tmp2` with their variances `tmp1_var` and `tmp2_var`,
+        Average two temperature datasets with the inverse of the variance as
+        weights. The two
+        temperature datasets `tmp1` and `tmp2` with their variances
+        `tmp1_var` and `tmp2_var`,
         respectively. Are averaged and stored in the DataStore.
 
         Parameters
@@ -635,8 +663,8 @@ class DataStore(xr.Dataset):
         self[tmpw_var_store] = 1 / (1 / self[
             tmp_var_label]).sum(dim=dim)
 
-        self[tmpw_store] = (self[tmp_label] / self[tmp_var_label]).sum(dim=dim) / (1 / self[
-            tmp_var_label]).sum(dim=dim)
+        self[tmpw_store] = (self[tmp_label] / self[tmp_var_label]).sum(
+            dim=dim) / (1 / self[tmp_var_label]).sum(dim=dim)
 
         pass
 
@@ -683,10 +711,12 @@ class DataStore(xr.Dataset):
         ast_label : str
             Label of the anti-Stoke measurement
         st_var : float, optional
-            The variance of the measurement noise of the Stokes signals in the forward
+            The variance of the measurement noise of the Stokes signals in
+            the forward
             direction Required if method is wls.
         ast_var : float, optional
-            The variance of the measurement noise of the anti-Stokes signals in the forward
+            The variance of the measurement noise of the anti-Stokes signals
+            in the forward
             direction. Required if method is wls.
         store_c : str
             Label of where to store C
@@ -695,16 +725,21 @@ class DataStore(xr.Dataset):
         store_dalpha : str
             Label of where to store dalpha; the spatial derivative  of alpha.
         store_alpha : str
-            Label of where to store alpha; The integrated differential attenuation.
+            Label of where to store alpha; The integrated differential
+            attenuation.
             alpha(x=0) = 0
         store_tmpf : str
-            Label of where to store the calibrated temperature of the forward direction
+            Label of where to store the calibrated temperature of the forward
+            direction
         variance_suffix : str, optional
-            String appended for storing the variance. Only used when method is wls.
+            String appended for storing the variance. Only used when method
+            is wls.
         method : {'ols', 'wls'}
-            Use 'ols' for ordinary least squares and 'wls' for weighted least squares
+            Use 'ols' for ordinary least squares and 'wls' for weighted least
+            squares
         solver : {'sparse', 'stats'}
-            Either use the homemade weighted sparse solver or the weighted dense matrix solver of
+            Either use the homemade weighted sparse solver or the weighted
+            dense matrix solver of
             statsmodels
 
         Returns
@@ -751,7 +786,8 @@ class DataStore(xr.Dataset):
             dalpha = p_val[1]
             c = p_val[2:nt + 2]
 
-            # Estimate of the standard error - sqrt(diag of the COV matrix) - is not squared
+            # Estimate of the standard error - sqrt(diag of the COV matrix) -
+            # is not squared
             gammavar = p_var[0]
             dalphavar = p_var[1]
             cvar = p_var[2:nt + 2]
@@ -836,34 +872,45 @@ class DataStore(xr.Dataset):
         rast_label : str
             Label of the reversed anti-Stoke measurement
         st_var : float, optional
-            The variance of the measurement noise of the Stokes signals in the forward
+            The variance of the measurement noise of the Stokes signals in
+            the forward
             direction Required if method is wls.
         ast_var : float, optional
-            The variance of the measurement noise of the anti-Stokes signals in the forward
+            The variance of the measurement noise of the anti-Stokes signals
+            in the forward
             direction. Required if method is wls.
         rst_var : float, optional
-            The variance of the measurement noise of the Stokes signals in the backward
+            The variance of the measurement noise of the Stokes signals in
+            the backward
             direction. Required if method is wls.
         rast_var : float, optional
-            The variance of the measurement noise of the anti-Stokes signals in the backward
+            The variance of the measurement noise of the anti-Stokes signals
+            in the backward
             direction. Required if method is wls.
         store_d : str
-            Label of where to store D. Equals the integrated differential attenuation at x=0
-            And should be equal to half the total integrated differential attenuation.
+            Label of where to store D. Equals the integrated differential
+            attenuation at x=0
+            And should be equal to half the total integrated differential
+            attenuation.
         store_gamma : str
             Label of where to store gamma
         store_alpha : str
             Label of where to store alpha
         store_tmpf : str
-            Label of where to store the calibrated temperature of the forward direction
+            Label of where to store the calibrated temperature of the forward
+            direction
         store_tmpb : str
-            Label of where to store the calibrated temperature of the backward direction
+            Label of where to store the calibrated temperature of the
+            backward direction
         variance_suffix : str, optional
-            String appended for storing the variance. Only used when method is wls.
+            String appended for storing the variance. Only used when method
+            is wls.
         method : {'ols', 'wls', 'external'}
-            Use 'ols' for ordinary least squares and 'wls' for weighted least squares
+            Use 'ols' for ordinary least squares and 'wls' for weighted least
+            squares
         solver : {'sparse', 'stats'}
-            Either use the homemade weighted sparse solver or the weighted dense matrix solver of
+            Either use the homemade weighted sparse solver or the weighted
+            dense matrix solver of
             statsmodels
 
         Returns
@@ -911,7 +958,8 @@ class DataStore(xr.Dataset):
             d = p_val[1:nt + 1]
             alpha = p_val[nt + 1:]
 
-            # Estimate of the standard error - sqrt(diag of the COV matrix) - is not squared
+            # Estimate of the standard error - sqrt(diag of the COV matrix) -
+            # is not squared
             gammavar = p_var[0]
             dvar = p_var[1:nt + 1]
             alphavar = p_var[nt + 1:]
@@ -981,9 +1029,12 @@ class DataStore(xr.Dataset):
         p_val : array-like or string
             parameter solution directly from calibration_double_ended_wls
         p_cov : array-like or string or bool
-            parameter covariance at the solution directly from calibration_double_ended_wls
-            If set to False, no uncertainty in the parameters is propagated into the confidence
-            intervals. Similar to the spec sheets of the DTS manufacturers. And similar to
+            parameter covariance at the solution directly from
+            calibration_double_ended_wls
+            If set to False, no uncertainty in the parameters is propagated
+            into the confidence
+            intervals. Similar to the spec sheets of the DTS manufacturers.
+            And similar to
             passing an array filled with zeros
         st_label : str
             Key of the forward Stokes
@@ -994,27 +1045,35 @@ class DataStore(xr.Dataset):
         ast_var : float
             Float of the variance of the anti-Stokes signal
         store_tmpf : str
-            Key of how to store the Forward calculated temperature. Is calculated using the
+            Key of how to store the Forward calculated temperature. Is
+            calculated using the
             forward Stokes and anti-Stokes observations.
         store_tempvar : str
-            a string that is appended to the store_tmp_ keys. and the variance is calculated
+            a string that is appended to the store_tmp_ keys. and the
+            variance is calculated
             for those store_tmp_ keys
         conf_ints : iterable object of float
-            A list with the confidence boundaries that are calculated. Valid values are between
+            A list with the confidence boundaries that are calculated. Valid
+            values are between
             [0, 1].
         conf_ints_size : int
-            Size of the monte carlo parameter set used to calculate the confidence interval
+            Size of the monte carlo parameter set used to calculate the
+            confidence interval
         ci_avg_time_flag : bool
-            The confidence intervals differ per time step. If you would like to calculate confidence
-            intervals of all time steps together. ‘We can say with 95% confidence that the
-            temperature remained between this line and this line during the entire measurement
+            The confidence intervals differ per time step. If you would like
+            to calculate confidence
+            intervals of all time steps together. ‘We can say with 95%
+            confidence that the
+            temperature remained between this line and this line during the
+            entire measurement
             period’.
         da_random_state
             For testing purposes. Similar to random seed. The seed for dask.
             Makes random not so random. To produce reproducable results for
             testing environments.
         remove_mc_set_flag : bool
-            Remove the monte carlo data set, from which the CI and the variance are calculated.
+            Remove the monte carlo data set, from which the CI and the
+            variance are calculated.
         """
 
         assert conf_ints
@@ -1090,7 +1149,8 @@ class DataStore(xr.Dataset):
 
         self[store_tmpf + '_MC'] = self['gamma_MC'] / (np.log(
             self['r_st'] / self['r_ast']) + self['c_MC'] + self[
-                                                           'dalpha_MC'] * self.x) - 273.15
+                                                           'dalpha_MC'] *
+                                                       self.x) - 273.15
 
         if ci_avg_time_flag:
             avg_dims = ['MC', 'time']
@@ -1099,13 +1159,17 @@ class DataStore(xr.Dataset):
 
         avg_axis = self[store_tmpf + '_MC'].get_axis_num(avg_dims)
 
-        self[store_tmpf + '_MC' + store_tempvar] = (self[store_tmpf + '_MC'] - self[
-            store_tmpf]).std(dim=avg_dims) ** 2
+        self[store_tmpf + '_MC' + store_tempvar] = (self[store_tmpf + '_MC'] -
+                                                    self[
+                                                        store_tmpf]).std(
+            dim=avg_dims) ** 2
 
         if ci_avg_time_flag:
-            new_chunks = ((len(conf_ints),),) + self[store_tmpf + '_MC'].chunks[1]
+            new_chunks = ((len(conf_ints),),) + self[store_tmpf + '_MC'].chunks[
+                1]
         else:
-            new_chunks = ((len(conf_ints),),) + self[store_tmpf + '_MC'].chunks[1:]
+            new_chunks = ((len(conf_ints),),) + self[store_tmpf + '_MC'].chunks[
+                                                1:]
 
         q = self[store_tmpf + '_MC'].data.map_blocks(
             lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
@@ -1153,9 +1217,12 @@ class DataStore(xr.Dataset):
         p_val : array-like or string
             parameter solution directly from calibration_double_ended_wls
         p_cov : array-like or string
-            parameter covariance at the solution directly from calibration_double_ended_wls
-            If set to False, no uncertainty in the parameters is propagated into the confidence
-            intervals. Similar to the spec sheets of the DTS manufacturers. And similar to
+            parameter covariance at the solution directly from
+            calibration_double_ended_wls
+            If set to False, no uncertainty in the parameters is propagated
+            into the confidence
+            intervals. Similar to the spec sheets of the DTS manufacturers.
+            And similar to
             passing an array filled with zeros
         st_label : str
             Key of the forward Stokes
@@ -1174,35 +1241,47 @@ class DataStore(xr.Dataset):
         rast_var : float
             Float of the variance of the backward anti-Stokes signal
         store_tmpf : str
-            Key of how to store the Forward calculated temperature. Is calculated using the
+            Key of how to store the Forward calculated temperature. Is
+            calculated using the
             forward Stokes and anti-Stokes observations.
         store_tmpb : str
-            Key of how to store the Backward calculated temperature. Is calculated using the
+            Key of how to store the Backward calculated temperature. Is
+            calculated using the
             backward Stokes and anti-Stokes observations.
         store_tmpw : str
-            Key of how to store the forward-backward-weighted temperature. First, the variance of
-            TMPF and TMPB are calculated. The Monte Carlo set of TMPF and TMPB are averaged,
-            weighted by their variance. The median of this set is thought to be the a reasonable
+            Key of how to store the forward-backward-weighted temperature.
+            First, the variance of
+            TMPF and TMPB are calculated. The Monte Carlo set of TMPF and
+            TMPB are averaged,
+            weighted by their variance. The median of this set is thought to
+            be the a reasonable
             estimate of the temperature
         store_tempvar : str
-            a string that is appended to the store_tmp_ keys. and the variance is calculated
+            a string that is appended to the store_tmp_ keys. and the
+            variance is calculated
             for those store_tmp_ keys
         conf_ints : iterable object of float
-            A list with the confidence boundaries that are calculated. Valid values are between
+            A list with the confidence boundaries that are calculated. Valid
+            values are between
             [0, 1].
         conf_ints_size : int
-            Size of the monte carlo parameter set used to calculate the confidence interval
+            Size of the monte carlo parameter set used to calculate the
+            confidence interval
         ci_avg_time_flag : bool
-            The confidence intervals differ per time step. If you would like to calculate confidence
-            intervals of all time steps together. ‘We can say with 95% confidence that the
-            temperature remained between this line and this line during the entire measurement
+            The confidence intervals differ per time step. If you would like
+            to calculate confidence
+            intervals of all time steps together. ‘We can say with 95%
+            confidence that the
+            temperature remained between this line and this line during the
+            entire measurement
             period’.
         da_random_state
             For testing purposes. Similar to random seed. The seed for dask.
             Makes random not so random. To produce reproducable results for
             testing environments.
         remove_mc_set_flag : bool
-            Remove the monte carlo data set, from which the CI and the variance are calculated.
+            Remove the monte carlo data set, from which the CI and the
+            variance are calculated.
 
         Returns
         -------
@@ -1250,7 +1329,8 @@ class DataStore(xr.Dataset):
 
             p_mc = sst.multivariate_normal.rvs(mean=p_val,
                                                cov=p_cov,
-                                               size=conf_ints_size)  # this one takes long
+                                               size=conf_ints_size)  # this
+            # one takes long
 
             gamma = p_mc[:, 0]
             d = p_mc[:, 1:nt + 1]
@@ -1267,7 +1347,8 @@ class DataStore(xr.Dataset):
             2: -1}
 
         for k, st_labeli, st_vari in zip(['r_st', 'r_ast', 'r_rst', 'r_rast'],
-                                         [st_label, ast_label, rst_label, rast_label],
+                                         [st_label, ast_label, rst_label,
+                                          rast_label],
                                          [st_var, ast_var, rst_var, rast_var]):
             if hasattr(self[st_labeli].data, 'chunks'):
                 # if it is a dask array, we don't need to chunk it
@@ -1277,7 +1358,8 @@ class DataStore(xr.Dataset):
                     size=rshape,
                     chunks=r2shape))
             else:
-                # if it is a numpy array (it apparently fits in the memory so we dont need to
+                # if it is a numpy array (it apparently fits in the memory so
+                # we dont need to
                 # chunk it)
                 self[k] = (('MC', 'x', 'time'), state.normal(
                     loc=da.from_array(self[st_labeli].data, chunks={}),
@@ -1286,11 +1368,11 @@ class DataStore(xr.Dataset):
                     chunks=r2shape))
 
         self[store_tmpf + '_MC_set'] = self['gamma_MC'] / (np.log(
-            self['r_st'] / self['r_ast']) + self['d_MC'] + self[
-                                                           'alpha_MC']) - 273.15
+            self['r_st'] / self['r_ast']) + self['d_MC'] +
+            self['alpha_MC']) - 273.15
         self[store_tmpb + '_MC_set'] = self['gamma_MC'] / (np.log(
-            self['r_rst'] / self['r_rast']) + self['d_MC'] - self[
-                                                           'alpha_MC']) - 273.15
+            self['r_rst'] / self['r_rast']) + self['d_MC'] -
+            self['alpha_MC']) - 273.15
 
         if ci_avg_time_flag:
             avg_dims = ['MC', 'time']
@@ -1301,15 +1383,27 @@ class DataStore(xr.Dataset):
 
         avg_axis = self[store_tmpf + '_MC_set'].get_axis_num(avg_dims)
 
-        self[store_tmpf + '_MC' + store_tempvar] = (self[store_tmpf + '_MC_set'] - self[
-            store_tmpf]).std(dim=avg_dims) ** 2
-        self[store_tmpb + '_MC' + store_tempvar] = (self[store_tmpb + '_MC_set'] - self[
-            store_tmpb]).std(dim=avg_dims) ** 2
+        self[store_tmpf + '_MC' + store_tempvar] = (self[
+                                                        store_tmpf +
+                                                        '_MC_set'] -
+                                                    self[
+                                                        store_tmpf]).std(
+            dim=avg_dims) ** 2
+        self[store_tmpb + '_MC' + store_tempvar] = (self[
+                                                        store_tmpb +
+                                                        '_MC_set'] -
+                                                    self[
+                                                        store_tmpb]).std(
+            dim=avg_dims) ** 2
 
         if ci_avg_time_flag:
-            new_chunks = ((len(conf_ints),),) + (self[store_tmpf + '_MC_set'].chunks[1],)
+            new_chunks = ((len(conf_ints),),) + (
+                self[store_tmpf + '_MC_set'].chunks[1],)
         else:
-            new_chunks = ((len(conf_ints),),) + self[store_tmpf + '_MC_set'].chunks[1:]
+            new_chunks = ((len(conf_ints),),) + self[
+                                                    store_tmpf +
+                                                    '_MC_set'].chunks[
+                                                1:]
 
         q = self[store_tmpf + '_MC_set'].data.map_blocks(
             lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
@@ -1328,11 +1422,11 @@ class DataStore(xr.Dataset):
         # Calculate the weighted MC_set
         weightf = 1 / (1 / self[store_tmpf + '_MC' + store_tempvar] +
                        1 / self[store_tmpb + '_MC' + store_tempvar]) / \
-            self[store_tmpf + '_MC' + store_tempvar]
+                  self[store_tmpf + '_MC' + store_tempvar]
 
         weightb = 1 / (1 / self[store_tmpf + '_MC' + store_tempvar] +
                        1 / self[store_tmpb + '_MC' + store_tempvar]) / \
-            self[store_tmpb + '_MC' + store_tempvar]
+                  self[store_tmpb + '_MC' + store_tempvar]
 
         # np.testing.assert_almost_equal(np.all(weightf + weightb), 1)
 
@@ -1349,14 +1443,20 @@ class DataStore(xr.Dataset):
         self[store_tmpw + '_MC'] = (ci_dims, q)
 
         # Calculate the mean of the weighted MC_set
-        self[store_tmpw] = (('x', 'time'), self[store_tmpw + '_MC_set'].mean(dim='MC').data)
+        self[store_tmpw] = (
+            ('x', 'time'), self[store_tmpw + '_MC_set'].mean(dim='MC').data)
 
         # Calculate the variance of the weighted MC_set
-        self[store_tmpw + '_MC' + store_tempvar] = (self[store_tmpw + '_MC_set'] - self[
-            store_tmpw]).std(dim=avg_dims) ** 2
+        self[store_tmpw + '_MC' + store_tempvar] = (
+                                                       self[
+                                                           store_tmpw +
+                                                           '_MC_set'] -
+                                                       self[store_tmpw]).std(
+            dim=avg_dims) ** 2
 
         # Clean up the garbage. All arrays with a Monte Carlo dimension.
-        # remove_MC_set = [k for k, v in self.data_vars.items() if 'MC' in v.dims]
+        # remove_MC_set = [k for k, v in self.data_vars.items() if 'MC' in
+        # v.dims]
         if remove_mc_set_flag:
             remove_MC_set = [
                 'r_st',
@@ -1386,10 +1486,12 @@ class DataStore(xr.Dataset):
         resid_da : xarray.DataArray
             The residuals as DataArray
         """
-        resid_temp = self.ufunc_per_section(label=label, temp_err=True, calc_per='all')
+        resid_temp = self.ufunc_per_section(label=label, temp_err=True,
+                                            calc_per='all')
         resid_x = self.ufunc_per_section(label='x', calc_per='all')
 
-        resid_ix = np.array([np.argmin(np.abs(ai - self.x.data)) for ai in resid_x])
+        resid_ix = np.array(
+            [np.argmin(np.abs(ai - self.x.data)) for ai in resid_x])
 
         resid_sorted = np.full(shape=self[label].shape, fill_value=np.nan)
         resid_sorted[resid_ix, :] = resid_temp
@@ -1409,10 +1511,12 @@ class DataStore(xr.Dataset):
                           calc_per='stretch',
                           **func_kwargs):
         """
-        User function applied to parts of the cable. Super useful, many options and slightly
+        User function applied to parts of the cable. Super useful,
+        many options and slightly
         complicated.
 
-        The function `func` is taken over all the timesteps and calculated per `calc_per`. This
+        The function `func` is taken over all the timesteps and calculated
+        per `calc_per`. This
         is returned as a dictionary
 
         Parameters
@@ -1422,7 +1526,8 @@ class DataStore(xr.Dataset):
         label
         subtract_from_label
         temp_err : bool
-            The argument of the function is label minus the reference temperature.
+            The argument of the function is label minus the reference
+            temperature.
         ref_temp_broadcasted : bool
         calc_per : {'all', 'per_section', 'per_stretch'}
         func_kwargs : dict
@@ -1462,7 +1567,8 @@ class DataStore(xr.Dataset):
 
         Note
         ----
-        If self[label] or self[subtract_from_label] is a Dask array, a Dask array is returned
+        If self[label] or self[subtract_from_label] is a Dask array, a Dask
+        array is returned
         Else a numpy array is returned
 
         # x_coords of all stretches
@@ -1517,7 +1623,8 @@ class DataStore(xr.Dataset):
 
                 if subtract_from_label:
                     # calculate std wrt other series
-                    check_dims(self, [subtract_from_label], correct_dims=('x', 'time'))
+                    check_dims(self, [subtract_from_label],
+                               correct_dims=('x', 'time'))
 
                     assert not temp_err
 
@@ -1552,7 +1659,7 @@ class DataStore(xr.Dataset):
 
             if hasattr(out, 'chunks') and \
                 len(out.chunks) > 0 and \
-                    'x' in self[label].dims:
+                'x' in self[label].dims:
                 # also sum the chunksize in the x dimension
                 # first find out where the x dim is
                 ixdim = self[label].dims.index('x')
@@ -1604,7 +1711,8 @@ def open_datastore(filename_or_obj, group=None, decode_cf=True,
     decode_coords : bool, optional
         If True, decode the 'coordinates' attribute to identify coordinates in
         the resulting dataset.
-    engine : {'netcdf4', 'scipy', 'pydap', 'h5netcdf', 'pynio', 'pseudonetcdf'}, optional
+    engine : {'netcdf4', 'scipy', 'pydap', 'h5netcdf', 'pynio',
+    'pseudonetcdf'}, optional
         Engine to use when reading files. If not provided, the default engine
         is chosen based on available dependencies, with a preference for
         'netcdf4'.
@@ -1654,7 +1762,8 @@ def open_datastore(filename_or_obj, group=None, decode_cf=True,
     ds_xr = xr.open_dataset(
         filename_or_obj, group=group, decode_cf=decode_cf,
         mask_and_scale=mask_and_scale, decode_times=decode_times,
-        concat_characters=concat_characters, decode_coords=decode_coords, engine=engine,
+        concat_characters=concat_characters, decode_coords=decode_coords,
+        engine=engine,
         chunks=chunks, lock=lock, cache=cache, drop_variables=drop_variables,
         backend_kwargs=backend_kwargs)
 
@@ -1676,9 +1785,9 @@ def read_silixa_files(
     timezone_input_files='UTC',
     silent=False,
     load_in_memory='auto',
-        **kwargs):
-
-    """Read a folder with measurement files. Each measurement file contains values for a
+    **kwargs):
+    """Read a folder with measurement files. Each measurement file contains
+    values for a
     single timestep. Remember to check which timezone you are working in.
 
     Parameters
@@ -1690,7 +1799,8 @@ def read_silixa_files(
     timezone_netcdf : str, optional
         Timezone string of the netcdf file. UTC follows CF-conventions.
     timezone_input_files : str, optional
-        Timezone string of the measurement files. Remember to check when measurements are taken.
+        Timezone string of the measurement files. Remember to check when
+        measurements are taken.
         Also if summertime is used.
     file_ext : str, optional
         file extension of the measurement files
@@ -1711,29 +1821,33 @@ def read_silixa_files(
         filepathlist = sorted(glob.glob(os.path.join(directory, file_ext)))
 
         # Make sure that the list of files contains any files
-        assert len(filepathlist) >= 1, 'No measurement files found in provided directory: \n' + \
-            str(directory)
+        assert len(
+            filepathlist) >= 1, 'No measurement files found in provided ' \
+                                'directory: \n' + \
+                                str(directory)
 
     # Make sure that the list of files contains any files
-    assert len(filepathlist) >= 1, 'No measurement files found in provided list/directory'
+    assert len(
+        filepathlist) >= 1, 'No measurement files found in provided ' \
+                            'list/directory'
 
     xml_version = silixa_xml_version_check(filepathlist)
 
     if xml_version == 4:
         data_vars, coords, attrs = read_silixa_files_routine_v4(
-                                    filepathlist,
-                                    timezone_netcdf=timezone_netcdf,
-                                    timezone_input_files=timezone_input_files,
-                                    silent=silent,
-                                    load_in_memory=load_in_memory)
+            filepathlist,
+            timezone_netcdf=timezone_netcdf,
+            timezone_input_files=timezone_input_files,
+            silent=silent,
+            load_in_memory=load_in_memory)
 
     elif xml_version == 6:
         data_vars, coords, attrs = read_silixa_files_routine_v6(
-                                    filepathlist,
-                                    timezone_netcdf=timezone_netcdf,
-                                    timezone_input_files=timezone_input_files,
-                                    silent=silent,
-                                    load_in_memory=load_in_memory)
+            filepathlist,
+            timezone_netcdf=timezone_netcdf,
+            timezone_input_files=timezone_input_files,
+            silent=silent,
+            load_in_memory=load_in_memory)
 
     else:
         raise NotImplementedError('Silixa xml version ' +
@@ -1753,8 +1867,7 @@ def read_sensornet_files(
     timezone_netcdf='UTC',
     timezone_input_files='UTC',
     silent=False,
-        **kwargs):
-
+    **kwargs):
     """Read a folder with measurement files. Each measurement file contains
     values for a single timestep. Remember to check which timezone
     you are working in.
@@ -1788,13 +1901,15 @@ def read_sensornet_files(
         filepathlist = sorted(glob.glob(os.path.join(directory, file_ext)))
 
     # Make sure that the list of files contains any files
-    assert len(filepathlist) >= 1, 'No measurement files found in provided list/directory'
+    assert len(
+        filepathlist) >= 1, 'No measurement files found in provided ' \
+                            'list/directory'
 
     data_vars, coords, attrs = read_sensornet_files_routine_v3(
-                                    filepathlist,
-                                    timezone_netcdf=timezone_netcdf,
-                                    timezone_input_files=timezone_input_files,
-                                    silent=silent)
+        filepathlist,
+        timezone_netcdf=timezone_netcdf,
+        timezone_input_files=timezone_input_files,
+        silent=silent)
 
     ds = DataStore(data_vars=data_vars,
                    coords=coords,
@@ -1805,7 +1920,8 @@ def read_sensornet_files(
 
 def plot_dask(arr, file_path=None):
     """
-    For debugging the scheduling of the calculation of dask arrays. Requires additional libraries
+    For debugging the scheduling of the calculation of dask arrays. Requires
+    additional libraries
     to be installed.
 
     Parameters
@@ -1821,9 +1937,11 @@ def plot_dask(arr, file_path=None):
         The calculated array
 
     """
-    from dask.diagnostics import Profiler, ResourceProfiler, CacheProfiler, visualize
+    from dask.diagnostics import Profiler, ResourceProfiler, CacheProfiler, \
+        visualize
 
-    with Profiler() as prof, ResourceProfiler(dt=0.25) as rprof, CacheProfiler() as cprof:
+    with Profiler() as prof, ResourceProfiler(
+        dt=0.25) as rprof, CacheProfiler() as cprof:
         out = arr.compute()
 
     arr.visualize(file_path)

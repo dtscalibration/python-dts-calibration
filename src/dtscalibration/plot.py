@@ -4,9 +4,11 @@ import numpy as np
 
 
 def plot_residuals_reference_sections(resid, fig=None, title=None,
-                                      plot_avg_std=None, plot_names=True, sections=None):
+                                      plot_avg_std=None, plot_names=True,
+                                      sections=None):
     """
-    Analyze the residuals of the reference sections, between the Stokes signal and a best-fit
+    Analyze the residuals of the reference sections, between the Stokes
+    signal and a best-fit
     decaying exponential.
 
     Parameters
@@ -21,7 +23,8 @@ def plot_residuals_reference_sections(resid, fig=None, title=None,
     plot_names : bool, optional
         Whether the names of the sections are plotted on top of the residuals
     sections : Dict[str, List[slice]]
-        The sections obj is normally used to set DataStore.sections, now is used toobtain the
+        The sections obj is normally used to set DataStore.sections, now is
+        used toobtain the
         section names to plot the names on top of the residuals.
 
     Returns
@@ -30,7 +33,8 @@ def plot_residuals_reference_sections(resid, fig=None, title=None,
 
     """
     if plot_names:
-        assert sections is not None, 'The sections names are obtained from the sections dict'
+        assert sections is not None, 'The sections names are obtained from ' \
+                                     'the sections dict'
 
     # Set up the axes with gridspec
     if fig is None:
@@ -149,8 +153,10 @@ def plot_sigma_report(ds, temp_label, temp_var_label, itimes=None):
                 linewidth=0.8, c='blue', linestyle='--')
             sig_dts = stds.sel(x=vi).mean()
             tbx, tby = (vi.start + vi.stop) / 2, val
-            tbt = r"$\sigma_{Est}$ = " + f"{0:2.3f}".format(sig_dts.data) + r"$^\circ$C\n" + \
-                  r"$\sigma_{DTS}$ = " + f"{0:2.3f}".format(v_sei) + r"$^\circ$C"
+            tbt = r"$\sigma_{Est}$ = " + f"{0:2.3f}".format(
+                sig_dts.data) + r"$^\circ$C\n" + \
+                r"$\sigma_{DTS}$ = " + f"{0:2.3f}".format(
+                v_sei) + r"$^\circ$C"
             ax1.annotate(
                 tbt,
                 xy=(tbx, tby),
@@ -180,7 +186,8 @@ def plot_sigma_report(ds, temp_label, temp_var_label, itimes=None):
 
     stds.plot(ax=ax2, c='black', **line_kwargs)
     ax2.set_ylim([0., 1.05 * stds.max()])
-    ax2.set_title('Measured and projected standard deviation averaged over time')
+    ax2.set_title(
+        'Measured and projected standard deviation averaged over time')
     ax2.legend()
     ax2.set_ylabel(r'Temperature [$^\circ$C]')
 

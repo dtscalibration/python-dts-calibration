@@ -57,19 +57,20 @@ method.
 
 .. parsed-literal::
 
+    Calculates the variance between the measurements and a best fit
+            exponential at each reference section. This fits a two-parameter
+            exponential to the stokes measurements. The temperature is constant
+            and there are no splices/sharp bends in each reference section.
+            Therefore all signal decrease is due to differential attenuation,
+            which is the same for each reference section. The scale of the
+            exponential does differ per reference section.
     
-            Calculates the variance between the measurements and a best fit exponential at each
-            reference section. This fits a two-parameter exponential to the stokes measurements. The
-            temperature is constant and there are no splices/sharp bends in each reference section.
-            Therefore all signal decrease is due to differential attenuation, which is the same for
-            each reference section. The scale of the exponential does differ per reference section.
+            Assumptions: 1) the temperature is the same along a reference
+            section. 2) no sharp bends and splices in the reference sections. 3)
+            Same type of optical cable in each reference section.
     
-            Assumptions: 1) the temperature is the same along a reference section. 2) no sharp bends
-            and splices in the reference sections. 3) Same type of optical cable in each reference
-            section.
-    
-            Idea from discussion at page 127 in Richter, P. H. (1995). Estimating errors in
-            least-squares fitting. For weights used error propagation:
+            Idea from discussion at page 127 in Richter, P. H. (1995). Estimating
+            errors in least-squares fitting. For weights used error propagation:
             w^2 = 1/sigma(lny)^2 = y^2/sigma(y)^2 = y^2
     
             Parameters

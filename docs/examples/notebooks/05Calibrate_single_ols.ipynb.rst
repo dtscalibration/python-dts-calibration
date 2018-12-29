@@ -76,10 +76,12 @@ anymore.
             ast_label : str
                 Label of the anti-Stoke measurement
             st_var : float, optional
-                The variance of the measurement noise of the Stokes signals in the forward
+                The variance of the measurement noise of the Stokes signals in
+                the forward
                 direction Required if method is wls.
             ast_var : float, optional
-                The variance of the measurement noise of the anti-Stokes signals in the forward
+                The variance of the measurement noise of the anti-Stokes signals
+                in the forward
                 direction. Required if method is wls.
             store_c : str
                 Label of where to store C
@@ -88,16 +90,21 @@ anymore.
             store_dalpha : str
                 Label of where to store dalpha; the spatial derivative  of alpha.
             store_alpha : str
-                Label of where to store alpha; The integrated differential attenuation.
+                Label of where to store alpha; The integrated differential
+                attenuation.
                 alpha(x=0) = 0
             store_tmpf : str
-                Label of where to store the calibrated temperature of the forward direction
+                Label of where to store the calibrated temperature of the forward
+                direction
             variance_suffix : str, optional
-                String appended for storing the variance. Only used when method is wls.
+                String appended for storing the variance. Only used when method
+                is wls.
             method : {'ols', 'wls'}
-                Use 'ols' for ordinary least squares and 'wls' for weighted least squares
+                Use 'ols' for ordinary least squares and 'wls' for weighted least
+                squares
             solver : {'sparse', 'stats'}
-                Either use the homemade weighted sparse solver or the weighted dense matrix solver of
+                Either use the homemade weighted sparse solver or the weighted
+                dense matrix solver of
                 statsmodels
     
             Returns

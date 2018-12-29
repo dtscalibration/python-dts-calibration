@@ -123,14 +123,17 @@ def read_silixa_files_routine_v6(filepathlist,
     attrs['isDoubleEnded'] = attrs['customData:isDoubleEnded']
     double_ended_flag = bool(int(attrs['isDoubleEnded']))
 
-    attrs['forwardMeasurementChannel'] = attrs['customData:forwardMeasurementChannel']
+    attrs['forwardMeasurementChannel'] = attrs[
+        'customData:forwardMeasurementChannel']
     if double_ended_flag:
-        attrs['backwardMeasurementChannel'] = attrs['customData:reverseMeasurementChannel']
+        attrs['backwardMeasurementChannel'] = attrs[
+            'customData:reverseMeasurementChannel']
     else:
         attrs['backwardMeasurementChannel'] = 'N/A'
 
     # obtain basic data info
-    data_item_names = attrs['logData:mnemonicList'].replace(" ", "").strip(' ').split(',')
+    data_item_names = attrs['logData:mnemonicList'].replace(" ", "").strip(
+        ' ').split(',')
     nitem = len(data_item_names)
 
     ntime = len(filepathlist)
@@ -145,8 +148,10 @@ def read_silixa_files_routine_v6(filepathlist,
 
     # print summary
     if not silent:
-        print('%s files were found, each representing a single timestep' % ntime)
-        print('%s recorded vars were found: ' % nitem + ', '.join(data_item_names))
+        print(
+            '%s files were found, each representing a single timestep' % ntime)
+        print('%s recorded vars were found: ' % nitem + ', '.join(
+            data_item_names))
         print('Recorded at %s points along the cable' % nx)
 
         if double_ended_flag:
@@ -309,8 +314,9 @@ def read_silixa_files_routine_v6(filepathlist,
 
     # construct the coordinate dictionary
     coords = {
-        'x':        ('x', data_arr[0, :, 0], dim_attrs['x']),
-        'filename': ('time', [os.path.split(f)[1] for f in filepathlist]),
+        'x':               ('x', data_arr[0, :, 0], dim_attrs['x']),
+        'filename':        ('time',
+                            [os.path.split(f)[1] for f in filepathlist]),
         'filename_tstamp': ('time', ts_arr['filename_tstamp'])}
 
     maxTimeIndex = pd.DatetimeIndex(ts_arr['maxDateTimeIndex'])
@@ -375,9 +381,11 @@ def read_silixa_files_routine_v4(filepathlist,
     attrs['isDoubleEnded'] = attrs['customData:isDoubleEnded']
     double_ended_flag = bool(int(attrs['isDoubleEnded']))
 
-    attrs['forwardMeasurementChannel'] = attrs['customData:forwardMeasurementChannel']
+    attrs['forwardMeasurementChannel'] = attrs[
+        'customData:forwardMeasurementChannel']
     if double_ended_flag:
-        attrs['backwardMeasurementChannel'] = attrs['customData:reverseMeasurementChannel']
+        attrs['backwardMeasurementChannel'] = attrs[
+            'customData:reverseMeasurementChannel']
     else:
         attrs['backwardMeasurementChannel'] = 'N/A'
 
@@ -402,8 +410,10 @@ def read_silixa_files_routine_v4(filepathlist,
 
     # print summary
     if not silent:
-        print('%s files were found, each representing a single timestep' % ntime)
-        print('%s recorded vars were found: ' % nitem + ', '.join(data_item_names))
+        print(
+            '%s files were found, each representing a single timestep' % ntime)
+        print('%s recorded vars were found: ' % nitem + ', '.join(
+            data_item_names))
         print('Recorded at %s points along the cable' % nx)
 
         if double_ended_flag:
@@ -565,8 +575,9 @@ def read_silixa_files_routine_v4(filepathlist,
 
     # construct the coordinate dictionary
     coords = {
-        'x':        ('x', data_arr[0, :, 0], dim_attrs['x']),
-        'filename': ('time', [os.path.split(f)[1] for f in filepathlist]),
+        'x':               ('x', data_arr[0, :, 0], dim_attrs['x']),
+        'filename':        ('time',
+                            [os.path.split(f)[1] for f in filepathlist]),
         'filename_tstamp': ('time', ts_arr['filename_tstamp'])}
 
     maxTimeIndex = pd.DatetimeIndex(ts_arr['maxDateTimeIndex'])
@@ -670,7 +681,7 @@ def read_sensornet_files_routine_v3(filepathlist,
     acquisitiontimeFW = np.zeros(ntime)
     acquisitiontimeBW = np.zeros(ntime)
 
-    timestamp = ['']*ntime
+    timestamp = [''] * ntime
     ST = np.zeros((nx, ntime))
     AST = np.zeros((nx, ntime))
     TMP = np.zeros((nx, ntime))
@@ -682,7 +693,7 @@ def read_sensornet_files_routine_v3(filepathlist,
     for ii in range(ntime):
         data, meta = read_sensornet_single(filepathlist[ii])
 
-        timestamp[ii] = pd.DatetimeIndex([meta['date']+' '+meta['time']])[0]
+        timestamp[ii] = pd.DatetimeIndex([meta['date'] + ' ' + meta['time']])[0]
         probe1temperature[ii] = float(meta['T ext. ref 1 (°C)'])
         probe2temperature[ii] = float(meta['T ext. ref 2 (°C)'])
         referenceTemperature[ii] = float(meta['T internal ref (°C)'])
@@ -700,44 +711,52 @@ def read_sensornet_files_routine_v3(filepathlist,
             REV_ST[:, ii] = data['REV_ST']
             REV_AST[:, ii] = data['REV_AST']
 
-    data_vars = {'ST': (['x', 'time'], ST, dim_attrs['ST']),
-                 'AST': (['x', 'time'], AST, dim_attrs['AST']),
-                 'TMP': (['x', 'time'], TMP, dim_attrs['TMP']),
-                 'probe1Temperature': ('time',
-                                       probe1temperature,
-                                       {'name': 'Probe 1 temperature',
-                                        'description':
-                                            'reference probe 1 temperature',
-                                        'units': 'degC'}),
-                 'probe2Temperature': ('time',
-                                       probe2temperature,
-                                       {'name': 'Probe 2 temperature',
-                                        'description':
-                                            'reference probe 2 temperature',
-                                        'units': 'degC'}),
-                 'referenceTemperature': ('time',
-                                          referenceTemperature,
-                                          {'name': 'reference temperature',
-                                           'description':
-                                              'Internal reference temperature',
-                                           'units': 'degC'}),
-                 'gamma_ddf': ('time',
-                               gamma_ddf,
-                               {'name': 'gamma ddf',
-                                'description': 'machine calibrated gamma',
-                                'units': '-'}),
-                 'k_internal': ('time',
-                                k_internal,
-                                {'name': 'k internal',
-                                 'description':
-                                     'machine calibrated internal k',
-                                 'units': '-'}),
-                 'k_external': ('time',
-                                k_external,
-                                {'name': 'reference temperature',
-                                 'description':
-                                     'machine calibrated external k',
-                                 'units': '-'}),
+    data_vars = {'ST':                    (['x', 'time'], ST, dim_attrs['ST']),
+                 'AST':                   (
+                 ['x', 'time'], AST, dim_attrs['AST']),
+                 'TMP':                   (
+                 ['x', 'time'], TMP, dim_attrs['TMP']),
+                 'probe1Temperature':     ('time',
+                                           probe1temperature,
+                                           {'name':  'Probe 1 temperature',
+                                            'description':
+                                                     'reference probe 1 '
+                                                     'temperature',
+                                            'units': 'degC'}),
+                 'probe2Temperature':     ('time',
+                                           probe2temperature,
+                                           {'name':  'Probe 2 temperature',
+                                            'description':
+                                                     'reference probe 2 '
+                                                     'temperature',
+                                            'units': 'degC'}),
+                 'referenceTemperature':  ('time',
+                                           referenceTemperature,
+                                           {'name':  'reference temperature',
+                                            'description':
+                                                     'Internal reference '
+                                                     'temperature',
+                                            'units': 'degC'}),
+                 'gamma_ddf':             ('time',
+                                           gamma_ddf,
+                                           {'name':        'gamma ddf',
+                                            'description': 'machine '
+                                                           'calibrated gamma',
+                                            'units':       '-'}),
+                 'k_internal':            ('time',
+                                           k_internal,
+                                           {'name':  'k internal',
+                                            'description':
+                                                     'machine calibrated '
+                                                     'internal k',
+                                            'units': '-'}),
+                 'k_external':            ('time',
+                                           k_external,
+                                           {'name':  'reference temperature',
+                                            'description':
+                                                     'machine calibrated '
+                                                     'external k',
+                                            'units': '-'}),
                  'userAcquisitionTimeFW': ('time',
                                            acquisitiontimeFW,
                                            dim_attrs['userAcquisitionTimeFW']),
@@ -823,14 +842,13 @@ def read_silixa_attrs_singlefile(filename, sep):
                 # Nested dictionaries, flatten hierarchy.
                 meta.update(metakey(meta,
                                     dict_to_parse[key],
-                                    prefix_parse,
-                                    sep))
+                                    prefix_parse))
 
             elif isinstance(dict_to_parse[key], list):
                 # if the key has values for the multiple channels
                 for ival, val in enumerate(dict_to_parse[key]):
                     num_key = prefix_parse + '_' + str(ival)
-                    meta.update(metakey(meta, val, num_key, sep))
+                    meta.update(metakey(meta, val, num_key))
             else:
 
                 meta[prefix_parse] = dict_to_parse[key]
@@ -845,7 +863,7 @@ def read_silixa_attrs_singlefile(filename, sep):
     else:
         doc = doc_[u'logs'][u'log']
 
-    return metakey(dict(), doc, '', sep)
+    return metakey(dict(), doc, '')
 
 
 def read_sensornet_single(filename):
@@ -877,9 +895,9 @@ def read_sensornet_single(filename):
         fileobject.readline().split('\t')
 
         if meta['differential loss correction'] == 'single-ended':
-            data = {'x': np.zeros(datalength),
+            data = {'x':   np.zeros(datalength),
                     'TMP': np.zeros(datalength),
-                    'ST': np.zeros(datalength),
+                    'ST':  np.zeros(datalength),
                     'AST': np.zeros(datalength)}
 
             for ii in range(0, datalength):
