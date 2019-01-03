@@ -1030,13 +1030,13 @@ class DataStore(xr.Dataset):
         p_val : array-like or string
             parameter solution directly from calibration_double_ended_wls
         p_cov : array-like or string or bool
-            parameter covariance at the solution directly from
-            calibration_double_ended_wls
-            If set to False, no uncertainty in the parameters is propagated
-            into the confidence
-            intervals. Similar to the spec sheets of the DTS manufacturers.
-            And similar to
-            passing an array filled with zeros
+            parameter covariance at p_val directly from
+            calibration_double_ended_wls. If set to False, no uncertainty in
+            the parameters is propagated into the confidence intervals.
+            Similar to the spec sheets of the DTS manufacturers. And similar to
+            passing an array filled with zeros. If set to string, the p_cov
+            is retreived by accessing ds[p_cov] . See p_cov keyword argument in
+            the calibration routine.
         st_label : str
             Key of the forward Stokes
         ast_label : str
@@ -1148,7 +1148,7 @@ class DataStore(xr.Dataset):
                     size=rshape,
                     chunks=r2shape))
 
-        self[store_tmpf + '_MC'] = self['gamma_MC'] / (np.log(
+        self[store_tmpf + '_MC_set'] = self['gamma_MC'] / (np.log(
             self['r_st'] / self['r_ast']) + self['c_MC'] + self[
                                                            'dalpha_MC'] *
                                                        self.x) - 273.15
@@ -1158,21 +1158,20 @@ class DataStore(xr.Dataset):
         else:
             avg_dims = ['MC']
 
-        avg_axis = self[store_tmpf + '_MC'].get_axis_num(avg_dims)
+        avg_axis = self[store_tmpf + '_MC_set'].get_axis_num(avg_dims)
 
-        self[store_tmpf + '_MC' + store_tempvar] = (self[store_tmpf + '_MC'] -
-                                                    self[
-                                                        store_tmpf]).std(
+        self[store_tmpf + '_MC' + store_tempvar] = (self[store_tmpf + '_MC_set'] -
+                                                    self[store_tmpf]).std(
             dim=avg_dims) ** 2
 
         if ci_avg_time_flag:
-            new_chunks = ((len(conf_ints),),) + self[store_tmpf + '_MC'].chunks[
+            new_chunks = ((len(conf_ints),),) + self[store_tmpf + '_MC_set'].chunks[
                 1]
         else:
-            new_chunks = ((len(conf_ints),),) + self[store_tmpf + '_MC'].chunks[
+            new_chunks = ((len(conf_ints),),) + self[store_tmpf + '_MC_set'].chunks[
                                                 1:]
 
-        q = self[store_tmpf + '_MC'].data.map_blocks(
+        q = self[store_tmpf + '_MC_set'].data.map_blocks(
             lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
             chunks=new_chunks,  #
             drop_axis=avg_axis,  # avg dimesnions are dropped from input arr
@@ -1185,7 +1184,8 @@ class DataStore(xr.Dataset):
                         'c_MC',
                         'MC',
                         'r_st',
-                        'r_ast']
+                        'r_ast',
+                        store_tmpf + '_MC_set']
             for k in drop_var:
                 del self[k]
 
@@ -1527,7 +1527,7 @@ class DataStore(xr.Dataset):
             The argument of the function is label minus the reference
             temperature.
         ref_temp_broadcasted : bool
-        calc_per : {'all', 'per_section', 'per_stretch'}
+        calc_per : {'all', 'section', 'stretch'}
         func_kwargs : dict
             Dictionary with options that are passed to func
 
@@ -1563,15 +1563,28 @@ class DataStore(xr.Dataset):
             temp_err=True
             )
 
+        # Obtain the coordinates of the measurements per section
+        locs = d.ufunc_per_section(
+            func=None,
+            label='x',
+            temp_err=False,
+            ref_temp_broadcasted=False,
+            calc_per='per_stretch')
+
+        # Number of observations per stretch
+        nlocs = d.ufunc_per_section(
+            func=len,
+            label='x',
+            temp_err=False,
+            ref_temp_broadcasted=False,
+            calc_per='stretch')
+
+
         Note
         ----
         If self[label] or self[subtract_from_label] is a Dask array, a Dask
         array is returned
         Else a numpy array is returned
-
-        # x_coords of all stretches
-
-
         """
 
         if not func:
@@ -1605,6 +1618,8 @@ class DataStore(xr.Dataset):
         else:
             assert callable(func)
 
+        assert calc_per in ['all', 'section', 'stretch']
+
         if hasattr(self[label].data, 'chunks') or \
             (subtract_from_label and
              hasattr(self[subtract_from_label].data, 'chunks')):
@@ -1621,8 +1636,8 @@ class DataStore(xr.Dataset):
 
                 if subtract_from_label:
                     # calculate std wrt other series
-                    check_dims(self, [subtract_from_label],
-                               correct_dims=('x', 'time'))
+                    # check_dims(self, [subtract_from_label],
+                    #            correct_dims=('x', 'time'))
 
                     assert not temp_err
 
@@ -1630,7 +1645,8 @@ class DataStore(xr.Dataset):
                     out[k].append(arg1 - arg2)
 
                 elif temp_err:
-                    # calculate std wrt reference temperature
+                    # calculate std wrt reference temperature of the
+                    # corresponding bath
                     arg2 = self[k].data
                     out[k].append(arg1 - arg2)
 
@@ -1942,7 +1958,8 @@ def plot_dask(arr, file_path=None):
             dt=0.25) as rprof, CacheProfiler() as cprof:
         out = arr.compute()
 
-    arr.visualize(file_path)
+    if not file_path:
+        arr.visualize(file_path)
 
     visualize([prof, rprof, cprof], show=True)
 
