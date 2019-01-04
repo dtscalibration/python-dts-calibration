@@ -1165,8 +1165,8 @@ class DataStore(xr.Dataset):
             dim=avg_dims) ** 2
 
         if ci_avg_time_flag:
-            new_chunks = ((len(conf_ints),),) + self[store_tmpf + '_MC_set'].chunks[
-                1]
+            new_chunks = ((len(conf_ints),),) + (self[store_tmpf +
+                                                     '_MC_set'].chunks[1],)
         else:
             new_chunks = ((len(conf_ints),),) + self[store_tmpf + '_MC_set'].chunks[
                                                 1:]
@@ -1176,7 +1176,11 @@ class DataStore(xr.Dataset):
             chunks=new_chunks,  #
             drop_axis=avg_axis,  # avg dimesnions are dropped from input arr
             new_axis=0)  # The new CI dimension is added as first axis
-        self[store_tmpf + '_MC'] = (('CI', 'x', 'time'), q)
+
+        if ci_avg_time_flag:
+            self[store_tmpf + '_MC'] = (('CI', 'x'), q)
+        else:
+            self[store_tmpf + '_MC'] = (('CI', 'x', 'time'), q)
 
         if remove_mc_set_flag:
             drop_var = ['gamma_MC',
@@ -1505,6 +1509,7 @@ class DataStore(xr.Dataset):
                           label=None,
                           subtract_from_label=None,
                           temp_err=False,
+                          x_indices=False,
                           ref_temp_broadcasted=False,
                           calc_per='stretch',
                           **func_kwargs):
@@ -1526,6 +1531,9 @@ class DataStore(xr.Dataset):
         temp_err : bool
             The argument of the function is label minus the reference
             temperature.
+        x_indices : bool
+            To retreive an integer array with the indices of the
+            x-coordinates in the section/stretch
         ref_temp_broadcasted : bool
         calc_per : {'all', 'section', 'stretch'}
         func_kwargs : dict
@@ -1569,7 +1577,7 @@ class DataStore(xr.Dataset):
             label='x',
             temp_err=False,
             ref_temp_broadcasted=False,
-            calc_per='per_stretch')
+            calc_per='stretch')
 
         # Number of observations per stretch
         nlocs = d.ufunc_per_section(
@@ -1578,6 +1586,9 @@ class DataStore(xr.Dataset):
             temp_err=False,
             ref_temp_broadcasted=False,
             calc_per='stretch')
+
+        # x-coordinate index
+        ix_loc = d.ufunc_per_section(x_indices=True)
 
 
         Note
@@ -1620,9 +1631,10 @@ class DataStore(xr.Dataset):
 
         assert calc_per in ['all', 'section', 'stretch']
 
-        if hasattr(self[label].data, 'chunks') or \
+        if not x_indices and \
+            hasattr(self[label].data, 'chunks') or \
             (subtract_from_label and
-             hasattr(self[subtract_from_label].data, 'chunks')):
+                hasattr(self[subtract_from_label].data, 'chunks')):
             concat = da.concatenate
         else:
             concat = np.concatenate
@@ -1632,7 +1644,19 @@ class DataStore(xr.Dataset):
         for k, section in self.sections.items():
             out[k] = []
             for stretch in section:
-                arg1 = self[label].sel(x=stretch).data
+
+                if not x_indices:
+                    arg1 = self[label].sel(x=stretch).data
+
+                else:
+                    assert not subtract_from_label
+                    assert not temp_err
+                    assert not ref_temp_broadcasted
+                    # so it is slicable with x-indices
+                    self['_x_indices'] = self.x.astype(int) * 0 + range(
+                        self.x.size)
+                    arg1 = self['_x_indices'].sel(x=stretch).data
+                    del self['_x_indices']
 
                 if subtract_from_label:
                     # calculate std wrt other series
