@@ -99,8 +99,7 @@ class DataStore(xr.Dataset):
 
         # add new preamble to the remainder of the former __repr__
         len_preamble_old = 8 + len(name_module) + 2
-        s_out = '\n'.join([preamble_new,
-                           s[len_preamble_old:]])
+        s_out = '\n'.join([preamble_new, s[len_preamble_old:]])
 
         # return new __repr__
         return s_out
@@ -143,7 +142,7 @@ class DataStore(xr.Dataset):
                                               'refer ' \
                                               'to a valid timeserie already ' \
                                               'stored in ds.data_vars'
-            check_dims(self, sections, ('time',))
+            check_dims(self, sections, ('time', ))
 
             for k, v in sections.items():
                 assert isinstance(v, (list, tuple)), \
@@ -218,22 +217,22 @@ class DataStore(xr.Dataset):
         """
         d = {
             'chfw': {
-                'st_label':              'ST',
-                'ast_label':             'AST',
+                'st_label': 'ST',
+                'ast_label': 'AST',
                 'acquisitiontime_label': 'userAcquisitionTimeFW',
-                'time_start_label':      'timeFWstart',
-                'time_label':            'timeFW',
-                'time_end_label':        'timeFWend',
-                },
+                'time_start_label': 'timeFWstart',
+                'time_label': 'timeFW',
+                'time_end_label': 'timeFWend',
+            },
             'chbw': {
-                'st_label':              'REV-ST',
-                'ast_label':             'REV-AST',
+                'st_label': 'REV-ST',
+                'ast_label': 'REV-AST',
                 'acquisitiontime_label': 'userAcquisitionTimeBW',
-                'time_start_label':      'timeBWstart',
-                'time_label':            'timeBW',
-                'time_end_label':        'timeBWend',
-                }
+                'time_start_label': 'timeBWstart',
+                'time_label': 'timeBW',
+                'time_end_label': 'timeBWend',
             }
+        }
         return d
 
     @property
@@ -241,11 +240,18 @@ class DataStore(xr.Dataset):
         """
         Returns the keys of all timeseires that can be used for calibration.
         """
-        return [k for k, v in self.data_vars.items() if v.dims == ('time',)]
+        return [k for k, v in self.data_vars.items() if v.dims == ('time', )]
 
-    def resample_datastore(self, how, freq=None, dim=None, skipna=None,
+    def resample_datastore(self,
+                           how,
+                           freq=None,
+                           dim=None,
+                           skipna=None,
                            closed=None,
-                           label=None, base=0, keep_attrs=True, **indexer):
+                           label=None,
+                           base=0,
+                           keep_attrs=True,
+                           **indexer):
         """Returns a resampled DataStore. Always define the how.
         Handles both downsampling and upsampling. If any intervals contain no
         values from the original object, they will be given the value ``NaN``.
@@ -302,8 +308,8 @@ class DataStore(xr.Dataset):
             how = 'mean'
 
         group = DataArray(dim, [(dim.dims, dim)], name=RESAMPLE_DIM)
-        grouper = pd.Grouper(freq=freq, how=how, closed=closed, label=label,
-                             base=base)
+        grouper = pd.Grouper(
+            freq=freq, how=how, closed=closed, label=label, base=base)
         gb = self._groupby_cls(self, group, grouper=grouper)
         if isinstance(how, str):
             f = getattr(gb, how)
@@ -323,15 +329,18 @@ class DataStore(xr.Dataset):
             attrs = None
 
         out = DataStore(
-            data_vars=result.data_vars,
-            coords=result.coords,
-            attrs=attrs
-            )
+            data_vars=result.data_vars, coords=result.coords, attrs=attrs)
 
         return out
 
-    def to_netcdf(self, path=None, mode='w', format=None, group=None,
-                  engine=None, encoding=None, unlimited_dims=None,
+    def to_netcdf(self,
+                  path=None,
+                  mode='w',
+                  format=None,
+                  group=None,
+                  engine=None,
+                  encoding=None,
+                  unlimited_dims=None,
                   compute=True):
         """Write datastore contents to a netCDF file.
         Parameters
@@ -404,8 +413,12 @@ class DataStore(xr.Dataset):
                 self.attrs[attribute] = ''
 
         return super(DataStore, self).to_netcdf(
-            path, mode, format=format, group=group,
-            engine=engine, encoding=encoding,
+            path,
+            mode,
+            format=format,
+            group=group,
+            engine=engine,
+            encoding=encoding,
             unlimited_dims=unlimited_dims,
             compute=compute)
 
@@ -417,16 +430,21 @@ class DataStore(xr.Dataset):
 
         """
         # TODO: set scale parameter
-        compdata = dict(zlib=True, complevel=6,
-                        shuffle=False)  # , least_significant_digit=None
+        compdata = dict(
+            zlib=True, complevel=6,
+            shuffle=False)  # , least_significant_digit=None
         compcoords = dict(zlib=True, complevel=4)
 
         encoding = {var: compdata for var in self.data_vars}
         encoding.update({var: compcoords for var in self.coords})
         return encoding
 
-    def variance_stokes(self, st_label, sections=None, use_statsmodels=False,
-                        suppress_info=True, reshape_residuals=True):
+    def variance_stokes(self,
+                        st_label,
+                        sections=None,
+                        use_statsmodels=False,
+                        suppress_info=True,
+                        reshape_residuals=True):
         """Calculates the variance between the measurements and a best fit
         exponential at each reference section. This fits a two-parameter
         exponential to the stokes measurements. The temperature is constant
@@ -501,15 +519,15 @@ class DataStore(xr.Dataset):
         coords1col = np.hstack([
             np.ones(in_locs * nt) * i
             for i, in_locs in enumerate(len_stretch_list)
-            ])  # C for
+        ])  # C for
 
         # second calibration parameter is different per section and per timestep
         coords2row = np.arange(nt * n_locs)
         coords2col = np.hstack([
-            np.repeat(np.arange(i * nt + n_sections, (i + 1) * nt + n_sections),
-                      in_locs)
-            for i, in_locs in enumerate(len_stretch_list)
-            ])  # C for
+            np.repeat(
+                np.arange(i * nt + n_sections, (i + 1) * nt + n_sections),
+                in_locs) for i, in_locs in enumerate(len_stretch_list)
+        ])  # C for
         coords = (np.concatenate([coords1row, coords2row]),
                   np.concatenate([coords1col, coords2col]))
 
@@ -523,11 +541,12 @@ class DataStore(xr.Dataset):
             import statsmodels.api as sm
 
             X = sp.coo_matrix((data, coords),
-                              shape=(nt * n_locs, n_sections + nt * n_sections),
+                              shape=(nt * n_locs,
+                                     n_sections + nt * n_sections),
                               dtype=float,
                               copy=False)
 
-            mod_wls = sm.WLS(lny, X.todense(), weights=w ** 2)
+            mod_wls = sm.WLS(lny, X.todense(), weights=w**2)
             res_wls = mod_wls.fit()
             # print(res_wls.summary())
             a = res_wls.params
@@ -535,8 +554,8 @@ class DataStore(xr.Dataset):
         else:
             wdata = data * np.hstack((w, w))
             wX = sp.coo_matrix((wdata, coords),
-                               shape=(
-                                   nt * n_locs, n_sections + nt * n_sections),
+                               shape=(nt * n_locs,
+                                      n_sections + nt * n_sections),
                                dtype=float,
                                copy=False)
 
@@ -544,25 +563,23 @@ class DataStore(xr.Dataset):
 
             p0_est = np.asarray(n_sections * [0.] + nt * n_sections * [8])
             # noinspection PyTypeChecker
-            a = ln.lsqr(wX, wlny,
-                        x0=p0_est,
-                        show=not suppress_info,
-                        calc_var=False)[0]
+            a = ln.lsqr(
+                wX, wlny, x0=p0_est, show=not suppress_info, calc_var=False)[0]
 
         beta = a[:n_sections]
         beta_expand_to_sec = np.hstack([
             np.repeat(beta[i], leni * nt)
             for i, leni in enumerate(len_stretch_list)
-            ])
+        ])
         G = a[n_sections:]
         G_expand_to_sec = np.hstack([
             np.repeat(G[i * nt:(i + 1) * nt], leni)
             for i, leni in enumerate(len_stretch_list)
-            ])
+        ])
 
         I_est = np.exp(G_expand_to_sec) * np.exp(x * beta_expand_to_sec)
         resid = I_est - y
-        var_I = resid.std(ddof=ddof) ** 2
+        var_I = resid.std(ddof=ddof)**2
 
         if not reshape_residuals:
             return var_I, resid
@@ -573,11 +590,10 @@ class DataStore(xr.Dataset):
             for leni, lenis, lenie in zip(
                     len_stretch_list,
                     nt * np.cumsum([0] + len_stretch_list[:-1]),
-                    nt * np.cumsum(len_stretch_list)
-                    ):
+                    nt * np.cumsum(len_stretch_list)):
 
-                resid_res.append(
-                    resid[lenis:lenie].reshape((leni, nt), order='F'))
+                resid_res.append(resid[lenis:lenie].reshape((leni, nt),
+                                                            order='F'))
 
             _resid = np.concatenate(resid_res)
             _resid_x = self.ufunc_per_section(label='x', calc_per='all')
@@ -588,14 +604,16 @@ class DataStore(xr.Dataset):
             ix_resid = np.array(
                 [np.argmin(np.abs(ai - self.x.data)) for ai in resid_x])
 
-            resid_sorted = np.full(shape=self[st_label].shape,
-                                   fill_value=np.nan)
+            resid_sorted = np.full(
+                shape=self[st_label].shape, fill_value=np.nan)
             resid_sorted[ix_resid, :] = resid
-            resid_da = xr.DataArray(data=resid_sorted,
-                                    dims=('x', 'time'),
-                                    coords={
-                                        'x':    self.x,
-                                        'time': self.time})
+            resid_da = xr.DataArray(
+                data=resid_sorted,
+                dims=('x', 'time'),
+                coords={
+                    'x': self.x,
+                    'time': self.time
+                })
 
             return var_I, resid_da
 
@@ -633,8 +651,7 @@ class DataStore(xr.Dataset):
 
         """
 
-        self[tmpw_var_store] = 1 / (1 / self[tmp1_var] +
-                                    1 / self[tmp2_var])
+        self[tmpw_var_store] = 1 / (1 / self[tmp1_var] + 1 / self[tmp2_var])
 
         self[tmpw_store] = (self[tmp1] / self[tmp1_var] +
                             self[tmp2] / self[tmp2_var]) * self[tmpw_var_store]
@@ -661,8 +678,7 @@ class DataStore(xr.Dataset):
         - https://en.wikipedia.org/wiki/Inverse-variance_weighting
 
         """
-        self[tmpw_var_store] = 1 / (1 / self[
-            tmp_var_label]).sum(dim=dim)
+        self[tmpw_var_store] = 1 / (1 / self[tmp_var_label]).sum(dim=dim)
 
         self[tmpw_store] = (self[tmp_label] / self[tmp_var_label]).sum(
             dim=dim) / (1 / self[tmp_var_label]).sum(dim=dim)
@@ -689,8 +705,7 @@ class DataStore(xr.Dataset):
                                  z=None,
                                  p_val=None,
                                  p_var=None,
-                                 p_cov=None
-                                 ):
+                                 p_cov=None):
         """
 
         Parameters
@@ -753,13 +768,11 @@ class DataStore(xr.Dataset):
         else:
             assert self.sections, 'sections are not defined'
 
-        check_dims(self,
-                   [st_label, ast_label],
-                   correct_dims=('x', 'time'))
+        check_dims(self, [st_label, ast_label], correct_dims=('x', 'time'))
 
         if method == 'ols':
-            nt, z, p0_ = calibration_single_ended_ols(
-                self, st_label, ast_label)
+            nt, z, p0_ = calibration_single_ended_ols(self, st_label,
+                                                      ast_label)
 
             p0 = p0_[0]
             gamma = p0[0]
@@ -777,8 +790,7 @@ class DataStore(xr.Dataset):
                     assert isinstance(vari, float)
 
                 nt, z, p_val, p_var, p_cov = calibration_single_ended_wls(
-                    self, st_label, ast_label,
-                    st_var, ast_var, solver=solver)
+                    self, st_label, ast_label, st_var, ast_var, solver=solver)
             else:
                 for input_item in [nt, z, p_val, p_var, p_cov]:
                     assert input_item is not None
@@ -799,14 +811,14 @@ class DataStore(xr.Dataset):
         # store calibration parameters in DataStore
         self[store_gamma] = (tuple(), gamma)
         self[store_dalpha] = (tuple(), dalpha)
-        self[store_alpha] = (('x',), dalpha * self.x.data)
-        self[store_c] = (('time',), c)
+        self[store_alpha] = (('x', ), dalpha * self.x.data)
+        self[store_c] = (('time', ), c)
 
         # store variances in DataStore
         if method == 'wls' or method == 'external':
             self[store_gamma + variance_suffix] = (tuple(), gammavar)
             self[store_dalpha + variance_suffix] = (tuple(), dalphavar)
-            self[store_c + variance_suffix] = (('time',), cvar)
+            self[store_c + variance_suffix] = (('time', ), cvar)
 
         # deal with FW
         if store_tmpf:
@@ -816,7 +828,7 @@ class DataStore(xr.Dataset):
             self[store_tmpf] = (('x', 'time'), tempF_data)
 
         if store_p_val and (method == 'wls' or method == 'external'):
-            self[store_p_val] = (('params1',), p_val)
+            self[store_p_val] = (('params1', ), p_val)
         else:
             pass
 
@@ -924,9 +936,9 @@ class DataStore(xr.Dataset):
         else:
             assert self.sections, 'sections are not defined'
 
-        check_dims(self,
-                   [st_label, ast_label, rst_label, rast_label],
-                   correct_dims=('x', 'time'))
+        check_dims(
+            self, [st_label, ast_label, rst_label, rast_label],
+            correct_dims=('x', 'time'))
 
         if method == 'ols':
             nt, z, p0_ = calibration_double_ended_ols(
@@ -949,8 +961,16 @@ class DataStore(xr.Dataset):
                     assert isinstance(vari, float)
 
                 nt, z, p_val, p_var, p_cov = calibration_double_ended_wls(
-                    self, st_label, ast_label, rst_label, rast_label,
-                    st_var, ast_var, rst_var, rast_var, solver=solver)
+                    self,
+                    st_label,
+                    ast_label,
+                    rst_label,
+                    rast_label,
+                    st_var,
+                    ast_var,
+                    rst_var,
+                    rast_var,
+                    solver=solver)
             else:
                 for input_item in [nt, z, p_val, p_var, p_cov]:
                     assert input_item is not None
@@ -970,14 +990,14 @@ class DataStore(xr.Dataset):
 
         # store calibration parameters in DataStore
         self[store_gamma] = (tuple(), gamma)
-        self[store_alpha] = (('x',), alpha)
-        self[store_d] = (('time',), d)
+        self[store_alpha] = (('x', ), alpha)
+        self[store_d] = (('time', ), d)
 
         # store variances in DataStore
         if method == 'wls' or method == 'external':
             self[store_gamma + variance_suffix] = (tuple(), gammavar)
-            self[store_alpha + variance_suffix] = (('x',), alphavar)
-            self[store_d + variance_suffix] = (('time',), dvar)
+            self[store_alpha + variance_suffix] = (('x', ), alphavar)
+            self[store_d + variance_suffix] = (('time', ), dvar)
 
         # deal with FW
         if store_tmpf:
@@ -995,7 +1015,7 @@ class DataStore(xr.Dataset):
 
         if store_p_val and (method == 'wls' or method == 'external'):
             # TODO: add params1 dimension
-            self[store_p_val] = (('params1',), p_val)
+            self[store_p_val] = (('params1', ), p_val)
         else:
             pass
 
@@ -1021,8 +1041,7 @@ class DataStore(xr.Dataset):
                               conf_ints_size=100,
                               ci_avg_time_flag=False,
                               da_random_state=None,
-                              remove_mc_set_flag=True
-                              ):
+                              remove_mc_set_flag=True):
         """
 
         Parameters
@@ -1093,7 +1112,7 @@ class DataStore(xr.Dataset):
         assert isinstance(p_val, (str, np.ndarray, np.generic))
         if isinstance(p_val, str):
             p_val = self[p_val].data
-        assert p_val.shape == (npar,)
+        assert p_val.shape == (npar, )
 
         assert isinstance(p_cov, (str, np.ndarray, np.generic, bool))
         if isinstance(p_cov, bool) and not p_cov:
@@ -1102,7 +1121,7 @@ class DataStore(xr.Dataset):
             c = p_val[2:nt + 2]
             self['gamma_MC'] = (tuple(), gamma)
             self['dalpha_MC'] = (tuple(), dalpha)
-            self['c_MC'] = (('time',), c)
+            self['c_MC'] = (('time', ), c)
 
         elif isinstance(p_cov, bool) and p_cov:
             raise NotImplementedError(
@@ -1113,45 +1132,46 @@ class DataStore(xr.Dataset):
                 p_cov = self[p_cov].data
             assert p_cov.shape == (npar, npar)
 
-            p_mc = sst.multivariate_normal.rvs(mean=p_val,
-                                               cov=p_cov,
-                                               size=conf_ints_size)
+            p_mc = sst.multivariate_normal.rvs(
+                mean=p_val, cov=p_cov, size=conf_ints_size)
 
             gamma = p_mc[:, 0]
             dalpha = p_mc[:, 1]
             c = p_mc[:, 2:nt + 2]
 
-            self['gamma_MC'] = (('MC',), gamma)
-            self['dalpha_MC'] = (('MC',), dalpha)
-            self['c_MC'] = (('MC', 'time',), c)
+            self['gamma_MC'] = (('MC', ), gamma)
+            self['dalpha_MC'] = (('MC', ), dalpha)
+            self['c_MC'] = ((
+                'MC',
+                'time',
+            ), c)
 
         rshape = (self.MC.size, self.x.size, self.time.size)
-        r2shape = {
-            0: -1,
-            1: 'auto',
-            2: -1}
+        r2shape = {0: -1, 1: 'auto', 2: -1}
 
-        for k, st_labeli, st_vari in zip(['r_st', 'r_ast'],
-                                         [st_label, ast_label],
-                                         [st_var, ast_var]):
+        for k, st_labeli, st_vari in zip(
+            ['r_st', 'r_ast'], [st_label, ast_label], [st_var, ast_var]):
             if hasattr(self[st_labeli].data, 'chunks'):
                 chunks = self[st_label].chunks
-                self[k] = (('MC', 'x', 'time'), state.normal(
-                    loc=da.rechunk(self[st_labeli].data, chunks=chunks),
-                    scale=st_vari ** 0.5,
-                    size=rshape,
-                    chunks=r2shape))
+                self[k] = (('MC', 'x', 'time'),
+                           state.normal(
+                               loc=da.rechunk(
+                                   self[st_labeli].data, chunks=chunks),
+                               scale=st_vari**0.5,
+                               size=rshape,
+                               chunks=r2shape))
             else:
-                self[k] = (('MC', 'x', 'time'), state.normal(
-                    loc=da.from_array(self[st_labeli].data, chunks={}),
-                    scale=st_vari ** 0.5,
-                    size=rshape,
-                    chunks=r2shape))
+                self[k] = (('MC', 'x', 'time'),
+                           state.normal(
+                               loc=da.from_array(
+                                   self[st_labeli].data, chunks={}),
+                               scale=st_vari**0.5,
+                               size=rshape,
+                               chunks=r2shape))
 
-        self[store_tmpf + '_MC_set'] = self['gamma_MC'] / (np.log(
-            self['r_st'] / self['r_ast']) + self['c_MC'] + self[
-                                                           'dalpha_MC'] *
-                                                       self.x) - 273.15
+        self[store_tmpf + '_MC_set'] = self['gamma_MC'] / (
+            np.log(self['r_st'] / self['r_ast']) + self['c_MC'] +
+            self['dalpha_MC'] * self.x) - 273.15
 
         if ci_avg_time_flag:
             avg_dims = ['MC', 'time']
@@ -1160,16 +1180,16 @@ class DataStore(xr.Dataset):
 
         avg_axis = self[store_tmpf + '_MC_set'].get_axis_num(avg_dims)
 
-        self[store_tmpf + '_MC' + store_tempvar] = (self[store_tmpf + '_MC_set'] -
-                                                    self[store_tmpf]).std(
-            dim=avg_dims) ** 2
+        self[store_tmpf + '_MC' + store_tempvar] = (
+            self[store_tmpf + '_MC_set'] - self[store_tmpf]).std(
+                dim=avg_dims)**2
 
         if ci_avg_time_flag:
-            new_chunks = ((len(conf_ints),),) + (self[store_tmpf +
-                                                     '_MC_set'].chunks[1],)
+            new_chunks = ((len(conf_ints), ), ) + (
+                self[store_tmpf + '_MC_set'].chunks[1], )
         else:
-            new_chunks = ((len(conf_ints),),) + self[store_tmpf + '_MC_set'].chunks[
-                                                1:]
+            new_chunks = (
+                (len(conf_ints), ), ) + self[store_tmpf + '_MC_set'].chunks[1:]
 
         q = self[store_tmpf + '_MC_set'].data.map_blocks(
             lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
@@ -1183,13 +1203,10 @@ class DataStore(xr.Dataset):
             self[store_tmpf + '_MC'] = (('CI', 'x', 'time'), q)
 
         if remove_mc_set_flag:
-            drop_var = ['gamma_MC',
-                        'dalpha_MC',
-                        'c_MC',
-                        'MC',
-                        'r_st',
-                        'r_ast',
-                        store_tmpf + '_MC_set']
+            drop_var = [
+                'gamma_MC', 'dalpha_MC', 'c_MC', 'MC', 'r_st', 'r_ast',
+                store_tmpf + '_MC_set'
+            ]
             for k in drop_var:
                 del self[k]
 
@@ -1310,7 +1327,7 @@ class DataStore(xr.Dataset):
         assert isinstance(p_val, (str, np.ndarray, np.generic))
         if isinstance(p_val, str):
             p_val = self[p_val].data
-        assert p_val.shape == (npar,)
+        assert p_val.shape == (npar, )
 
         assert isinstance(p_cov, (str, np.ndarray, np.generic, bool))
 
@@ -1320,8 +1337,8 @@ class DataStore(xr.Dataset):
             alpha = p_val[nt + 1:]
 
             self['gamma_MC'] = (tuple(), gamma)
-            self['alpha_MC'] = (('x',), alpha)
-            self['d_MC'] = (('time',), d)
+            self['alpha_MC'] = (('x', ), alpha)
+            self['d_MC'] = (('time', ), d)
 
         elif isinstance(p_cov, bool) and p_cov:
             raise NotImplementedError(
@@ -1332,51 +1349,56 @@ class DataStore(xr.Dataset):
                 p_cov = self[p_cov].data
             assert p_cov.shape == (npar, npar)
 
-            p_mc = sst.multivariate_normal.rvs(mean=p_val,
-                                               cov=p_cov,
-                                               size=conf_ints_size)  # this
+            p_mc = sst.multivariate_normal.rvs(
+                mean=p_val, cov=p_cov, size=conf_ints_size)  # this
             # one takes long
 
             gamma = p_mc[:, 0]
             d = p_mc[:, 1:nt + 1]
             alpha = p_mc[:, nt + 1:]
 
-            self['gamma_MC'] = (('MC',), gamma)
-            self['alpha_MC'] = (('MC', 'x',), alpha)
-            self['d_MC'] = (('MC', 'time',), d)
+            self['gamma_MC'] = (('MC', ), gamma)
+            self['alpha_MC'] = ((
+                'MC',
+                'x',
+            ), alpha)
+            self['d_MC'] = ((
+                'MC',
+                'time',
+            ), d)
 
         rshape = (self.MC.size, self.x.size, self.time.size)
-        r2shape = {
-            0: -1,
-            1: 'auto',
-            2: -1}
+        r2shape = {0: -1, 1: 'auto', 2: -1}
 
-        for k, st_labeli, st_vari in zip(['r_st', 'r_ast', 'r_rst', 'r_rast'],
-                                         [st_label, ast_label, rst_label,
-                                          rast_label],
-                                         [st_var, ast_var, rst_var, rast_var]):
+        for k, st_labeli, st_vari in zip(
+            ['r_st', 'r_ast', 'r_rst', 'r_rast'],
+            [st_label, ast_label, rst_label, rast_label],
+            [st_var, ast_var, rst_var, rast_var]):
             if hasattr(self[st_labeli].data, 'chunks'):
                 # if it is a dask array, we don't need to chunk it
-                self[k] = (('MC', 'x', 'time'), state.normal(
-                    loc=self[st_labeli].data,
-                    scale=st_vari ** 0.5,
-                    size=rshape,
-                    chunks=r2shape))
+                self[k] = (('MC', 'x', 'time'),
+                           state.normal(
+                               loc=self[st_labeli].data,
+                               scale=st_vari**0.5,
+                               size=rshape,
+                               chunks=r2shape))
             else:
                 # if it is a numpy array (it apparently fits in the memory so
                 # we dont need to
                 # chunk it)
-                self[k] = (('MC', 'x', 'time'), state.normal(
-                    loc=da.from_array(self[st_labeli].data, chunks={}),
-                    scale=st_vari ** 0.5,
-                    size=rshape,
-                    chunks=r2shape))
+                self[k] = (('MC', 'x', 'time'),
+                           state.normal(
+                               loc=da.from_array(
+                                   self[st_labeli].data, chunks={}),
+                               scale=st_vari**0.5,
+                               size=rshape,
+                               chunks=r2shape))
 
-        self[store_tmpf + '_MC_set'] = self['gamma_MC'] / (np.log(
-            self['r_st'] / self['r_ast']) + self['d_MC'] +
+        self[store_tmpf + '_MC_set'] = self['gamma_MC'] / (
+            np.log(self['r_st'] / self['r_ast']) + self['d_MC'] +
             self['alpha_MC']) - 273.15
-        self[store_tmpb + '_MC_set'] = self['gamma_MC'] / (np.log(
-            self['r_rst'] / self['r_rast']) + self['d_MC'] -
+        self[store_tmpb + '_MC_set'] = self['gamma_MC'] / (
+            np.log(self['r_rst'] / self['r_rast']) + self['d_MC'] -
             self['alpha_MC']) - 273.15
 
         if ci_avg_time_flag:
@@ -1388,27 +1410,19 @@ class DataStore(xr.Dataset):
 
         avg_axis = self[store_tmpf + '_MC_set'].get_axis_num(avg_dims)
 
-        self[store_tmpf + '_MC' + store_tempvar] = (self[
-                                                        store_tmpf +
-                                                        '_MC_set'] -
-                                                    self[
-                                                        store_tmpf]).std(
-            dim=avg_dims) ** 2
-        self[store_tmpb + '_MC' + store_tempvar] = (self[
-                                                        store_tmpb +
-                                                        '_MC_set'] -
-                                                    self[
-                                                        store_tmpb]).std(
-            dim=avg_dims) ** 2
+        self[store_tmpf + '_MC' + store_tempvar] = (
+            self[store_tmpf + '_MC_set'] - self[store_tmpf]).std(
+                dim=avg_dims)**2
+        self[store_tmpb + '_MC' + store_tempvar] = (
+            self[store_tmpb + '_MC_set'] - self[store_tmpb]).std(
+                dim=avg_dims)**2
 
         if ci_avg_time_flag:
-            new_chunks = ((len(conf_ints),),) + (
-                self[store_tmpf + '_MC_set'].chunks[1],)
+            new_chunks = ((len(conf_ints), ), ) + (
+                self[store_tmpf + '_MC_set'].chunks[1], )
         else:
-            new_chunks = ((len(conf_ints),),) + self[
-                                                    store_tmpf +
-                                                    '_MC_set'].chunks[
-                                                1:]
+            new_chunks = (
+                (len(conf_ints), ), ) + self[store_tmpf + '_MC_set'].chunks[1:]
 
         q = self[store_tmpf + '_MC_set'].data.map_blocks(
             lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
@@ -1435,9 +1449,10 @@ class DataStore(xr.Dataset):
 
         # np.testing.assert_almost_equal(np.all(weightf + weightb), 1)
 
-        self[store_tmpw + '_MC_set'] = (weightf * self[store_tmpf + '_MC_set'] +
-                                        weightb * self[store_tmpb + '_MC_set']
-                                        ).transpose('MC', 'x', 'time')
+        self[store_tmpw + '_MC_set'] = (
+            weightf * self[store_tmpf + '_MC_set'] +
+            weightb * self[store_tmpb + '_MC_set']).transpose(
+                'MC', 'x', 'time')
 
         # Calculate the CI of the weighted MC_set
         q = self[store_tmpw + '_MC_set'].data.map_blocks(
@@ -1448,30 +1463,22 @@ class DataStore(xr.Dataset):
         self[store_tmpw + '_MC'] = (ci_dims, q)
 
         # Calculate the mean of the weighted MC_set
-        self[store_tmpw] = (
-            ('x', 'time'), self[store_tmpw + '_MC_set'].mean(dim='MC').data)
+        self[store_tmpw] = (('x', 'time'),
+                            self[store_tmpw + '_MC_set'].mean(dim='MC').data)
 
         # Calculate the variance of the weighted MC_set
         self[store_tmpw + '_MC' + store_tempvar] = (
             self[store_tmpw + '_MC_set'] - self[store_tmpw]).std(
-                dim=avg_dims) ** 2
+                dim=avg_dims)**2
 
         # Clean up the garbage. All arrays with a Monte Carlo dimension.
         # remove_MC_set = [k for k, v in self.data_vars.items() if 'MC' in
         # v.dims]
         if remove_mc_set_flag:
             remove_MC_set = [
-                'r_st',
-                'r_ast',
-                'r_rst',
-                'r_rast',
-                'gamma_MC',
-                'alpha_MC',
-                'd_MC',
-                'TMPF_MC_set',
-                'TMPB_MC_set',
-                'TMPW_MC_set',
-                'MC']
+                'r_st', 'r_ast', 'r_rst', 'r_rast', 'gamma_MC', 'alpha_MC',
+                'd_MC', 'TMPF_MC_set', 'TMPB_MC_set', 'TMPW_MC_set', 'MC'
+            ]
             for k in remove_MC_set:
                 del self[k]
 
@@ -1488,8 +1495,8 @@ class DataStore(xr.Dataset):
         resid_da : xarray.DataArray
             The residuals as DataArray
         """
-        resid_temp = self.ufunc_per_section(label=label, temp_err=True,
-                                            calc_per='all')
+        resid_temp = self.ufunc_per_section(
+            label=label, temp_err=True, calc_per='all')
         resid_x = self.ufunc_per_section(label='x', calc_per='all')
 
         resid_ix = np.array(
@@ -1497,11 +1504,13 @@ class DataStore(xr.Dataset):
 
         resid_sorted = np.full(shape=self[label].shape, fill_value=np.nan)
         resid_sorted[resid_ix, :] = resid_temp
-        resid_da = xr.DataArray(data=resid_sorted,
-                                dims=('x', 'time'),
-                                coords={
-                                    'x':    self.x,
-                                    'time': self.time})
+        resid_da = xr.DataArray(
+            data=resid_sorted,
+            dims=('x', 'time'),
+            coords={
+                'x': self.x,
+                'time': self.time
+            })
         return resid_da
 
     def ufunc_per_section(self,
@@ -1599,6 +1608,7 @@ class DataStore(xr.Dataset):
         """
 
         if not func:
+
             def func(a):
                 """
 
@@ -1613,6 +1623,7 @@ class DataStore(xr.Dataset):
                 return a
 
         elif isinstance(func, str) and func == 'var':
+
             def func(a):
                 """
 
@@ -1624,7 +1635,7 @@ class DataStore(xr.Dataset):
                 -------
 
                 """
-                return np.std(a) ** 2
+                return np.std(a)**2
 
         else:
             assert callable(func)
@@ -1709,11 +1720,20 @@ class DataStore(xr.Dataset):
         return out
 
 
-def open_datastore(filename_or_obj, group=None, decode_cf=True,
-                   mask_and_scale=None, decode_times=True,
-                   concat_characters=True, decode_coords=True, engine=None,
-                   chunks=None, lock=None, cache=None, drop_variables=None,
-                   backend_kwargs=None, **kwargs):
+def open_datastore(filename_or_obj,
+                   group=None,
+                   decode_cf=True,
+                   mask_and_scale=None,
+                   decode_times=True,
+                   concat_characters=True,
+                   decode_coords=True,
+                   engine=None,
+                   chunks=None,
+                   lock=None,
+                   cache=None,
+                   drop_variables=None,
+                   backend_kwargs=None,
+                   **kwargs):
     """Load and decode a datastore from a file or file-like object.
     Parameters
     ----------
@@ -1793,37 +1813,42 @@ def open_datastore(filename_or_obj, group=None, decode_cf=True,
     ds_kwargs = {k: v for k, v in kwargs.items() if k not in xr_kws}
 
     if chunks is None:
-        chunks = {
-            'x':    'auto',
-            'time': -1}
+        chunks = {'x': 'auto', 'time': -1}
 
     ds_xr = xr.open_dataset(
-        filename_or_obj, group=group, decode_cf=decode_cf,
-        mask_and_scale=mask_and_scale, decode_times=decode_times,
-        concat_characters=concat_characters, decode_coords=decode_coords,
+        filename_or_obj,
+        group=group,
+        decode_cf=decode_cf,
+        mask_and_scale=mask_and_scale,
+        decode_times=decode_times,
+        concat_characters=concat_characters,
+        decode_coords=decode_coords,
         engine=engine,
-        chunks=chunks, lock=lock, cache=cache, drop_variables=drop_variables,
+        chunks=chunks,
+        lock=lock,
+        cache=cache,
+        drop_variables=drop_variables,
         backend_kwargs=backend_kwargs)
 
-    ds = DataStore(data_vars=ds_xr.data_vars,
-                   coords=ds_xr.coords,
-                   attrs=ds_xr.attrs,
-                   **ds_kwargs)
+    ds = DataStore(
+        data_vars=ds_xr.data_vars,
+        coords=ds_xr.coords,
+        attrs=ds_xr.attrs,
+        **ds_kwargs)
 
     ds_xr.close()
 
     return ds
 
 
-def read_silixa_files(
-    filepathlist=None,
-    directory=None,
-    file_ext='*.xml',
-    timezone_netcdf='UTC',
-    timezone_input_files='UTC',
-    silent=False,
-    load_in_memory='auto',
-        **kwargs):
+def read_silixa_files(filepathlist=None,
+                      directory=None,
+                      file_ext='*.xml',
+                      timezone_netcdf='UTC',
+                      timezone_input_files='UTC',
+                      silent=False,
+                      load_in_memory='auto',
+                      **kwargs):
     """Read a folder with measurement files. Each measurement file contains
     values for a
     single timestep. Remember to check which timezone you are working in.
@@ -1891,21 +1916,17 @@ def read_silixa_files(
         raise NotImplementedError('Silixa xml version ' +
                                   '{0} not implemented'.format(xml_version))
 
-    ds = DataStore(data_vars=data_vars,
-                   coords=coords,
-                   attrs=attrs,
-                   **kwargs)
+    ds = DataStore(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
     return ds
 
 
-def read_sensornet_files(
-    filepathlist=None,
-    directory=None,
-    file_ext='*.ddf',
-    timezone_netcdf='UTC',
-    timezone_input_files='UTC',
-    silent=False,
-        **kwargs):
+def read_sensornet_files(filepathlist=None,
+                         directory=None,
+                         file_ext='*.ddf',
+                         timezone_netcdf='UTC',
+                         timezone_input_files='UTC',
+                         silent=False,
+                         **kwargs):
     """Read a folder with measurement files. Each measurement file contains
     values for a single timestep. Remember to check which timezone
     you are working in.
@@ -1949,10 +1970,7 @@ def read_sensornet_files(
         timezone_input_files=timezone_input_files,
         silent=silent)
 
-    ds = DataStore(data_vars=data_vars,
-                   coords=coords,
-                   attrs=attrs,
-                   **kwargs)
+    ds = DataStore(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
     return ds
 
 
