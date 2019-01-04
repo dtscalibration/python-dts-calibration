@@ -8,47 +8,57 @@ import pandas as pd
 # Returns a dictionary with the attributes to the dimensions.
 #  The keys refer to the naming used in the raw files.
 _dim_attrs = {
-    ('x', 'distance'):          {
-        'name':             'distance',
-        'description':      'Length along fiber',
-        'long_description': 'Starting at connector of forward channel',
-        'units':            'm'},
-    ('TMP', 'temperature'):     {
-        'name':        'TMP',
-        'description': 'temperature calibrated by device',
-        'units':       'degC'},
-    ('ST',):                    {
-        'name':        'ST',
+    ('x', 'distance'):
+        {
+            'name': 'distance',
+            'description': 'Length along fiber',
+            'long_description': 'Starting at connector of forward channel',
+            'units': 'm'},
+    ('TMP', 'temperature'):
+        {
+            'name': 'TMP',
+            'description': 'temperature calibrated by device',
+            'units': 'degC'},
+    ('ST',): {
+        'name': 'ST',
         'description': 'Stokes intensity',
-        'units':       '-'},
-    ('AST',):                   {
-        'name':        'AST',
-        'description': 'anti-Stokes intensity',
-        'units':       '-'},
-    ('REV-ST',):                {
-        'name':        'REV-ST',
-        'description': 'reverse Stokes intensity',
-        'units':       '-'},
-    ('REV-AST',):               {
-        'name':        'REV-AST',
-        'description': 'reverse anti-Stokes intensity',
-        'units':       '-'},
-    ('acquisitionTime',):       {
-        'name':             'acquisitionTime',
-        'description':      'Measurement duration of forward channel',
-        'long_description': 'Actual measurement duration of forward channel',
-        'units':            'seconds'},
-    ('userAcquisitionTimeFW',): {
-        'name':             'userAcquisitionTimeFW',
-        'description':      'Measurement duration of forward channel',
-        'long_description': 'Desired measurement duration of forward channel',
-        'units':            'seconds'},
-    ('userAcquisitionTimeBW',): {
-        'name':             'userAcquisitionTimeBW',
-        'description':      'Measurement duration of backward channel',
-        'long_description': 'Desired measurement duration of backward channel',
-        'units':            'seconds'},
-    }
+        'units': '-'},
+    ('AST',):
+        {
+            'name': 'AST',
+            'description': 'anti-Stokes intensity',
+            'units': '-'},
+    ('REV-ST',):
+        {
+            'name': 'REV-ST',
+            'description': 'reverse Stokes intensity',
+            'units': '-'},
+    ('REV-AST',):
+        {
+            'name': 'REV-AST',
+            'description': 'reverse anti-Stokes intensity',
+            'units': '-'},
+    ('acquisitionTime',):
+        {
+            'name': 'acquisitionTime',
+            'description': 'Measurement duration of forward channel',
+            'long_description':
+                'Actual measurement duration of forward channel',
+            'units': 'seconds'},
+    ('userAcquisitionTimeFW',):
+        {
+            'name': 'userAcquisitionTimeFW',
+            'description': 'Measurement duration of forward channel',
+            'long_description':
+                'Desired measurement duration of forward channel',
+            'units': 'seconds'},
+    ('userAcquisitionTimeBW',):
+        {
+            'name': 'userAcquisitionTimeBW',
+            'description': 'Measurement duration of backward channel',
+            'long_description':
+                'Desired measurement duration of backward channel',
+            'units': 'seconds'},}
 
 # Because variations in the names exist between the different file formats. The
 #   tuple as key contains the possible keys, which is expanded below.
@@ -78,11 +88,12 @@ def silixa_xml_version_check(filepathlist):
     return major_version
 
 
-def read_silixa_files_routine_v6(filepathlist,
-                                 timezone_netcdf='UTC',
-                                 timezone_input_files='UTC',
-                                 silent=False,
-                                 load_in_memory='auto'):
+def read_silixa_files_routine_v6(
+        filepathlist,
+        timezone_netcdf='UTC',
+        timezone_input_files='UTC',
+        silent=False,
+        load_in_memory='auto'):
     """
     Internal routine that reads Silixa files.
     Use dtscalibration.read_silixa_files function instead.
@@ -132,8 +143,8 @@ def read_silixa_files_routine_v6(filepathlist,
         attrs['backwardMeasurementChannel'] = 'N/A'
 
     # obtain basic data info
-    data_item_names = attrs['logData:mnemonicList'].replace(" ", "").strip(
-        ' ').split(',')
+    data_item_names = attrs['logData:mnemonicList'].replace(
+        " ", "").strip(' ').split(',')
     nitem = len(data_item_names)
 
     ntime = len(filepathlist)
@@ -150,8 +161,9 @@ def read_silixa_files_routine_v6(filepathlist,
     if not silent:
         print(
             '%s files were found, each representing a single timestep' % ntime)
-        print('%s recorded vars were found: ' % nitem + ', '.join(
-            data_item_names))
+        print(
+            '%s recorded vars were found: ' % nitem +
+            ', '.join(data_item_names))
         print('Recorded at %s points along the cable' % nx)
 
         if double_ended_flag:
@@ -168,21 +180,21 @@ def read_silixa_files_routine_v6(filepathlist,
         ('log', 'customData', 'referenceProbeVoltage'),
         ('log', 'customData', 'probe1Voltage'),
         ('log', 'customData', 'probe2Voltage'),
-        ('log', 'customData', 'UserConfiguration',
-         'ChannelConfiguration', 'AcquisitionConfiguration',
-         'AcquisitionTime', 'userAcquisitionTimeFW')
-        ]
+        (
+            'log', 'customData', 'UserConfiguration', 'ChannelConfiguration',
+            'AcquisitionConfiguration', 'AcquisitionTime',
+            'userAcquisitionTimeFW')]
 
     if double_ended_flag:
         timeseries_loc_in_hierarchy.append(
-            ('log', 'customData', 'UserConfiguration',
-             'ChannelConfiguration', 'AcquisitionConfiguration',
-             'AcquisitionTime', 'userAcquisitionTimeBW'))
+            (
+                'log', 'customData', 'UserConfiguration',
+                'ChannelConfiguration', 'AcquisitionConfiguration',
+                'AcquisitionTime', 'userAcquisitionTimeBW'))
 
     timeseries = {
         item[-1]: dict(loc=item, array=np.zeros(ntime, dtype=np.float32))
-        for item in timeseries_loc_in_hierarchy
-        }
+        for item in timeseries_loc_in_hierarchy}
 
     # add units to timeseries (unit of measurement)
     for key, item in timeseries.items():
@@ -217,8 +229,9 @@ def read_silixa_files_routine_v6(filepathlist,
         return np.array(arr_str, dtype=np.float)
 
     data_lst_dly = [grab_data_per_file(fp) for fp in filepathlist]
-    data_lst = [da.from_delayed(x, shape=(nx, nitem), dtype=np.float)
-                for x in data_lst_dly]
+    data_lst = [
+        da.from_delayed(x, shape=(nx, nitem), dtype=np.float)
+        for x in data_lst_dly]
     data_arr = da.stack(data_lst).T  # .compute()
 
     # Check whether to compute data_arr (if possible 25% faster)
@@ -239,14 +252,15 @@ def read_silixa_files_routine_v6(filepathlist,
             data_vars[name] = (['x', 'time'], data_arri, dim_attrs[name])
 
         else:
-            raise ValueError('Dont know what to do with the' +
-                             ' {} data column'.format(name))
+            raise ValueError(
+                'Dont know what to do with the' +
+                ' {} data column'.format(name))
 
     # Obtaining the timeseries data (reference temperature etc)
     _ts_dtype = [(k, np.float32) for k in timeseries]
-    _time_dtype = [('filename_tstamp', np.int64),
-                   ('minDateTimeIndex', '<U29'),
-                   ('maxDateTimeIndex', '<U29')]
+    _time_dtype = [
+        ('filename_tstamp', np.int64), ('minDateTimeIndex', '<U29'),
+        ('maxDateTimeIndex', '<U29')]
     ts_dtype = np.dtype(_ts_dtype + _time_dtype)
 
     @dask.delayed
@@ -301,8 +315,8 @@ def read_silixa_files_routine_v6(filepathlist,
         return np.array(tuple(out), dtype=ts_dtype)
 
     ts_lst_dly = [grab_timeseries_per_file(fp) for fp in filepathlist]
-    ts_lst = [da.from_delayed(x, shape=tuple(), dtype=ts_dtype)
-              for x in ts_lst_dly]
+    ts_lst = [
+        da.from_delayed(x, shape=tuple(), dtype=ts_dtype) for x in ts_lst_dly]
     ts_arr = da.stack(ts_lst).compute()
 
     for name in timeseries:
@@ -314,34 +328,41 @@ def read_silixa_files_routine_v6(filepathlist,
 
     # construct the coordinate dictionary
     coords = {
-        'x':               ('x', data_arr[0, :, 0], dim_attrs['x']),
-        'filename':        ('time',
-                            [os.path.split(f)[1] for f in filepathlist]),
+        'x': ('x', data_arr[0, :, 0], dim_attrs['x']),
+        'filename': ('time', [os.path.split(f)[1] for f in filepathlist]),
         'filename_tstamp': ('time', ts_arr['filename_tstamp'])}
 
     maxTimeIndex = pd.DatetimeIndex(ts_arr['maxDateTimeIndex'])
     dtFW = ts_arr['userAcquisitionTimeFW'].astype('timedelta64[s]')
 
     if not double_ended_flag:
-        tcoords = coords_time(maxTimeIndex, timezone_netcdf,
-                              timezone_input_files, dtFW=dtFW,
-                              double_ended_flag=double_ended_flag)
+        tcoords = coords_time(
+            maxTimeIndex,
+            timezone_netcdf,
+            timezone_input_files,
+            dtFW=dtFW,
+            double_ended_flag=double_ended_flag)
     else:
         dtBW = ts_arr['userAcquisitionTimeBW'].astype('timedelta64[s]')
-        tcoords = coords_time(maxTimeIndex, timezone_netcdf,
-                              timezone_input_files, dtFW=dtFW, dtBW=dtBW,
-                              double_ended_flag=double_ended_flag)
+        tcoords = coords_time(
+            maxTimeIndex,
+            timezone_netcdf,
+            timezone_input_files,
+            dtFW=dtFW,
+            dtBW=dtBW,
+            double_ended_flag=double_ended_flag)
 
     coords.update(tcoords)
 
     return data_vars, coords, attrs
 
 
-def read_silixa_files_routine_v4(filepathlist,
-                                 timezone_netcdf='UTC',
-                                 timezone_input_files='UTC',
-                                 silent=False,
-                                 load_in_memory='auto'):
+def read_silixa_files_routine_v4(
+        filepathlist,
+        timezone_netcdf='UTC',
+        timezone_input_files='UTC',
+        silent=False,
+        load_in_memory='auto'):
     """
     Internal routine that reads Silixa files.
     Use dtscalibration.read_silixa_files function instead.
@@ -398,11 +419,11 @@ def read_silixa_files_routine_v4(filepathlist,
 
     # obtain basic data info
     if double_ended_flag:
-        data_item_names = [attrs['logCurveInfo_{0}:mnemonic'.format(x)]
-                           for x in range(0, 6)]
+        data_item_names = [
+            attrs['logCurveInfo_{0}:mnemonic'.format(x)] for x in range(0, 6)]
     else:
-        data_item_names = [attrs['logCurveInfo_{0}:mnemonic'.format(x)]
-                           for x in range(0, 4)]
+        data_item_names = [
+            attrs['logCurveInfo_{0}:mnemonic'.format(x)] for x in range(0, 4)]
 
     nitem = len(data_item_names)
 
@@ -412,8 +433,9 @@ def read_silixa_files_routine_v4(filepathlist,
     if not silent:
         print(
             '%s files were found, each representing a single timestep' % ntime)
-        print('%s recorded vars were found: ' % nitem + ', '.join(
-            data_item_names))
+        print(
+            '%s recorded vars were found: ' % nitem +
+            ', '.join(data_item_names))
         print('Recorded at %s points along the cable' % nx)
 
         if double_ended_flag:
@@ -430,21 +452,21 @@ def read_silixa_files_routine_v4(filepathlist,
         ('wellLog', 'customData', 'referenceProbeVoltage'),
         ('wellLog', 'customData', 'probe1Voltage'),
         ('wellLog', 'customData', 'probe2Voltage'),
-        ('wellLog', 'customData', 'UserConfiguration',
-         'ChannelConfiguration', 'AcquisitionConfiguration',
-         'AcquisitionTime', 'userAcquisitionTimeFW')
-        ]
+        (
+            'wellLog', 'customData', 'UserConfiguration',
+            'ChannelConfiguration', 'AcquisitionConfiguration',
+            'AcquisitionTime', 'userAcquisitionTimeFW')]
 
     if double_ended_flag:
         timeseries_loc_in_hierarchy.append(
-            ('wellLog', 'customData', 'UserConfiguration',
-             'ChannelConfiguration', 'AcquisitionConfiguration',
-             'AcquisitionTime', 'userAcquisitionTimeBW'))
+            (
+                'wellLog', 'customData', 'UserConfiguration',
+                'ChannelConfiguration', 'AcquisitionConfiguration',
+                'AcquisitionTime', 'userAcquisitionTimeBW'))
 
     timeseries = {
         item[-1]: dict(loc=item, array=np.zeros(ntime, dtype=np.float32))
-        for item in timeseries_loc_in_hierarchy
-        }
+        for item in timeseries_loc_in_hierarchy}
 
     # add units to timeseries (unit of measurement)
     for key, item in timeseries.items():
@@ -478,8 +500,9 @@ def read_silixa_files_routine_v4(filepathlist,
         return np.array(arr_str, dtype=float)
 
     data_lst_dly = [grab_data_per_file(fp) for fp in filepathlist]
-    data_lst = [da.from_delayed(x, shape=(nx, nitem), dtype=np.float)
-                for x in data_lst_dly]
+    data_lst = [
+        da.from_delayed(x, shape=(nx, nitem), dtype=np.float)
+        for x in data_lst_dly]
     data_arr = da.stack(data_lst).T  # .compute()
 
     # Check whether to compute data_arr (if possible 25% faster)
@@ -500,14 +523,15 @@ def read_silixa_files_routine_v4(filepathlist,
             data_vars[name] = (['x', 'time'], data_arri, dim_attrs[name])
 
         else:
-            raise ValueError('Dont know what to do with the' +
-                             ' {} data column'.format(name))
+            raise ValueError(
+                'Dont know what to do with the' +
+                ' {} data column'.format(name))
 
     # Obtaining the timeseries data (reference temperature etc)
     _ts_dtype = [(k, np.float32) for k in timeseries]
-    _time_dtype = [('filename_tstamp', np.int64),
-                   ('minDateTimeIndex', '<U29'),
-                   ('maxDateTimeIndex', '<U29')]
+    _time_dtype = [
+        ('filename_tstamp', np.int64), ('minDateTimeIndex', '<U29'),
+        ('maxDateTimeIndex', '<U29')]
     ts_dtype = np.dtype(_ts_dtype + _time_dtype)
 
     @dask.delayed
@@ -562,8 +586,8 @@ def read_silixa_files_routine_v4(filepathlist,
         return np.array(tuple(out), dtype=ts_dtype)
 
     ts_lst_dly = [grab_timeseries_per_file(fp) for fp in filepathlist]
-    ts_lst = [da.from_delayed(x, shape=tuple(), dtype=ts_dtype)
-              for x in ts_lst_dly]
+    ts_lst = [
+        da.from_delayed(x, shape=tuple(), dtype=ts_dtype) for x in ts_lst_dly]
     ts_arr = da.stack(ts_lst).compute()
 
     for name in timeseries:
@@ -575,33 +599,40 @@ def read_silixa_files_routine_v4(filepathlist,
 
     # construct the coordinate dictionary
     coords = {
-        'x':               ('x', data_arr[0, :, 0], dim_attrs['x']),
-        'filename':        ('time',
-                            [os.path.split(f)[1] for f in filepathlist]),
+        'x': ('x', data_arr[0, :, 0], dim_attrs['x']),
+        'filename': ('time', [os.path.split(f)[1] for f in filepathlist]),
         'filename_tstamp': ('time', ts_arr['filename_tstamp'])}
 
     maxTimeIndex = pd.DatetimeIndex(ts_arr['maxDateTimeIndex'])
     dtFW = ts_arr['userAcquisitionTimeFW'].astype('timedelta64[s]')
 
     if not double_ended_flag:
-        tcoords = coords_time(maxTimeIndex, timezone_netcdf,
-                              timezone_input_files, dtFW=dtFW,
-                              double_ended_flag=double_ended_flag)
+        tcoords = coords_time(
+            maxTimeIndex,
+            timezone_netcdf,
+            timezone_input_files,
+            dtFW=dtFW,
+            double_ended_flag=double_ended_flag)
     else:
         dtBW = ts_arr['userAcquisitionTimeBW'].astype('timedelta64[s]')
-        tcoords = coords_time(maxTimeIndex, timezone_netcdf,
-                              timezone_input_files, dtFW=dtFW, dtBW=dtBW,
-                              double_ended_flag=double_ended_flag)
+        tcoords = coords_time(
+            maxTimeIndex,
+            timezone_netcdf,
+            timezone_input_files,
+            dtFW=dtFW,
+            dtBW=dtBW,
+            double_ended_flag=double_ended_flag)
 
     coords.update(tcoords)
 
     return data_vars, coords, attrs
 
 
-def read_sensornet_files_routine_v3(filepathlist,
-                                    timezone_netcdf='UTC',
-                                    timezone_input_files='UTC',
-                                    silent=False):
+def read_sensornet_files_routine_v3(
+        filepathlist,
+        timezone_netcdf='UTC',
+        timezone_input_files='UTC',
+        silent=False):
     """
     Internal routine that reads Sensor files.
     Use dtscalibration.read_sensornet_files function instead.
@@ -622,20 +653,15 @@ def read_sensornet_files_routine_v3(filepathlist,
     data, meta = read_sensornet_single(filepathlist[0])
 
     # Pop keys from the meta dict which are variable over time
-    popkeys = ('T ext. ref 1 (°C)',
-               'T ext. ref 2 (°C)',
-               'T internal ref (°C)',
-               'date',
-               'time',
-               'gamma',
-               'k internal',
-               'k external')
+    popkeys = (
+        'T ext. ref 1 (°C)', 'T ext. ref 2 (°C)', 'T internal ref (°C)',
+        'date', 'time', 'gamma', 'k internal', 'k external')
     [meta.pop(key) for key in popkeys]
     attrs = meta
 
     # Add standardised required attributes
-    attrs['isDoubleEnded'] = str(1 - (meta['differential loss correction']
-                                      == 'single-ended'))
+    attrs['isDoubleEnded'] = str(
+        1 - (meta['differential loss correction'] == 'single-ended'))
     double_ended_flag = bool(int(attrs['isDoubleEnded']))
 
     attrs['forwardMeasurementChannel'] = meta['forward channel'][-1]
@@ -658,8 +684,9 @@ def read_sensornet_files_routine_v3(filepathlist,
 
     # print summary
     if not silent:
-        print('%s files were found,' % ntime +
-              ' each representing a single timestep')
+        print(
+            '%s files were found,' % ntime +
+            ' each representing a single timestep')
         print('Recorded at %s points along the cable' % nx)
 
         if double_ended_flag:
@@ -693,7 +720,8 @@ def read_sensornet_files_routine_v3(filepathlist,
     for ii in range(ntime):
         data, meta = read_sensornet_single(filepathlist[ii])
 
-        timestamp[ii] = pd.DatetimeIndex([meta['date'] + ' ' + meta['time']])[0]
+        timestamp[ii] = pd.DatetimeIndex([
+            meta['date'] + ' ' + meta['time']])[0]
         probe1temperature[ii] = float(meta['T ext. ref 1 (°C)'])
         probe2temperature[ii] = float(meta['T ext. ref 2 (°C)'])
         referenceTemperature[ii] = float(meta['T internal ref (°C)'])
@@ -711,58 +739,56 @@ def read_sensornet_files_routine_v3(filepathlist,
             REV_ST[:, ii] = data['REV_ST']
             REV_AST[:, ii] = data['REV_AST']
 
-    data_vars = {'ST':                    (['x', 'time'], ST, dim_attrs['ST']),
-                 'AST':                   (
-                 ['x', 'time'], AST, dim_attrs['AST']),
-                 'TMP':                   (
-                 ['x', 'time'], TMP, dim_attrs['TMP']),
-                 'probe1Temperature':     ('time',
-                                           probe1temperature,
-                                           {'name':  'Probe 1 temperature',
-                                            'description':
-                                                     'reference probe 1 '
-                                                     'temperature',
-                                            'units': 'degC'}),
-                 'probe2Temperature':     ('time',
-                                           probe2temperature,
-                                           {'name':  'Probe 2 temperature',
-                                            'description':
-                                                     'reference probe 2 '
-                                                     'temperature',
-                                            'units': 'degC'}),
-                 'referenceTemperature':  ('time',
-                                           referenceTemperature,
-                                           {'name':  'reference temperature',
-                                            'description':
-                                                     'Internal reference '
-                                                     'temperature',
-                                            'units': 'degC'}),
-                 'gamma_ddf':             ('time',
-                                           gamma_ddf,
-                                           {'name':        'gamma ddf',
-                                            'description': 'machine '
-                                                           'calibrated gamma',
-                                            'units':       '-'}),
-                 'k_internal':            ('time',
-                                           k_internal,
-                                           {'name':  'k internal',
-                                            'description':
-                                                     'machine calibrated '
-                                                     'internal k',
-                                            'units': '-'}),
-                 'k_external':            ('time',
-                                           k_external,
-                                           {'name':  'reference temperature',
-                                            'description':
-                                                     'machine calibrated '
-                                                     'external k',
-                                            'units': '-'}),
-                 'userAcquisitionTimeFW': ('time',
-                                           acquisitiontimeFW,
-                                           dim_attrs['userAcquisitionTimeFW']),
-                 'userAcquisitionTimeBW': ('time',
-                                           acquisitiontimeBW,
-                                           dim_attrs['userAcquisitionTimeBW'])}
+    data_vars = {
+        'ST': (['x', 'time'], ST, dim_attrs['ST']),
+        'AST': (['x', 'time'], AST, dim_attrs['AST']),
+        'TMP': (['x', 'time'], TMP, dim_attrs['TMP']),
+        'probe1Temperature':
+            (
+                'time', probe1temperature, {
+                    'name': 'Probe 1 temperature',
+                    'description': 'reference probe 1 '
+                                   'temperature',
+                    'units': 'degC'}),
+        'probe2Temperature':
+            (
+                'time', probe2temperature, {
+                    'name': 'Probe 2 temperature',
+                    'description': 'reference probe 2 '
+                                   'temperature',
+                    'units': 'degC'}),
+        'referenceTemperature':
+            (
+                'time', referenceTemperature, {
+                    'name': 'reference temperature',
+                    'description': 'Internal reference '
+                                   'temperature',
+                    'units': 'degC'}),
+        'gamma_ddf':
+            (
+                'time', gamma_ddf, {
+                    'name': 'gamma ddf',
+                    'description': 'machine '
+                                   'calibrated gamma',
+                    'units': '-'}),
+        'k_internal':
+            (
+                'time', k_internal, {
+                    'name': 'k internal',
+                    'description': 'machine calibrated '
+                                   'internal k',
+                    'units': '-'}),
+        'k_external':
+            (
+                'time', k_external, {
+                    'name': 'reference temperature',
+                    'description': 'machine calibrated '
+                                   'external k',
+                    'units': '-'}),
+        'userAcquisitionTimeFW':
+            ('time', acquisitiontimeFW, dim_attrs['userAcquisitionTimeFW']),
+        'userAcquisitionTimeBW':
+            ('time', acquisitiontimeBW, dim_attrs['userAcquisitionTimeBW'])}
 
     if double_ended_flag:
         data_vars['REV-ST'] = (['x', 'time'], REV_ST, dim_attrs['REV-ST'])
@@ -770,21 +796,27 @@ def read_sensornet_files_routine_v3(filepathlist,
 
     filenamelist = [os.path.split(f)[-1] for f in filepathlist]
 
-    coords = {'x':        ('x', x, dim_attrs['x']),
-              'filename': ('time', filenamelist)}
+    coords = {
+        'x': ('x', x, dim_attrs['x']),
+        'filename': ('time', filenamelist)}
 
     dtFW = data_vars['userAcquisitionTimeFW'][1].astype('timedelta64[s]')
     dtBW = data_vars['userAcquisitionTimeBW'][1].astype('timedelta64[s]')
     if not double_ended_flag:
-        tcoords = coords_time(np.array(timestamp).astype('datetime64[ns]'),
-                              timezone_netcdf,
-                              timezone_input_files, dtFW=dtFW,
-                              double_ended_flag=double_ended_flag)
+        tcoords = coords_time(
+            np.array(timestamp).astype('datetime64[ns]'),
+            timezone_netcdf,
+            timezone_input_files,
+            dtFW=dtFW,
+            double_ended_flag=double_ended_flag)
     else:
-        tcoords = coords_time(np.array(timestamp).astype('datetime64[ns]'),
-                              timezone_netcdf,
-                              timezone_input_files, dtFW=dtFW, dtBW=dtBW,
-                              double_ended_flag=double_ended_flag)
+        tcoords = coords_time(
+            np.array(timestamp).astype('datetime64[ns]'),
+            timezone_netcdf,
+            timezone_input_files,
+            dtFW=dtFW,
+            dtBW=dtBW,
+            double_ended_flag=double_ended_flag)
 
     coords.update(tcoords)
 
@@ -840,9 +872,7 @@ def read_silixa_attrs_singlefile(filename, sep):
 
             if hasattr(dict_to_parse[key], 'keys'):
                 # Nested dictionaries, flatten hierarchy.
-                meta.update(metakey(meta,
-                                    dict_to_parse[key],
-                                    prefix_parse))
+                meta.update(metakey(meta, dict_to_parse[key], prefix_parse))
 
             elif isinstance(dict_to_parse[key], list):
                 # if the key has values for the multiple channels
@@ -895,10 +925,11 @@ def read_sensornet_single(filename):
         fileobject.readline().split('\t')
 
         if meta['differential loss correction'] == 'single-ended':
-            data = {'x':   np.zeros(datalength),
-                    'TMP': np.zeros(datalength),
-                    'ST':  np.zeros(datalength),
-                    'AST': np.zeros(datalength)}
+            data = {
+                'x': np.zeros(datalength),
+                'TMP': np.zeros(datalength),
+                'ST': np.zeros(datalength),
+                'AST': np.zeros(datalength)}
 
             for ii in range(0, datalength):
                 fileline = fileobject.readline().replace(',', '.').split('\t')
@@ -909,8 +940,8 @@ def read_sensornet_single(filename):
                 data['AST'][ii] = float(fileline[3])
 
         else:
-            raise NotImplementedError('double-ended DDF files ' +
-                                      'are not implemented yet')
+            raise NotImplementedError(
+                'double-ended DDF files ' + 'are not implemented yet')
 
     return data, meta
 
@@ -931,8 +962,13 @@ def get_xml_namespace(element):
     return m.group(0) if m else ''
 
 
-def coords_time(maxTimeIndex, timezone_input_files, timezone_netcdf='UTC',
-                dtFW=None, dtBW=None, double_ended_flag=False):
+def coords_time(
+        maxTimeIndex,
+        timezone_input_files,
+        timezone_netcdf='UTC',
+        dtFW=None,
+        dtBW=None,
+        double_ended_flag=False):
     """
     Prepares the time coordinates for the construction of DataStore
     instances with metadata
@@ -960,34 +996,42 @@ def coords_time(maxTimeIndex, timezone_input_files, timezone_netcdf='UTC',
 
     """
     time_attrs = {
-        'time':        {
-            'description': 'time halfway the measurement',
-            'timezone':    str(timezone_netcdf)},
-        'timestart':   {
-            'description': 'time start of the measurement',
-            'timezone':    str(timezone_netcdf)},
-        'timeend':     {
-            'description': 'time end of the measurement',
-            'timezone':    str(timezone_netcdf)},
-        'timeFW':      {
-            'description': 'time halfway the forward channel measurement',
-            'timezone':    str(timezone_netcdf)},
-        'timeFWstart': {
-            'description': 'time start of the forward channel measurement',
-            'timezone':    str(timezone_netcdf)},
-        'timeFWend':   {
-            'description': 'time end of the forward channel measurement',
-            'timezone':    str(timezone_netcdf)},
-        'timeBW':      {
-            'description': 'time halfway the backward channel measurement',
-            'timezone':    str(timezone_netcdf)},
-        'timeBWstart': {
-            'description': 'time start of the backward channel measurement',
-            'timezone':    str(timezone_netcdf)},
-        'timeBWend':   {
-            'description': 'time end of the backward channel measurement',
-            'timezone':    str(timezone_netcdf)},
-        }
+        'time':
+            {
+                'description': 'time halfway the measurement',
+                'timezone': str(timezone_netcdf)},
+        'timestart':
+            {
+                'description': 'time start of the measurement',
+                'timezone': str(timezone_netcdf)},
+        'timeend':
+            {
+                'description': 'time end of the measurement',
+                'timezone': str(timezone_netcdf)},
+        'timeFW':
+            {
+                'description': 'time halfway the forward channel measurement',
+                'timezone': str(timezone_netcdf)},
+        'timeFWstart':
+            {
+                'description': 'time start of the forward channel measurement',
+                'timezone': str(timezone_netcdf)},
+        'timeFWend':
+            {
+                'description': 'time end of the forward channel measurement',
+                'timezone': str(timezone_netcdf)},
+        'timeBW':
+            {
+                'description': 'time halfway the backward channel measurement',
+                'timezone': str(timezone_netcdf)},
+        'timeBWstart':
+            {
+                'description': 'time start of the backward channel measurement',
+                'timezone': str(timezone_netcdf)},
+        'timeBWend':
+            {
+                'description': 'time end of the backward channel measurement',
+                'timezone': str(timezone_netcdf)},}
 
     if not double_ended_flag:
         # single ended measurement
@@ -1002,9 +1046,9 @@ def coords_time(maxTimeIndex, timezone_input_files, timezone_netcdf='UTC',
         # center of forward measurement
         index_time_FWmean = maxTimeIndex - dt1 / 2
 
-        coords_zip = [('timestart', index_time_FWstart),
-                      ('timeend', index_time_FWend),
-                      ('time', index_time_FWmean)]
+        coords_zip = [
+            ('timestart', index_time_FWstart), ('timeend', index_time_FWend),
+            ('time', index_time_FWmean)]
 
     else:
         # double ended measurement
@@ -1029,33 +1073,30 @@ def coords_time(maxTimeIndex, timezone_input_files, timezone_netcdf='UTC',
         # center of backward measurement
         index_time_BWmean = maxTimeIndex + dt2 / 2
 
-        coords_zip = [('timeFWstart', index_time_FWstart),
-                      ('timeFWend', index_time_FWend),
-                      ('timeFW', index_time_FWmean),
-                      ('timeBWstart', index_time_BWstart),
-                      ('timeBWend', index_time_BWend),
-                      ('timeBW', index_time_BWmean),
-                      ('timestart', index_time_FWstart),
-                      ('timeend', index_time_BWend),
-                      ('time', index_time_FWend)]
+        coords_zip = [
+            ('timeFWstart',
+             index_time_FWstart), ('timeFWend', index_time_FWend),
+            ('timeFW', index_time_FWmean), ('timeBWstart', index_time_BWstart),
+            ('timeBWend', index_time_BWend), ('timeBW', index_time_BWmean),
+            ('timestart', index_time_FWstart), ('timeend', index_time_BWend),
+            ('time', index_time_FWend)]
 
-    coords = {k: (
-        'time',
-        pd.DatetimeIndex(v).tz_localize(
-            tz=timezone_input_files).tz_convert(
-            timezone_netcdf).astype('datetime64[ns]'),
-        time_attrs[k]) for k, v in coords_zip
-        }
+    coords = {
+        k: (
+            'time', pd.DatetimeIndex(v).tz_localize(
+                tz=timezone_input_files).tz_convert(timezone_netcdf).astype(
+                    'datetime64[ns]'), time_attrs[k])
+        for k, v in coords_zip}
 
     # The units are already stored in the dtype
     coords['acquisitiontimeFW'] = (
-        'time', dt1,
-        {'description': 'Acquisition time of the forward measurement'})
+        'time', dt1, {
+            'description': 'Acquisition time of the forward measurement'})
 
     if double_ended_flag:
         # The units are already stored in the dtype
         coords['acquisitiontimeBW'] = (
-            'time', dt2,
-            {'description': 'Acquisition time of the backward measurement'})
+            'time', dt2, {
+                'description': 'Acquisition time of the backward measurement'})
 
     return coords

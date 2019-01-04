@@ -156,10 +156,7 @@ def shift_double_ended(ds, i_shift):
         if 'x' in ds[k].dims and k in d2_data:
             del d2_data[k]
 
-    new_data = (('ST', st),
-                ('AST', ast),
-                ('REV-ST', rst),
-                ('REV-AST', rast))
+    new_data = (('ST', st), ('AST', ast), ('REV-ST', rst), ('REV-AST', rast))
 
     for k, v in new_data:
         d2_data[k] = (ds[k].dims, v, ds[k].attrs)
@@ -268,8 +265,16 @@ def suggest_cable_shift_double_ended(ds, irange):
     ax2 = ax1.twinx()
     ax1.plot(irange, err1, c='red', label='1 deriv')
     ax2.plot(irange, err2, c='blue', label='2 deriv')
-    ax1.axvline(ishift1, c='red', linewidth=0.8, label='1 deriv. i_shift={}'.format(ishift1))
-    ax2.axvline(ishift2, c='blue', linewidth=0.8, label='2 deriv. i_shift={}'.format(ishift1))
+    ax1.axvline(
+        ishift1,
+        c='red',
+        linewidth=0.8,
+        label='1 deriv. i_shift={}'.format(ishift1))
+    ax2.axvline(
+        ishift2,
+        c='blue',
+        linewidth=0.8,
+        label='2 deriv. i_shift={}'.format(ishift1))
     ax1.set_xlabel('i_shift')
     ax1.legend(loc=2)  # left axis
     ax2.legend(loc=1)  # right axis

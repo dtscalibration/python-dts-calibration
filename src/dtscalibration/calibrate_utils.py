@@ -19,15 +19,15 @@ def calibration_single_ended_ols(ds, st_label, ast_label, verbose=False):
     -------
 
     """
-    cal_ref = ds.ufunc_per_section(label=st_label,
-                                   ref_temp_broadcasted=True,
-                                   calc_per='all')
+    cal_ref = ds.ufunc_per_section(
+        label=st_label, ref_temp_broadcasted=True, calc_per='all')
     st = ds.ufunc_per_section(label=st_label, calc_per='all')
     ast = ds.ufunc_per_section(label=ast_label, calc_per='all')
     z = ds.ufunc_per_section(label='x', calc_per='all')
 
     assert not np.any(st <= 0.), 'There is uncontrolled noise in the ST signal'
-    assert not np.any(ast <= 0.), 'There is uncontrolled noise in the AST signal'
+    assert not np.any(
+        ast <= 0.), 'There is uncontrolled noise in the AST signal'
 
     nx = z.size
 
@@ -55,10 +55,7 @@ def calibration_single_ended_ols(ds, st_label, ast_label, verbose=False):
     coords = (np.concatenate(rows), np.concatenate(cols))
 
     # try scipy.sparse.bsr_matrix
-    X = sp.coo_matrix(
-        (data, coords),
-        shape=(nt * nx, nt + 2),
-        copy=False)
+    X = sp.coo_matrix((data, coords), shape=(nt * nx, nt + 2), copy=False)
 
     y = np.log(st / ast).T.ravel()
     # noinspection PyTypeChecker
@@ -67,8 +64,15 @@ def calibration_single_ended_ols(ds, st_label, ast_label, verbose=False):
     return nt, z, p0
 
 
-def calibration_single_ended_wls(ds, st_label, ast_label, st_var, ast_var,
-                                 calc_cov=True, solver='sparse', verbose=False):
+def calibration_single_ended_wls(
+        ds,
+        st_label,
+        ast_label,
+        st_var,
+        ast_var,
+        calc_cov=True,
+        solver='sparse',
+        verbose=False):
     """
 
     Parameters
@@ -89,16 +93,16 @@ def calibration_single_ended_wls(ds, st_label, ast_label, st_var, ast_var,
     -------
 
     """
-    cal_ref = ds.ufunc_per_section(label=st_label,
-                                   ref_temp_broadcasted=True,
-                                   calc_per='all')
+    cal_ref = ds.ufunc_per_section(
+        label=st_label, ref_temp_broadcasted=True, calc_per='all')
 
     st = ds.ufunc_per_section(label=st_label, calc_per='all')
     ast = ds.ufunc_per_section(label=ast_label, calc_per='all')
     z = ds.ufunc_per_section(label='x', calc_per='all')
 
     assert not np.any(st <= 0.), 'There is uncontrolled noise in the ST signal'
-    assert not np.any(ast <= 0.), 'There is uncontrolled noise in the AST signal'
+    assert not np.any(
+        ast <= 0.), 'There is uncontrolled noise in the AST signal'
 
     nx = z.size
 
@@ -126,22 +130,19 @@ def calibration_single_ended_wls(ds, st_label, ast_label, st_var, ast_var,
     coords = (np.concatenate(rows), np.concatenate(cols))
 
     # try scipy.sparse.bsr_matrix
-    X = sp.coo_matrix(
-        (data, coords),
-        shape=(nt * nx, nt + 2),
-        copy=False)
+    X = sp.coo_matrix((data, coords), shape=(nt * nx, nt + 2), copy=False)
 
     y = np.log(st / ast).T.ravel()
 
-    w = (1 / st ** 2 * st_var +
-         1 / ast ** 2 * ast_var
-         ).T.ravel()
+    w = (1 / st**2 * st_var + 1 / ast**2 * ast_var).T.ravel()
 
     if solver == 'sparse':
-        p_sol, p_var, p_cov = wls_sparse(X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=verbose)
+        p_sol, p_var, p_cov = wls_sparse(
+            X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=verbose)
 
     elif solver == 'stats':
-        p_sol, p_var, p_cov = wls_stats(X, y, w=w, calc_cov=calc_cov, verbose=verbose)
+        p_sol, p_var, p_cov = wls_stats(
+            X, y, w=w, calc_cov=calc_cov, verbose=verbose)
 
     elif solver == 'external':
         return X, y, w, p0_est
@@ -155,8 +156,8 @@ def calibration_single_ended_wls(ds, st_label, ast_label, st_var, ast_var,
         return nt, z, p_sol, p_var
 
 
-def calibration_double_ended_ols(ds, st_label, ast_label, rst_label,
-                                 rast_label, verbose=False):
+def calibration_double_ended_ols(
+        ds, st_label, ast_label, rst_label, rast_label, verbose=False):
     """
 
     Parameters
@@ -172,9 +173,8 @@ def calibration_double_ended_ols(ds, st_label, ast_label, rst_label,
     -------
 
     """
-    cal_ref = ds.ufunc_per_section(label=st_label,
-                                   ref_temp_broadcasted=True,
-                                   calc_per='all')
+    cal_ref = ds.ufunc_per_section(
+        label=st_label, ref_temp_broadcasted=True, calc_per='all')
 
     st = ds.ufunc_per_section(label=st_label, calc_per='all')
     ast = ds.ufunc_per_section(label=ast_label, calc_per='all')
@@ -183,9 +183,12 @@ def calibration_double_ended_ols(ds, st_label, ast_label, rst_label,
     z = ds.ufunc_per_section(label='x', calc_per='all')
 
     assert not np.any(st <= 0.), 'There is uncontrolled noise in the ST signal'
-    assert not np.any(ast <= 0.), 'There is uncontrolled noise in the AST signal'
-    assert not np.any(rst <= 0.), 'There is uncontrolled noise in the REV-ST signal'
-    assert not np.any(rast <= 0.), 'There is uncontrolled noise in the REV-AST signal'
+    assert not np.any(
+        ast <= 0.), 'There is uncontrolled noise in the AST signal'
+    assert not np.any(
+        rst <= 0.), 'There is uncontrolled noise in the REV-ST signal'
+    assert not np.any(
+        rast <= 0.), 'There is uncontrolled noise in the REV-AST signal'
 
     nx = z.size
 
@@ -218,17 +221,13 @@ def calibration_double_ended_ols(ds, st_label, ast_label, rst_label,
 
     coord9col = np.tile(np.arange(no, dtype=int) + nt + 1, nt)
 
-    rows = [coord1row, coord3row,
-            coord5row, coord9row]
-    cols = [coord1col, coord3col,
-            coord5col, coord9col]
+    rows = [coord1row, coord3row, coord5row, coord9row]
+    cols = [coord1col, coord3col, coord5col, coord9col]
     coords = (np.concatenate(rows), np.concatenate(cols))
 
     # try scipy.sparse.bsr_matrix
     X = sp.coo_matrix(
-        (data, coords),
-        shape=(2 * nx * nt + nt * no, nt + 1 + no),
-        copy=False)
+        (data, coords), shape=(2 * nx * nt + nt * no, nt + 1 + no), copy=False)
 
     y1F = np.log(st / ast).T.ravel()
     y1B = np.log(rst / rast).T.ravel()
@@ -238,17 +237,27 @@ def calibration_double_ended_ols(ds, st_label, ast_label, rst_label,
     y2 = (y2B - y2F) / 2
     y = da.concatenate([y1, y2])
     # noinspection PyTypeChecker
-    assert not np.any(np.isnan(y)), 'There are nan values in the measured (anti-) Stokes'
+    assert not np.any(
+        np.isnan(y)), 'There are nan values in the measured (anti-) Stokes'
 
     p0 = ln.lsqr(X, y, x0=p0_est, show=verbose, calc_var=True)
 
     return nt, z, p0
 
 
-def calibration_double_ended_wls(ds, st_label, ast_label, rst_label,
-                                 rast_label, st_var, ast_var, rst_var, rast_var,
-                                 calc_cov=True, solver='sparse',
-                                 verbose=False):
+def calibration_double_ended_wls(
+        ds,
+        st_label,
+        ast_label,
+        rst_label,
+        rast_label,
+        st_var,
+        ast_var,
+        rst_var,
+        rast_var,
+        calc_cov=True,
+        solver='sparse',
+        verbose=False):
     """
 
 
@@ -272,9 +281,8 @@ def calibration_double_ended_wls(ds, st_label, ast_label, rst_label,
 
     """
 
-    cal_ref = ds.ufunc_per_section(label=st_label,
-                                   ref_temp_broadcasted=True,
-                                   calc_per='all')
+    cal_ref = ds.ufunc_per_section(
+        label=st_label, ref_temp_broadcasted=True, calc_per='all')
 
     st = ds.ufunc_per_section(label=st_label, calc_per='all')
     ast = ds.ufunc_per_section(label=ast_label, calc_per='all')
@@ -283,9 +291,12 @@ def calibration_double_ended_wls(ds, st_label, ast_label, rst_label,
     z = ds.ufunc_per_section(label='x', calc_per='all')
 
     assert not np.any(st <= 0.), 'There is uncontrolled noise in the ST signal'
-    assert not np.any(ast <= 0.), 'There is uncontrolled noise in the AST signal'
-    assert not np.any(rst <= 0.), 'There is uncontrolled noise in the REV-ST signal'
-    assert not np.any(rast <= 0.), 'There is uncontrolled noise in the REV-AST signal'
+    assert not np.any(
+        ast <= 0.), 'There is uncontrolled noise in the AST signal'
+    assert not np.any(
+        rst <= 0.), 'There is uncontrolled noise in the REV-ST signal'
+    assert not np.any(
+        rast <= 0.), 'There is uncontrolled noise in the REV-AST signal'
 
     nx = z.size
 
@@ -300,82 +311,73 @@ def calibration_double_ended_wls(ds, st_label, ast_label, rst_label,
     # Data for F and B temperature, 2 * nt * nx items
     data1 = np.repeat(1 / (cal_ref.T.ravel() + 273.15), 2)  # gamma
     data3 = -da.ones(2 * nt * nx, chunks=2 * nt * nx)
-    data5 = da.stack((-da.ones(nt * nx, chunks=nt * nx),
-                      da.ones(nt * nx, chunks=nt * nx))
-                     ).T.ravel()
+    data5 = da.stack(
+        (-da.ones(nt * nx, chunks=nt * nx),
+         da.ones(nt * nx, chunks=nt * nx))).T.ravel()
 
     # Data for alpha, nt * no items
     data9 = da.ones(nt * no, chunks=(nt * no,))  # alpha
 
-    data = da.concatenate(
-        [data1, data3, data5, data9]
-        )
+    data = da.concatenate([data1, data3, data5, data9])
 
     # Coords (irow, icol)
     coord1row = da.arange(2 * nt * nx, dtype=int, chunks=(nt * nx,))  # gamma
     coord3row = da.arange(2 * nt * nx, dtype=int, chunks=(nt * nx,))  # C
     coord5row = da.arange(2 * nt * nx, dtype=int, chunks=(nt * nx,))  # alpha
 
-    coord9row = da.arange(2 * nt * nx,
-                          2 * nt * nx + nt * no,
-                          dtype=int,
-                          chunks=(nt * no,))  # alpha
+    coord9row = da.arange(
+        2 * nt * nx, 2 * nt * nx + nt * no, dtype=int,
+        chunks=(nt * no,))  # alpha
 
     coord1col = da.zeros(2 * nt * nx, dtype=int, chunks=(nt * nx,))  # gamma
-    coord3col = np.repeat(da.arange(nt, dtype=int, chunks=(nt,)) + 1, 2 * nx).rechunk(nt * nx)  # C
-    coord5col = da.tile(np.repeat(x_index, 2) + nt + 1, nt).rechunk(nt * nx)  # alpha
+    coord3col = np.repeat(da.arange(nt, dtype=int, chunks=(nt,)) + 1,
+                          2 * nx).rechunk(nt * nx)  # C
+    coord5col = da.tile(np.repeat(x_index, 2) + nt + 1, nt).rechunk(
+        nt * nx)  # alpha
 
-    coord9col = da.tile(da.arange(no, dtype=int, chunks=(nt * no,)) + nt + 1, nt)  # alpha
+    coord9col = da.tile(
+        da.arange(no, dtype=int, chunks=(nt * no,)) + nt + 1, nt)  # alpha
 
-    rows = [coord1row, coord3row,
-            coord5row, coord9row]
-    cols = [coord1col, coord3col,
-            coord5col, coord9col]
-    coords = (da.concatenate(rows).compute(),
-              da.concatenate(cols).compute())
+    rows = [coord1row, coord3row, coord5row, coord9row]
+    cols = [coord1col, coord3col, coord5col, coord9col]
+    coords = (da.concatenate(rows).compute(), da.concatenate(cols).compute())
 
     # try scipy.sparse.bsr_matrix
     X = sp.coo_matrix(
-        (data, coords),
-        shape=(2 * nx * nt + nt * no, nt + 1 + no),
-        copy=False)
+        (data, coords), shape=(2 * nx * nt + nt * no, nt + 1 + no), copy=False)
 
     # Spooky way to interleave and ravel arrays in correct order. Works!
     y1F = np.log(st / ast).T.ravel()
     y1B = np.log(rst / rast).T.ravel()
     y1 = da.stack([y1F, y1B]).T.ravel()
 
-    y2F = np.log(ds[st_label].data /
-                 ds[ast_label].data).T.ravel()
-    y2B = np.log(ds[rst_label].data /
-                 ds[rast_label].data).T.ravel()
+    y2F = np.log(ds[st_label].data / ds[ast_label].data).T.ravel()
+    y2B = np.log(ds[rst_label].data / ds[rast_label].data).T.ravel()
     y2 = (y2B - y2F) / 2
     y = da.concatenate([y1, y2])
 
-    assert not np.any(np.isnan(y)), 'There are nan values in the measured (anti-) Stokes'
+    assert not np.any(
+        np.isnan(y)), 'There are nan values in the measured (anti-) Stokes'
 
     # Calculate the reprocical of the variance (not std)
-    w1F = (1 / st ** 2 * st_var +
-           1 / ast ** 2 * ast_var
-           ).T.ravel()
-    w1B = (1 / rst ** 2 * rst_var +
-           1 / rast ** 2 * rast_var
-           ).T.ravel()
+    w1F = (1 / st**2 * st_var + 1 / ast**2 * ast_var).T.ravel()
+    w1B = (1 / rst**2 * rst_var + 1 / rast**2 * rast_var).T.ravel()
     w1 = da.stack([w1F, w1B]).T.ravel()
 
-    w2 = (0.5 / ds[st_label].data ** 2 * st_var +
-          0.5 / ds[ast_label].data ** 2 * ast_var +
-          0.5 / ds[rst_label].data ** 2 * rst_var +
-          0.5 / ds[rast_label].data ** 2 * rast_var
-          ).T.ravel()
+    w2 = (
+        0.5 / ds[st_label].data**2 * st_var +
+        0.5 / ds[ast_label].data**2 * ast_var +
+        0.5 / ds[rst_label].data**2 * rst_var +
+        0.5 / ds[rast_label].data**2 * rast_var).T.ravel()
     w = da.concatenate([w1, w2])
 
     if solver == 'sparse':
-        p_sol, p_var, p_cov = wls_sparse(X, y, w=w, x0=p0_est, calc_cov=calc_cov,
-                                         verbose=verbose)
+        p_sol, p_var, p_cov = wls_sparse(
+            X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=verbose)
 
     elif solver == 'stats':
-        p_sol, p_var, p_cov = wls_stats(X, y, w=w, calc_cov=calc_cov, verbose=verbose)
+        p_sol, p_var, p_cov = wls_stats(
+            X, y, w=w, calc_cov=calc_cov, verbose=verbose)
 
     elif solver == 'external':
         p_sol, p_var, p_cov = None, None, None
@@ -409,7 +411,8 @@ def wls_sparse(X, y, w=1., calc_cov=False, verbose=False, **kwargs):
     w_std = np.asarray(np.sqrt(w))
     wy = np.asarray(w_std * y)
 
-    w_std = np.broadcast_to(np.atleast_2d(np.squeeze(w_std)).T, (X.shape[0], 1))
+    w_std = np.broadcast_to(
+        np.atleast_2d(np.squeeze(w_std)).T, (X.shape[0], 1))
 
     if not sp.issparse(X):
         wX = w_std * X
@@ -478,7 +481,7 @@ def wls_stats(X, y, w=1., calc_cov=False, verbose=False):
 
     p_sol = res_wls.params
     p_cov = res_wls.cov_params()
-    p_var = res_wls.bse ** 2
+    p_var = res_wls.bse**2
 
     if calc_cov:
         return p_sol, p_var, p_cov

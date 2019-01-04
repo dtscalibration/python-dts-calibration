@@ -9,7 +9,7 @@ align_closing_bracket_with_visual_indent=True
 #        'this is the second element of a tuple'):
 #            value,
 #   }
-allow_multiline_dictionary_keys=False
+allow_multiline_dictionary_keys=True
 
 # Allow lambdas to be formatted on more than one line.
 allow_multiline_lambdas=False
@@ -167,7 +167,7 @@ split_before_bitwise_operator=True
 
 # Split before the closing bracket if a list or dict literal doesn't fit on
 # a single line.
-split_before_closing_bracket=True
+split_before_closing_bracket=False
 
 # Split before a dictionary or set generator (comp_for). For example, note
 # the split before the 'for':
@@ -190,11 +190,11 @@ split_before_dot=False
 
 # Split after the opening paren which surrounds an expression if it doesn't
 # fit on a single line.
-split_before_expression_after_opening_paren=False
+split_before_expression_after_opening_paren=True
 
 # If an argument / parameter list is going to be split, then split before
 # the first argument.
-split_before_first_argument=False
+split_before_first_argument=True
 
 # Set to True to prefer splitting before 'and' or 'or' rather than
 # after.
