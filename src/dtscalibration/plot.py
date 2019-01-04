@@ -1,6 +1,5 @@
 # coding=utf-8
 import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 import numpy as np
 
 

@@ -223,7 +223,7 @@ class DataStore(xr.Dataset):
                     'acquisitiontime_label': 'userAcquisitionTimeFW',
                     'time_start_label': 'timeFWstart',
                     'time_label': 'timeFW',
-                    'time_end_label': 'timeFWend',},
+                    'time_end_label': 'timeFWend'},
             'chbw':
                 {
                     'st_label': 'REV-ST',
@@ -231,7 +231,7 @@ class DataStore(xr.Dataset):
                     'acquisitiontime_label': 'userAcquisitionTimeBW',
                     'time_start_label': 'timeBWstart',
                     'time_label': 'timeBW',
-                    'time_end_label': 'timeBWend',}}
+                    'time_end_label': 'timeBWend'}}
         return d
 
     @property
@@ -1408,10 +1408,10 @@ class DataStore(xr.Dataset):
         rshape = (self.MC.size, self.x.size, self.time.size)
         r2shape = {0: -1, 1: 'auto', 2: -1}
 
-        for k, st_labeli, st_vari in zip(
-            ['r_st', 'r_ast', 'r_rst', 'r_rast'],
-            [st_label, ast_label, rst_label, rast_label],
-            [st_var, ast_var, rst_var, rast_var]):
+        for k, st_labeli, st_vari in zip((['r_st', 'r_ast', 'r_rst', 'r_rast'],
+                                          [st_label, ast_label, rst_label,
+                                           rast_label], [st_var, ast_var,
+                                                         rst_var, rast_var])):
             if hasattr(self[st_labeli].data, 'chunks'):
                 # if it is a dask array, we don't need to chunk it
                 self[k] = (
@@ -1478,13 +1478,17 @@ class DataStore(xr.Dataset):
         self[store_tmpb + '_MC'] = (ci_dims, q)
 
         # Calculate the weighted MC_set
-        weightf = 1 / (1 / self[store_tmpf + '_MC' + store_tempvar] +
-                       1 / self[store_tmpb + '_MC' + store_tempvar]) / \
-                  self[store_tmpf + '_MC' + store_tempvar]
+        weightf = (
+            1 / (
+                1 / self[store_tmpf + '_MC' + store_tempvar] +
+                1 / self[store_tmpb + '_MC' + store_tempvar]) /
+            self[store_tmpf + '_MC' + store_tempvar])
 
-        weightb = 1 / (1 / self[store_tmpf + '_MC' + store_tempvar] +
-                       1 / self[store_tmpb + '_MC' + store_tempvar]) / \
-                  self[store_tmpb + '_MC' + store_tempvar]
+        weightb = (
+            1 / (
+                1 / self[store_tmpf + '_MC' + store_tempvar] +
+                1 / self[store_tmpb + '_MC' + store_tempvar]) /
+            self[store_tmpb + '_MC' + store_tempvar])
 
         # np.testing.assert_almost_equal(np.all(weightf + weightb), 1)
 
@@ -1744,9 +1748,8 @@ class DataStore(xr.Dataset):
             out = {k: concat(section) for k, section in out.items()}
             out = func(concat(list(out.values()), axis=0), **func_kwargs)
 
-            if hasattr(out, 'chunks') and \
-                len(out.chunks) > 0 and \
-                'x' in self[label].dims:
+            if (hasattr(out, 'chunks') and len(out.chunks) > 0 and
+                    'x' in self[label].dims):
                 # also sum the chunksize in the x dimension
                 # first find out where the x dim is
                 ixdim = self[label].dims.index('x')

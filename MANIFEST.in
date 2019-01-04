@@ -20,7 +20,7 @@ include CONTRIBUTING.rst
 include LICENSE
 include README.rst
 
-include tox.ini .travis.yml appveyor.yml .readthedocs.yml
+include tox.ini .travis.yml appveyor.yml .readthedocs.yml .style.yapf
 
 global-exclude *.py[cod] __pycache__ *.so *.dylib .DS_Store
 

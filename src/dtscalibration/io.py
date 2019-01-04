@@ -58,7 +58,7 @@ _dim_attrs = {
             'description': 'Measurement duration of backward channel',
             'long_description':
                 'Desired measurement duration of backward channel',
-            'units': 'seconds'},}
+            'units': 'seconds'}}
 
 # Because variations in the names exist between the different file formats. The
 #   tuple as key contains the possible keys, which is expanded below.
@@ -1031,7 +1031,7 @@ def coords_time(
         'timeBWend':
             {
                 'description': 'time end of the backward channel measurement',
-                'timezone': str(timezone_netcdf)},}
+                'timezone': str(timezone_netcdf)}}
 
     if not double_ended_flag:
         # single ended measurement

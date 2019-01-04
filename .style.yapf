@@ -198,7 +198,7 @@ split_before_first_argument=True
 
 # Set to True to prefer splitting before 'and' or 'or' rather than
 # after.
-split_before_logical_operator=True
+split_before_logical_operator=False
 
 # Split named assignments onto individual lines.
 split_before_named_assigns=True
@@ -237,7 +237,7 @@ split_penalty_bitwise_operator=300
 split_penalty_comprehension=80
 
 # The penalty for characters over the column limit.
-split_penalty_excess_character=7000
+split_penalty_excess_character=4000
 
 # The penalty incurred by adding a line split to the unwrapped line. The
 # more line splits added the higher the penalty.
@@ -257,7 +257,7 @@ split_penalty_import_names=0
 
 # The penalty of splitting the line around the 'and' and 'or'
 # operators.
-split_penalty_logical_operator=300
+split_penalty_logical_operator=500
 
 # Use the Tab character for indentation.
 use_tabs=False
