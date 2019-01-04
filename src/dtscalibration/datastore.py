@@ -142,7 +142,7 @@ class DataStore(xr.Dataset):
                                               'refer ' \
                                               'to a valid timeserie already ' \
                                               'stored in ds.data_vars'
-            check_dims(self, sections, ('time', ))
+            check_dims(self, sections, ('time',))
 
             for k, v in sections.items():
                 assert isinstance(v, (list, tuple)), \
@@ -240,7 +240,7 @@ class DataStore(xr.Dataset):
         """
         Returns the keys of all timeseires that can be used for calibration.
         """
-        return [k for k, v in self.data_vars.items() if v.dims == ('time', )]
+        return [k for k, v in self.data_vars.items() if v.dims == ('time',)]
 
     def resample_datastore(self,
                            how,
@@ -811,14 +811,14 @@ class DataStore(xr.Dataset):
         # store calibration parameters in DataStore
         self[store_gamma] = (tuple(), gamma)
         self[store_dalpha] = (tuple(), dalpha)
-        self[store_alpha] = (('x', ), dalpha * self.x.data)
-        self[store_c] = (('time', ), c)
+        self[store_alpha] = (('x',), dalpha * self.x.data)
+        self[store_c] = (('time',), c)
 
         # store variances in DataStore
         if method == 'wls' or method == 'external':
             self[store_gamma + variance_suffix] = (tuple(), gammavar)
             self[store_dalpha + variance_suffix] = (tuple(), dalphavar)
-            self[store_c + variance_suffix] = (('time', ), cvar)
+            self[store_c + variance_suffix] = (('time',), cvar)
 
         # deal with FW
         if store_tmpf:
@@ -828,7 +828,7 @@ class DataStore(xr.Dataset):
             self[store_tmpf] = (('x', 'time'), tempF_data)
 
         if store_p_val and (method == 'wls' or method == 'external'):
-            self[store_p_val] = (('params1', ), p_val)
+            self[store_p_val] = (('params1',), p_val)
         else:
             pass
 
@@ -990,14 +990,14 @@ class DataStore(xr.Dataset):
 
         # store calibration parameters in DataStore
         self[store_gamma] = (tuple(), gamma)
-        self[store_alpha] = (('x', ), alpha)
-        self[store_d] = (('time', ), d)
+        self[store_alpha] = (('x',), alpha)
+        self[store_d] = (('time',), d)
 
         # store variances in DataStore
         if method == 'wls' or method == 'external':
             self[store_gamma + variance_suffix] = (tuple(), gammavar)
-            self[store_alpha + variance_suffix] = (('x', ), alphavar)
-            self[store_d + variance_suffix] = (('time', ), dvar)
+            self[store_alpha + variance_suffix] = (('x',), alphavar)
+            self[store_d + variance_suffix] = (('time',), dvar)
 
         # deal with FW
         if store_tmpf:
@@ -1015,7 +1015,7 @@ class DataStore(xr.Dataset):
 
         if store_p_val and (method == 'wls' or method == 'external'):
             # TODO: add params1 dimension
-            self[store_p_val] = (('params1', ), p_val)
+            self[store_p_val] = (('params1',), p_val)
         else:
             pass
 
@@ -1112,7 +1112,7 @@ class DataStore(xr.Dataset):
         assert isinstance(p_val, (str, np.ndarray, np.generic))
         if isinstance(p_val, str):
             p_val = self[p_val].data
-        assert p_val.shape == (npar, )
+        assert p_val.shape == (npar,)
 
         assert isinstance(p_cov, (str, np.ndarray, np.generic, bool))
         if isinstance(p_cov, bool) and not p_cov:
@@ -1121,7 +1121,7 @@ class DataStore(xr.Dataset):
             c = p_val[2:nt + 2]
             self['gamma_MC'] = (tuple(), gamma)
             self['dalpha_MC'] = (tuple(), dalpha)
-            self['c_MC'] = (('time', ), c)
+            self['c_MC'] = (('time',), c)
 
         elif isinstance(p_cov, bool) and p_cov:
             raise NotImplementedError(
@@ -1139,8 +1139,8 @@ class DataStore(xr.Dataset):
             dalpha = p_mc[:, 1]
             c = p_mc[:, 2:nt + 2]
 
-            self['gamma_MC'] = (('MC', ), gamma)
-            self['dalpha_MC'] = (('MC', ), dalpha)
+            self['gamma_MC'] = (('MC',), gamma)
+            self['dalpha_MC'] = (('MC',), dalpha)
             self['c_MC'] = ((
                 'MC',
                 'time',
@@ -1185,11 +1185,11 @@ class DataStore(xr.Dataset):
                 dim=avg_dims)**2
 
         if ci_avg_time_flag:
-            new_chunks = ((len(conf_ints), ), ) + (
-                self[store_tmpf + '_MC_set'].chunks[1], )
+            new_chunks = (
+                (len(conf_ints),),) + (self[store_tmpf + '_MC_set'].chunks[1],)
         else:
             new_chunks = (
-                (len(conf_ints), ), ) + self[store_tmpf + '_MC_set'].chunks[1:]
+                (len(conf_ints),),) + self[store_tmpf + '_MC_set'].chunks[1:]
 
         q = self[store_tmpf + '_MC_set'].data.map_blocks(
             lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
@@ -1327,7 +1327,7 @@ class DataStore(xr.Dataset):
         assert isinstance(p_val, (str, np.ndarray, np.generic))
         if isinstance(p_val, str):
             p_val = self[p_val].data
-        assert p_val.shape == (npar, )
+        assert p_val.shape == (npar,)
 
         assert isinstance(p_cov, (str, np.ndarray, np.generic, bool))
 
@@ -1337,8 +1337,8 @@ class DataStore(xr.Dataset):
             alpha = p_val[nt + 1:]
 
             self['gamma_MC'] = (tuple(), gamma)
-            self['alpha_MC'] = (('x', ), alpha)
-            self['d_MC'] = (('time', ), d)
+            self['alpha_MC'] = (('x',), alpha)
+            self['d_MC'] = (('time',), d)
 
         elif isinstance(p_cov, bool) and p_cov:
             raise NotImplementedError(
@@ -1357,7 +1357,7 @@ class DataStore(xr.Dataset):
             d = p_mc[:, 1:nt + 1]
             alpha = p_mc[:, nt + 1:]
 
-            self['gamma_MC'] = (('MC', ), gamma)
+            self['gamma_MC'] = (('MC',), gamma)
             self['alpha_MC'] = ((
                 'MC',
                 'x',
@@ -1418,11 +1418,11 @@ class DataStore(xr.Dataset):
                 dim=avg_dims)**2
 
         if ci_avg_time_flag:
-            new_chunks = ((len(conf_ints), ), ) + (
-                self[store_tmpf + '_MC_set'].chunks[1], )
+            new_chunks = (
+                (len(conf_ints),),) + (self[store_tmpf + '_MC_set'].chunks[1],)
         else:
             new_chunks = (
-                (len(conf_ints), ), ) + self[store_tmpf + '_MC_set'].chunks[1:]
+                (len(conf_ints),),) + self[store_tmpf + '_MC_set'].chunks[1:]
 
         q = self[store_tmpf + '_MC_set'].data.map_blocks(
             lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
@@ -1441,11 +1441,11 @@ class DataStore(xr.Dataset):
         # Calculate the weighted MC_set
         weightf = 1 / (1 / self[store_tmpf + '_MC' + store_tempvar] +
                        1 / self[store_tmpb + '_MC' + store_tempvar]) / \
-            self[store_tmpf + '_MC' + store_tempvar]
+                  self[store_tmpf + '_MC' + store_tempvar]
 
         weightb = 1 / (1 / self[store_tmpf + '_MC' + store_tempvar] +
                        1 / self[store_tmpb + '_MC' + store_tempvar]) / \
-            self[store_tmpb + '_MC' + store_tempvar]
+                  self[store_tmpb + '_MC' + store_tempvar]
 
         # np.testing.assert_almost_equal(np.all(weightf + weightb), 1)
 
@@ -1645,7 +1645,7 @@ class DataStore(xr.Dataset):
         if not x_indices and \
             hasattr(self[label].data, 'chunks') or \
             (subtract_from_label and
-                hasattr(self[subtract_from_label].data, 'chunks')):
+             hasattr(self[subtract_from_label].data, 'chunks')):
             concat = da.concatenate
         else:
             concat = np.concatenate
@@ -1707,8 +1707,8 @@ class DataStore(xr.Dataset):
             out = func(concat(list(out.values()), axis=0), **func_kwargs)
 
             if hasattr(out, 'chunks') and \
-                    len(out.chunks) > 0 and \
-                    'x' in self[label].dims:
+                len(out.chunks) > 0 and \
+                'x' in self[label].dims:
                 # also sum the chunksize in the x dimension
                 # first find out where the x dim is
                 ixdim = self[label].dims.index('x')
