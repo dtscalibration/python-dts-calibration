@@ -1173,7 +1173,9 @@ class DataStore(xr.Dataset):
             r2shape = {0: -1, 1: 'auto', 2: -1}
 
         for k, st_labeli, st_vari in zip(
-            ['r_st', 'r_ast'], [st_label, ast_label], [st_var, ast_var]):
+            ['r_st', 'r_ast'],
+            [st_label, ast_label],
+                [st_var, ast_var]):
             if hasattr(self[st_labeli].data, 'chunks'):
                 chunks = self[st_label].chunks
                 self[k] = (
@@ -1408,10 +1410,10 @@ class DataStore(xr.Dataset):
         rshape = (self.MC.size, self.x.size, self.time.size)
         r2shape = {0: -1, 1: 'auto', 2: -1}
 
-        for k, st_labeli, st_vari in zip(['r_st', 'r_ast', 'r_rst', 'r_rast'],
-                                          [st_label, ast_label, rst_label,
-                                           rast_label], [st_var, ast_var,
-                                                         rst_var, rast_var]):
+        for k, st_labeli, st_vari in zip(
+            ['r_st', 'r_ast', 'r_rst', 'r_rast'],
+            [st_label, ast_label, rst_label, rast_label],
+                [st_var, ast_var, rst_var, rast_var]):
             if hasattr(self[st_labeli].data, 'chunks'):
                 # if it is a dask array, we don't need to chunk it
                 self[k] = (
