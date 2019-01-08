@@ -9,56 +9,46 @@ import pandas as pd
 #  The keys refer to the naming used in the raw files.
 _dim_attrs = {
     ('x', 'distance'):
-        {
-            'name': 'distance',
-            'description': 'Length along fiber',
-            'long_description': 'Starting at connector of forward channel',
-            'units': 'm'},
+        dict(
+            name='distance',
+            description='Length along fiber',
+            long_description='Starting at connector of forward channel',
+            units='m'),
     ('TMP', 'temperature'):
-        {
-            'name': 'TMP',
-            'description': 'temperature calibrated by device',
-            'units': 'degC'},
-    ('ST',): {
-        'name': 'ST',
-        'description': 'Stokes intensity',
-        'units': '-'},
-    ('AST',):
-        {
-            'name': 'AST',
-            'description': 'anti-Stokes intensity',
-            'units': '-'},
+        dict(
+            name='TMP',
+            description='temperature calibrated by device',
+            units='degC'),
+    ('ST',): dict(name='ST', description='Stokes intensity', units='-'),
+    ('AST',): dict(name='AST', description='anti-Stokes intensity', units='-'),
     ('REV-ST',):
-        {
-            'name': 'REV-ST',
-            'description': 'reverse Stokes intensity',
-            'units': '-'},
+        dict(name='REV-ST', description='reverse Stokes intensity', units='-'),
     ('REV-AST',):
-        {
-            'name': 'REV-AST',
-            'description': 'reverse anti-Stokes intensity',
-            'units': '-'},
+        dict(
+            name='REV-AST',
+            description='reverse anti-Stokes intensity',
+            units='-'),
     ('acquisitionTime',):
-        {
-            'name': 'acquisitionTime',
-            'description': 'Measurement duration of forward channel',
-            'long_description':
-                'Actual measurement duration of forward channel',
-            'units': 'seconds'},
+        dict(
+            name='acquisitionTime',
+            description='Measurement duration of forward channel',
+            long_description='Actual measurement duration of forward '
+            'channel',
+            units='seconds'),
     ('userAcquisitionTimeFW',):
-        {
-            'name': 'userAcquisitionTimeFW',
-            'description': 'Measurement duration of forward channel',
-            'long_description':
-                'Desired measurement duration of forward channel',
-            'units': 'seconds'},
+        dict(
+            name='userAcquisitionTimeFW',
+            description='Measurement duration of forward channel',
+            long_description='Desired measurement duration of forward '
+            'channel',
+            units='seconds'),
     ('userAcquisitionTimeBW',):
-        {
-            'name': 'userAcquisitionTimeBW',
-            'description': 'Measurement duration of backward channel',
-            'long_description':
-                'Desired measurement duration of backward channel',
-            'units': 'seconds'}}
+        dict(
+            name='userAcquisitionTimeBW',
+            description='Measurement duration of backward channel',
+            long_description='Desired measurement duration of backward '
+            'channel',
+            units='seconds')}
 
 # Because variations in the names exist between the different file formats. The
 #   tuple as key contains the possible keys, which is expanded below.
