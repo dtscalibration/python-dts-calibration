@@ -192,7 +192,7 @@ def plot_accuracy(
         ax=main_ax, cbar_ax=cbar_ax, cbar_kwargs={'aspect': 20}, robust=True)
     main_ax.set_yticklabels([])
     main_ax.set_ylabel('')
-    cbar_ax.set_ylabel('$^\circ$C')
+    cbar_ax.set_ylabel(r'$^\circ$C')
 
     # x_ax_avg
     x_ax_avg2 = x_ax_avg.twinx()
@@ -205,7 +205,7 @@ def plot_accuracy(
     x_ax_avg.set_yticklabels([])
     x_ax_avg.set_yticks([])
     x_ax_avg.set_xlim(main_ax.get_xlim())
-    x_ax_avg2.set_ylabel('$^\circ$C')
+    x_ax_avg2.set_ylabel(r'$^\circ$C')
 
     # y_ax_avg
     y_ax_avg.axvline(0, linestyle='-', c='black', linewidth=0.8)
@@ -222,7 +222,7 @@ def plot_accuracy(
         y_ax_avg.plot(x, y, c='green', linewidth=0.9)
 
     y_ax_avg.set_ylim(main_ax.get_ylim())
-    y_ax_avg.set_xlabel('$^\circ$C')
+    y_ax_avg.set_xlabel(r'$^\circ$C')
     y_ax_avg.set_ylabel('x (m)')
 
     # reverse axis
