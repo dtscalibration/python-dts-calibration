@@ -306,11 +306,13 @@ def calibration_double_ended_wls(
 
     no, nt = ds[st_label].data.shape
 
-    p0_est = np.asarray([482.] + nt * [1.4] + no * [0.])
+    p0_est_alpha = est_alpha_double(ds, st_label, ast_label, rst_label,
+                                    rast_label, 50).data.tolist()
+    p0_est = np.asarray([482.] + nt * [1.4] + p0_est_alpha)
 
     # Data for F and B temperature, 2 * nt * nx items
     data1 = np.repeat(1 / (cal_ref.T.ravel() + 273.15), 2)  # gamma
-    data3 = -da.ones(2 * nt * nx, chunks=2 * nt * nx)
+    data3 = -da.ones(2 * nt * nx, chunks=nt * nx)
     data5 = da.stack(
         (-da.ones(nt * nx, chunks=nt * nx),
          da.ones(nt * nx, chunks=nt * nx))).T.ravel()
@@ -334,7 +336,6 @@ def calibration_double_ended_wls(
                           2 * nx).rechunk(nt * nx)  # C
     coord5col = da.tile(np.repeat(x_index, 2) + nt + 1, nt).rechunk(
         nt * nx)  # alpha
-
     coord9col = da.tile(
         da.arange(no, dtype=int, chunks=(nt * no,)) + nt + 1, nt)  # alpha
 
@@ -487,3 +488,38 @@ def wls_stats(X, y, w=1., calc_cov=False, verbose=False):
         return p_sol, p_var, p_cov
     else:
         return p_sol, p_var
+
+
+def est_alpha_double(ds, st_label, ast_label, rst_label, rast_label, n):
+    """
+
+    Parameters
+    ----------
+    ds
+    st_label
+    ast_label
+    rst_label
+    rast_label
+    n : int
+        Number of time steps to average, ceiled by the
+        available time steps.
+
+    Returns
+    -------
+
+    """
+    if n > ds.time.size:
+        n = ds.time.size
+
+    islice = np.linspace(
+        start=0,
+        stop=ds.time.size - 1,
+        num=n,
+        dtype=int)
+
+    st = ds[st_label].isel(time=islice).mean(dim='time')
+    ast = ds[ast_label].isel(time=islice).mean(dim='time')
+    rst = ds[rst_label].isel(time=islice).mean(dim='time')
+    rast = ds[rast_label].isel(time=islice).mean(dim='time')
+
+    return (np.log(rst / rast) - np.log(st / ast)) / 2
