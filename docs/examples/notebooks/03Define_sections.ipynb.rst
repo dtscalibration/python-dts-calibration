@@ -60,21 +60,21 @@ while :math:`C` may vary.
 At least two calibration sections of different temperatures are needed
 to perform a decent calibration procedure.
 
-This setup has two baths, named ‘cold’ and ‘warm’. Each bath has 2
+This setup has two baths, named 'cold' and 'warm'. Each bath has 2
 sections. ``probe1Temperature`` is the temperature timeseries of the
 cold bath and ``probe2Temperature`` is the temperature timeseries of the
 warm bath.
 
-+---------+---------------------------+-------------+-----------------+
-| Name    | Name reference            | Number of   | Location of     |
-| section | temperature time series   | sections    | sections (m)    |
-+=========+===========================+=============+=================+
-| Cold    | probe1Temperature         | 2           | 7.5-17.0;       |
-| bath    |                           |             | 70.0-80.0       |
-+---------+---------------------------+-------------+-----------------+
-| Warm    | probe2Temperature         | 2           | 24.0-34.0;      |
-| bath    |                           |             | 85.0-95.0       |
-+---------+---------------------------+-------------+-----------------+
++------------+------------------------------+----------------+--------------------+
+| Name       | Name reference temperature   | Number of      | Location of        |
+| section    | time series                  | sections       | sections (m)       |
++============+==============================+================+====================+
+| Cold bath  | probe1Temperature            | 2              | 7.5-17.0;          |
+|            |                              |                | 70.0-80.0          |
++------------+------------------------------+----------------+--------------------+
+| Warm bath  | probe2Temperature            | 2              | 24.0-34.0;         |
+|            |                              |                | 85.0-95.0          |
++------------+------------------------------+----------------+--------------------+
 
 Sections are defined in a dictionary with its keywords of the names of
 the reference temperature time series. Its values are lists of slice

@@ -156,9 +156,9 @@ are calculated.
 
 The confidence intervals differ per time step. If you would like to
 calculate confidence intervals of all time steps together you have the
-option ``ci_avg_time_flag=True``. ‘We can say with 95% confidence that
+option ``ci_avg_time_flag=True``. 'We can say with 95% confidence that
 the temperature remained between this line and this line during the
-entire measurement period’.
+entire measurement period'.
 
 .. code:: ipython3
 

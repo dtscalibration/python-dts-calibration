@@ -125,9 +125,9 @@ are calculated.
 
 The confidence intervals differ per time step. If you would like to
 calculate confidence intervals of all time steps together you have the
-option ``ci_avg_time_flag=True``. ‘We can say with 95% confidence that
+option ``ci_avg_time_flag=True``. 'We can say with 95% confidence that
 the temperature remained between this line and this line during the
-entire measurement period’. This is ideal if you’d like to calculate the
+entire measurement period'. This is ideal if you'd like to calculate the
 background temperature with a confidence interval.
 
 .. code:: ipython3
@@ -166,7 +166,7 @@ background temperature with a confidence interval.
 
 The DataArrays ``TMPF_MC`` and ``TMPB_MC`` and the dimension ``CI`` are
 added. ``MC`` stands for monte carlo and the ``CI`` dimension holds the
-confidence interval ‘coordinates’.
+confidence interval 'coordinates'.
 
 .. code:: ipython3
 
