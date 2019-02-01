@@ -11,7 +11,8 @@ def plot_residuals_reference_sections(
         plot_names=True,
         sections=None,
         robust=True,
-        units=''):
+        units='',
+        fig_kwargs=None):
     """
     Analyze the residuals of the reference sections, between the Stokes
     signal and a best-fit
@@ -43,8 +44,11 @@ def plot_residuals_reference_sections(
                                      'the sections dict'
 
     # Set up the axes with gridspec
+    if fig_kwargs is None:
+        fig_kwargs = dict()
+
     if fig is None:
-        fig = plt.figure(figsize=(8, 6))
+        fig = plt.figure(figsize=(8, 6), **fig_kwargs)
 
     if title:
         fig.suptitle(title)
