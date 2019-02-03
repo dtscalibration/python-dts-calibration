@@ -18,6 +18,8 @@ matrix:
       dist: xenial
       env:
         - TOXENV=py37
+      services:
+        - xvfb
 before_install:
   - python --version
   - uname -a
