@@ -28,9 +28,9 @@ Overview
     :target: https://python-dts-calibration.readthedocs.io/en/latest/
     :alt: Documentation Status
 
-.. |travis| image:: https://travis-ci.org/bdestombe/python-dts-calibration.svg?branch=master
+.. |travis| image:: https://travis-ci.org/dtscalibration/python-dts-calibration.svg?branch=master
     :alt: Travis-CI Build Status
-    :target: https://travis-ci.org/bdestombe/python-dts-calibration
+    :target: https://travis-ci.org/dtscalibration/python-dts-calibration
 
 .. |appveyor| image:: https://ci.appveyor.com/api/projects/status/github/bdestombe/python-dts-calibration?branch=master&svg=true
     :alt: AppVeyor Build Status
