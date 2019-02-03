@@ -328,14 +328,14 @@ def read_silixa_files_routine_v6(
     if not double_ended_flag:
         tcoords = coords_time(
             maxTimeIndex,
-            timezone_netcdf,
+            timezone_netcdf=timezone_netcdf,
             dtFW=dtFW,
             double_ended_flag=double_ended_flag)
     else:
         dtBW = ts_arr['userAcquisitionTimeBW'].astype('timedelta64[s]')
         tcoords = coords_time(
             maxTimeIndex,
-            timezone_netcdf,
+            timezone_netcdf=timezone_netcdf,
             dtFW=dtFW,
             dtBW=dtBW,
             double_ended_flag=double_ended_flag)
@@ -597,14 +597,14 @@ def read_silixa_files_routine_v4(
     if not double_ended_flag:
         tcoords = coords_time(
             maxTimeIndex,
-            timezone_netcdf,
+            timezone_netcdf=timezone_netcdf,
             dtFW=dtFW,
             double_ended_flag=double_ended_flag)
     else:
         dtBW = ts_arr['userAcquisitionTimeBW'].astype('timedelta64[s]')
         tcoords = coords_time(
             maxTimeIndex,
-            timezone_netcdf,
+            timezone_netcdf=timezone_netcdf,
             dtFW=dtFW,
             dtBW=dtBW,
             double_ended_flag=double_ended_flag)
