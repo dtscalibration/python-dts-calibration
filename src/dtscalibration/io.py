@@ -81,19 +81,19 @@ def silixa_xml_version_check(filepathlist):
 def read_silixa_files_routine_v6(
         filepathlist,
         timezone_netcdf='UTC',
-        timezone_input_files='UTC',
         silent=False,
         load_in_memory='auto'):
     """
     Internal routine that reads Silixa files.
     Use dtscalibration.read_silixa_files function instead.
 
+    The silixa files are already timezone aware
+
     Parameters
     ----------
     load_in_memory
     filepathlist
     timezone_netcdf
-    timezone_input_files
     silent
 
     Returns
@@ -329,7 +329,6 @@ def read_silixa_files_routine_v6(
         tcoords = coords_time(
             maxTimeIndex,
             timezone_netcdf,
-            timezone_input_files,
             dtFW=dtFW,
             double_ended_flag=double_ended_flag)
     else:
@@ -337,7 +336,6 @@ def read_silixa_files_routine_v6(
         tcoords = coords_time(
             maxTimeIndex,
             timezone_netcdf,
-            timezone_input_files,
             dtFW=dtFW,
             dtBW=dtBW,
             double_ended_flag=double_ended_flag)
@@ -350,19 +348,19 @@ def read_silixa_files_routine_v6(
 def read_silixa_files_routine_v4(
         filepathlist,
         timezone_netcdf='UTC',
-        timezone_input_files='UTC',
         silent=False,
         load_in_memory='auto'):
     """
     Internal routine that reads Silixa files.
     Use dtscalibration.read_silixa_files function instead.
 
+    The silixa files are already timezone aware
+
     Parameters
     ----------
     load_in_memory
     filepathlist
     timezone_netcdf
-    timezone_input_files
     silent
 
     Returns
@@ -600,7 +598,6 @@ def read_silixa_files_routine_v4(
         tcoords = coords_time(
             maxTimeIndex,
             timezone_netcdf,
-            timezone_input_files,
             dtFW=dtFW,
             double_ended_flag=double_ended_flag)
     else:
@@ -608,7 +605,6 @@ def read_silixa_files_routine_v4(
         tcoords = coords_time(
             maxTimeIndex,
             timezone_netcdf,
-            timezone_input_files,
             dtFW=dtFW,
             dtBW=dtBW,
             double_ended_flag=double_ended_flag)
@@ -795,15 +791,15 @@ def read_sensornet_files_routine_v3(
     if not double_ended_flag:
         tcoords = coords_time(
             np.array(timestamp).astype('datetime64[ns]'),
-            timezone_netcdf,
-            timezone_input_files,
+            timezone_netcdf=timezone_netcdf,
+            timezone_input_files=timezone_input_files,
             dtFW=dtFW,
             double_ended_flag=double_ended_flag)
     else:
         tcoords = coords_time(
             np.array(timestamp).astype('datetime64[ns]'),
-            timezone_netcdf,
-            timezone_input_files,
+            timezone_netcdf=timezone_netcdf,
+            timezone_input_files=timezone_input_files,
             dtFW=dtFW,
             dtBW=dtBW,
             double_ended_flag=double_ended_flag)

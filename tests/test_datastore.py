@@ -189,7 +189,6 @@ def test_read_silixa_files_single_ended():
     ds = read_silixa_files(
         directory=filepath,
         timezone_netcdf='UTC',
-        timezone_input_files='Europe/Amsterdam',
         file_ext='*.xml')
 
     assert ds._initialized
@@ -202,7 +201,6 @@ def test_read_silixa_files_double_ended():
     ds = read_silixa_files(
         directory=filepath,
         timezone_netcdf='UTC',
-        timezone_input_files='Europe/Amsterdam',
         file_ext='*.xml')
 
     assert ds._initialized
@@ -215,7 +213,6 @@ def test_read_silixa_files_lazy():
     ds = read_silixa_files(
         directory=filepath,
         timezone_netcdf='UTC',
-        timezone_input_files='Europe/Amsterdam',
         file_ext='*.xml',
         load_in_memory='False')
 
@@ -229,7 +226,6 @@ def test_read_long_silixa_files():
     ds = read_silixa_files(
         directory=filepath,
         timezone_netcdf='UTC',
-        timezone_input_files='Europe/Amsterdam',
         file_ext='*.xml')
 
     assert ds._initialized

@@ -1890,13 +1890,14 @@ def read_silixa_files(
         directory=None,
         file_ext='*.xml',
         timezone_netcdf='UTC',
-        timezone_input_files='UTC',
         silent=False,
         load_in_memory='auto',
         **kwargs):
     """Read a folder with measurement files. Each measurement file contains
     values for a
     single timestep. Remember to check which timezone you are working in.
+
+    The silixa files are already timezone aware
 
     Parameters
     ----------
@@ -1906,10 +1907,6 @@ def read_silixa_files(
         Path to folder
     timezone_netcdf : str, optional
         Timezone string of the netcdf file. UTC follows CF-conventions.
-    timezone_input_files : str, optional
-        Timezone string of the measurement files. Remember to check when
-        measurements are taken.
-        Also if summertime is used.
     file_ext : str, optional
         file extension of the measurement files
     silent : bool
@@ -1924,6 +1921,9 @@ def read_silixa_files(
     datastore : DataStore
         The newly created datastore.
     """
+
+    assert 'timezone_input_files' not in kwargs, 'The silixa files are ' \
+                                                 'already timezone aware'
 
     if isinstance(filepathlist, type(None)):
         filepathlist = sorted(glob.glob(os.path.join(directory, file_ext)))
@@ -1945,7 +1945,6 @@ def read_silixa_files(
         data_vars, coords, attrs = read_silixa_files_routine_v4(
             filepathlist,
             timezone_netcdf=timezone_netcdf,
-            timezone_input_files=timezone_input_files,
             silent=silent,
             load_in_memory=load_in_memory)
 
@@ -1953,7 +1952,6 @@ def read_silixa_files(
         data_vars, coords, attrs = read_silixa_files_routine_v6(
             filepathlist,
             timezone_netcdf=timezone_netcdf,
-            timezone_input_files=timezone_input_files,
             silent=silent,
             load_in_memory=load_in_memory)
 

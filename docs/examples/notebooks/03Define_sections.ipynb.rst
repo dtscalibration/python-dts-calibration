@@ -19,7 +19,6 @@ timeseries is already part of the ``DataStore`` object.
     ds = read_silixa_files(
         directory=filepath,
         timezone_netcdf='UTC',
-        timezone_input_files='Europe/Amsterdam',
         file_ext='*.xml')
 
 

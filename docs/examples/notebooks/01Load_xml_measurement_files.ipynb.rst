@@ -69,7 +69,6 @@ polluted with files other than measurement files.
 
     ds = read_silixa_files(directory=filepath,
                            timezone_netcdf='UTC',
-                           timezone_input_files='Europe/Amsterdam',
                            file_ext='*.xml')
 
 

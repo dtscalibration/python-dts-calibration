@@ -37,7 +37,6 @@ estimated temperature via Monte Carlo.
     ds_ = read_silixa_files(
         directory=filepath,
         timezone_netcdf='UTC',
-        timezone_input_files='Europe/Amsterdam',
         file_ext='*.xml')
     
     ds = ds_.sel(x=slice(0, 100))  # only calibrate parts of the fiber

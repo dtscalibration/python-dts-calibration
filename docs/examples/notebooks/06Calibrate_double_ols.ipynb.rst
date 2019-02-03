@@ -26,7 +26,6 @@ channel should be aligned.
     ds = read_silixa_files(
         directory=filepath,
         timezone_netcdf='UTC',
-        timezone_input_files='Europe/Amsterdam',
         file_ext='*.xml')
     
     ds100 = ds.sel(x=slice(0, 100))  # only calibrate parts of the fiber

@@ -321,7 +321,6 @@ def test_variance_of_stokes():
     ds = read_silixa_files(
         directory=filepath,
         timezone_netcdf='UTC',
-        timezone_input_files='Europe/Amsterdam',
         file_ext='*.xml')
     sections = {
         'probe1Temperature': [slice(7.5, 17.), slice(70., 80.)],  # cold bath
@@ -399,7 +398,6 @@ def test_calibration_ols():
     ds = read_silixa_files(
         directory=filepath,
         timezone_netcdf='UTC',
-        timezone_input_files='Europe/Amsterdam',
         file_ext='*.xml')
     ds100 = ds.sel(x=slice(0, 100))
     sections_ultima = {

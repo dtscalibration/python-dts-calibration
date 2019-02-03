@@ -78,7 +78,6 @@ measurements to add the external timeseries to
     filepath_ds = os.path.join('..', '..', 'tests', 'data', 'double_ended2')
     ds = read_silixa_files(directory=filepath_ds,
                            timezone_netcdf='UTC',
-                           timezone_input_files='Europe/Amsterdam',
                            file_ext='*.xml')
 
 

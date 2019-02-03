@@ -24,7 +24,6 @@ estimate the variance of the noise to: - Perform a weighted calibration
     ds = read_silixa_files(
         directory=filepath,
         timezone_netcdf='UTC',
-        timezone_input_files='Europe/Amsterdam',
         file_ext='*.xml')
 
 
