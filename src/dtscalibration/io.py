@@ -954,7 +954,7 @@ def get_xml_namespace(element):
 
 def coords_time(
         maxTimeIndex,
-        timezone_input_files,
+        timezone_input_files=None,
         timezone_netcdf='UTC',
         dtFW=None,
         dtBW=None,
@@ -971,6 +971,7 @@ def coords_time(
         If double ended this is halfway the double ended measurement.
     timezone_input_files : string, pytz.timezone, dateutil.tz.tzfile or None
         A string of a timezone that is understood by pandas of maxTimeIndex.
+        If None, it is assumed that the input files are already timezone aware
     timezone_netcdf : string, pytz.timezone, dateutil.tz.tzfile or None
         A string of a timezone that is understood by pandas to write the
         netCDF to. Using UTC as default, according to CF conventions.
@@ -1071,12 +1072,18 @@ def coords_time(
             ('timestart', index_time_FWstart), ('timeend', index_time_BWend),
             ('time', index_time_FWend)]
 
-    coords = {
-        k: (
-            'time', pd.DatetimeIndex(v).tz_localize(
-                tz=timezone_input_files).tz_convert(timezone_netcdf).astype(
-                    'datetime64[ns]'), time_attrs[k])
-        for k, v in coords_zip}
+    if timezone_input_files is not None:
+        coords = {
+            k: (
+                'time', pd.DatetimeIndex(v).tz_localize(
+                    tz=timezone_input_files).tz_convert(timezone_netcdf).astype(
+                        'datetime64[ns]'), time_attrs[k])
+            for k, v in coords_zip}
+    else:
+        coords = {
+            k: ('time', pd.DatetimeIndex(v).tz_convert(timezone_netcdf).astype(
+                        'datetime64[ns]'), time_attrs[k])
+            for k, v in coords_zip}
 
     # The units are already stored in the dtype
     coords['acquisitiontimeFW'] = (
