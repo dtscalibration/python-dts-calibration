@@ -2,6 +2,16 @@
 Changelog
 =========
 
+0.6.0 (2019-01-04)
+------------------
+* Many examples were shown in the documentation
+* Fixed verbose settings of solvers
+* Revised example notebooks
+* Moved to 80 characters per line (PEP)
+* More Python formatting using YAPF
+* Use example of `plot_residuals_reference_sections` function in Stokes variance example notebook
+* Support Python 3.7
+
 0.6.0 (2018-12-08)
 ------------------
 * Reworked the double-ended calibration routine and the routine for confidence intervals. The integrated differential attenuation is not zero at x=0 anymore.
