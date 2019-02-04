@@ -2,7 +2,7 @@
 Changelog
 =========
 
-0.6.0 (2019-01-04)
+0.6.1 (2019-01-04)
 ------------------
 * Many examples were shown in the documentation
 * Fixed verbose settings of solvers
