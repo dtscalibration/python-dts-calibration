@@ -36,17 +36,17 @@ Overview
     :alt: AppVeyor Build Status
     :target: https://ci.appveyor.com/project/bdestombe/python-dts-calibration
 
-.. |codecov| image:: https://codecov.io/github/bdestombe/python-dts-calibration/coverage.svg?branch=master
+.. |codecov| image:: https://codecov.io/github/dtscalibration/python-dts-calibration/coverage.svg?branch=master
     :alt: Coverage Status
-    :target: https://codecov.io/github/bdestombe/python-dts-calibration
+    :target: https://codecov.io/github/dtscalibration/python-dts-calibration
 
 .. |version| image:: https://img.shields.io/pypi/v/dtscalibration.svg
     :alt: PyPI Package latest release
     :target: https://pypi.python.org/pypi/dtscalibration
 
-.. |commits-since| image:: https://img.shields.io/github/commits-since/bdestombe/python-dts-calibration/v0.6.1.svg
+.. |commits-since| image:: https://img.shields.io/github/commits-since/dtscalibration/python-dts-calibration/v0.6.1.svg
     :alt: Commits since latest release
-    :target: https://github.com/bdestombe/python-dts-calibration/compare/v0.6.1...master
+    :target: https://github.com/dtscalibration/python-dts-calibration/compare/v0.6.1...master
 
 .. |wheel| image:: https://img.shields.io/pypi/wheel/dtscalibration.svg
     :alt: PyPI Wheel
@@ -66,7 +66,7 @@ Overview
 
 .. |example-notebooks| image:: https://mybinder.org/badge.svg
    :alt: Interactively run the example notebooks online
-   :target: https://mybinder.org/v2/gh/bdestombe/python-dts-calibration/master?filepath=examples%2Fnotebooks
+   :target: https://mybinder.org/v2/gh/dtscalibration/python-dts-calibration/master?filepath=examples%2Fnotebooks
 
 .. end-badges
 
