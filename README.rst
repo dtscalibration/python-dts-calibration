@@ -32,7 +32,7 @@ Overview
     :alt: Travis-CI Build Status
     :target: https://travis-ci.org/dtscalibration/python-dts-calibration
 
-.. |appveyor| image:: https://ci.appveyor.com/api/projects/status/github/bdestombe/python-dts-calibration?branch=master&svg=true
+.. |appveyor| image:: https://ci.appveyor.com/api/projects/status/we2caropyby30nd1?svg=true
     :alt: AppVeyor Build Status
     :target: https://ci.appveyor.com/project/bdestombe/python-dts-calibration
 
