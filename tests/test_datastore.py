@@ -2,6 +2,8 @@
 import hashlib
 import os
 import tempfile
+from unittest import TestCase
+from unittest import TestCase
 
 import numpy as np
 
@@ -102,6 +104,13 @@ def test_empty_construction():
     pass
 
 
+def test_repr():
+    ds = DataStore()
+    assert ds.__repr__().find('dtscalibration')
+    assert ds.__repr__().find('Sections')
+    pass
+
+
 def test_has_sectionattr_upon_creation():
     ds = DataStore()
     assert hasattr(ds, '_sections')
@@ -111,10 +120,10 @@ def test_has_sectionattr_upon_creation():
 
 def test_sections_property():
     ds = DataStore({
-        'st':    (['x', 'time'], np.ones((5, 5))),
-        'ast':   (['x', 'time'], np.ones((5, 5))),
-        'probe1Temperature':  (['time'], range(5)),
-        'probe2Temperature':  (['time'], range(5))
+        'st':                (['x', 'time'], np.ones((5, 5))),
+        'ast':               (['x', 'time'], np.ones((5, 5))),
+        'probe1Temperature': (['time'], range(5)),
+        'probe2Temperature': (['time'], range(5))
         },
         coords={
             'x':    range(5),
@@ -144,10 +153,10 @@ def test_sections_property():
 
 def test_io_sections_property():
     ds = DataStore({
-        'st':    (['x', 'time'], np.ones((5, 5))),
-        'ast':   (['x', 'time'], np.ones((5, 5))),
-        'probe1Temperature':  (['time'], range(5)),
-        'probe2Temperature':  (['time'], range(5))
+        'st':                (['x', 'time'], np.ones((5, 5))),
+        'ast':               (['x', 'time'], np.ones((5, 5))),
+        'probe1Temperature': (['time'], range(5)),
+        'probe2Temperature': (['time'], range(5))
         },
         coords={
             'x':    range(5),
@@ -278,3 +287,42 @@ def read_data_from_fp_numpy(fp):
     data = np.loadtxt(s[lssl], delimiter=',', dtype=float)
 
     return data
+
+
+class TestDataStore(TestCase):
+    def test_resample_datastore(self):
+        filepath = data_dir_single_ended
+        ds = read_silixa_files(
+            directory=filepath,
+            timezone_netcdf='UTC',
+            file_ext='*.xml')
+        assert ds.time.size == 3
+
+        ds_resampled = ds.resample_datastore(how='mean', time="47S")
+        assert ds_resampled._initialized
+
+        assert ds_resampled.time.size == 2
+
+        pass
+
+
+class TestDataStore(TestCase):
+    def test_timeseries_keys(self):
+        filepath = data_dir_single_ended
+        ds = read_silixa_files(
+            directory=filepath,
+            timezone_netcdf='UTC',
+            file_ext='*.xml')
+
+        k = ds.timeseries_keys
+
+        # no false positive
+        for ki in k:
+            assert ds[ki].dims == ('time',)
+
+        # no false negatives
+        k_not = [ki for ki in ds.data_vars if ki not in k]
+        for kni in k_not:
+            assert ds[kni].dims != ('time',)
+
+        pass
