@@ -120,9 +120,9 @@ method.
 
 .. parsed-literal::
 
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration/.tox/docs/lib/python3.6/site-packages/numpy/lib/nanfunctions.py:1545: RuntimeWarning: Degrees of freedom <= 0 for slice.
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration/.tox/docs/lib/python3.6/site-packages/numpy/lib/nanfunctions.py:1628: RuntimeWarning: Degrees of freedom <= 0 for slice.
       keepdims=keepdims)
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration/.tox/docs/lib/python3.6/site-packages/xarray/core/nanops.py:162: RuntimeWarning: Mean of empty slice
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration/.tox/docs/lib/python3.6/site-packages/xarray/core/nanops.py:161: RuntimeWarning: Mean of empty slice
       return np.nanmean(a, axis=axis, dtype=dtype)
 
 
@@ -156,3 +156,4 @@ by coils/sharp bends in cable - Attenuation caused by a splice
 We can follow the same steps to calculate the variance from the noise in
 the anti-Stokes measurments by setting ``st_label='AST`` and redo the
 steps.
+

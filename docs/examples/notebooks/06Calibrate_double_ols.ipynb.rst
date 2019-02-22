@@ -172,3 +172,4 @@ first.
 The device calibration sections and calibration sections defined by us
 differ. The device only allows for 2 sections, one per thermometer. And
 most likely the :math:`\gamma` is fixed in the device calibration.
+

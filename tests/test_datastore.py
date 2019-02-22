@@ -2,8 +2,6 @@
 import hashlib
 import os
 import tempfile
-from unittest import TestCase
-from unittest import TestCase
 
 import numpy as np
 
@@ -289,40 +287,38 @@ def read_data_from_fp_numpy(fp):
     return data
 
 
-class TestDataStore(TestCase):
-    def test_resample_datastore(self):
-        filepath = data_dir_single_ended
-        ds = read_silixa_files(
-            directory=filepath,
-            timezone_netcdf='UTC',
-            file_ext='*.xml')
-        assert ds.time.size == 3
+def test_resample_datastore():
+    filepath = data_dir_single_ended
+    ds = read_silixa_files(
+        directory=filepath,
+        timezone_netcdf='UTC',
+        file_ext='*.xml')
+    assert ds.time.size == 3
 
-        ds_resampled = ds.resample_datastore(how='mean', time="47S")
-        assert ds_resampled._initialized
+    ds_resampled = ds.resample_datastore(how='mean', time="47S")
+    assert ds_resampled._initialized
 
-        assert ds_resampled.time.size == 2
+    assert ds_resampled.time.size == 2
 
-        pass
+    pass
 
 
-class TestDataStore(TestCase):
-    def test_timeseries_keys(self):
-        filepath = data_dir_single_ended
-        ds = read_silixa_files(
-            directory=filepath,
-            timezone_netcdf='UTC',
-            file_ext='*.xml')
+def test_timeseries_keys():
+    filepath = data_dir_single_ended
+    ds = read_silixa_files(
+        directory=filepath,
+        timezone_netcdf='UTC',
+        file_ext='*.xml')
 
-        k = ds.timeseries_keys
+    k = ds.timeseries_keys
 
-        # no false positive
-        for ki in k:
-            assert ds[ki].dims == ('time',)
+    # no false positive
+    for ki in k:
+        assert ds[ki].dims == ('time',)
 
-        # no false negatives
-        k_not = [ki for ki in ds.data_vars if ki not in k]
-        for kni in k_not:
-            assert ds[kni].dims != ('time',)
+    # no false negatives
+    k_not = [ki for ki in ds.data_vars if ki not in k]
+    for kni in k_not:
+        assert ds[kni].dims != ('time',)
 
-        pass
+    pass

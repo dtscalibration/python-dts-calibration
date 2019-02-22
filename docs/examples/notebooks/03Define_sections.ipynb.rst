@@ -50,6 +50,16 @@ all timeseries that can be used for calibration.
     ['acquisitionTime', 'referenceTemperature', 'probe1Temperature', 'probe2Temperature', 'referenceProbeVoltage', 'probe1Voltage', 'probe2Voltage', 'userAcquisitionTimeFW', 'userAcquisitionTimeBW']
 
 
+.. parsed-literal::
+
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration/.tox/docs/lib/python3.6/site-packages/pandas/plotting/_converter.py:129: FutureWarning: Using an implicitly registered datetime converter for a matplotlib plotting method. The converter was registered by pandas on import. Future versions of pandas will require you to explicitly register matplotlib converters.
+    
+    To register the converters:
+    	>>> from pandas.plotting import register_matplotlib_converters
+    	>>> register_matplotlib_converters()
+      warnings.warn(msg, FutureWarning)
+
+
 A calibration is needed to estimate temperature from Stokes and
 anti-Stokes measurements. There are three unknowns for a single ended
 calibration procedure :math:`\gamma`, :math:`C`, and :math:`\alpha`. The
@@ -109,3 +119,4 @@ Internally the sections dictionary is stored in ``ds._sections`` as a
 string encoded with yaml, which can be saved to a netCDF file. Each time
 the sections dictionary is requested, yaml decodes the string and
 evaluates it to the Python dictionary.
+
