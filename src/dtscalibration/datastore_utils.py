@@ -102,7 +102,8 @@ def shift_double_ended(ds, i_shift):
     backward channel are aligned.
 
     This function can be used to shift the backward channel so that the forward channel and the
-    backward channel are aligned. The backward channel is shifted by index along the x dimension.
+    backward channel are aligned. The backward channel is shifted per index
+    along the x dimension.
 
     The DataStore object that is returned only has values for the backscatter that are measured
     for both the forward channel and the backward channel in the shifted object
@@ -131,7 +132,8 @@ def shift_double_ended(ds, i_shift):
     nx = ds.x.size
     nx2 = nx - i_shift
     if i_shift < 0:
-        # The cable was configured to be too long. There is too much data recorded.
+        # The cable was configured to be too long.
+        # There is too much data recorded.
         st = ds.ST.data[:i_shift]
         ast = ds.AST.data[:i_shift]
         rst = ds['REV-ST'].data[-i_shift:]
@@ -140,7 +142,8 @@ def shift_double_ended(ds, i_shift):
         # TMP2 = ds.TMP.data[:i_shift]
 
     else:
-        # The cable was configured to be too short. Part of the cable is not measured.
+        # The cable was configured to be too short.
+        # Part of the cable is not measured.
         st = ds.ST.data[i_shift:]
         ast = ds.AST.data[i_shift:]
         rst = ds['REV-ST'].data[:nx2]
@@ -162,28 +165,34 @@ def shift_double_ended(ds, i_shift):
         d2_data[k] = (ds[k].dims, v, ds[k].attrs)
 
     not_included = [k for k in ds.data_vars if k not in d2_data]
-    print('I dont know what to do with the following data', not_included)
+    if not_included:
+        print('I dont know what to do with the following data', not_included)
 
     return DataStore(data_vars=d2_data, coords=d2_coords, attrs=ds.attrs)
 
 
-def suggest_cable_shift_double_ended(ds, irange):
-    """The cable length was initially configured during the DTS measurement. For double ended
-    measurements it is important to enter the correct length so that the forward channel and the
-    backward channel are aligned.
+def suggest_cable_shift_double_ended(ds, irange, plot_result=True,
+                                     **fig_kwargs):
+    """The cable length was initially configured during the DTS measurement.
+    For double ended measurements it is important to enter the correct length
+    so that the forward channel and the backward channel are aligned.
 
-    This function can be used to find the shift of the backward channel so that the forward
-    channel and the backward channel are aligned. The shift index refers to the x-dimension.
+    This function can be used to find the shift of the backward channel so
+    that the forward channel and the backward channel are aligned. The shift
+    index refers to the x-dimension.
 
-    The attenuation should be approximately a straight line with jumps at the splices.
-    Temperature independent and invariant over time. The following objective functions seems to
-    do the job at determining the best shift for which the attenuation is most straight.
+    The attenuation should be approximately a straight line with jumps at the
+    splices. Temperature independent and invariant over time. The following
+    objective functions seems to do the job at determining the best shift for
+    which the attenuation is most straight.
 
-    Err1 sums the first derivative. Is a proxy for the length of the attenuation line.
-    Err2 sums the second derivative. Is a proxy for the wiggelyness of the line.
+    Err1 sums the first derivative. Is a proxy for the length of the
+    attenuation line. Err2 sums the second derivative. Is a proxy for the
+    wiggelyness of the line.
 
-    The top plot shows the origional Stokes and the origional and shifted anti-Stokes
-    The bottom plot is generated that shows the two objective functions
+    The top plot shows the origional Stokes and the origional and shifted
+    anti-Stokes The bottom plot is generated that shows the two objective
+    functions
 
 
     Parameters
@@ -191,16 +200,21 @@ def suggest_cable_shift_double_ended(ds, irange):
     ds : DataSore object
         DataStore object that needs to be shifted
     irange : array-like
-        a numpy array with data of type int. Containing all the shift index that are tested.
-        Example: np.arange(-250, 200, 1, dtype=int). It shifts the return scattering with
-        250 indices. Calculates err1 and err2. Then shifts the return scattering with
-        249 indices. Calculates err1 and err2. The lowest err1 and err2 are suggested as best
-        shift options.
+        a numpy array with data of type int. Containing all the shift index
+        that are tested.
+        Example: np.arange(-250, 200, 1, dtype=int). It shifts the return
+        scattering with 250 indices. Calculates err1 and err2. Then shifts
+        the return scattering with 249 indices. Calculates err1 and err2. The
+        lowest err1 and err2 are suggested as best shift options.
+    plot_result : bool
+        Plot the summed error as a function of the shift.
 
     Returns
     -------
-    ds2 : DataStore oobject
-        With a shifted x-axis
+    ishift1: int
+        Suggested shift based on Err1
+    ishift2: int
+        Suggested shift based on Err2
     """
     err1 = []
     err2 = []
@@ -226,7 +240,7 @@ def suggest_cable_shift_double_ended(ds, irange):
         i_f = np.log(st / ast)
         i_b = np.log(rst / rast)
 
-        att = (i_b - i_f) / 2
+        att = (i_b - i_f) / 2  # varianble E in article
 
         att_dif1 = np.diff(att, n=1, axis=0)
         att_x_dif1 = 0.5 * x2[1:] + 0.5 * x2[:-1]
@@ -241,44 +255,48 @@ def suggest_cable_shift_double_ended(ds, irange):
     ishift1 = irange[np.argmin(err1, axis=0)]
     ishift2 = irange[np.argmin(err2, axis=0)]
 
-    f, (ax0, ax1) = plt.subplots(2, 1, sharex=False)
-    f.suptitle('best shift is {} or {}'.format(ishift1, ishift2))
+    if plot_result:
+        if fig_kwargs is None:
+            fig_kwargs = dict()
 
-    dt = ds.isel(time=0)
-    x = dt.x.data
-    y = dt.ST.data
-    ax0.plot(x, y, label='ST original')
-    y = dt['REV-ST'].data
-    ax0.plot(x, y, label='REV-ST original')
+        f, (ax0, ax1) = plt.subplots(2, 1, sharex=False, **fig_kwargs)
+        f.suptitle('best shift is {} or {}'.format(ishift1, ishift2))
 
-    dtsh1 = shift_double_ended(dt, ishift1)
-    dtsh2 = shift_double_ended(dt, ishift2)
-    x1 = dtsh1.x.data
-    x2 = dtsh2.x.data
-    y1 = dtsh1['REV-ST'].data
-    y2 = dtsh2['REV-ST'].data
-    ax0.plot(x1, y1, label='ST i_shift={}'.format(ishift1))
-    ax0.plot(x2, y2, label='ST i_shift={}'.format(ishift2))
-    ax0.set_xlabel('x (m)')
-    ax0.legend()
+        dt = ds.isel(time=0)
+        x = dt.x.data
+        y = dt.ST.data
+        ax0.plot(x, y, label='ST original')
+        y = dt['REV-ST'].data
+        ax0.plot(x, y, label='REV-ST original')
 
-    ax2 = ax1.twinx()
-    ax1.plot(irange, err1, c='red', label='1 deriv')
-    ax2.plot(irange, err2, c='blue', label='2 deriv')
-    ax1.axvline(
-        ishift1,
-        c='red',
-        linewidth=0.8,
-        label='1 deriv. i_shift={}'.format(ishift1))
-    ax2.axvline(
-        ishift2,
-        c='blue',
-        linewidth=0.8,
-        label='2 deriv. i_shift={}'.format(ishift1))
-    ax1.set_xlabel('i_shift')
-    ax1.legend(loc=2)  # left axis
-    ax2.legend(loc=1)  # right axis
+        dtsh1 = shift_double_ended(dt, ishift1)
+        dtsh2 = shift_double_ended(dt, ishift2)
+        x1 = dtsh1.x.data
+        x2 = dtsh2.x.data
+        y1 = dtsh1['REV-ST'].data
+        y2 = dtsh2['REV-ST'].data
+        ax0.plot(x1, y1, label='ST i_shift={}'.format(ishift1))
+        ax0.plot(x2, y2, label='ST i_shift={}'.format(ishift2))
+        ax0.set_xlabel('x (m)')
+        ax0.legend()
 
-    plt.tight_layout()
+        ax2 = ax1.twinx()
+        ax1.plot(irange, err1, c='red', label='1 deriv')
+        ax2.plot(irange, err2, c='blue', label='2 deriv')
+        ax1.axvline(
+            ishift1,
+            c='red',
+            linewidth=0.8,
+            label='1 deriv. i_shift={}'.format(ishift1))
+        ax2.axvline(
+            ishift2,
+            c='blue',
+            linewidth=0.8,
+            label='2 deriv. i_shift={}'.format(ishift1))
+        ax1.set_xlabel('i_shift')
+        ax1.legend(loc=2)  # left axis
+        ax2.legend(loc=1)  # right axis
+
+        plt.tight_layout()
 
     return ishift1, ishift2
