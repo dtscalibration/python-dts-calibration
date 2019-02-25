@@ -17,10 +17,8 @@ from .calibrate_utils import calibration_double_ended_ols
 from .calibrate_utils import calibration_double_ended_wls
 from .calibrate_utils import calibration_single_ended_ols
 from .calibrate_utils import calibration_single_ended_wls
-
 from .datastore_utils import check_dims
 from .datastore_utils import check_timestep_allclose
-
 from .io import read_sensornet_files_routine_v3
 from .io import read_silixa_files_routine_v4
 from .io import read_silixa_files_routine_v6
