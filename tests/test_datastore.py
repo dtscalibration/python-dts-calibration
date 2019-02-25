@@ -352,3 +352,17 @@ def test_shift_double_ended_shift_backforward():
     pass
 
 
+def test_suggest_cable_shift_double_ended():
+    # need more measurements for proper testing. Therefore only checking if
+    # no errors occur
+
+    filepath = data_dir_double_ended
+    ds = read_silixa_files(
+        directory=filepath,
+        timezone_netcdf='UTC',
+        file_ext='*.xml')
+
+    irange = np.arange(-4, 4)
+    suggest_cable_shift_double_ended(ds, irange, plot_result=True)
+
+    pass
