@@ -2,7 +2,6 @@
 import glob
 import inspect
 import os
-import pprint
 from typing import Dict
 from typing import List
 
@@ -18,8 +17,10 @@ from .calibrate_utils import calibration_double_ended_ols
 from .calibrate_utils import calibration_double_ended_wls
 from .calibrate_utils import calibration_single_ended_ols
 from .calibrate_utils import calibration_single_ended_wls
+
 from .datastore_utils import check_dims
 from .datastore_utils import check_timestep_allclose
+
 from .io import read_sensornet_files_routine_v3
 from .io import read_silixa_files_routine_v4
 from .io import read_silixa_files_routine_v6
@@ -90,16 +91,35 @@ class DataStore(xr.Dataset):
         preamble_new = u'<dtscalibration.%s>' % name_module
 
         # Add sections to new preamble
-        preamble_new += '\nSections:'
+        preamble_new += '\nSections:\n'
         if hasattr(self, '_sections') and self.sections:
-            preamble_new += '\n'
-            preamble_new += pprint.pformat(self.sections)
+            unit = self.x.units
+            for k, v in self.sections.items():
+                preamble_new += '    {0: <23}'.format(k)
+                vl = ['{0:.2f}{2} - {1:.2f}{2}'.format(vi.start, vi.stop, unit)
+                      for vi in v]
+                preamble_new += ' and '.join(vl) + '\n'
+
         else:
-            preamble_new += '    ()'
+            preamble_new += 18 * ' ' + '()'
 
         # add new preamble to the remainder of the former __repr__
         len_preamble_old = 8 + len(name_module) + 2
-        s_out = '\n'.join([preamble_new, s[len_preamble_old:]])
+
+        # untill the attribute listing
+        attr_index = s.find('Attributes:')
+
+        # abbreviate attribute listing
+        attr_list_all = s[attr_index:].split(sep='\n')
+        if len(attr_list_all) > 10:
+            s_too_many = ['\n... and many more attributes. See: ds.attrs']
+            attr_list = attr_list_all[:10] + s_too_many
+        else:
+            attr_list = attr_list_all
+
+        s_out = (preamble_new +
+                 s[len_preamble_old:attr_index] +
+                 '\n'.join(attr_list))
 
         # return new __repr__
         return s_out
