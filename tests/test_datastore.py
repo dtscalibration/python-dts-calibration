@@ -10,6 +10,9 @@ from dtscalibration import open_datastore
 from dtscalibration import read_sensornet_files
 from dtscalibration import read_silixa_files
 
+from dtscalibration.datastore_utils import shift_double_ended
+from dtscalibration.datastore_utils import suggest_cable_shift_double_ended
+
 np.random.seed(0)
 
 fn = ["channel 1_20170921112245510.xml",
@@ -322,3 +325,30 @@ def test_timeseries_keys():
         assert ds[kni].dims != ('time',)
 
     pass
+
+
+def test_shift_double_ended_shift_backforward():
+    # shifting it back and forward, should result in the same
+    filepath = data_dir_double_ended
+    ds = read_silixa_files(
+        directory=filepath,
+        timezone_netcdf='UTC',
+        file_ext='*.xml')
+
+    dsmin1 = shift_double_ended(ds, -1)
+    ds2 = shift_double_ended(dsmin1, 1)
+
+    np.testing.assert_allclose(ds.x[1:-1], ds2.x)
+
+    for k in ds2:
+        if 'x' not in ds2[k].dims:
+            continue
+
+        old = ds[k].isel(x=slice(1, -1))
+        new = ds2[k]
+
+        np.testing.assert_allclose(old, new)
+
+    pass
+
+
