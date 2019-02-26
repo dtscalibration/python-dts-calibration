@@ -2,6 +2,18 @@
 Changelog
 =========
 
+0.6.2 (2019-02-26)
+------------------
+* Double-ended weighted calibration procedure is rewritten so that the
+integrated differential attenuation outside of the reference sections is
+calculated seperately. Better memory usage and faster
+* Other calibration routines cleaned up
+* Official support for Python 3.7
+* Coverage figures are now trustworthy
+* String representation improved
+* Include test for aligning double ended measurements
+* Example for aligning double ended measurements
+
 0.6.1 (2019-01-04)
 ------------------
 * Many examples were shown in the documentation
@@ -33,7 +45,7 @@ Changelog
 
 * New resample_datastore method (see basic usage notebook)
 * New notebook on basic usage of DataStore
-* Support for Silixa v4 (Windows xp based system) and Silixa v6 (Windows 7) measurement files 
+* Support for Silixa v4 (Windows xp based system) and Silixa v6 (Windows 7) measurement files
 * The representation string now includes the sections
 * Reorganized the IO related files
 * CI: Add appveyor to continuesly test on Windows platform
@@ -49,7 +61,7 @@ Changelog
 * Link to mybinder.org to try the example notebooks online
 * Added a few missing dependencies
 * The routine to read the Silixa files is completely refractored. Faster, smarter. Supports both the path to a directory and a list of file paths.
-* Changed imports from dtscalibration to be relative 
+* Changed imports from dtscalibration to be relative
 
 0.4.0 (2018-09-06)
 ------------------
