@@ -3,6 +3,7 @@ import hashlib
 import os
 import tempfile
 
+import dask.array as da
 import numpy as np
 
 from dtscalibration import DataStore
@@ -218,15 +219,68 @@ def test_read_silixa_files_double_ended():
     pass
 
 
-def test_read_silixa_files_lazy():
-    filepath = data_dir_double_ended
+def test_read_silixa_files_single_loadinmemory():
+    filepath = data_dir_single_ended
+
+    # False
     ds = read_silixa_files(
         directory=filepath,
         timezone_netcdf='UTC',
         file_ext='*.xml',
-        load_in_memory='False')
+        load_in_memory=False)
+    for k in ['ST', 'AST']:
+        assert isinstance(ds[k].data, da.Array)
 
-    assert ds._initialized
+    # auto -> True
+    ds = read_silixa_files(
+        directory=filepath,
+        timezone_netcdf='UTC',
+        file_ext='*.xml',
+        load_in_memory='auto')
+    for k in ['ST', 'AST']:
+        assert isinstance(ds[k].data, np.ndarray)
+
+    # True
+    ds = read_silixa_files(
+        directory=filepath,
+        timezone_netcdf='UTC',
+        file_ext='*.xml',
+        load_in_memory=True)
+    for k in ['ST', 'AST']:
+        assert isinstance(ds[k].data, np.ndarray)
+
+    pass
+
+
+def test_read_silixa_files_double_loadinmemory():
+    filepath = data_dir_double_ended
+
+    # False
+    ds = read_silixa_files(
+        directory=filepath,
+        timezone_netcdf='UTC',
+        file_ext='*.xml',
+        load_in_memory=False)
+    for k in ['ST', 'AST', 'REV-ST', 'REV-AST']:
+        assert isinstance(ds[k].data, da.Array)
+
+    # auto -> True
+    ds = read_silixa_files(
+        directory=filepath,
+        timezone_netcdf='UTC',
+        file_ext='*.xml',
+        load_in_memory='auto')
+    for k in ['ST', 'AST', 'REV-ST', 'REV-AST']:
+        assert isinstance(ds[k].data, np.ndarray)
+
+    # True
+    ds = read_silixa_files(
+        directory=filepath,
+        timezone_netcdf='UTC',
+        file_ext='*.xml',
+        load_in_memory=True)
+    for k in ['ST', 'AST', 'REV-ST', 'REV-AST']:
+        assert isinstance(ds[k].data, np.ndarray)
 
     pass
 
