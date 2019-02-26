@@ -227,10 +227,16 @@ def read_silixa_files_routine_v6(
     # Check whether to compute data_arr (if possible 25% faster)
     data_arr_cnk = data_arr.rechunk({0: -1, 1: -1, 2: 'auto'})
     if load_in_memory == 'auto' and data_arr_cnk.npartitions <= 5:
+        if not silent:
+            print('Reading the data from disk')
         data_arr = data_arr_cnk.compute()
     elif load_in_memory:
+        if not silent:
+            print('Reading the data from disk')
         data_arr = data_arr_cnk.compute()
     else:
+        if not silent:
+            print('Not reading the data from disk')
         data_arr = data_arr_cnk
 
     data_vars = {}
@@ -496,10 +502,16 @@ def read_silixa_files_routine_v4(
     # Check whether to compute data_arr (if possible 25% faster)
     data_arr_cnk = data_arr.rechunk({0: -1, 1: -1, 2: 'auto'})
     if load_in_memory == 'auto' and data_arr_cnk.npartitions <= 5:
+        if not silent:
+            print('Reading the data from disk')
         data_arr = data_arr_cnk.compute()
     elif load_in_memory:
+        if not silent:
+            print('Reading the data from disk')
         data_arr = data_arr_cnk.compute()
     else:
+        if not silent:
+            print('Not reading the data from disk')
         data_arr = data_arr_cnk
 
     data_vars = {}
