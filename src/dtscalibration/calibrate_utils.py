@@ -156,7 +156,7 @@ def calibration_single_ended_wls(
         return nt, z, p_sol, p_var
 
 
-def calibration_double_ended_ols(
+def calibration_double_ended_ols_old(
         ds, st_label, ast_label, rst_label, rast_label, verbose=False):
     """
 
@@ -243,6 +243,104 @@ def calibration_double_ended_ols(
     p0 = ln.lsqr(X, y, x0=p0_est, show=verbose, calc_var=True)
 
     return nt, z, p0
+
+
+def calibration_double_ended_ols(
+        ds, st_label, ast_label, rst_label, rast_label, verbose=False):
+    """
+
+    Parameters
+    ----------
+    ds
+    st_label
+    ast_label
+    rst_label
+    rast_label
+    verbose
+
+    Returns
+    -------
+
+    """
+
+    def construct_sparse_X(cal_ref, nt, nx_sec):
+        """In function to delete intermediate arrays"""
+        # Create sparse X matrix
+        XZ_T_val = np.concatenate((
+            1 / cal_ref,
+            1 / cal_ref), axis=1).flatten()
+        XZ_T_row = np.concatenate((
+            [np.arange(im * 3 * nt, 2 * nt + im * 3 * nt) for im in
+             range(nx_sec)]))
+        XZ_T_col = np.zeros_like(XZ_T_val)
+        XZ_1_val = -np.ones(2 * nt * nx_sec, dtype=int)
+        XZ_1_row = XZ_T_row
+        XZ_1_col = np.tile(np.arange(1, nt + 1), 2 * nx_sec)
+        XE_val = np.tile(
+            np.concatenate((
+                -np.ones(nt),
+                np.ones(2 * nt))),
+            nx_sec)
+        XE_row = np.arange(3 * nt * nx_sec)
+        XE_col = np.repeat(np.arange(nt + 1, 1 + nt + nx_sec), 3 * nt)
+        data = np.concatenate((XZ_T_val, XZ_1_val, XE_val))
+        coords = (np.concatenate((XZ_T_row, XZ_1_row, XE_row)),
+                  np.concatenate((XZ_T_col, XZ_1_col, XE_col)))
+        return coords, data
+
+    no, nt = ds[st_label].data.shape
+
+    ix_sec = ds.ufunc_per_section(x_indices=True, calc_per='all')
+    ds_sec = ds.isel(x=ix_sec)
+
+    x_sec = ds_sec['x']
+    st = ds_sec[st_label].values
+    ast = ds_sec[ast_label].values
+    rst = ds_sec[rst_label].values
+    rast = ds_sec[rast_label].values
+
+    nx_sec = x_sec.size
+
+    assert not np.any(st <= 0.), 'There is uncontrolled noise in the ST signal'
+    assert not np.any(
+        ast <= 0.), 'There is uncontrolled noise in the AST signal'
+    assert not np.any(
+        rst <= 0.), 'There is uncontrolled noise in the REV-ST signal'
+    assert not np.any(
+        rast <= 0.), 'There is uncontrolled noise in the REV-AST signal'
+
+    cal_ref = ds.ufunc_per_section(
+        label=st_label, ref_temp_broadcasted=True, calc_per='all') + 273.15
+
+    E, E_var = calc_alpha_double(
+        ds,
+        st_label,
+        ast_label,
+        rst_label,
+        rast_label)
+
+    E_sec = E.isel(x=ix_sec).values
+    p0_est = np.concatenate(([482.], nt * [1.4], E_sec))
+
+    F = np.log(st / ast)
+    B = np.log(rst / rast)
+
+    # Construct system of eqns
+    y = np.concatenate((F, B, (B - F) / 2), axis=1).flatten()
+
+    coords, data = construct_sparse_X(cal_ref, nt, nx_sec)
+    X = sp.coo_matrix(
+        (data, coords), shape=(3 * nt * nx_sec, 1 + nt + nx_sec),
+        copy=False)
+
+    p0 = ln.lsqr(X, y, x0=p0_est, show=verbose, calc_var=False)
+    p_sol = p0[0]
+
+    # put E outside of reference section in solution
+    po_sol = np.concatenate((p_sol[:nt + 1], E))
+    po_sol[ix_sec + 1 + nt] = p_sol[nt + 1:]
+
+    return nt, x_sec, po_sol
 
 
 def calibration_double_ended_wls(
@@ -484,6 +582,21 @@ def wls_stats(X, y, w=1., calc_cov=False, verbose=False):
         return p_sol, p_var, p_cov
     else:
         return p_sol, p_var
+
+
+def calc_alpha_double(
+        ds,
+        st_label,
+        ast_label,
+        rst_label,
+        rast_label):
+    i_fw = np.log(ds[st_label] / ds[ast_label])
+    i_bw = np.log(ds[rst_label] / ds[rast_label])
+
+    E = ((i_bw - i_fw) / 2).mean(dim='time')
+    E_var = ((i_bw - i_fw) / 2).std(dim='time')**2
+
+    return E, E_var
 
 
 def calc_weighted_alpha_double(

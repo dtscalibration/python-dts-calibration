@@ -113,7 +113,7 @@ class DataStore(xr.Dataset):
         # abbreviate attribute listing
         attr_list_all = s[attr_index:].split(sep='\n')
         if len(attr_list_all) > 10:
-            s_too_many = ['\n... and many more attributes. See: ds.attrs']
+            s_too_many = ['\n.. and many more attributes. See: ds.attrs']
             attr_list = attr_list_all[:10] + s_too_many
         else:
             attr_list = attr_list_all
@@ -985,18 +985,8 @@ class DataStore(xr.Dataset):
             correct_dims=('x', 'time'))
 
         if method == 'ols':
-            nt, z, p0_ = calibration_double_ended_ols(
+            nt, z, p_val = calibration_double_ended_ols(
                 self, st_label, ast_label, rst_label, rast_label)
-
-            p0 = p0_[0]
-            gamma = p0[0]
-            d = p0[1:nt + 1]
-            alpha = p0[nt + 1:]
-
-            # Can not estimate parameter variance with ols
-            gammavar = None
-            dvar = None
-            alphavar = None
 
         elif method == 'wls' or method == 'external':
             # External is also/always weighted
@@ -1019,18 +1009,12 @@ class DataStore(xr.Dataset):
                 for input_item in [nt, z, p_val, p_var, p_cov]:
                     assert input_item is not None
 
-            gamma = p_val[0]
-            d = p_val[1:nt + 1]
-            alpha = p_val[nt + 1:]
-
-            # Estimate of the standard error - sqrt(diag of the COV matrix) -
-            # is not squared
-            gammavar = p_var[0]
-            dvar = p_var[1:nt + 1]
-            alphavar = p_var[nt + 1:]
-
         else:
             raise ValueError('Choose a valid method')
+
+        gamma = p_val[0]
+        d = p_val[1:nt + 1]
+        alpha = p_val[nt + 1:]
 
         # store calibration parameters in DataStore
         self[store_gamma] = (tuple(), gamma)
@@ -1039,6 +1023,10 @@ class DataStore(xr.Dataset):
 
         # store variances in DataStore
         if method == 'wls' or method == 'external':
+            gammavar = p_var[0]
+            dvar = p_var[1:nt + 1]
+            alphavar = p_var[nt + 1:]
+
             self[store_gamma + variance_suffix] = (tuple(), gammavar)
             self[store_alpha + variance_suffix] = (('x',), alphavar)
             self[store_d + variance_suffix] = (('time',), dvar)
