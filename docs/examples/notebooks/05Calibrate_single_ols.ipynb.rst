@@ -45,6 +45,7 @@ anymore.
     4 recorded vars were found: LAF, ST, AST, TMP
     Recorded at 1461 points along the cable
     The measurement is single ended
+    Reading the data from disk
 
 
 .. code:: ipython3

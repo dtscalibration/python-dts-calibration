@@ -24,7 +24,6 @@ from .io import read_silixa_files_routine_v4
 from .io import read_silixa_files_routine_v6
 from .io import silixa_xml_version_check
 
-
 dtsattr_namelist = ['double_ended_flag']
 
 

@@ -41,6 +41,7 @@ channel should be aligned.
     6 recorded vars were found: LAF, ST, AST, REV-ST, REV-AST, TMP
     Recorded at 1693 points along the cable
     The measurement is double ended
+    Reading the data from disk
 
 
 .. code:: ipython3

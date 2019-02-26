@@ -1,5 +1,4 @@
 # coding=utf-8
-import dask.array as da
 import numpy as np
 import scipy.sparse as sp
 from scipy.sparse import linalg as ln

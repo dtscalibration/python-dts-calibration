@@ -78,6 +78,7 @@ polluted with files other than measurement files.
     6 recorded vars were found: LAF, ST, AST, REV-ST, REV-AST, TMP
     Recorded at 1693 points along the cable
     The measurement is double ended
+    Reading the data from disk
 
 
 The object tries to gather as much metadata from the measurement files
@@ -94,7 +95,8 @@ the first files and stored as attributes of the ``DataStore``.
 
     <dtscalibration.DataStore>
     Sections:
-                      ()Dimensions:                (time: 6, x: 1693)
+                      ()
+    Dimensions:                (time: 6, x: 1693)
     Coordinates:
       * x                      (x) float64 -80.5 -80.38 -80.25 ... 134.3 134.4 134.5
         filename               (time) <U31 'channel 1_20180328014052498.xml' ... 'channel 1_20180328014115480.xml'

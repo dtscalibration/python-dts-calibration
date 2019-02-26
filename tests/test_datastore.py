@@ -10,7 +10,6 @@ from dtscalibration import DataStore
 from dtscalibration import open_datastore
 from dtscalibration import read_sensornet_files
 from dtscalibration import read_silixa_files
-
 from dtscalibration.datastore_utils import shift_double_ended
 from dtscalibration.datastore_utils import suggest_cable_shift_double_ended
 
