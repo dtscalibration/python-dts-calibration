@@ -121,13 +121,13 @@ def test_has_sectionattr_upon_creation():
 
 def test_sections_property():
     ds = DataStore({
-        'st':                (['x', 'time'], np.ones((5, 5))),
-        'ast':               (['x', 'time'], np.ones((5, 5))),
+        'st':                (['x', 'time'], np.ones((100, 5))),
+        'ast':               (['x', 'time'], np.ones((100, 5))),
         'probe1Temperature': (['time'], range(5)),
         'probe2Temperature': (['time'], range(5))
         },
         coords={
-            'x':    range(5),
+            'x':    range(100),
             'time': range(5)})
 
     sections1 = {
@@ -154,13 +154,13 @@ def test_sections_property():
 
 def test_io_sections_property():
     ds = DataStore({
-        'st':                (['x', 'time'], np.ones((5, 5))),
-        'ast':               (['x', 'time'], np.ones((5, 5))),
+        'st':                (['x', 'time'], np.ones((100, 5))),
+        'ast':               (['x', 'time'], np.ones((100, 5))),
         'probe1Temperature': (['time'], range(5)),
         'probe2Temperature': (['time'], range(5))
         },
         coords={
-            'x':    range(5),
+            'x':    range(100),
             'time': range(5)})
 
     sections = {

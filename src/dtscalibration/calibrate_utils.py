@@ -258,37 +258,44 @@ def calibration_double_ended_wls(
         calc_cov=True,
         solver='sparse',
         verbose=False):
-    """
 
+    def construct_sparse_X(cal_ref, nt, nx_sec):
+        """In function to delete intermediate arrays"""
+        # Create sparse X matrix
+        XZ_T_val = np.concatenate((
+            1 / cal_ref,
+            1 / cal_ref), axis=1).flatten()
+        XZ_T_row = np.concatenate((
+            [np.arange(im * 3 * nt, 2 * nt + im * 3 * nt) for im in
+             range(nx_sec)]))
+        XZ_T_col = np.zeros_like(XZ_T_val)
+        XZ_1_val = -np.ones(2 * nt * nx_sec, dtype=int)
+        XZ_1_row = XZ_T_row
+        XZ_1_col = np.tile(np.arange(1, nt + 1), 2 * nx_sec)
+        XE_val = np.tile(
+            np.concatenate((
+                -np.ones(nt),
+                np.ones(2 * nt))),
+            nx_sec)
+        XE_row = np.arange(3 * nt * nx_sec)
+        XE_col = np.repeat(np.arange(nt + 1, 1 + nt + nx_sec), 3 * nt)
+        data = np.concatenate((XZ_T_val, XZ_1_val, XE_val))
+        coords = (np.concatenate((XZ_T_row, XZ_1_row, XE_row)),
+                  np.concatenate((XZ_T_col, XZ_1_col, XE_col)))
+        return coords, data
 
-    Parameters
-    ----------
-    verbose
-    ds : DataStore
-    st_label
-    ast_label
-    rst_label
-    rast_label
-    st_var
-    ast_var
-    rst_var
-    rast_var
-    calc_cov
-    solver : {'sparse', 'stats'}
+    no, nt = ds[st_label].data.shape
 
-    Returns
-    -------
+    ix_sec = ds.ufunc_per_section(x_indices=True, calc_per='all')
+    ds_sec = ds.isel(x=ix_sec)
 
-    """
+    x_sec = ds_sec['x']
+    st = ds_sec[st_label].values
+    ast = ds_sec[ast_label].values
+    rst = ds_sec[rst_label].values
+    rast = ds_sec[rast_label].values
 
-    cal_ref = ds.ufunc_per_section(
-        label=st_label, ref_temp_broadcasted=True, calc_per='all')
-
-    st = ds.ufunc_per_section(label=st_label, calc_per='all')
-    ast = ds.ufunc_per_section(label=ast_label, calc_per='all')
-    rst = ds.ufunc_per_section(label=rst_label, calc_per='all')
-    rast = ds.ufunc_per_section(label=rast_label, calc_per='all')
-    z = ds.ufunc_per_section(label='x', calc_per='all')
+    nx_sec = x_sec.size
 
     assert not np.any(st <= 0.), 'There is uncontrolled noise in the ST signal'
     assert not np.any(
@@ -298,79 +305,51 @@ def calibration_double_ended_wls(
     assert not np.any(
         rast <= 0.), 'There is uncontrolled noise in the REV-AST signal'
 
-    nx = z.size
+    cal_ref = ds.ufunc_per_section(
+        label=st_label, ref_temp_broadcasted=True, calc_per='all') + 273.15
 
-    _xsorted = np.argsort(ds.x.data)
-    _ypos = np.searchsorted(ds.x.data[_xsorted], z)
-    x_index = _xsorted[_ypos]
+    E, E_var = calc_weighted_alpha_double(
+        ds,
+        st_label,
+        ast_label,
+        rst_label,
+        rast_label,
+        st_var,
+        ast_var,
+        rst_var,
+        rast_var)
 
-    no, nt = ds[st_label].data.shape
+    E_sec = E.isel(x=ix_sec).values
+    p0_est = np.concatenate(([482.], nt * [1.4], E_sec))
 
-    p0_est_alpha = est_alpha_double(ds, st_label, ast_label, rst_label,
-                                    rast_label, 50).data.tolist()
-    p0_est = np.asarray([482.] + nt * [1.4] + p0_est_alpha)
+    F = np.log(st / ast)
+    B = np.log(rst / rast)
 
-    # Data for F and B temperature, 2 * nt * nx items
-    data1 = np.repeat(1 / (cal_ref.T.ravel() + 273.15), 2)  # gamma
-    data3 = -da.ones(2 * nt * nx, chunks=nt * nx)
-    data5 = da.stack(
-        (-da.ones(nt * nx, chunks=nt * nx),
-         da.ones(nt * nx, chunks=nt * nx))).T.ravel()
+    # Construct system of eqns
+    y = np.concatenate((F, B, (B - F) / 2), axis=1).flatten()
 
-    # Data for alpha, nt * no items
-    data9 = da.ones(nt * no, chunks=(nt * no,))  # alpha
-
-    data = da.concatenate([data1, data3, data5, data9])
-
-    # Coords (irow, icol)
-    coord1row = da.arange(2 * nt * nx, dtype=int, chunks=(nt * nx,))  # gamma
-    coord3row = da.arange(2 * nt * nx, dtype=int, chunks=(nt * nx,))  # C
-    coord5row = da.arange(2 * nt * nx, dtype=int, chunks=(nt * nx,))  # alpha
-
-    coord9row = da.arange(
-        2 * nt * nx, 2 * nt * nx + nt * no, dtype=int,
-        chunks=(nt * no,))  # alpha
-
-    coord1col = da.zeros(2 * nt * nx, dtype=int, chunks=(nt * nx,))  # gamma
-    coord3col = np.repeat(da.arange(nt, dtype=int, chunks=(nt,)) + 1,
-                          2 * nx).rechunk(nt * nx)  # C
-    coord5col = da.tile(np.repeat(x_index, 2) + nt + 1, nt).rechunk(
-        nt * nx)  # alpha
-    coord9col = da.tile(
-        da.arange(no, dtype=int, chunks=(nt * no,)) + nt + 1, nt)  # alpha
-
-    rows = [coord1row, coord3row, coord5row, coord9row]
-    cols = [coord1col, coord3col, coord5col, coord9col]
-    coords = (da.concatenate(rows).compute(), da.concatenate(cols).compute())
-
-    # try scipy.sparse.bsr_matrix
+    coords, data = construct_sparse_X(cal_ref, nt, nx_sec)
     X = sp.coo_matrix(
-        (data, coords), shape=(2 * nx * nt + nt * no, nt + 1 + no), copy=False)
+        (data, coords), shape=(3 * nt * nx_sec, 1 + nt + nx_sec),
+        copy=False)
 
-    # Spooky way to interleave and ravel arrays in correct order. Works!
-    y1F = np.log(st / ast).T.ravel()
-    y1B = np.log(rst / rast).T.ravel()
-    y1 = da.stack([y1F, y1B]).T.ravel()
+    # Weights: inversed variance
+    i_var_sec_fw = ds_sec.i_var_fw(
+        st_var,
+        ast_var,
+        st_label=st_label,
+        ast_label=ast_label)
+    i_var_sec_bw = ds_sec.i_var_bw(
+        rst_var,
+        rast_var,
+        rst_label=rst_label,
+        rast_label=rast_label)
 
-    y2F = np.log(ds[st_label].data / ds[ast_label].data).T.ravel()
-    y2B = np.log(ds[rst_label].data / ds[rast_label].data).T.ravel()
-    y2 = (y2B - y2F) / 2
-    y = da.concatenate([y1, y2])
-
-    assert not np.any(
-        np.isnan(y)), 'There are nan values in the measured (anti-) Stokes'
-
-    # Calculate the reprocical of the variance (not std)
-    w1F = (1 / st**2 * st_var + 1 / ast**2 * ast_var).T.ravel()
-    w1B = (1 / rst**2 * rst_var + 1 / rast**2 * rast_var).T.ravel()
-    w1 = da.stack([w1F, w1B]).T.ravel()
-
-    w2 = (
-        0.5 / ds[st_label].data**2 * st_var +
-        0.5 / ds[ast_label].data**2 * ast_var +
-        0.5 / ds[rst_label].data**2 * rst_var +
-        0.5 / ds[rast_label].data**2 * rast_var).T.ravel()
-    w = da.concatenate([w1, w2])
+    w = np.concatenate(
+        (1/i_var_sec_fw,
+         1/i_var_sec_bw,
+         1/((i_var_sec_fw + i_var_sec_bw) / 2)),
+        axis=1).flatten()
 
     if solver == 'sparse':
         p_sol, p_var, p_cov = wls_sparse(
@@ -384,10 +363,27 @@ def calibration_double_ended_wls(
         p_sol, p_var, p_cov = None, None, None
         return X, y, w, p0_est
 
+    # put E outside of reference section in solution
+    po_sol = np.concatenate((p_sol[:nt + 1], E))
+    po_sol[ix_sec + 1 + nt] = p_sol[nt + 1:]
+
+    po_var = np.concatenate((p_var[:nt + 1], E_var))
+    po_var[ix_sec + 1 + nt] = p_var[nt + 1:]
+
     if calc_cov:
-        return nt, z, p_sol, p_var, p_cov
+        po_cov = np.zeros((1 + nt + no, 1 + nt + no))
+        po_cov[nt + 1:, nt + 1:] = np.diag(E_var)
+
+        from_i = np.concatenate((np.arange(nt + 1), nt + 1 + ix_sec))
+
+        iox_sec1, iox_sec2 = np.meshgrid(
+            from_i, from_i, indexing='ij')
+        po_cov[iox_sec1, iox_sec2] = p_cov
+
+        return nt, x_sec, po_sol, po_var, po_cov
+
     else:
-        return nt, z, p_sol, p_var
+        return nt, x_sec, po_sol, po_var
 
 
 def wls_sparse(X, y, w=1., calc_cov=False, verbose=False, **kwargs):
@@ -490,36 +486,36 @@ def wls_stats(X, y, w=1., calc_cov=False, verbose=False):
         return p_sol, p_var
 
 
-def est_alpha_double(ds, st_label, ast_label, rst_label, rast_label, n):
-    """
+def calc_weighted_alpha_double(
+        ds,
+        st_label,
+        ast_label,
+        rst_label,
+        rast_label,
+        st_var,
+        ast_var,
+        rst_var,
+        rast_var):
 
-    Parameters
-    ----------
-    ds
-    st_label
-    ast_label
-    rst_label
-    rast_label
-    n : int
-        Number of time steps to average, ceiled by the
-        available time steps.
+    i_var_fw = ds.i_var_fw(
+        st_var,
+        ast_var,
+        st_label=st_label,
+        ast_label=ast_label)
+    i_var_bw = ds.i_var_bw(
+        rst_var,
+        rast_var,
+        rst_label=rst_label,
+        rast_label=rast_label)
 
-    Returns
-    -------
+    A_var = (i_var_fw + i_var_bw) / 2
 
-    """
-    if n > ds.time.size:
-        n = ds.time.size
+    i_fw = np.log(ds[st_label] / ds[ast_label])
+    i_bw = np.log(ds[rst_label] / ds[rast_label])
 
-    islice = np.linspace(
-        start=0,
-        stop=ds.time.size - 1,
-        num=n,
-        dtype=int)
+    A = (i_bw - i_fw) / 2
 
-    st = ds[st_label].isel(time=islice).mean(dim='time')
-    ast = ds[ast_label].isel(time=islice).mean(dim='time')
-    rst = ds[rst_label].isel(time=islice).mean(dim='time')
-    rast = ds[rast_label].isel(time=islice).mean(dim='time')
+    E_var = 1 / (1 / A_var).sum(dim='time')
+    E = (A / A_var).sum(dim='time') * E_var
 
-    return (np.log(rst / rast) - np.log(st / ast)) / 2
+    return E, E_var

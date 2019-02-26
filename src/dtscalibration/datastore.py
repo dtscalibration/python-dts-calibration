@@ -25,6 +25,9 @@ from .io import read_silixa_files_routine_v6
 from .io import silixa_xml_version_check
 
 
+dtsattr_namelist = ['double_ended_flag']
+
+
 class DataStore(xr.Dataset):
     """The data class that stores the measurements, contains calibration
     methods to relate Stokes and anti-Stokes to temperature. The user should
@@ -171,6 +174,9 @@ class DataStore(xr.Dataset):
                     assert isinstance(vi, slice), \
                         'The values of the sections-dictionary should ' \
                         'be lists of slice objects.'
+                    assert self.x.sel(x=vi).size > 0, \
+                        f'Better define the {k} section. You tried {vi}, ' \
+                        'which is out of reach'
 
         self.attrs['_sections'] = yaml.dump(sections)
         pass
@@ -622,7 +628,7 @@ class DataStore(xr.Dataset):
             _resid = np.concatenate(resid_res)
             _resid_x = self.ufunc_per_section(label='x', calc_per='all')
             isort = np.argsort(_resid_x)
-            resid_x = _resid_x[isort]
+            resid_x = _resid_x[isort]  # get indices from ufunc directly
             resid = _resid[isort, :]
 
             ix_resid = np.array(
@@ -639,6 +645,16 @@ class DataStore(xr.Dataset):
                     'time': self.time})
 
             return var_I, resid_da
+
+    def i_var_fw(self, st_var, ast_var, st_label='ST', ast_label='AST'):
+        st = self[st_label]
+        ast = self[ast_label]
+        return 1 / st**2 * st_var + 1 / ast**2 * ast_var
+
+    def i_var_bw(self, rst_var, rast_var, rst_label='ST', rast_label='AST'):
+        rst = self[rst_label]
+        rast = self[rast_label]
+        return 1 / rst**2 * rst_var + 1 / rast**2 * rast_var
 
     def inverse_variance_weighted_mean(
             self,
@@ -1609,6 +1625,10 @@ class DataStore(xr.Dataset):
         calc_per : {'all', 'section', 'stretch'}
         func_kwargs : dict
             Dictionary with options that are passed to func
+
+        TODO: Spend time on creating a slice instead of appendng everything
+        to a list and concatenating after.
+
 
         Returns
         -------
