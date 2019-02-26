@@ -202,15 +202,15 @@ confidence interval 'coordinates'.
         userAcquisitionTimeFW  (time) float32 2.0 2.0 2.0 2.0 2.0 2.0
         userAcquisitionTimeBW  (time) float32 2.0 2.0 2.0 2.0 2.0 2.0
         gamma                  float64 482.6
-        alpha                  (x) float64 -0.007159 -0.003301 ... -0.005167
-        d                      (time) float64 1.465 1.465 1.464 1.465 1.465 1.465
-        gamma_var              float64 0.03715
-        alpha_var              (x) float64 1.792e-07 1.714e-07 ... 1.808e-07
-        d_var                  (time) float64 4.621e-07 4.621e-07 ... 4.621e-07
-        TMPF                   (x, time) float64 16.8 17.05 16.32 ... 13.49 13.78
-        TMPB                   (x, time) float64 16.8 16.83 16.88 ... 13.74 13.69
-        p_val                  (params1) float64 482.6 1.465 ... -0.00527 -0.005167
-        p_cov                  (params1, params2) float64 0.03715 ... 1.808e-07
+        alpha                  (x) float64 -0.007156 -0.003301 ... -0.005165
+        d                      (time) float64 1.465 1.465 1.465 1.465 1.465 1.465
+        gamma_var              float64 0.04003
+        alpha_var              (x) float64 3.405e-07 3.56e-07 ... 3.374e-07
+        d_var                  (time) float64 4.948e-07 4.948e-07 ... 4.948e-07
+        TMPF                   (x, time) float64 16.79 17.04 16.32 ... 13.51 13.77
+        TMPB                   (x, time) float64 16.8 16.82 16.87 ... 13.76 13.68
+        p_val                  (params1) float64 482.6 1.465 ... -0.005271 -0.005165
+        p_cov                  (params1, params2) float64 0.04003 ... 3.374e-07
         TMPF_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 6)>
         TMPB_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 6)>
         TMPF_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 787, 6)>
