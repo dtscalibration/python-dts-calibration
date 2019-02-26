@@ -814,18 +814,8 @@ class DataStore(xr.Dataset):
         check_dims(self, [st_label, ast_label], correct_dims=('x', 'time'))
 
         if method == 'ols':
-            nt, z, p0_ = calibration_single_ended_ols(
+            nt, z, p_val = calibration_single_ended_ols(
                 self, st_label, ast_label)
-
-            p0 = p0_[0]
-            gamma = p0[0]
-            dalpha = p0[1]
-            c = p0[2:nt + 2]
-
-            # Can not estimate parameter variance with ols
-            gammavar = None
-            dalphavar = None
-            cvar = None
 
         elif method == 'wls' or method == 'external':
             if method == 'wls':
@@ -838,20 +828,14 @@ class DataStore(xr.Dataset):
                 for input_item in [nt, z, p_val, p_var, p_cov]:
                     assert input_item is not None
 
-            gamma = p_val[0]
-            dalpha = p_val[1]
-            c = p_val[2:nt + 2]
-
-            # Estimate of the standard error - sqrt(diag of the COV matrix) -
-            # is not squared
-            gammavar = p_var[0]
-            dalphavar = p_var[1]
-            cvar = p_var[2:nt + 2]
-
         else:
             raise ValueError('Choose a valid method')
 
         # store calibration parameters in DataStore
+        gamma = p_val[0]
+        dalpha = p_val[1]
+        c = p_val[2:nt + 2]
+
         self[store_gamma] = (tuple(), gamma)
         self[store_dalpha] = (tuple(), dalpha)
         self[store_alpha] = (('x',), dalpha * self.x.data)
@@ -859,6 +843,10 @@ class DataStore(xr.Dataset):
 
         # store variances in DataStore
         if method == 'wls' or method == 'external':
+            gammavar = p_var[0]
+            dalphavar = p_var[1]
+            cvar = p_var[2:nt + 2]
+
             self[store_gamma + variance_suffix] = (tuple(), gammavar)
             self[store_dalpha + variance_suffix] = (tuple(), dalphavar)
             self[store_c + variance_suffix] = (('time',), cvar)
@@ -1023,6 +1011,7 @@ class DataStore(xr.Dataset):
 
         # store variances in DataStore
         if method == 'wls' or method == 'external':
+            # the variances only have ameaning if the observations are weighted
             gammavar = p_var[0]
             dvar = p_var[1:nt + 1]
             alphavar = p_var[nt + 1:]

@@ -21,47 +21,53 @@ def calibration_single_ended_ols(ds, st_label, ast_label, verbose=False):
     """
     cal_ref = ds.ufunc_per_section(
         label=st_label, ref_temp_broadcasted=True, calc_per='all')
-    st = ds.ufunc_per_section(label=st_label, calc_per='all')
-    ast = ds.ufunc_per_section(label=ast_label, calc_per='all')
-    z = ds.ufunc_per_section(label='x', calc_per='all')
+
+    ix_sec = ds.ufunc_per_section(x_indices=True, calc_per='all')
+    ds_sec = ds.isel(x=ix_sec)
+
+    st = ds_sec[st_label].values
+    ast = ds_sec[ast_label].values
+    x_sec = ds_sec['x'].values
 
     assert not np.any(st <= 0.), 'There is uncontrolled noise in the ST signal'
     assert not np.any(
         ast <= 0.), 'There is uncontrolled noise in the AST signal'
 
-    nx = z.size
-
-    nt = ds[st_label].data.shape[1]
+    nx_sec = x_sec.size
+    nt = ds.time.size
 
     p0_est = np.asarray([482., 0.1] + nt * [1.4])
 
     # Eqs for F and B temperature
     data1 = 1 / (cal_ref.T.ravel() + 273.15)  # gamma
-    data2 = np.tile(-z, nt)  # dalpha
-    data3 = np.tile([-1.], nt * nx)  # C
+    data2 = np.tile(-x_sec, nt)  # dalpha
+    data3 = np.tile([-1.], nt * nx_sec)  # C
     data = np.concatenate([data1, data2, data3])
 
     # (irow, icol)
-    coord1row = np.arange(nt * nx, dtype=int)
-    coord2row = np.arange(nt * nx, dtype=int)
-    coord3row = np.arange(nt * nx, dtype=int)
+    coord1row = np.arange(nt * nx_sec, dtype=int)
+    coord2row = np.arange(nt * nx_sec, dtype=int)
+    coord3row = np.arange(nt * nx_sec, dtype=int)
 
-    coord1col = np.zeros(nt * nx, dtype=int)
-    coord2col = np.ones(nt * nx, dtype=int)
-    coord3col = np.repeat(np.arange(2, nt + 2, dtype=int), nx)
+    coord1col = np.zeros(nt * nx_sec, dtype=int)
+    coord2col = np.ones(nt * nx_sec, dtype=int)
+    coord3col = np.repeat(np.arange(2, nt + 2, dtype=int), nx_sec)
 
     rows = [coord1row, coord2row, coord3row]
     cols = [coord1col, coord2col, coord3col]
     coords = (np.concatenate(rows), np.concatenate(cols))
 
     # try scipy.sparse.bsr_matrix
-    X = sp.coo_matrix((data, coords), shape=(nt * nx, nt + 2), copy=False)
+    X = sp.coo_matrix(
+        (data, coords),
+        shape=(nt * nx_sec, nt + 2),
+        copy=False)
 
     y = np.log(st / ast).T.ravel()
     # noinspection PyTypeChecker
-    p0 = ln.lsqr(X, y, x0=p0_est, show=verbose, calc_var=True)
+    p0 = ln.lsqr(X, y, x0=p0_est, show=verbose, calc_var=False)
 
-    return nt, z, p0
+    return nt, x_sec, p0[0]
 
 
 def calibration_single_ended_wls(
@@ -96,41 +102,46 @@ def calibration_single_ended_wls(
     cal_ref = ds.ufunc_per_section(
         label=st_label, ref_temp_broadcasted=True, calc_per='all')
 
-    st = ds.ufunc_per_section(label=st_label, calc_per='all')
-    ast = ds.ufunc_per_section(label=ast_label, calc_per='all')
-    z = ds.ufunc_per_section(label='x', calc_per='all')
+    ix_sec = ds.ufunc_per_section(x_indices=True, calc_per='all')
+    ds_sec = ds.isel(x=ix_sec)
+
+    st = ds_sec[st_label].values
+    ast = ds_sec[ast_label].values
+    x_sec = ds_sec['x'].values
 
     assert not np.any(st <= 0.), 'There is uncontrolled noise in the ST signal'
     assert not np.any(
         ast <= 0.), 'There is uncontrolled noise in the AST signal'
 
-    nx = z.size
-
-    nt = ds[st_label].data.shape[1]
+    nx_sec = x_sec.size
+    nt = ds.time.size
 
     p0_est = np.asarray([482., 0.1] + nt * [1.4])
 
     # Eqs for F and B temperature
     data1 = 1 / (cal_ref.T.ravel() + 273.15)  # gamma
-    data2 = np.tile(-z, nt)  # dalpha
-    data3 = np.tile([-1.], nt * nx)  # C
+    data2 = np.tile(-x_sec, nt)  # dalpha
+    data3 = np.tile([-1.], nt * nx_sec)  # C
     data = np.concatenate([data1, data2, data3])
 
     # (irow, icol)
-    coord1row = np.arange(nt * nx, dtype=int)
-    coord2row = np.arange(nt * nx, dtype=int)
-    coord3row = np.arange(nt * nx, dtype=int)
+    coord1row = np.arange(nt * nx_sec, dtype=int)
+    coord2row = np.arange(nt * nx_sec, dtype=int)
+    coord3row = np.arange(nt * nx_sec, dtype=int)
 
-    coord1col = np.zeros(nt * nx, dtype=int)
-    coord2col = np.ones(nt * nx, dtype=int)
-    coord3col = np.repeat(np.arange(2, nt + 2, dtype=int), nx)
+    coord1col = np.zeros(nt * nx_sec, dtype=int)
+    coord2col = np.ones(nt * nx_sec, dtype=int)
+    coord3col = np.repeat(np.arange(2, nt + 2, dtype=int), nx_sec)
 
     rows = [coord1row, coord2row, coord3row]
     cols = [coord1col, coord2col, coord3col]
     coords = (np.concatenate(rows), np.concatenate(cols))
 
     # try scipy.sparse.bsr_matrix
-    X = sp.coo_matrix((data, coords), shape=(nt * nx, nt + 2), copy=False)
+    X = sp.coo_matrix(
+        (data, coords),
+        shape=(nt * nx_sec, nt + 2),
+        copy=False)
 
     y = np.log(st / ast).T.ravel()
 
@@ -151,9 +162,9 @@ def calibration_single_ended_wls(
         raise ValueError("Choose a valid solver")
 
     if calc_cov:
-        return nt, z, p_sol, p_var, p_cov
+        return nt, x_sec, p_sol, p_var, p_cov
     else:
-        return nt, z, p_sol, p_var
+        return nt, x_sec, p_sol, p_var
 
 
 def calibration_double_ended_ols(
@@ -204,7 +215,7 @@ def calibration_double_ended_ols(
     ix_sec = ds.ufunc_per_section(x_indices=True, calc_per='all')
     ds_sec = ds.isel(x=ix_sec)
 
-    x_sec = ds_sec['x']
+    x_sec = ds_sec['x'].values
     st = ds_sec[st_label].values
     ast = ds_sec[ast_label].values
     rst = ds_sec[rst_label].values
