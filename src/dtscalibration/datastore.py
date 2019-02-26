@@ -102,7 +102,7 @@ class DataStore(xr.Dataset):
                 preamble_new += ' and '.join(vl) + '\n'
 
         else:
-            preamble_new += 18 * ' ' + '()'
+            preamble_new += 18 * ' ' + '()\n'
 
         # add new preamble to the remainder of the former __repr__
         len_preamble_old = 8 + len(name_module) + 2
@@ -515,7 +515,7 @@ class DataStore(xr.Dataset):
         check_dims(self, [st_label], correct_dims=('x', 'time'))
         check_timestep_allclose(self, eps=0.01)
 
-        nt = self['time'].size
+        nt = self.time.size
 
         len_stretch_list = []  # number of reference points per section (
         # spatial)
@@ -531,12 +531,11 @@ class DataStore(xr.Dataset):
                 len_stretch_list.append(_x.size)
 
         n_sections = len(len_stretch_list)  # number of sections
-        n_locs = sum(
-            len_stretch_list)  # total number of locations along cable used
+        n_locs = sum(len_stretch_list)  # total number of locations along cable used
         # for reference.
 
         x = np.concatenate(x_list)  # coordinates are already in memory
-        y = np.asarray(da.concatenate(y_list))
+        y = np.concatenate(y_list)
 
         data1 = x
         data2 = np.ones(sum(len_stretch_list) * nt)
@@ -545,17 +544,15 @@ class DataStore(xr.Dataset):
         # alpha is NOT the same for all -> one column per section
         coords1row = np.arange(nt * n_locs)
         coords1col = np.hstack(
-            [
-                np.ones(in_locs * nt) * i
+            [np.ones(in_locs * nt) * i
                 for i, in_locs in enumerate(len_stretch_list)])  # C for
 
         # second calibration parameter is different per section and per timestep
         coords2row = np.arange(nt * n_locs)
         coords2col = np.hstack(
-            [
-                np.repeat(
-                    np.arange(i * nt + n_sections, (i + 1) * nt + n_sections),
-                    in_locs)
+            [np.repeat(
+                np.arange(i * nt + n_sections, (i + 1) * nt + n_sections),
+                in_locs)
                 for i, in_locs in enumerate(len_stretch_list)])  # C for
         coords = (
             np.concatenate([coords1row, coords2row]),

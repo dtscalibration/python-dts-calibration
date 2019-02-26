@@ -64,6 +64,7 @@ def calibration_single_ended_ols(ds, st_label, ast_label, verbose=False):
         copy=False)
 
     y = np.log(st / ast).T.ravel()
+
     # noinspection PyTypeChecker
     p0 = ln.lsqr(X, y, x0=p0_est, show=verbose, calc_var=False)
 

@@ -136,7 +136,7 @@ the first files and stored as attributes of the ``DataStore``.
         endIndex:uom:                                                            ...
         endIndex:#text:                                                          ...
     
-    ... and many more attributes. See: ds.attrs
+    .. and many more attributes. See: ds.attrs
 
 
 
