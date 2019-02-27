@@ -2,6 +2,7 @@
 import hashlib
 import os
 import tempfile
+from zipfile import ZipFile as zipf
 
 import dask.array as da
 import numpy as np
@@ -34,6 +35,21 @@ if 1:
     data_dir_sensornet_single_ended = os.path.join(wd,
                                                    'data',
                                                    'sensornet_oryx_v3.7')
+    data_dir_zipped_single_ended = os.path.join(wd, 'data',
+                                                 'zipped data',
+                                                 'single_ended.zip')
+    data_dir_zipped_double_ended = os.path.join(wd, 'data',
+                                                 'zipped data',
+                                                 'double_ended.zip')
+    data_dir_zipped_double_ended2 = os.path.join(wd, 'data',
+                                                 'zipped data',
+                                                 'double_ended2.zip')
+    data_dir_zipped_silixa_long = os.path.join(wd, 'data',
+                                                 'zipped data',
+                                                 'double_single_ended.zip')
+    data_dir_zipped_sensornet_single_ended = os.path.join(wd, 'data',
+                                                 'zipped data',
+                                                 'sensornet_oryx_v3.7.zip')
 
 else:
     # working dir is src
@@ -263,7 +279,7 @@ def test_read_silixa_files_double_loadinmemory():
     for k in ['ST', 'AST', 'REV-ST', 'REV-AST']:
         assert isinstance(ds[k].data, da.Array)
 
-    # auto -> True
+    # auto -> True Because small amount of data
     ds = read_silixa_files(
         directory=filepath,
         timezone_netcdf='UTC',
@@ -280,6 +296,27 @@ def test_read_silixa_files_double_loadinmemory():
         load_in_memory=True)
     for k in ['ST', 'AST', 'REV-ST', 'REV-AST']:
         assert isinstance(ds[k].data, np.ndarray)
+
+    pass
+
+
+def test_read_silixa_zipped():
+    files = [
+        data_dir_zipped_single_ended,
+        data_dir_zipped_double_ended,
+        data_dir_zipped_double_ended2,
+        data_dir_zipped_silixa_long,
+        # data_dir_zipped_sensornet_single_ended
+        ]
+    for file in files:
+        with zipf(file) as fh:
+            ds = read_silixa_files(
+                zip_handle=fh,
+                timezone_netcdf='UTC',
+                file_ext='*.xml',
+                load_in_memory=True)
+
+        assert ds._initialized
 
     pass
 

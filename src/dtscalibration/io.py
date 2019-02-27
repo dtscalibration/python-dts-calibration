@@ -1,4 +1,5 @@
 # coding=utf-8
+from contextlib import contextmanager
 import os
 
 import dask.array as da
@@ -55,6 +56,21 @@ _dim_attrs = {
 dim_attrs = {k: v for kl, v in _dim_attrs.items() for k in kl}
 
 
+@contextmanager
+def open_file(path, **kwargs):
+    if isinstance(path, tuple):
+        print('\nabout to open zipfile', path[0], '. from', path[1])
+        # assert isinstance(path[1], zip)
+        the_file = path[1].open(path[0], **kwargs)
+
+    else:
+        the_file = open(path, **kwargs)
+
+    yield the_file
+    the_file.close()
+    pass
+
+
 def silixa_xml_version_check(filepathlist):
     """Function which tests which version of xml files have to be read.
 
@@ -104,7 +120,10 @@ def read_silixa_files_routine_v6(
     from xml.etree import ElementTree
 
     # Open the first xml file using ET, get the name space and amount of data
-    xml_tree = ElementTree.parse(filepathlist[0])
+
+    with open_file(filepathlist[0]) as fh:
+        xml_tree = ElementTree.parse(fh)
+
     namespace = get_xml_namespace(xml_tree.getroot())
 
     logtree = xml_tree.find('./{0}log'.format(namespace))
@@ -208,7 +227,7 @@ def read_silixa_files_routine_v6(
         -------
 
         """
-        with open(file_handle, 'r') as f_h:
+        with open_file(file_handle, mode='r') as f_h:
             eltree = ElementTree.parse(f_h)
             arr_el = eltree.findall(arr_path, namespaces=ns)
 
@@ -271,7 +290,7 @@ def read_silixa_files_routine_v6(
         -------
 
         """
-        with open(file_handle, 'r') as f_h:
+        with open_file(file_handle, mode='r') as f_h:
             eltree = ElementTree.parse(f_h)
 
             out = []
@@ -304,7 +323,11 @@ def read_silixa_files_routine_v6(
             endDateTimeIndex = eltree.find(
                 's:log/s:endDateTimeIndex', namespaces=ns).text
 
-            file_name = os.path.split(file_handle)[1]
+            if isinstance(file_handle, tuple):
+                file_name = os.path.split(file_handle[0])[-1]
+            else:
+                file_name = os.path.split(file_handle)[-1]
+
             tstamp = np.int64(file_name[10:27])
 
             out += [tstamp, startDateTimeIndex, endDateTimeIndex]
@@ -323,9 +346,14 @@ def read_silixa_files_routine_v6(
             data_vars[name] = (('time',), ts_arr[name])
 
     # construct the coordinate dictionary
+    if isinstance(filepathlist[0], tuple):
+        filename_list = [os.path.split(f)[-1] for f, n2 in filepathlist]
+    else:
+        filename_list = [os.path.split(f)[-1] for f in filepathlist]
+
     coords = {
         'x': ('x', data_arr[0, :, 0], dim_attrs['x']),
-        'filename': ('time', [os.path.split(f)[1] for f in filepathlist]),
+        'filename': ('time', filename_list),
         'filename_tstamp': ('time', ts_arr['filename_tstamp'])}
 
     maxTimeIndex = pd.DatetimeIndex(ts_arr['maxDateTimeIndex'])
@@ -484,7 +512,7 @@ def read_silixa_files_routine_v4(
         -------
 
         """
-        with open(file_handle, 'r') as f_h:
+        with open_file(file_handle, mode='r') as f_h:
             eltree = ElementTree.parse(f_h)
             arr_el = eltree.findall(arr_path, namespaces=ns)
 
@@ -546,7 +574,7 @@ def read_silixa_files_routine_v4(
         -------
 
         """
-        with open(file_handle, 'r') as f_h:
+        with open_file(file_handle, mode='r') as f_h:
             eltree = ElementTree.parse(f_h)
 
             out = []
@@ -579,7 +607,11 @@ def read_silixa_files_routine_v4(
             endDateTimeIndex = eltree.find(
                 's:wellLog/s:maxDateTimeIndex', namespaces=ns).text
 
-            file_name = os.path.split(file_handle)[1]
+            if isinstance(file_handle, tuple):
+                file_name = os.path.split(file_handle[0])[-1]
+            else:
+                file_name = os.path.split(file_handle)[-1]
+
             tstamp = np.int64(file_name[10:-4])
 
             out += [tstamp, startDateTimeIndex, endDateTimeIndex]
@@ -883,7 +915,7 @@ def read_silixa_attrs_singlefile(filename, sep):
 
         return meta
 
-    with open(filename) as fh:
+    with open_file(filename) as fh:
         doc_ = xmltodict.parse(fh.read())
 
     if u'wellLogs' in doc_.keys():
@@ -908,12 +940,12 @@ def read_sensornet_single(filename):
     headerlength = 26
 
     # The $\circ$ Celsius symbol is unreadable in utf8
-    with open(filename, encoding='windows-1252') as fileobject:
+    with open_file(filename, encoding='windows-1252') as fileobject:
         filelength = sum([1 for _ in fileobject])
     datalength = filelength - headerlength
 
     meta = {}
-    with open(filename, encoding='windows-1252') as fileobject:
+    with open_file(filename, encoding='windows-1252') as fileobject:
         for ii in range(0, headerlength - 1):
             fileline = fileobject.readline().split('\t')
 

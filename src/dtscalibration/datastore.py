@@ -1899,6 +1899,7 @@ def open_datastore(
 def read_silixa_files(
         filepathlist=None,
         directory=None,
+        zip_handle=None,
         file_ext='*.xml',
         timezone_netcdf='UTC',
         silent=False,
@@ -1936,7 +1937,7 @@ def read_silixa_files(
     assert 'timezone_input_files' not in kwargs, 'The silixa files are ' \
                                                  'already timezone aware'
 
-    if isinstance(filepathlist, type(None)):
+    if filepathlist is None and zip_handle is None:
         filepathlist = sorted(glob.glob(os.path.join(directory, file_ext)))
 
         # Make sure that the list of files contains any files
@@ -1944,6 +1945,10 @@ def read_silixa_files(
             filepathlist) >= 1, 'No measurement files found in provided ' \
                                 'directory: \n' + \
                                 str(directory)
+
+    elif filepathlist is None and zip_handle:
+        filepathlist = ziphandle_to_filepathlist(fh=zip_handle,
+                                                 extension=file_ext)
 
     # Make sure that the list of files contains any files
     assert len(
@@ -2005,14 +2010,26 @@ def read_sensornet_files(
     kwargs : dict-like, optional
         keyword-arguments are passed to DataStore initialization
 
+    Notes
+    -----
+    Compressed sensornet files can not be directly decoded,
+    because the files are encoded with encoding='windows-1252' instead of
+    UTF-8.
+
     Returns
     -------
     datastore : DataStore
         The newly created datastore.
     """
 
-    if isinstance(filepathlist, type(None)):
+    if filepathlist is None:
         filepathlist = sorted(glob.glob(os.path.join(directory, file_ext)))
+
+        # Make sure that the list of files contains any files
+        assert len(
+            filepathlist) >= 1, 'No measurement files found in provided ' \
+                                'directory: \n' + \
+                                str(directory)
 
     # Make sure that the list of files contains any files
     assert len(
@@ -2027,6 +2044,26 @@ def read_sensornet_files(
 
     ds = DataStore(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
     return ds
+
+
+def ziphandle_to_filepathlist(fh=None, extension=None):
+    fnl_ = sorted(fh.namelist())
+
+    fnl = []
+    for name in fnl_:
+        if name[:1] == '_':
+            # private POSIX
+            continue
+
+        if fh.getinfo(name).is_dir():
+            continue
+
+        if not name.endswith(extension.strip('*')):
+            continue
+
+        fnl.append((name, fh))
+
+    return fnl
 
 
 def plot_dask(arr, file_path=None):
