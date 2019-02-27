@@ -59,7 +59,7 @@ dim_attrs = {k: v for kl, v in _dim_attrs.items() for k in kl}
 @contextmanager
 def open_file(path, **kwargs):
     if isinstance(path, tuple):
-        print('\nabout to open zipfile', path[0], '. from', path[1])
+        # print('\nabout to open zipfile', path[0], '. from', path[1])
         # assert isinstance(path[1], zip)
         the_file = path[1].open(path[0], **kwargs)
 
