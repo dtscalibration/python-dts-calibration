@@ -1,6 +1,6 @@
 # coding=utf-8
-from contextlib import contextmanager
 import os
+from contextlib import contextmanager
 
 import dask.array as da
 import numpy as np

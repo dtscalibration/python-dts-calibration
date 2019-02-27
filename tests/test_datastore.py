@@ -16,12 +16,12 @@ from dtscalibration.datastore_utils import suggest_cable_shift_double_ended
 
 np.random.seed(0)
 
-fn = ["channel 1_20170921112245510.xml",
-      "channel 1_20170921112746818.xml",
-      "channel 1_20170921112746818.xml"]
-fn_single = ["channel 2_20180504132202074.xml",
-             "channel 2_20180504132232903.xml",
-             "channel 2_20180504132303723.xml"]
+fn = [
+    "channel 1_20170921112245510.xml", "channel 1_20170921112746818.xml",
+    "channel 1_20170921112746818.xml"]
+fn_single = [
+    "channel 2_20180504132202074.xml", "channel 2_20180504132232903.xml",
+    "channel 2_20180504132303723.xml"]
 
 if 1:
     # working dir is tests
@@ -29,44 +29,33 @@ if 1:
     data_dir_single_ended = os.path.join(wd, 'data', 'single_ended')
     data_dir_double_ended = os.path.join(wd, 'data', 'double_ended')
     data_dir_double_ended2 = os.path.join(wd, 'data', 'double_ended2')
-    data_dir_silixa_long = os.path.join(wd,
-                                        'data',
-                                        'double_single_ended', 'channel_1')
-    data_dir_sensornet_single_ended = os.path.join(wd,
-                                                   'data',
-                                                   'sensornet_oryx_v3.7')
-    data_dir_zipped_single_ended = os.path.join(wd, 'data',
-                                                 'zipped data',
-                                                 'single_ended.zip')
-    data_dir_zipped_double_ended = os.path.join(wd, 'data',
-                                                 'zipped data',
-                                                 'double_ended.zip')
-    data_dir_zipped_double_ended2 = os.path.join(wd, 'data',
-                                                 'zipped data',
-                                                 'double_ended2.zip')
-    data_dir_zipped_silixa_long = os.path.join(wd, 'data',
-                                                 'zipped data',
-                                                 'double_single_ended.zip')
-    data_dir_zipped_sensornet_single_ended = os.path.join(wd, 'data',
-                                                 'zipped data',
-                                                 'sensornet_oryx_v3.7.zip')
+    data_dir_silixa_long = os.path.join(
+        wd, 'data', 'double_single_ended', 'channel_1')
+    data_dir_sensornet_single_ended = os.path.join(
+        wd, 'data', 'sensornet_oryx_v3.7')
+    data_dir_zipped_single_ended = os.path.join(
+        wd, 'data', 'zipped data', 'single_ended.zip')
+    data_dir_zipped_double_ended = os.path.join(
+        wd, 'data', 'zipped data', 'double_ended.zip')
+    data_dir_zipped_double_ended2 = os.path.join(
+        wd, 'data', 'zipped data', 'double_ended2.zip')
+    data_dir_zipped_silixa_long = os.path.join(
+        wd, 'data', 'zipped data', 'double_single_ended.zip')
+    data_dir_zipped_sensornet_single_ended = os.path.join(
+        wd, 'data', 'zipped data', 'sensornet_oryx_v3.7.zip')
 
 else:
     # working dir is src
-    data_dir_single_ended = os.path.join('..', '..',
-                                         'tests', 'data', 'single_ended')
-    data_dir_double_ended = os.path.join('..', '..',
-                                         'tests', 'data', 'double_ended')
-    data_dir_double_ended2 = os.path.join('..', '..',
-                                          'tests', 'data', 'double_ended2')
-    data_dir_silixa_long = os.path.join('..', '..',
-                                        'tests',
-                                        'data',
-                                        'double_single_ended', 'channel_1')
-    data_dir_sensornet_single_ended = os.path.join('..', '..',
-                                                   'tests',
-                                                   'data',
-                                                   'sensornet_oryx_v3.7')
+    data_dir_single_ended = os.path.join(
+        '..', '..', 'tests', 'data', 'single_ended')
+    data_dir_double_ended = os.path.join(
+        '..', '..', 'tests', 'data', 'double_ended')
+    data_dir_double_ended2 = os.path.join(
+        '..', '..', 'tests', 'data', 'double_ended2')
+    data_dir_silixa_long = os.path.join(
+        '..', '..', 'tests', 'data', 'double_single_ended', 'channel_1')
+    data_dir_sensornet_single_ended = os.path.join(
+        '..', '..', 'tests', 'data', 'sensornet_oryx_v3.7')
 
 
 def test_read_data_from_single_file_double_ended():
@@ -136,24 +125,27 @@ def test_has_sectionattr_upon_creation():
 
 
 def test_sections_property():
-    ds = DataStore({
-        'st':                (['x', 'time'], np.ones((100, 5))),
-        'ast':               (['x', 'time'], np.ones((100, 5))),
-        'probe1Temperature': (['time'], range(5)),
-        'probe2Temperature': (['time'], range(5))
-        },
+    ds = DataStore(
+        {
+            'st': (['x', 'time'], np.ones((100, 5))),
+            'ast': (['x', 'time'], np.ones((100, 5))),
+            'probe1Temperature': (['time'], range(5)),
+            'probe2Temperature': (['time'], range(5))},
         coords={
-            'x':    range(100),
+            'x': range(100),
             'time': range(5)})
 
     sections1 = {
-        'probe1Temperature': [slice(7.5, 17.), slice(70., 80.)],  # cold bath
-        'probe2Temperature': [slice(24., 34.), slice(85., 95.)],  # warm bath
-        }
+        'probe1Temperature': [slice(7.5, 17.),
+                              slice(70., 80.)],  # cold bath
+        'probe2Temperature': [slice(24., 34.),
+                              slice(85., 95.)],  # warm bath
+    }
     sections2 = {
         'probe1Temperature': [slice(0., 17.), slice(70., 80.)],  # cold bath
-        'probe2Temperature': [slice(24., 34.), slice(85., 95.)],  # warm bath
-        }
+        'probe2Temperature': [slice(24., 34.),
+                              slice(85., 95.)],  # warm bath
+    }
     ds.sections = sections1
 
     assert isinstance(ds._sections, str)
@@ -169,20 +161,22 @@ def test_sections_property():
 
 
 def test_io_sections_property():
-    ds = DataStore({
-        'st':                (['x', 'time'], np.ones((100, 5))),
-        'ast':               (['x', 'time'], np.ones((100, 5))),
-        'probe1Temperature': (['time'], range(5)),
-        'probe2Temperature': (['time'], range(5))
-        },
+    ds = DataStore(
+        {
+            'st': (['x', 'time'], np.ones((100, 5))),
+            'ast': (['x', 'time'], np.ones((100, 5))),
+            'probe1Temperature': (['time'], range(5)),
+            'probe2Temperature': (['time'], range(5))},
         coords={
-            'x':    range(100),
+            'x': range(100),
             'time': range(5)})
 
     sections = {
-        'probe1Temperature': [slice(7.5, 17.), slice(70., 80.)],  # cold bath
-        'probe2Temperature': [slice(24., 34.), slice(85., 95.)],  # warm bath
-        }
+        'probe1Temperature': [slice(7.5, 17.),
+                              slice(70., 80.)],  # cold bath
+        'probe2Temperature': [slice(24., 34.),
+                              slice(85., 95.)],  # warm bath
+    }
 
     ds.sections = sections
 
@@ -213,9 +207,7 @@ def test_io_sections_property():
 def test_read_silixa_files_single_ended():
     filepath = data_dir_single_ended
     ds = read_silixa_files(
-        directory=filepath,
-        timezone_netcdf='UTC',
-        file_ext='*.xml')
+        directory=filepath, timezone_netcdf='UTC', file_ext='*.xml')
 
     assert ds._initialized
 
@@ -225,9 +217,7 @@ def test_read_silixa_files_single_ended():
 def test_read_silixa_files_double_ended():
     filepath = data_dir_double_ended
     ds = read_silixa_files(
-        directory=filepath,
-        timezone_netcdf='UTC',
-        file_ext='*.xml')
+        directory=filepath, timezone_netcdf='UTC', file_ext='*.xml')
 
     assert ds._initialized
 
@@ -307,7 +297,7 @@ def test_read_silixa_zipped():
         data_dir_zipped_double_ended2,
         data_dir_zipped_silixa_long,
         # data_dir_zipped_sensornet_single_ended
-        ]
+    ]
     for file in files:
         with zipf(file) as fh:
             ds = read_silixa_files(
@@ -324,9 +314,7 @@ def test_read_silixa_zipped():
 def test_read_long_silixa_files():
     filepath = data_dir_silixa_long
     ds = read_silixa_files(
-        directory=filepath,
-        timezone_netcdf='UTC',
-        file_ext='*.xml')
+        directory=filepath, timezone_netcdf='UTC', file_ext='*.xml')
 
     assert ds._initialized
 
@@ -383,9 +371,7 @@ def read_data_from_fp_numpy(fp):
 def test_resample_datastore():
     filepath = data_dir_single_ended
     ds = read_silixa_files(
-        directory=filepath,
-        timezone_netcdf='UTC',
-        file_ext='*.xml')
+        directory=filepath, timezone_netcdf='UTC', file_ext='*.xml')
     assert ds.time.size == 3
 
     ds_resampled = ds.resample_datastore(how='mean', time="47S")
@@ -399,9 +385,7 @@ def test_resample_datastore():
 def test_timeseries_keys():
     filepath = data_dir_single_ended
     ds = read_silixa_files(
-        directory=filepath,
-        timezone_netcdf='UTC',
-        file_ext='*.xml')
+        directory=filepath, timezone_netcdf='UTC', file_ext='*.xml')
 
     k = ds.timeseries_keys
 
@@ -421,9 +405,7 @@ def test_shift_double_ended_shift_backforward():
     # shifting it back and forward, should result in the same
     filepath = data_dir_double_ended
     ds = read_silixa_files(
-        directory=filepath,
-        timezone_netcdf='UTC',
-        file_ext='*.xml')
+        directory=filepath, timezone_netcdf='UTC', file_ext='*.xml')
 
     dsmin1 = shift_double_ended(ds, -1)
     ds2 = shift_double_ended(dsmin1, 1)
@@ -448,9 +430,7 @@ def test_suggest_cable_shift_double_ended():
 
     filepath = data_dir_double_ended
     ds = read_silixa_files(
-        directory=filepath,
-        timezone_netcdf='UTC',
-        file_ext='*.xml')
+        directory=filepath, timezone_netcdf='UTC', file_ext='*.xml')
 
     irange = np.arange(-4, 4)
     suggest_cable_shift_double_ended(ds, irange, plot_result=True)
