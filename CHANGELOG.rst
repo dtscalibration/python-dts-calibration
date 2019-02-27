@@ -4,9 +4,7 @@ Changelog
 
 0.6.2 (2019-02-26)
 ------------------
-* Double-ended weighted calibration procedure is rewritten so that the
-integrated differential attenuation outside of the reference sections is
-calculated seperately. Better memory usage and faster
+* Double-ended weighted calibration procedure is rewritten so that the integrated differential attenuation outside of the reference sections is calculated seperately. Better memory usage and faster
 * Other calibration routines cleaned up
 * Official support for Python 3.7
 * Coverage figures are now trustworthy
