@@ -91,8 +91,10 @@ class DataStore(xr.Dataset):
         preamble_new = u'<dtscalibration.%s>' % name_module
 
         # Add sections to new preamble
-        preamble_new += '\nSections:\n'
+        preamble_new += '\nSections:'
         if hasattr(self, '_sections') and self.sections:
+            preamble_new += '\n'
+
             unit = self.x.units
             for k, v in self.sections.items():
                 preamble_new += '    {0: <23}'.format(k)
