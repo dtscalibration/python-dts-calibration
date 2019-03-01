@@ -1137,3 +1137,23 @@ def coords_time(
                 'description': 'Acquisition time of the backward measurement'})
 
     return coords
+
+
+def ziphandle_to_filepathlist(fh=None, extension=None):
+    fnl_ = sorted(fh.namelist())
+
+    fnl = []
+    for name in fnl_:
+        if name[:1] == '_':
+            # private POSIX
+            continue
+
+        if fh.getinfo(name).is_dir():
+            continue
+
+        if not name.endswith(extension.strip('*')):
+            continue
+
+        fnl.append((name, fh))
+
+    return fnl
