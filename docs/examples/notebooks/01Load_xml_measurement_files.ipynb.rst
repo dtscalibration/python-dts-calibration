@@ -94,8 +94,7 @@ the first files and stored as attributes of the ``DataStore``.
 .. parsed-literal::
 
     <dtscalibration.DataStore>
-    Sections:
-                      ()
+    Sections:                  ()
     Dimensions:                (time: 6, x: 1693)
     Coordinates:
       * x                      (x) float64 -80.5 -80.38 -80.25 ... 134.3 134.4 134.5
