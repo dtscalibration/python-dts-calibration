@@ -414,15 +414,15 @@ def test_calibration_ols():
                                    ast_label=ast_label,
                                    rst_label=rst_label,
                                    rast_label=rast_label,
+                                   store_tmpw='TMPW',
                                    method='ols')
 
-    ds100['TMPAVG'] = (ds100.TMPF + ds100.TMPB) / 2
-    np.testing.assert_array_almost_equal(ds100.TMPAVG.data,
+    np.testing.assert_array_almost_equal(ds100['TMPW'].data,
                                          ds100.TMP.data,
                                          decimal=1)
 
     ds009 = ds100.sel(x=sections_ultima['probe1Temperature'][0])
-    np.testing.assert_array_almost_equal(ds009.TMPAVG.data,
+    np.testing.assert_array_almost_equal(ds009['TMPW'].data,
                                          ds009.TMP.data,
                                          decimal=2)
     pass

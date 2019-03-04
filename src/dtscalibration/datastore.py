@@ -1024,20 +1024,20 @@ class DataStore(xr.Dataset):
             self[store_d + variance_suffix] = (('time',), dvar)
 
         # deal with FW
-        if store_tmpf:
+        if store_tmpf or (store_tmpw and method == 'ols'):
             tempF_data = gamma / \
                          (np.log(self[st_label].data / self[ast_label].data)
                           + d + alpha[:, None]) - 273.15
             self[store_tmpf] = (('x', 'time'), tempF_data)
 
         # deal with BW
-        if store_tmpb:
+        if store_tmpb or (store_tmpw and method == 'ols'):
             tempB_data = gamma / \
                          (np.log(self[rst_label].data / self[rast_label].data)
                           + d - alpha[:, None]) - 273.15
             self[store_tmpb] = (('x', 'time'), tempB_data)
 
-        if store_tmpw:
+        if store_tmpw and method == 'wls':
             self.conf_int_double_ended(
                 p_val=p_val,
                 p_cov=p_cov,
@@ -1058,6 +1058,11 @@ class DataStore(xr.Dataset):
                 ci_avg_time_flag=False,
                 da_random_state=None,
                 remove_mc_set_flag=True)
+
+        elif store_tmpw and method == 'ols':
+            self[store_tmpw] = (self[store_tmpf] + self[store_tmpb]) / 2
+        else:
+            pass
 
         if store_p_val and (method == 'wls' or method == 'external'):
             # TODO: add params1 dimension
@@ -1396,10 +1401,12 @@ class DataStore(xr.Dataset):
 
         del_tmpf_after, del_tmpb_after = False, False
         if store_tmpw and not store_tmpf:
-            del_tmpf_after = True
+            if store_tmpf in self:
+                del_tmpf_after = True
             store_tmpf = 'TMPF'
         if store_tmpw and not store_tmpb:
-            del_tmpb_after = True
+            if store_tmpb in self:
+                del_tmpb_after = True
             store_tmpb = 'TMPB'
 
         no, nt = self[st_label].shape
@@ -1454,18 +1461,21 @@ class DataStore(xr.Dataset):
             self['d_MC'] = (('MC', 'time'), d)
 
             # calculate alpha seperately
-            not_ix_sec = np.array([i for i in range(no) if i not in ix_sec])
-            not_alpha_val = p_val[nt + 1 + not_ix_sec]
-            not_alpha_var = p_cov[nt + 1 + not_ix_sec, nt + 1 + not_ix_sec]
-
-            not_alpha_mc = np.random.normal(
-                loc=not_alpha_val,
-                scale=not_alpha_var ** 0.5,
-                size=(conf_ints_size, not_alpha_val.size))
-
             alpha = np.zeros((conf_ints_size, no), dtype=float)
             alpha[:, ix_sec] = po_mc[:, nt + 1:]
-            alpha[:, not_ix_sec] = not_alpha_mc
+
+            not_ix_sec = np.array([i for i in range(no) if i not in ix_sec])
+
+            if np.any(not_ix_sec):
+                not_alpha_val = p_val[nt + 1 + not_ix_sec]
+                not_alpha_var = p_cov[nt + 1 + not_ix_sec, nt + 1 + not_ix_sec]
+
+                not_alpha_mc = np.random.normal(
+                    loc=not_alpha_val,
+                    scale=not_alpha_var ** 0.5,
+                    size=(conf_ints_size, not_alpha_val.size))
+
+                alpha[:, not_ix_sec] = not_alpha_mc
 
             self['alpha_MC'] = (('MC', 'x'), alpha)
 
@@ -1772,7 +1782,7 @@ class DataStore(xr.Dataset):
                     assert not temp_err
                     assert not ref_temp_broadcasted
                     # so it is slicable with x-indices
-                    self['_x_indices'] = self.x.astype(int) * 0 + range(
+                    self['_x_indices'] = self.x.astype(int) * 0 + np.arange(
                         self.x.size)
                     arg1 = self['_x_indices'].sel(x=stretch).data
                     del self['_x_indices']
