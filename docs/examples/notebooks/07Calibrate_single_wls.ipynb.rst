@@ -137,8 +137,8 @@ as an estimate of the variance in measured signals.
 
 .. code:: ipython3
 
-    st_var, resid = ds.variance_stokes(st_label=st_label, suppress_info=1)
-    ast_var, _ = ds.variance_stokes(st_label=ast_label, suppress_info=1)
+    st_var, resid = ds.variance_stokes(st_label=st_label)
+    ast_var, _ = ds.variance_stokes(st_label=ast_label)
 
 Similar to the ols procedure, we make a single function call to
 calibrate the temperature. If the method is ``wls`` and confidence
