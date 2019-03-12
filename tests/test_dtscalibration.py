@@ -112,17 +112,13 @@ def test_double_ended_variance_estimate_synthetic():
         'warm': [slice(0.5 * cable_len, cable_len)]}
 
     mst_var, _ = ds.variance_stokes(st_label='mst',
-                                    sections=sections,
-                                    suppress_info=True)
+                                    sections=sections)
     mast_var, _ = ds.variance_stokes(st_label='mast',
-                                     sections=sections,
-                                     suppress_info=True)
+                                     sections=sections)
     mrst_var, _ = ds.variance_stokes(st_label='mrst',
-                                     sections=sections,
-                                     suppress_info=True)
+                                     sections=sections)
     mrast_var, _ = ds.variance_stokes(st_label='mrast',
-                                      sections=sections,
-                                      suppress_info=True)
+                                      sections=sections)
 
     st_label = 'mst'
     ast_label = 'mast'
@@ -262,11 +258,9 @@ def test_single_ended_variance_estimate_synthetic():
     ast_label = 'mast'
 
     mst_var, _ = ds.variance_stokes(st_label=st_label,
-                                    sections=sections,
-                                    suppress_info=True)
+                                    sections=sections)
     mast_var, _ = ds.variance_stokes(st_label=ast_label,
-                                     sections=sections,
-                                     suppress_info=True)
+                                     sections=sections)
 
     # MC variqnce
     ds.calibration_single_ended(sections=sections,
@@ -316,7 +310,7 @@ def test_single_ended_variance_estimate_synthetic():
 
 
 def test_variance_of_stokes():
-    correct_var = 12.03
+    correct_var = 9.983
     filepath = data_dir_double_ended2
     ds = read_silixa_files(
         directory=filepath,
@@ -328,20 +322,13 @@ def test_variance_of_stokes():
         }
 
     I_var, _ = ds.variance_stokes(st_label='ST',
-                                  sections=sections,
-                                  use_statsmodels=True)
-    np.testing.assert_almost_equal(I_var, correct_var, decimal=1)
-
-    I_var, _ = ds.variance_stokes(st_label='ST',
-                                  sections=sections,
-                                  use_statsmodels=False)
+                                  sections=sections)
     np.testing.assert_almost_equal(I_var, correct_var, decimal=1)
 
     ds_dask = ds.chunk(chunks={})
     I_var, _ = ds_dask.variance_stokes(
         st_label='ST',
-        sections=sections,
-        use_statsmodels=False)
+        sections=sections)
     np.testing.assert_almost_equal(I_var, correct_var, decimal=1)
 
     pass
@@ -361,7 +348,7 @@ def test_variance_of_stokes_synthetic():
     nx = 50
     x = np.linspace(0., 20., nx)
 
-    nt = 1000
+    nt = 200
     beta = np.linspace(3000, 4000, nt)[None]
 
     y = beta * np.exp(-0.001 * x[:, None])
@@ -381,8 +368,7 @@ def test_variance_of_stokes_synthetic():
 
     sections = {'probe1Temperature': [slice(0., 20.), ]}
     test_ST_var, _ = ds.variance_stokes(st_label='test_ST',
-                                        sections=sections,
-                                        suppress_info=True)
+                                        sections=sections)
 
     np.testing.assert_almost_equal(test_ST_var, yvar,
                                    decimal=1)

@@ -11,6 +11,7 @@ import scipy.sparse as sp
 import scipy.stats as sst
 import xarray as xr
 import yaml
+from scipy.optimize import minimize
 from scipy.sparse import linalg as ln
 
 from .calibrate_utils import calibration_double_ended_ols
@@ -472,6 +473,157 @@ class DataStore(xr.Dataset):
             self,
             st_label,
             sections=None,
+            reshape_residuals=True,
+            nt_for_init_est=10):
+        """Calculates the variance between the measurements and a best fit
+        at each reference section. This fits a function to the nt * nx
+        measurements with ns * nt + nx parameters. The temperature is
+        constant along the reference sections, so the expression of the
+        Stokes power can be split in a time series per reference section and
+        a constant per observation location.
+
+        Assumptions: 1) the temperature is the same along a reference
+        section.
+
+        Idea from discussion at page 127 in Richter, P. H. (1995). Estimating
+        errors in least-squares fitting.
+
+        Parameters
+        ----------
+        reshape_residuals
+        st_label : str
+            label of the Stokes, anti-Stokes measurement.
+            E.g., ST, AST, REV-ST, REV-AST
+        sections : dict, optional
+            Define sections. See documentation
+
+        Returns
+        -------
+        I_var : float
+            Variance of the residuals between measured and best fit
+        resid : array_like
+            Residuals between measured and best fit
+
+        Notes
+        -----
+        Because there are a large number of unknowns, spend time on
+        calculating an initial estimate. Can be turned off by setting to False.
+        """
+        def func_fit(p, xs_st, xs_en, ts_st, ts_en):
+            return np.concatenate(
+                [p[xss:xse, None] * p[None, tss:tse] for xss, xse, tss, tse in
+                 zip(xs_st, xs_en, ts_st, ts_en)], axis=0)
+
+        def func_cost(p, data, xs_st, xs_en, ts_st, ts_en):
+            fit = func_fit(p, xs_st, xs_en, ts_st, ts_en)
+            return np.sum((fit - data) ** 2)
+
+        if sections:
+            self.sections = sections
+        else:
+            assert self.sections, 'sections are not defined'
+
+        check_dims(self, [st_label], correct_dims=('x', 'time'))
+        check_timestep_allclose(self, eps=0.01)
+
+        size_per_section = self.ufunc_per_section(
+            func=len, x_indices=True, calc_per='section')
+
+        ns = len(size_per_section)  # number of sections
+
+        # calculate initial estimate
+        nt = self.time.size
+
+        if nt_for_init_est and nt > 2 * nt_for_init_est:
+            tskip_init_est = int(nt / nt_for_init_est)
+
+            data = np.array(
+                self.isel(time=slice(None, None, tskip_init_est)
+                          ).ufunc_per_section(
+                              label=st_label, calc_per='all'))
+            nx, nt_init = data.shape
+
+            xs_en = np.cumsum(list(size_per_section.values())) + ns * nt_init
+            xs_st = np.concatenate(
+                ([0], np.cumsum(list(size_per_section.values()))[:-1])
+                ) + ns * nt_init
+
+            ts_st = np.arange(ns) * nt_init
+            ts_en = np.arange(ns) * nt_init + nt_init
+
+            npar = ns * nt_init + nx
+
+            p0 = np.ones(npar) * data.mean() ** 0.5
+
+            res = minimize(
+                func_cost, p0,
+                args=(data, xs_st, xs_en, ts_st, ts_en),
+                method='Powell')
+            p_ = res.x
+
+            # construct p1
+            pt_ = np.arange(0, nt, tskip_init_est)
+            p_t = [p_[tss:tse] for tss, tse in zip(ts_st, ts_en)]
+
+            p1_t = [np.interp(range(nt), pt_, p_ti) for p_ti in p_t]
+            p1 = np.concatenate((np.concatenate(p1_t), p_[ns * nt_init:]))
+
+        else:
+            data = np.array(
+                self.isel(
+                    time=slice(None, 10)
+                    ).ufunc_per_section(
+                        label=st_label, calc_per='all'))
+            nx = data.shape[0]
+
+            npar = ns * nt + nx
+
+            p1 = np.ones(npar) * data.mean() ** 0.5
+
+        # use initial estimate
+        data = np.array(
+            self.ufunc_per_section(
+                label=st_label, calc_per='all'))
+
+        xs_en = np.cumsum(list(size_per_section.values())) + ns * nt
+        xs_st = np.concatenate(
+            ([0], np.cumsum(list(size_per_section.values()))[:-1])
+            ) + ns * nt
+
+        ts_st = np.arange(ns) * nt
+        ts_en = np.arange(ns) * nt + nt
+
+        res = minimize(
+            func_cost, p1,
+            args=(data, xs_st, xs_en, ts_st, ts_en),
+            method='Powell')
+        fit = func_fit(res.x, xs_st, xs_en, ts_st, ts_en)
+
+        resid = fit - data
+        var_I = resid.std(ddof=npar)**2
+
+        if not reshape_residuals:
+            return var_I, resid
+
+        else:
+            ix_resid = self.ufunc_per_section(x_indices=True, calc_per='all')
+
+            resid_sorted = np.full(
+                shape=self[st_label].shape, fill_value=np.nan)
+            resid_sorted[ix_resid, :] = resid
+            resid_da = xr.DataArray(
+                data=resid_sorted,
+                dims=('x', 'time'),
+                coords={
+                    'x': self.x,
+                    'time': self.time})
+
+            return var_I, resid_da
+
+    def variance_stokes_exponential(
+            self,
+            st_label,
+            sections=None,
             use_statsmodels=False,
             suppress_info=True,
             reshape_residuals=True):
@@ -571,7 +723,7 @@ class DataStore(xr.Dataset):
 
             X = sp.coo_matrix(
                 (data, coords),
-                shape=(nt * n_locs, n_sections + nt * n_sections),
+                shape=(nt * n_locs, ddof),
                 dtype=float,
                 copy=False)
 
@@ -615,23 +767,25 @@ class DataStore(xr.Dataset):
         else:
             # restructure the residuals, such that they can be plotted and
             # added to ds
-            resid_res = []
-            for leni, lenis, lenie in zip(
-                    len_stretch_list,
-                    nt * np.cumsum([0] + len_stretch_list[:-1]),
-                    nt * np.cumsum(len_stretch_list)):
+            # resid_res = []
+            # for leni, lenis, lenie in zip(
+            #         len_stretch_list,
+            #         nt * np.cumsum([0] + len_stretch_list[:-1]),
+            #         nt * np.cumsum(len_stretch_list)):
+            #
+            #     resid_res.append(
+            #         resid[lenis:lenie].reshape((leni, nt), order='F'))
+            #
+            # _resid = np.concatenate(resid_res)
+            # _resid_x = self.ufunc_per_section(label='x', calc_per='all')
+            # isort = np.argsort(_resid_x)
+            # resid_x = _resid_x[isort]  # get indices from ufunc directly
+            # resid = _resid[isort, :]
 
-                resid_res.append(
-                    resid[lenis:lenie].reshape((leni, nt), order='F'))
+            # ix_resid = np.array(
+            #     [np.argmin(np.abs(ai - self.x.data)) for ai in resid_x])
 
-            _resid = np.concatenate(resid_res)
-            _resid_x = self.ufunc_per_section(label='x', calc_per='all')
-            isort = np.argsort(_resid_x)
-            resid_x = _resid_x[isort]  # get indices from ufunc directly
-            resid = _resid[isort, :]
-
-            ix_resid = np.array(
-                [np.argmin(np.abs(ai - self.x.data)) for ai in resid_x])
+            ix_resid = self.ufunc_per_section(x_indices=True, calc_per='all')
 
             resid_sorted = np.full(
                 shape=self[st_label].shape, fill_value=np.nan)
