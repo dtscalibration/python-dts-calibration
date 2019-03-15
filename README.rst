@@ -80,6 +80,12 @@ Installation
 ::
 
     pip install dtscalibration
+    
+Or the development version directly from GitHub
+
+::
+
+    pip install https://github.com/dtscalibration/python-dts-calibration/zipball/master --upgrade
 
 Learn by examples
 =================
