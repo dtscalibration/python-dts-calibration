@@ -185,7 +185,7 @@ entire measurement period'.
         store_tmpf='TMPF',
         store_tempvar='_var',
         conf_ints=[2.5, 97.5],
-        conf_ints_size=500,
+        mc_sample_size=500,
         ci_avg_time_flag=False)
 
 Lets compare our calibrated values with the device calibration
