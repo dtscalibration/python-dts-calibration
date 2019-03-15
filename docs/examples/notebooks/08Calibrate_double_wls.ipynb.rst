@@ -121,7 +121,7 @@ solver because it saves us memory.
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x7fae613a4b38>
+    <matplotlib.collections.QuadMesh at 0x7f9420bf1898>
 
 
 
@@ -169,10 +169,10 @@ background temperature with a confidence interval.
         rast_var=rast_var,
         store_tmpf='TMPF',
         store_tmpb='TMPB',
-        store_tmpw='TMPW',  # <- 
+        store_tmpw='TMPW',
         store_tempvar='_var',
         conf_ints=[2.5, 50., 97.5],
-        conf_ints_size=500,
+        mc_sample_size=500,  # <- choose a much larger sample size
         ci_avg_time_flag=False)
 
 .. code:: ipython3
@@ -234,15 +234,15 @@ confidence interval 'coordinates'.
         d_var                  (time) float64 4.854e-07 4.854e-07 ... 4.854e-07
         TMPF                   (x, time) float64 16.8 17.05 16.32 ... 13.49 13.78
         TMPB                   (x, time) float64 16.8 16.83 16.88 ... 13.74 13.69
-        TMPF_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 6)>
-        TMPB_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 6)>
-        TMPW                   (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 6)>
-        TMPW_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 6)>
+        TMPF_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(699, 6)>
+        TMPB_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(699, 6)>
+        TMPW                   (x, time) float64 dask.array<shape=(787, 6), chunksize=(699, 6)>
+        TMPW_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(699, 6)>
         p_val                  (params1) float64 482.6 1.465 ... -0.005271 -0.005165
         p_cov                  (params1, params2) float64 0.03927 ... 2.256e-07
-        TMPF_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 787, 6)>
-        TMPB_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 787, 6)>
-        TMPW_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 787, 6)>
+        TMPF_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 699, 6)>
+        TMPB_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 699, 6)>
+        TMPW_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 699, 6)>
 
 
 

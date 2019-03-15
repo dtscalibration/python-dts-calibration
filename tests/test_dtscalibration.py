@@ -281,7 +281,7 @@ def test_single_ended_variance_estimate_synthetic():
         store_tmpf='TMPF',
         store_tempvar='_var',
         conf_ints=[2.5, 50., 97.5],
-        conf_ints_size=500,
+        mc_sample_size=500,
         ci_avg_time_flag=False,
         da_random_state=state
         )

@@ -1085,7 +1085,7 @@ class DataStore(xr.Dataset):
             Label of where to store the calibrated temperature of the
             backward direction
         store_tmpw : str
-        tmpw_MC_size : int
+        tmpw_mc_size : int
         variance_suffix : str, optional
             String appended for storing the variance. Only used when method
             is wls.
@@ -1227,11 +1227,12 @@ class DataStore(xr.Dataset):
             store_tmpf='TMPF',
             store_tempvar='_var',
             conf_ints=None,
-            conf_ints_size=100,
+            mc_sample_size=100,
             ci_avg_time_flag=False,
             ci_avg_x_flag=False,
             da_random_state=None,
-            remove_mc_set_flag=True):
+            remove_mc_set_flag=True,
+            reduce_memory_usage=False):
         """
 
         Parameters
@@ -1266,7 +1267,7 @@ class DataStore(xr.Dataset):
             A list with the confidence boundaries that are calculated. Valid
             values are between
             [0, 1].
-        conf_ints_size : int
+        mc_sample_size : int
             Size of the monte carlo parameter set used to calculate the
             confidence interval
         ci_avg_time_flag : bool
@@ -1287,6 +1288,8 @@ class DataStore(xr.Dataset):
         remove_mc_set_flag : bool
             Remove the monte carlo data set, from which the CI and the
             variance are calculated.
+        reduce_memory_usage : bool
+            Use less memory but at the expense of longer computation time
         """
 
         assert conf_ints
@@ -1299,7 +1302,7 @@ class DataStore(xr.Dataset):
         no, nt = self[st_label].data.shape
         npar = nt + 2  # number of parameters
 
-        self.coords['MC'] = range(conf_ints_size)
+        self.coords['MC'] = range(mc_sample_size)
         self.coords['CI'] = conf_ints
 
         assert isinstance(p_val, (str, np.ndarray, np.generic))
@@ -1326,7 +1329,7 @@ class DataStore(xr.Dataset):
             assert p_cov.shape == (npar, npar)
 
             p_mc = sst.multivariate_normal.rvs(
-                mean=p_val, cov=p_cov, size=conf_ints_size)
+                mean=p_val, cov=p_cov, size=mc_sample_size)
 
             gamma = p_mc[:, 0]
             dalpha = p_mc[:, 1]
@@ -1339,38 +1342,32 @@ class DataStore(xr.Dataset):
                 'time',
             ), c)
 
-        rshape = (self.MC.size, self.x.size, self.time.size)
+        rsize = (self.MC.size, self.x.size, self.time.size)
 
-        if ci_avg_x_flag and not ci_avg_time_flag:
-            r2shape = {0: -1, 1: -1, 2: 'auto'}
-
-        elif ci_avg_x_flag and ci_avg_time_flag:
-            r2shape = {0: -1, 1: 'auto', 2: 'auto'}
-
+        if reduce_memory_usage:
+            memchunk = da.ones((mc_sample_size, no, nt),
+                               chunks={0: -1, 1: 1, 2: 'auto'}).chunks
         else:
-            r2shape = {0: -1, 1: 'auto', 2: -1}
+            if not ci_avg_time_flag:
+                memchunk = da.ones((mc_sample_size, no, nt),
+                                   chunks={0: -1, 1: 'auto', 2: 'auto'}).chunks
+            else:
+                memchunk = da.ones((mc_sample_size, no, nt),
+                                   chunks={0: -1, 1: 'auto', 2: -1}).chunks
 
         for k, st_labeli, st_vari in zip(
             ['r_st', 'r_ast'],
             [st_label, ast_label],
                 [st_var, ast_var]):
-            if hasattr(self[st_labeli].data, 'chunks'):
-                chunks = self[st_label].chunks
-                self[k] = (
-                    ('MC', 'x', 'time'),
-                    state.normal(
-                        loc=da.rechunk(self[st_labeli].data, chunks=chunks),
-                        scale=st_vari**0.5,
-                        size=rshape,
-                        chunks=r2shape))
-            else:
-                self[k] = (
-                    ('MC', 'x', 'time'),
-                    state.normal(
-                        loc=da.from_array(self[st_labeli].data, chunks={}),
-                        scale=st_vari**0.5,
-                        size=rshape,
-                        chunks=r2shape))
+            loc = da.from_array(self[st_labeli].data, chunks=memchunk[1:])
+
+            self[k] = (
+                ('MC', 'x', 'time'),
+                state.normal(
+                    loc=loc,  # has chunks=memchunk[1:]
+                    scale=st_vari ** 0.5,
+                    size=rsize,
+                    chunks=memchunk))
 
         self[store_tmpf + '_MC_set'] = self['gamma_MC'] / (
             np.log(self['r_st'] / self['r_ast']) + self['c_MC'] +
@@ -1450,7 +1447,7 @@ class DataStore(xr.Dataset):
             ci_avg_time_flag=False,
             da_random_state=None,
             remove_mc_set_flag=True,
-            reduce_memory_usage=True):
+            reduce_memory_usage=False):
         """
 
         Parameters
@@ -1523,6 +1520,8 @@ class DataStore(xr.Dataset):
         remove_mc_set_flag : bool
             Remove the monte carlo data set, from which the CI and the
             variance are calculated.
+        reduce_memory_usage : bool
+            Use less memory but at the expense of longer computation time
 
         TODO Always dask array
 
@@ -1701,15 +1700,13 @@ class DataStore(xr.Dataset):
 
             # Calculate the CI of the weighted MC_set
             if conf_ints:
-                q1 = self[store_tmpw + '_MC_set'].data.rechunk(memchunk)
-
                 # We first need to know the x-dim-chunk-size
                 if ci_avg_time_flag:
-                    new_chunks_weighted = ((len(conf_ints),),) + (q1.chunks[1],)
+                    new_chunks_weighted = ((len(conf_ints),),) + (memchunk[1],)
                 else:
-                    new_chunks_weighted = ((len(conf_ints),),) + q1.chunks[1:]
+                    new_chunks_weighted = ((len(conf_ints),),) + memchunk[1:]
 
-                q2 = q1.map_blocks(
+                q2 = self[store_tmpw + '_MC_set'].data.map_blocks(
                     lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
                     chunks=new_chunks_weighted,  # Explicitly define output chunks
                     drop_axis=avg_axis,  # avg dimensions are dropped from input arr
