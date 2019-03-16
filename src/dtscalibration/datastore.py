@@ -477,7 +477,8 @@ class DataStore(xr.Dataset):
             nt_for_init_est=20):
         """Calculates the variance between the measurements and a best fit
         at each reference section. This fits a function to the nt * nx
-        measurements with ns * nt + nx parameters. The temperature is
+        measurements with ns * nt + nx parameters, where nx are the total
+        number of obervation locations along all sections. The temperature is
         constant along the reference sections, so the expression of the
         Stokes power can be split in a time series per reference section and
         a constant per observation location.
@@ -509,13 +510,11 @@ class DataStore(xr.Dataset):
         Because there are a large number of unknowns, spend time on
         calculating an initial estimate. Can be turned off by setting to False.
         """
-        def func_fit(p, xs_st, xs_en, ts_st, ts_en):
-            return np.concatenate(
-                [p[xss:xse, None] * p[None, tss:tse] for xss, xse, tss, tse in
-                 zip(xs_st, xs_en, ts_st, ts_en)], axis=0)
+        def func_fit(p, xs):
+            return p[:xs, None] * p[None, xs:]
 
-        def func_cost(p, data, xs_st, xs_en, ts_st, ts_en):
-            fit = func_fit(p, xs_st, xs_en, ts_st, ts_en)
+        def func_cost(p, data, xs):
+            fit = func_fit(p, xs)
             return np.sum((fit - data) ** 2)
 
         if sections:
@@ -526,80 +525,25 @@ class DataStore(xr.Dataset):
         check_dims(self, [st_label], correct_dims=('x', 'time'))
         check_timestep_allclose(self, eps=0.01)
 
-        size_per_section = self.ufunc_per_section(
-            func=len, x_indices=True, calc_per='section')
+        data_dict = self.ufunc_per_section(
+                label=st_label, calc_per='section')
+        resid_list = []
 
-        ns = len(size_per_section)  # number of sections
+        for k, v in data_dict.items():
+            nxs, nt = v.shape
+            npar = nt + nxs
 
-        # calculate initial estimate
-        nt = self.time.size
-
-        if nt_for_init_est and nt > 2 * nt_for_init_est:
-            tskip_init_est = int(nt / nt_for_init_est)
-
-            data = np.array(
-                self.isel(time=slice(None, None, tskip_init_est)
-                          ).ufunc_per_section(
-                              label=st_label, calc_per='all'))
-            nx, nt_init = data.shape
-
-            xs_en = np.cumsum(list(size_per_section.values())) + ns * nt_init
-            xs_st = np.concatenate(
-                ([0], np.cumsum(list(size_per_section.values()))[:-1])
-                ) + ns * nt_init
-
-            ts_st = np.arange(ns) * nt_init
-            ts_en = np.arange(ns) * nt_init + nt_init
-
-            npar = ns * nt_init + nx
-
-            p0 = np.ones(npar) * data.mean() ** 0.5
+            p1 = np.ones(npar) * v.mean() ** 0.5
 
             res = minimize(
-                func_cost, p0,
-                args=(data, xs_st, xs_en, ts_st, ts_en),
+                func_cost, p1,
+                args=(v, nxs),
                 method='Powell')
-            p_ = res.x
 
-            # construct p1
-            pt_ = np.arange(0, nt, tskip_init_est)
-            p_t = [p_[tss:tse] for tss, tse in zip(ts_st, ts_en)]
+            fit = func_fit(res.x, nxs)
+            resid_list.append(fit - v)
 
-            p1_t = [np.interp(range(nt), pt_, p_ti) for p_ti in p_t]
-            p1 = np.concatenate((np.concatenate(p1_t), p_[ns * nt_init:]))
-
-        else:
-            data = np.array(
-                self.isel(
-                    time=slice(None, 10)
-                    ).ufunc_per_section(
-                        label=st_label, calc_per='all'))
-            nx = data.shape[0]
-
-            npar = ns * nt + nx
-
-            p1 = np.ones(npar) * data.mean() ** 0.5
-
-        # use initial estimate
-        data = np.array(
-            self.ufunc_per_section(
-                label=st_label, calc_per='all'))
-
-        xs_en = np.cumsum(list(size_per_section.values())) + ns * nt
-        xs_st = np.concatenate(
-            ([0], np.cumsum(list(size_per_section.values()))[:-1])
-            ) + ns * nt
-
-        ts_st = np.arange(ns) * nt
-        ts_en = np.arange(ns) * nt + nt
-
-        res = minimize(
-            func_cost, p1,
-            args=(data, xs_st, xs_en, ts_st, ts_en),
-            method='Powell')
-        fit = func_fit(res.x, xs_st, xs_en, ts_st, ts_en)
-
-        resid = fit - data
+        resid = np.concatenate(resid_list)
         var_I = resid.std(ddof=npar)**2
 
         if not reshape_residuals:
