@@ -71,12 +71,31 @@ def plot_residuals_reference_sections(
         if title:
             fig.suptitle(title)
 
+        # Create the unsorted list
         section_list = []
         section_name_list = []
         for section in sections:
             for sl in sections[section]:
                 section_list.append(sl)
                 section_name_list.append(section)
+
+        # Make dictionaries to start sorting
+        sections_dict = {}
+        section_start_dict = {}
+        for ii in range(len(section_list)):
+            sections_dict[str(ii)] = [section_name_list[ii],
+                                      section_list[ii]]
+            section_start_dict[str(ii)] = section_list[ii].start
+
+        sorted_sections = sorted(sections_dict,
+                                 key=section_start_dict.__getitem__,
+                                 reverse=True)
+
+        # Create the sorted name and slice lists
+        section_name_list = [sections_dict[name][0] for name in
+                             sorted_sections]
+        section_list      = [sections_dict[name][1] for name in
+                             sorted_sections]
 
         resid_sections = [resid.sel(x=section) for section in section_list]
 
@@ -97,7 +116,8 @@ def plot_residuals_reference_sections(
                 right=0.9,
                 top=0.88)
 
-        x_ax_avg = fig.add_subplot(grid[0, 1])
+        _x_ax_avg = fig.add_subplot(grid[0, 1])
+        x_ax_avg = _x_ax_avg.twinx()
 
         cbar_ax = fig.add_subplot(grid[1:, 2])
 
@@ -155,12 +175,15 @@ def plot_residuals_reference_sections(
                                        c='black', linewidth=0.8)
             section_ax_avg[ii].set_ylabel('')
 
+        cbar_ax.set_ylabel(units)
+
         for ii, section_avg in enumerate(section_ax_avg):
             section_avg.set_ylim(section_ylims[ii])
             ticks = section_avg.set_yticks(section_ylims[ii])
             ticks[0].label1.set_verticalalignment('bottom')
             ticks[1].label1.set_verticalalignment('top')
         section_ax_avg[-1].set_xticks([np.ceil(vmin), 0, np.floor(vmax)])
+        section_ax_avg[-1].set_xlabel(units)
 
         for section_ax in section_axes[:-1]:
             section_ax.set_xlabel('')
@@ -173,6 +196,7 @@ def plot_residuals_reference_sections(
         x_ax_avg.axhline(0, linestyle='-', c='black', linewidth=0.8)
         x_ax_avg.set_xlabel('')
         x_ax_avg.set_ylabel(units)
+        _x_ax_avg.set_yticks([])
 
         # make the legend
         legend_ax.fill_between([], [], facecolor='blue', label='STD')
