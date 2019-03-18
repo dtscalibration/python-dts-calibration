@@ -80,15 +80,15 @@ def plot_residuals_reference_sections(
 
         resid_sections = [resid.sel(x=section) for section in section_list]
 
-        # section_ylims = [[sl.start, sl.stop] for sl in section_list]
+        section_ylims = [[sl.start, sl.stop] for sl in section_list]
         section_height_ratios = [sl.stop-sl.start for sl in section_list]
         nsections = len(section_list)
 
         grid = plt.GridSpec(
                 ncols=3,
                 nrows=nsections+1,
-                height_ratios=section_height_ratios +
-                [sum(section_height_ratios)/5],
+                height_ratios=[sum(section_height_ratios)/5] +
+                section_height_ratios,
                 width_ratios=[0.2, 0.8, 0.1],
                 hspace=0.15,
                 wspace=0.15,
@@ -154,6 +154,13 @@ def plot_residuals_reference_sections(
             section_ax_avg[ii].axvline(0, linestyle='-',
                                        c='black', linewidth=0.8)
             section_ax_avg[ii].set_ylabel('')
+
+        for ii, section_avg in enumerate(section_ax_avg):
+            section_avg.set_ylim(section_ylims[ii])
+            ticks = section_avg.set_yticks(section_ylims[ii])
+            ticks[0].label1.set_verticalalignment('bottom')
+            ticks[1].label1.set_verticalalignment('top')
+        section_ax_avg[-1].set_xticks([np.ceil(vmin), 0, np.floor(vmax)])
 
         for section_ax in section_axes[:-1]:
             section_ax.set_xlabel('')
