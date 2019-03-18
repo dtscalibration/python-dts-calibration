@@ -2,9 +2,9 @@
 import os
 
 import numpy as np
+import pytest
 import scipy.sparse as sp
 from scipy import stats
-import pytest
 
 from dtscalibration import DataStore
 from dtscalibration import read_silixa_files
@@ -596,10 +596,10 @@ def test_single_ended_exponential_variance_estimate_synthetic():
     st_label = 'mst'
     ast_label = 'mast'
 
-    mst_var, _ = ds.variance_stokes_exponential(st_label=st_label,
-                                    sections=sections)
-    mast_var, _ = ds.variance_stokes_exponential(st_label=ast_label,
-                                     sections=sections)
+    mst_var, _ = ds.variance_stokes_exponential(
+        st_label=st_label, sections=sections)
+    mast_var, _ = ds.variance_stokes_exponential(
+        st_label=ast_label, sections=sections)
 
     # MC variqnce
     ds.calibration_single_ended(sections=sections,
@@ -660,8 +660,8 @@ def test_exponential_variance_of_stokes():
         'probe2Temperature': [slice(24., 34.), slice(85., 95.)],  # warm bath
         }
 
-    I_var, _ = ds.variance_stokes_exponential(st_label='ST',
-                                  sections=sections)
+    I_var, _ = ds.variance_stokes_exponential(
+        st_label='ST', sections=sections)
     np.testing.assert_almost_equal(I_var, correct_var, decimal=1)
 
     ds_dask = ds.chunk(chunks={})
@@ -706,8 +706,8 @@ def test_exponential_variance_of_stokes_synthetic():
         attrs={'isDoubleEnded': '0'})
 
     sections = {'probe1Temperature': [slice(0., 20.), ]}
-    test_ST_var, _ = ds.variance_stokes_exponential(st_label='test_ST',
-                                        sections=sections)
+    test_ST_var, _ = ds.variance_stokes_exponential(
+        st_label='test_ST', sections=sections)
 
     np.testing.assert_almost_equal(test_ST_var, yvar,
                                    decimal=1)

@@ -59,7 +59,8 @@ method.
 
     Calculates the variance between the measurements and a best fit
             at each reference section. This fits a function to the nt * nx
-            measurements with ns * nt + nx parameters. The temperature is
+            measurements with ns * nt + nx parameters, where nx are the total
+            number of obervation locations along all sections. The temperature is
             constant along the reference sections, so the expression of the
             Stokes power can be split in a time series per reference section and
             a constant per observation location.
@@ -102,7 +103,7 @@ method.
 
 .. parsed-literal::
 
-    The variance of the Stokes signal along the reference sections is approximately 9.983193019139009 on a 2.0 sec acquisition time
+    The variance of the Stokes signal along the reference sections is approximately 9.04505608648951 on a 2.0 sec acquisition time
 
 
 .. code:: ipython3
