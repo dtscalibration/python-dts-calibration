@@ -709,7 +709,25 @@ class DataStore(xr.Dataset):
         if not reshape_residuals:
             return var_I, resid
         else:
-            ix_resid = self.ufunc_per_section(x_indices=True, calc_per='all')
+            # restructure the residuals, such that they can be plotted and
+            # added to ds
+            resid_res = []
+            for leni, lenis, lenie in zip(
+                    len_stretch_list,
+                    nt * np.cumsum([0] + len_stretch_list[:-1]),
+                    nt * np.cumsum(len_stretch_list)):
+
+                resid_res.append(
+                    resid[lenis:lenie].reshape((leni, nt), order='F'))
+
+            _resid = np.concatenate(resid_res)
+            _resid_x = self.ufunc_per_section(label='x', calc_per='all')
+            isort = np.argsort(_resid_x)
+            resid_x = _resid_x[isort]  # get indices from ufunc directly
+            resid = _resid[isort, :]
+
+            ix_resid = np.array(
+                [np.argmin(np.abs(ai - self.x.data)) for ai in resid_x])
 
             resid_sorted = np.full(
                 shape=self[st_label].shape, fill_value=np.nan)
