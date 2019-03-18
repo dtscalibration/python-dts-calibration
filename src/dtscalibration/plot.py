@@ -94,8 +94,8 @@ def plot_residuals_reference_sections(
         # Create the sorted name and slice lists
         section_name_list = [sections_dict[name][0] for name in
                              sorted_sections]
-        section_list      = [sections_dict[name][1] for name in
-                             sorted_sections]
+        section_list = [sections_dict[name][1] for name in
+                        sorted_sections]
 
         resid_sections = [resid.sel(x=section) for section in section_list]
 
