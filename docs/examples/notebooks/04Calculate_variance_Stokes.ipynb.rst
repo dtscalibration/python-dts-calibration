@@ -17,6 +17,13 @@ estimate the variance of the noise to: - Perform a weighted calibration
     
     %matplotlib inline
 
+
+.. parsed-literal::
+
+    d:\github\pydts2\python-dts-calibration\.tox\docs\lib\site-packages\dask\config.py:168: YAMLLoadWarning: calling yaml.load() without Loader=... is deprecated, as the default Loader is unsafe. Please read https://msg.pyyaml.org/load for full details.
+      data = yaml.load(f.read()) or {}
+    
+
 .. code:: ipython3
 
     filepath = os.path.join('..', '..', 'tests', 'data', 'double_ended2')
@@ -34,7 +41,7 @@ estimate the variance of the noise to: - Perform a weighted calibration
     Recorded at 1693 points along the cable
     The measurement is double ended
     Reading the data from disk
-
+    
 
 And we define the sections as we learned from the previous notebook.
 Sections are required to calculate the variance in the Stokes.
@@ -46,6 +53,13 @@ Sections are required to calculate the variance in the Stokes.
         'probe2Temperature': [slice(24., 34.), slice(85., 95.)],  # warm bath
         }
     ds.sections = sections
+
+
+.. parsed-literal::
+
+    d:\github\pydts2\python-dts-calibration\src\dtscalibration\datastore.py:155: YAMLLoadWarning: calling yaml.load() without Loader=... is deprecated, as the default Loader is unsafe. Please read https://msg.pyyaml.org/load for full details.
+      return yaml.load(self.attrs['_sections'])
+    
 
 Lets first read the documentation about the ``ds.variance_stokes``
 method.
@@ -91,7 +105,7 @@ method.
             resid : array_like
                 Residuals between measured and best fit
             
-
+    
 
 .. code:: ipython3
 
@@ -102,8 +116,8 @@ method.
 
 .. parsed-literal::
 
-    The variance of the Stokes signal along the reference sections is approximately 12.040800227546796 on a 2.0 sec acquisition time
-
+    The variance of the Stokes signal along the reference sections is approximately 12.040800227546795 on a 2.0 sec acquisition time
+    
 
 .. code:: ipython3
 
@@ -111,24 +125,25 @@ method.
     
     fig_handle = plot.plot_residuals_reference_sections(
             residuals,
+            sections,
             title='Distribution of the noise in the Stokes signal',
             plot_avg_std=I_var ** 0.5,
             plot_names=True,
-            sections=sections,
             robust=True,
-            units='')
+            units='',
+            method='single')
 
 
 .. parsed-literal::
 
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration/.tox/docs/lib/python3.6/site-packages/numpy/lib/nanfunctions.py:1628: RuntimeWarning: Degrees of freedom <= 0 for slice.
+    d:\github\pydts2\python-dts-calibration\.tox\docs\lib\site-packages\numpy\lib\nanfunctions.py:1628: RuntimeWarning: Degrees of freedom <= 0 for slice.
       keepdims=keepdims)
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration/.tox/docs/lib/python3.6/site-packages/xarray/core/nanops.py:161: RuntimeWarning: Mean of empty slice
+    d:\github\pydts2\python-dts-calibration\.tox\docs\lib\site-packages\xarray\core\nanops.py:159: RuntimeWarning: Mean of empty slice
       return np.nanmean(a, axis=axis, dtype=dtype)
+    
 
 
-
-.. image:: 04Calculate_variance_Stokes.ipynb_files/04Calculate_variance_Stokes.ipynb_9_1.png
+.. image:: 04Calculate_variance_Stokes.ipynb_files%5C04Calculate_variance_Stokes.ipynb_9_1.png
 
 
 The residuals should be normally distributed and independent from
@@ -151,7 +166,7 @@ by coils/sharp bends in cable - Attenuation caused by a splice
 
 
 
-.. image:: 04Calculate_variance_Stokes.ipynb_files/04Calculate_variance_Stokes.ipynb_11_0.png
+.. image:: 04Calculate_variance_Stokes.ipynb_files%5C04Calculate_variance_Stokes.ipynb_11_0.png
 
 
 We can follow the same steps to calculate the variance from the noise in
