@@ -103,7 +103,7 @@ channel should be aligned.
                 Label of where to store the calibrated temperature of the
                 backward direction
             store_tmpw : str
-            tmpw_MC_size : int
+            tmpw_mc_size : int
             variance_suffix : str, optional
                 String appended for storing the variance. Only used when method
                 is wls.

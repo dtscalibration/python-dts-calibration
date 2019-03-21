@@ -11,6 +11,7 @@ import scipy.sparse as sp
 import scipy.stats as sst
 import xarray as xr
 import yaml
+from scipy.optimize import minimize
 from scipy.sparse import linalg as ln
 
 from .calibrate_utils import calibration_double_ended_ols
@@ -472,6 +473,101 @@ class DataStore(xr.Dataset):
             self,
             st_label,
             sections=None,
+            reshape_residuals=True,
+            nt_for_init_est=20):
+        """Calculates the variance between the measurements and a best fit
+        at each reference section. This fits a function to the nt * nx
+        measurements with ns * nt + nx parameters, where nx are the total
+        number of obervation locations along all sections. The temperature is
+        constant along the reference sections, so the expression of the
+        Stokes power can be split in a time series per reference section and
+        a constant per observation location.
+
+        Assumptions: 1) the temperature is the same along a reference
+        section.
+
+        Idea from discussion at page 127 in Richter, P. H. (1995). Estimating
+        errors in least-squares fitting.
+
+        Parameters
+        ----------
+        reshape_residuals
+        st_label : str
+            label of the Stokes, anti-Stokes measurement.
+            E.g., ST, AST, REV-ST, REV-AST
+        sections : dict, optional
+            Define sections. See documentation
+
+        Returns
+        -------
+        I_var : float
+            Variance of the residuals between measured and best fit
+        resid : array_like
+            Residuals between measured and best fit
+
+        Notes
+        -----
+        Because there are a large number of unknowns, spend time on
+        calculating an initial estimate. Can be turned off by setting to False.
+        """
+        def func_fit(p, xs):
+            return p[:xs, None] * p[None, xs:]
+
+        def func_cost(p, data, xs):
+            fit = func_fit(p, xs)
+            return np.sum((fit - data) ** 2)
+
+        if sections:
+            self.sections = sections
+        else:
+            assert self.sections, 'sections are not defined'
+
+        check_dims(self, [st_label], correct_dims=('x', 'time'))
+        check_timestep_allclose(self, eps=0.01)
+
+        data_dict = self.ufunc_per_section(
+                label=st_label, calc_per='section')
+        resid_list = []
+
+        for k, v in data_dict.items():
+            nxs, nt = v.shape
+            npar = nt + nxs
+
+            p1 = np.ones(npar) * v.mean() ** 0.5
+
+            res = minimize(
+                func_cost, p1,
+                args=(v, nxs),
+                method='Powell')
+
+            fit = func_fit(res.x, nxs)
+            resid_list.append(fit - v)
+
+        resid = np.concatenate(resid_list)
+        var_I = resid.std(ddof=npar)**2
+
+        if not reshape_residuals:
+            return var_I, resid
+
+        else:
+            ix_resid = self.ufunc_per_section(x_indices=True, calc_per='all')
+
+            resid_sorted = np.full(
+                shape=self[st_label].shape, fill_value=np.nan)
+            resid_sorted[ix_resid, :] = resid
+            resid_da = xr.DataArray(
+                data=resid_sorted,
+                dims=('x', 'time'),
+                coords={
+                    'x': self.x,
+                    'time': self.time})
+
+            return var_I, resid_da
+
+    def variance_stokes_exponential(
+            self,
+            st_label,
+            sections=None,
             use_statsmodels=False,
             suppress_info=True,
             reshape_residuals=True):
@@ -571,7 +667,7 @@ class DataStore(xr.Dataset):
 
             X = sp.coo_matrix(
                 (data, coords),
-                shape=(nt * n_locs, n_sections + nt * n_sections),
+                shape=(nt * n_locs, ddof),
                 dtype=float,
                 copy=False)
 
@@ -896,7 +992,9 @@ class DataStore(xr.Dataset):
             z=None,
             p_val=None,
             p_var=None,
-            p_cov=None):
+            p_cov=None,
+            remove_mc_set_flag=True,
+            reduce_memory_usage=False):
         """
 
         Parameters
@@ -949,7 +1047,7 @@ class DataStore(xr.Dataset):
             Label of where to store the calibrated temperature of the
             backward direction
         store_tmpw : str
-        tmpw_MC_size : int
+        tmpw_mc_size : int
         variance_suffix : str, optional
             String appended for storing the variance. Only used when method
             is wls.
@@ -1054,10 +1152,11 @@ class DataStore(xr.Dataset):
                 store_tmpw=store_tmpw,
                 store_tempvar=variance_suffix,
                 conf_ints=[],
-                conf_ints_size=tmpw_mc_size,
+                mc_sample_size=tmpw_mc_size,
                 ci_avg_time_flag=False,
                 da_random_state=None,
-                remove_mc_set_flag=True)
+                remove_mc_set_flag=remove_mc_set_flag,
+                reduce_memory_usage=reduce_memory_usage)
 
         elif store_tmpw and method == 'ols':
             self[store_tmpw] = (self[store_tmpf] + self[store_tmpb]) / 2
@@ -1090,11 +1189,12 @@ class DataStore(xr.Dataset):
             store_tmpf='TMPF',
             store_tempvar='_var',
             conf_ints=None,
-            conf_ints_size=100,
+            mc_sample_size=100,
             ci_avg_time_flag=False,
             ci_avg_x_flag=False,
             da_random_state=None,
-            remove_mc_set_flag=True):
+            remove_mc_set_flag=True,
+            reduce_memory_usage=False):
         """
 
         Parameters
@@ -1129,7 +1229,7 @@ class DataStore(xr.Dataset):
             A list with the confidence boundaries that are calculated. Valid
             values are between
             [0, 1].
-        conf_ints_size : int
+        mc_sample_size : int
             Size of the monte carlo parameter set used to calculate the
             confidence interval
         ci_avg_time_flag : bool
@@ -1150,6 +1250,8 @@ class DataStore(xr.Dataset):
         remove_mc_set_flag : bool
             Remove the monte carlo data set, from which the CI and the
             variance are calculated.
+        reduce_memory_usage : bool
+            Use less memory but at the expense of longer computation time
         """
 
         assert conf_ints
@@ -1162,7 +1264,7 @@ class DataStore(xr.Dataset):
         no, nt = self[st_label].data.shape
         npar = nt + 2  # number of parameters
 
-        self.coords['MC'] = range(conf_ints_size)
+        self.coords['MC'] = range(mc_sample_size)
         self.coords['CI'] = conf_ints
 
         assert isinstance(p_val, (str, np.ndarray, np.generic))
@@ -1189,7 +1291,7 @@ class DataStore(xr.Dataset):
             assert p_cov.shape == (npar, npar)
 
             p_mc = sst.multivariate_normal.rvs(
-                mean=p_val, cov=p_cov, size=conf_ints_size)
+                mean=p_val, cov=p_cov, size=mc_sample_size)
 
             gamma = p_mc[:, 0]
             dalpha = p_mc[:, 1]
@@ -1202,38 +1304,32 @@ class DataStore(xr.Dataset):
                 'time',
             ), c)
 
-        rshape = (self.MC.size, self.x.size, self.time.size)
+        rsize = (self.MC.size, self.x.size, self.time.size)
 
-        if ci_avg_x_flag and not ci_avg_time_flag:
-            r2shape = {0: -1, 1: -1, 2: 'auto'}
-
-        elif ci_avg_x_flag and ci_avg_time_flag:
-            r2shape = {0: -1, 1: 'auto', 2: 'auto'}
-
+        if reduce_memory_usage:
+            memchunk = da.ones((mc_sample_size, no, nt),
+                               chunks={0: -1, 1: 1, 2: 'auto'}).chunks
         else:
-            r2shape = {0: -1, 1: 'auto', 2: -1}
+            if not ci_avg_time_flag:
+                memchunk = da.ones((mc_sample_size, no, nt),
+                                   chunks={0: -1, 1: 'auto', 2: 'auto'}).chunks
+            else:
+                memchunk = da.ones((mc_sample_size, no, nt),
+                                   chunks={0: -1, 1: 'auto', 2: -1}).chunks
 
         for k, st_labeli, st_vari in zip(
             ['r_st', 'r_ast'],
             [st_label, ast_label],
                 [st_var, ast_var]):
-            if hasattr(self[st_labeli].data, 'chunks'):
-                chunks = self[st_label].chunks
-                self[k] = (
-                    ('MC', 'x', 'time'),
-                    state.normal(
-                        loc=da.rechunk(self[st_labeli].data, chunks=chunks),
-                        scale=st_vari**0.5,
-                        size=rshape,
-                        chunks=r2shape))
-            else:
-                self[k] = (
-                    ('MC', 'x', 'time'),
-                    state.normal(
-                        loc=da.from_array(self[st_labeli].data, chunks={}),
-                        scale=st_vari**0.5,
-                        size=rshape,
-                        chunks=r2shape))
+            loc = da.from_array(self[st_labeli].data, chunks=memchunk[1:])
+
+            self[k] = (
+                ('MC', 'x', 'time'),
+                state.normal(
+                    loc=loc,  # has chunks=memchunk[1:]
+                    scale=st_vari ** 0.5,
+                    size=rsize,
+                    chunks=memchunk))
 
         self[store_tmpf + '_MC_set'] = self['gamma_MC'] / (
             np.log(self['r_st'] / self['r_ast']) + self['c_MC'] +
@@ -1309,10 +1405,11 @@ class DataStore(xr.Dataset):
             store_tmpw='TMPW',
             store_tempvar='_var',
             conf_ints=None,
-            conf_ints_size=100,
+            mc_sample_size=100,
             ci_avg_time_flag=False,
             da_random_state=None,
-            remove_mc_set_flag=True):
+            remove_mc_set_flag=True,
+            reduce_memory_usage=False):
         """
 
         Parameters
@@ -1367,7 +1464,7 @@ class DataStore(xr.Dataset):
             A list with the confidence boundaries that are calculated. Valid
             values are between
             [0, 1].
-        conf_ints_size : int
+        mc_sample_size : int
             Size of the monte carlo parameter set used to calculate the
             confidence interval
         ci_avg_time_flag : bool
@@ -1385,6 +1482,8 @@ class DataStore(xr.Dataset):
         remove_mc_set_flag : bool
             Remove the monte carlo data set, from which the CI and the
             variance are calculated.
+        reduce_memory_usage : bool
+            Use less memory but at the expense of longer computation time
 
         TODO Always dask array
 
@@ -1400,6 +1499,7 @@ class DataStore(xr.Dataset):
             state = da.random.RandomState()
 
         del_tmpf_after, del_tmpb_after = False, False
+
         if store_tmpw and not store_tmpf:
             if store_tmpf in self:
                 del_tmpf_after = True
@@ -1412,10 +1512,20 @@ class DataStore(xr.Dataset):
         no, nt = self[st_label].shape
         npar = nt + 1 + no  # number of parameters
 
-        rsize = (conf_ints_size, no, nt)
-        r2shape = {0: -1, 1: 'auto', 2: -1}
+        rsize = (mc_sample_size, no, nt)
 
-        self.coords['MC'] = range(conf_ints_size)
+        if reduce_memory_usage:
+            memchunk = da.ones((mc_sample_size, no, nt),
+                               chunks={0: -1, 1: 1, 2: 'auto'}).chunks
+        else:
+            if not ci_avg_time_flag:
+                memchunk = da.ones((mc_sample_size, no, nt),
+                                   chunks={0: -1, 1: 'auto', 2: 'auto'}).chunks
+            else:
+                memchunk = da.ones((mc_sample_size, no, nt),
+                                   chunks={0: -1, 1: 'auto', 2: -1}).chunks
+
+        self.coords['MC'] = range(mc_sample_size)
         if conf_ints:
             self.coords['CI'] = conf_ints
 
@@ -1452,7 +1562,7 @@ class DataStore(xr.Dataset):
             po_cov = p_cov[iox_sec1, iox_sec2]
 
             po_mc = sst.multivariate_normal.rvs(
-                mean=po_val, cov=po_cov, size=conf_ints_size)
+                mean=po_val, cov=po_cov, size=mc_sample_size)
 
             gamma = po_mc[:, 0]
             d = po_mc[:, 1:nt + 1]
@@ -1461,7 +1571,7 @@ class DataStore(xr.Dataset):
             self['d_MC'] = (('MC', 'time'), d)
 
             # calculate alpha seperately
-            alpha = np.zeros((conf_ints_size, no), dtype=float)
+            alpha = np.zeros((mc_sample_size, no), dtype=float)
             alpha[:, ix_sec] = po_mc[:, nt + 1:]
 
             not_ix_sec = np.array([i for i in range(no) if i not in ix_sec])
@@ -1473,7 +1583,7 @@ class DataStore(xr.Dataset):
                 not_alpha_mc = np.random.normal(
                     loc=not_alpha_val,
                     scale=not_alpha_var ** 0.5,
-                    size=(conf_ints_size, not_alpha_val.size))
+                    size=(mc_sample_size, not_alpha_val.size))
 
                 alpha[:, not_ix_sec] = not_alpha_mc
 
@@ -1483,25 +1593,15 @@ class DataStore(xr.Dataset):
             ['r_st', 'r_ast', 'r_rst', 'r_rast'],
             [st_label, ast_label, rst_label, rast_label],
                 [st_var, ast_var, rst_var, rast_var]):
-            if hasattr(self[st_labeli].data, 'chunks'):
-                # if it is a dask array, we don't need to chunk it
-                self[k] = (
-                    ('MC', 'x', 'time'),
-                    state.normal(
-                        loc=self[st_labeli].data,
-                        scale=st_vari**0.5,
-                        size=rsize,
-                        chunks=r2shape))
-            else:
-                # if it is a numpy array (it apparently fits in the memory so
-                # we dont need to chunk it when we convert it to dask array)
-                self[k] = (
-                    ('MC', 'x', 'time'),
-                    state.normal(
-                        loc=da.from_array(self[st_labeli].data, chunks={}),
-                        scale=st_vari**0.5,
-                        size=rsize,
-                        chunks=r2shape))
+            loc = da.from_array(self[st_labeli].data, chunks=memchunk[1:])
+
+            self[k] = (
+                ('MC', 'x', 'time'),
+                state.normal(
+                    loc=loc,  # has chunks=memchunk[1:]
+                    scale=st_vari ** 0.5,
+                    size=rsize,
+                    chunks=memchunk))
 
         if ci_avg_time_flag:
             avg_dims = ['MC', 'time']
@@ -1544,7 +1644,7 @@ class DataStore(xr.Dataset):
 
         # Weighted mean of the forward and backward
         if store_tmpw:
-            self.coords['MC2'] = range(2 * conf_ints_size)
+            self.coords['MC2'] = range(2 * mc_sample_size)
 
             q = xr.concat((self[store_tmpf + '_MC_set'],
                            self[store_tmpb + '_MC_set']),
@@ -1562,15 +1662,13 @@ class DataStore(xr.Dataset):
 
             # Calculate the CI of the weighted MC_set
             if conf_ints:
-                q1 = self[store_tmpw + '_MC_set'].data.rechunk(r2shape)
-
                 # We first need to know the x-dim-chunk-size
                 if ci_avg_time_flag:
-                    new_chunks_weighted = ((len(conf_ints),),) + (q1.chunks[1],)
+                    new_chunks_weighted = ((len(conf_ints),),) + (memchunk[1],)
                 else:
-                    new_chunks_weighted = ((len(conf_ints),),) + q1.chunks[1:]
+                    new_chunks_weighted = ((len(conf_ints),),) + memchunk[1:]
 
-                q2 = q1.map_blocks(
+                q2 = self[store_tmpw + '_MC_set'].data.map_blocks(
                     lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
                     chunks=new_chunks_weighted,  # Explicitly define output chunks
                     drop_axis=avg_axis,  # avg dimensions are dropped from input arr

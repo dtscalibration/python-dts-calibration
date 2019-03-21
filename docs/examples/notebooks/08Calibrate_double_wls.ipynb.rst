@@ -77,10 +77,10 @@ as an estimate of the variance in measured signals.
 
 .. code:: ipython3
 
-    st_var, resid = ds.variance_stokes(st_label=st_label, suppress_info=1)
-    ast_var, _ = ds.variance_stokes(st_label=ast_label, suppress_info=1)
-    rst_var, _ = ds.variance_stokes(st_label=rst_label, suppress_info=1)
-    rast_var, _ = ds.variance_stokes(st_label=rast_label, suppress_info=1)
+    st_var, resid = ds.variance_stokes(st_label=st_label)
+    ast_var, _ = ds.variance_stokes(st_label=ast_label)
+    rst_var, _ = ds.variance_stokes(st_label=rst_label)
+    rast_var, _ = ds.variance_stokes(st_label=rast_label)
 
 .. code:: ipython3
 
@@ -121,7 +121,7 @@ solver because it saves us memory.
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x7f8fc10b4cf8>
+    <matplotlib.collections.QuadMesh at 0x126c516a0>
 
 
 
@@ -169,10 +169,10 @@ background temperature with a confidence interval.
         rast_var=rast_var,
         store_tmpf='TMPF',
         store_tmpb='TMPB',
-        store_tmpw='TMPW',  # <- 
+        store_tmpw='TMPW',
         store_tempvar='_var',
         conf_ints=[2.5, 50., 97.5],
-        conf_ints_size=500,
+        mc_sample_size=500,  # <- choose a much larger sample size
         ci_avg_time_flag=False)
 
 .. code:: ipython3
@@ -228,22 +228,21 @@ confidence interval 'coordinates'.
         userAcquisitionTimeBW  (time) float32 2.0 2.0 2.0 2.0 2.0 2.0
         gamma                  float64 482.6
         alpha                  (x) float64 -0.007156 -0.003301 ... -0.005165
-        d                      (time) float64 1.465 1.465 1.465 1.465 1.465 1.465
-        gamma_var              float64 0.04003
-        alpha_var              (x) float64 3.405e-07 3.56e-07 ... 3.374e-07
-        d_var                  (time) float64 4.948e-07 4.948e-07 ... 4.948e-07
-        TMPF                   (x, time) float64 16.79 17.04 16.32 ... 13.51 13.77
-        TMPB                   (x, time) float64 16.8 16.82 16.87 ... 13.76 13.68
-        TMPF_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 6)>
-        TMPB_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 6)>
-        TMPW                   (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 6)>
-        TMPW_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(787, 6)>
+        d                      (time) float64 1.465 1.465 1.464 1.465 1.465 1.465
+        gamma_var              float64 0.03927
+        alpha_var              (x) float64 1.934e-07 2.023e-07 ... 2.044e-07
+        d_var                  (time) float64 4.854e-07 4.854e-07 ... 4.854e-07
+        TMPF                   (x, time) float64 16.8 17.05 16.32 ... 13.49 13.78
+        TMPB                   (x, time) float64 16.8 16.83 16.88 ... 13.74 13.69
+        TMPF_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(699, 6)>
+        TMPB_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(699, 6)>
+        TMPW                   (x, time) float64 dask.array<shape=(787, 6), chunksize=(699, 6)>
+        TMPW_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(699, 6)>
         p_val                  (params1) float64 482.6 1.465 ... -0.005271 -0.005165
-        p_cov                  (params1, params2) float64 0.04003 ... 3.374e-07
-        TMPF_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 787, 6)>
-        TMPB_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 787, 6)>
-        TMPW_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 787, 6)>
-
+        p_cov                  (params1, params2) float64 0.03927 ... 2.044e-07
+        TMPF_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 699, 6)>
+        TMPB_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 699, 6)>
+        TMPW_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 699, 6)>
 
 
 

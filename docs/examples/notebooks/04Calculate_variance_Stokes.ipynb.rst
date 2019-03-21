@@ -72,26 +72,22 @@ method.
 .. parsed-literal::
 
     Calculates the variance between the measurements and a best fit
-            exponential at each reference section. This fits a two-parameter
-            exponential to the stokes measurements. The temperature is constant
-            and there are no splices/sharp bends in each reference section.
-            Therefore all signal decrease is due to differential attenuation,
-            which is the same for each reference section. The scale of the
-            exponential does differ per reference section.
+            at each reference section. This fits a function to the nt * nx
+            measurements with ns * nt + nx parameters, where nx are the total
+            number of obervation locations along all sections. The temperature is
+            constant along the reference sections, so the expression of the
+            Stokes power can be split in a time series per reference section and
+            a constant per observation location.
     
             Assumptions: 1) the temperature is the same along a reference
-            section. 2) no sharp bends and splices in the reference sections. 3)
-            Same type of optical cable in each reference section.
+            section.
     
             Idea from discussion at page 127 in Richter, P. H. (1995). Estimating
-            errors in least-squares fitting. For weights used error propagation:
-            w^2 = 1/sigma(lny)^2 = y^2/sigma(y)^2 = y^2
+            errors in least-squares fitting.
     
             Parameters
             ----------
             reshape_residuals
-            use_statsmodels
-            suppress_info
             st_label : str
                 label of the Stokes, anti-Stokes measurement.
                 E.g., ST, AST, REV-ST, REV-AST
@@ -104,6 +100,11 @@ method.
                 Variance of the residuals between measured and best fit
             resid : array_like
                 Residuals between measured and best fit
+    
+            Notes
+            -----
+            Because there are a large number of unknowns, spend time on
+            calculating an initial estimate. Can be turned off by setting to False.
             
     
 
@@ -116,8 +117,7 @@ method.
 
 .. parsed-literal::
 
-    The variance of the Stokes signal along the reference sections is approximately 12.040800227546795 on a 2.0 sec acquisition time
-    
+    The variance of the Stokes signal along the reference sections is approximately 9.04505608648951 on a 2.0 sec acquisition time
 
 .. code:: ipython3
 
