@@ -510,13 +510,6 @@ class DataStore(xr.Dataset):
         Because there are a large number of unknowns, spend time on
         calculating an initial estimate. Can be turned off by setting to False.
         """
-        def func_fit(p, xs):
-            return p[:xs, None] * p[None, xs:]
-
-        def func_cost(p, data, xs):
-            fit = func_fit(p, xs)
-            return np.sum((fit - data) ** 2)
-
         if sections:
             self.sections = sections
         else:
@@ -525,26 +518,33 @@ class DataStore(xr.Dataset):
         check_dims(self, [st_label], correct_dims=('x', 'time'))
         check_timestep_allclose(self, eps=0.01)
 
-        data_dict = self.ufunc_per_section(
-                label=st_label, calc_per='section')
+        data_dict = da.compute(
+            self.ufunc_per_section(label=st_label, calc_per='stretch')
+            )[0]  # should maybe be per section. But then residuals
+        # seem to be correlated between stretches. I don't know why.. BdT.
         resid_list = []
 
         for k, v in data_dict.items():
-            nxs, nt = v.shape
-            npar = nt + nxs
+            for vi in v:
+                nxs, nt = vi.shape
+                npar = nt + nxs
 
-            p1 = np.ones(npar) * v.mean() ** 0.5
+                p1 = np.ones(npar) * vi.mean() ** 0.5
 
-            res = minimize(
-                func_cost, p1,
-                args=(v, nxs),
-                method='Powell')
+                res = minimize(
+                    func_cost, p1,
+                    args=(vi, nxs),
+                    method='Powell')
+                assert res.success, 'Unable to fit. Try variance_stokes_exponential'
 
-            fit = func_fit(res.x, nxs)
-            resid_list.append(fit - v)
+                fit = func_fit(res.x, nxs)
+                resid_list.append(fit - vi)
 
         resid = np.concatenate(resid_list)
-        var_I = resid.std(ddof=npar)**2
+        npar = resid.shape[0] + nt
+
+        # unbiased estimater ddof=1, originally thought it was npar
+        var_I = resid.std(ddof=1)**2
 
         if not reshape_residuals:
             return var_I, resid
@@ -704,7 +704,7 @@ class DataStore(xr.Dataset):
 
         I_est = np.exp(G_expand_to_sec) * np.exp(x * beta_expand_to_sec)
         resid = I_est - y
-        var_I = resid.std(ddof=ddof)**2
+        var_I = resid.std(ddof=1)**2
 
         if not reshape_residuals:
             return var_I, resid
@@ -1364,7 +1364,12 @@ class DataStore(xr.Dataset):
             new_chunks = (
                 (len(conf_ints),),) + self[store_tmpf + '_MC_set'].chunks[1:]
 
-        q = self[store_tmpf + '_MC_set'].data.map_blocks(
+        if ci_avg_x_flag or ci_avg_time_flag:
+            qq = self[store_tmpf + '_MC_set'] - self[store_tmpf]
+        else:
+            qq = self[store_tmpf + '_MC_set']
+
+        q = qq.data.map_blocks(
             lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
             chunks=new_chunks,  #
             drop_axis=avg_axis,  # avg dimesnions are dropped from input arr
@@ -1407,6 +1412,7 @@ class DataStore(xr.Dataset):
             conf_ints=None,
             mc_sample_size=100,
             ci_avg_time_flag=False,
+            ci_avg_x_flag=False,
             da_random_state=None,
             remove_mc_set_flag=True,
             reduce_memory_usage=False):
@@ -1475,6 +1481,9 @@ class DataStore(xr.Dataset):
             temperature remained between this line and this line during the
             entire measurement
             period’.
+        ci_avg_x_flag : bool
+            Similar to ci_avg_time_flag but then the averaging takes place
+            over the x dimension. And we can observe to variance over time.
         da_random_state
             For testing purposes. Similar to random seed. The seed for dask.
             Makes random not so random. To produce reproducable results for
@@ -1518,12 +1527,15 @@ class DataStore(xr.Dataset):
             memchunk = da.ones((mc_sample_size, no, nt),
                                chunks={0: -1, 1: 1, 2: 'auto'}).chunks
         else:
-            if not ci_avg_time_flag:
-                memchunk = da.ones((mc_sample_size, no, nt),
-                                   chunks={0: -1, 1: 'auto', 2: 'auto'}).chunks
-            else:
+            if ci_avg_time_flag:
                 memchunk = da.ones((mc_sample_size, no, nt),
                                    chunks={0: -1, 1: 'auto', 2: -1}).chunks
+            elif ci_avg_x_flag:
+                memchunk = da.ones((mc_sample_size, no, nt),
+                                   chunks={0: -1, 1: -1, 2: 'auto'}).chunks
+            else:
+                memchunk = da.ones((mc_sample_size, no, nt),
+                                   chunks={0: -1, 1: 'auto', 2: 'auto'}).chunks
 
         self.coords['MC'] = range(mc_sample_size)
         if conf_ints:
@@ -1605,11 +1617,15 @@ class DataStore(xr.Dataset):
 
         if ci_avg_time_flag:
             avg_dims = ['MC', 'time']
-            avg2_dims = ['MC2', 'time']
+            avg2_dims = ['MC', 'time']
             ci_dims = ('CI', 'x')
+        elif ci_avg_x_flag:
+            avg_dims = ['MC', 'x']
+            avg2_dims = ['MC', 'x']
+            ci_dims = ('CI', 'time')
         else:
             avg_dims = ['MC']
-            avg2_dims = ['MC2']
+            avg2_dims = ['MC']
             ci_dims = ('CI', 'x', 'time')
 
         for label, del_label in zip([store_tmpf, store_tmpb],
@@ -1627,12 +1643,26 @@ class DataStore(xr.Dataset):
                 avg_axis = self[label + '_MC_set'].get_axis_num(avg_dims)
 
                 if store_tempvar and not del_label:
-                    self[label + '_MC' + store_tempvar] = (
-                       self[label + '_MC_set']).std(dim=avg_dims) ** 2
+                    if ci_avg_time_flag or ci_avg_x_flag:
+                        # subtract the mean temperature
+                        q = self[label + '_MC_set'] - self[label]
+
+                    else:
+                        q = self[label + '_MC_set']
+
+                    self[label + '_MC' + store_tempvar] = q.std(
+                        dim=avg_dims) ** 2
 
                 if conf_ints and not del_label:
-                    new_chunks = list(self[label + '_MC_set'].chunks)
-                    new_chunks[0] = (len(conf_ints),)
+                    if ci_avg_time_flag:
+                        new_chunks = (len(conf_ints),
+                                      self[label + '_MC_set'].chunks[1])
+                    elif ci_avg_x_flag:
+                        new_chunks = (len(conf_ints),
+                                      self[label + '_MC_set'].chunks[2])
+                    else:
+                        new_chunks = list(self[label + '_MC_set'].chunks)
+                        new_chunks[0] = (len(conf_ints),)
 
                     q = self[label + '_MC_set'].data.map_blocks(
                         lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
@@ -1646,25 +1676,35 @@ class DataStore(xr.Dataset):
         if store_tmpw:
             self.coords['MC2'] = range(2 * mc_sample_size)
 
-            q = xr.concat((self[store_tmpf + '_MC_set'],
-                           self[store_tmpb + '_MC_set']),
-                          dim='MC').rename({'MC': 'MC2'}).data
-            self[store_tmpw + '_MC_set'] = (('MC2', 'x', 'time'), q)
+            tmpw_var = 1 / (1 / self[store_tmpf + '_MC' + store_tempvar] +
+                            1 / self[store_tmpb + '_MC' + store_tempvar])
 
-            self[store_tmpw] = (
-                ('x', 'time'), self[store_tmpw + '_MC_set'].mean(
-                    dim='MC2').data)
+            q = (self[store_tmpf + '_MC_set'] /
+                 self[store_tmpf + '_MC' + store_tempvar] +
+                 self[store_tmpb + '_MC_set'] /
+                 self[store_tmpb + '_MC' + store_tempvar]) * tmpw_var
+
+            self[store_tmpw + '_MC_set'] = q  #
+
+            self[store_tmpw] = self[store_tmpw + '_MC_set'].mean(dim='MC')
 
             if store_tempvar:
-                self[store_tmpw + '_MC' + store_tempvar] = (
-                    self[store_tmpw + '_MC_set']).std(
-                        dim=avg2_dims)**2
+                if not ci_avg_x_flag and not \
+                     ci_avg_time_flag:
+                    self[store_tmpw + '_MC' + store_tempvar] = tmpw_var
+                else:
+                    # subtract the mean temperature
+                    q = self[store_tmpw + '_MC_set'] - self[store_tmpw]
+                    self[store_tmpw + '_MC' + store_tempvar] = q.std(
+                            dim=avg2_dims)**2
 
             # Calculate the CI of the weighted MC_set
             if conf_ints:
                 # We first need to know the x-dim-chunk-size
                 if ci_avg_time_flag:
                     new_chunks_weighted = ((len(conf_ints),),) + (memchunk[1],)
+                elif ci_avg_x_flag:
+                    new_chunks_weighted = ((len(conf_ints),),) + (memchunk[2],)
                 else:
                     new_chunks_weighted = ((len(conf_ints),),) + memchunk[1:]
 
@@ -1674,6 +1714,9 @@ class DataStore(xr.Dataset):
                     drop_axis=avg_axis,  # avg dimensions are dropped from input arr
                     new_axis=0)  # The new CI dimension is added as first axis
                 self[store_tmpw + '_MC'] = (ci_dims, q2)
+
+        # elif store_tmpw:
+
 
         # Clean up the garbage. All arrays with a Monte Carlo dimension.
         # remove_MC_set = [k for k, v in self.data_vars.items() if 'MC' in
@@ -2239,3 +2282,12 @@ def plot_dask(arr, file_path=None):
     visualize([prof, rprof, cprof], show=True)
 
     return out
+
+
+def func_fit(p, xs):
+    return p[:xs, None] * p[None, xs:]
+
+
+def func_cost(p, data, xs):
+    fit = func_fit(p, xs)
+    return np.sum((fit - data) ** 2)
