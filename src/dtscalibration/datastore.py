@@ -1715,9 +1715,6 @@ class DataStore(xr.Dataset):
                     new_axis=0)  # The new CI dimension is added as first axis
                 self[store_tmpw + '_MC'] = (ci_dims, q2)
 
-        # elif store_tmpw:
-
-
         # Clean up the garbage. All arrays with a Monte Carlo dimension.
         # remove_MC_set = [k for k, v in self.data_vars.items() if 'MC' in
         # v.dims]

@@ -649,7 +649,7 @@ def test_single_ended_exponential_variance_estimate_synthetic():
 
 
 def test_exponential_variance_of_stokes():
-    correct_var = 12.041
+    correct_var = 11.86535
     filepath = data_dir_double_ended2
     ds = read_silixa_files(
         directory=filepath,
