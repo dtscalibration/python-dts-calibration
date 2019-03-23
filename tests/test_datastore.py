@@ -34,6 +34,9 @@ if 1:
         wd, 'data', 'double_single_ended', 'channel_1')
     data_dir_sensornet_single_ended = os.path.join(
         wd, 'data', 'sensornet_oryx_v3.7')
+    data_dir_single_silixa_v45 = os.path.join(wd, 'data', 'silixa_v4.5')
+
+    # zips
     data_dir_zipped_single_ended = os.path.join(
         wd, 'data', 'zipped data', 'single_ended.zip')
     data_dir_zipped_double_ended = os.path.join(
@@ -286,6 +289,29 @@ def test_read_silixa_files_double_loadinmemory():
         file_ext='*.xml',
         load_in_memory=True)
     for k in ['ST', 'AST', 'REV-ST', 'REV-AST']:
+        assert isinstance(ds[k].data, np.ndarray)
+
+    pass
+
+
+def test_read_single_silixa_v45():
+    filepath = data_dir_single_silixa_v45
+    ds = read_silixa_files(
+        directory=filepath, timezone_netcdf='UTC', file_ext='*.xml',
+        load_in_memory=False)
+
+    assert ds._initialized
+
+    for k in ['ST', 'AST']:
+        assert isinstance(ds[k].data, da.Array)
+
+    ds = read_silixa_files(
+        directory=filepath, timezone_netcdf='UTC', file_ext='*.xml',
+        load_in_memory=True)
+
+    assert ds._initialized
+
+    for k in ['ST', 'AST']:
         assert isinstance(ds[k].data, np.ndarray)
 
     pass
