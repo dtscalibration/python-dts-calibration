@@ -70,7 +70,7 @@ setup(
         'dask',
         'toolz',
         'matplotlib',
-        'netCDF4<=1.4.3',
+        'netCDF4',
         'pandas>=0.24.1'
         # eg: 'aspectlib==1.1.1', 'six>=1.7',
         ],
