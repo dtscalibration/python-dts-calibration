@@ -57,7 +57,7 @@ Sections are required to calculate the variance in the Stokes.
 
 .. parsed-literal::
 
-    d:\github\pydts2\python-dts-calibration\src\dtscalibration\datastore.py:155: YAMLLoadWarning: calling yaml.load() without Loader=... is deprecated, as the default Loader is unsafe. Please read https://msg.pyyaml.org/load for full details.
+    d:\github\pydts2\python-dts-calibration\src\dtscalibration\datastore.py:156: YAMLLoadWarning: calling yaml.load() without Loader=... is deprecated, as the default Loader is unsafe. Please read https://msg.pyyaml.org/load for full details.
       return yaml.load(self.attrs['_sections'])
     
 
@@ -118,6 +118,7 @@ method.
 .. parsed-literal::
 
     The variance of the Stokes signal along the reference sections is approximately 8.181920419777416 on a 2.0 sec acquisition time
+    
 
 .. code:: ipython3
 
