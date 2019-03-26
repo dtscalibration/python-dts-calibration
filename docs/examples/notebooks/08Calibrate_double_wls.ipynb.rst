@@ -121,7 +121,7 @@ solver because it saves us memory.
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x126c516a0>
+    <matplotlib.collections.QuadMesh at 0x106f757f0>
 
 
 
@@ -230,7 +230,7 @@ confidence interval 'coordinates'.
         alpha                  (x) float64 -0.007156 -0.003301 ... -0.005165
         d                      (time) float64 1.465 1.465 1.464 1.465 1.465 1.465
         gamma_var              float64 0.03927
-        alpha_var              (x) float64 1.934e-07 2.023e-07 ... 2.044e-07
+        alpha_var              (x) float64 1.734e-07 1.814e-07 ... 1.835e-07
         d_var                  (time) float64 4.854e-07 4.854e-07 ... 4.854e-07
         TMPF                   (x, time) float64 16.8 17.05 16.32 ... 13.49 13.78
         TMPB                   (x, time) float64 16.8 16.83 16.88 ... 13.74 13.69
@@ -239,7 +239,7 @@ confidence interval 'coordinates'.
         TMPW                   (x, time) float64 dask.array<shape=(787, 6), chunksize=(699, 6)>
         TMPW_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(699, 6)>
         p_val                  (params1) float64 482.6 1.465 ... -0.005271 -0.005165
-        p_cov                  (params1, params2) float64 0.03927 ... 2.044e-07
+        p_cov                  (params1, params2) float64 0.03927 ... 1.835e-07
         TMPF_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 699, 6)>
         TMPB_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 699, 6)>
         TMPW_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 699, 6)>
