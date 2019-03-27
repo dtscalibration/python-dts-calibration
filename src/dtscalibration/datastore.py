@@ -465,16 +465,15 @@ class DataStore(xr.Dataset):
             shuffle=False)  # , least_significant_digit=None
         compcoords = dict(zlib=True, complevel=4)
 
-        encoding = {var: compdata for var in self.data_vars}
-        encoding.update({var: compcoords for var in self.coords})
+        encoding = {var: compdata.copy() for var in self.data_vars}
+        encoding.update({var: compcoords.copy() for var in self.coords})
         return encoding
 
     def variance_stokes(
             self,
             st_label,
             sections=None,
-            reshape_residuals=True,
-            nt_for_init_est=20):
+            reshape_residuals=True):
         """Calculates the variance between the measurements and a best fit
         at each reference section. This fits a function to the nt * nx
         measurements with ns * nt + nx parameters, where nx are the total
@@ -541,7 +540,6 @@ class DataStore(xr.Dataset):
                 resid_list.append(fit - vi)
 
         resid = np.concatenate(resid_list)
-        npar = resid.shape[0] + nt
 
         # unbiased estimater ddof=1, originally thought it was npar
         var_I = resid.std(ddof=1)**2
@@ -1413,6 +1411,7 @@ class DataStore(xr.Dataset):
             mc_sample_size=100,
             ci_avg_time_flag=False,
             ci_avg_x_flag=False,
+            var_only_sections=False,
             da_random_state=None,
             remove_mc_set_flag=True,
             reduce_memory_usage=False):
@@ -1484,6 +1483,12 @@ class DataStore(xr.Dataset):
         ci_avg_x_flag : bool
             Similar to ci_avg_time_flag but then the averaging takes place
             over the x dimension. And we can observe to variance over time.
+        var_only_sections : bool
+            useful if using the ci_avg_x_flag. Only calculates the var over the
+            sections, so that the values can be compared with accuracy along the
+            reference sections. Where the accuracy is the variance of the
+            residuals between the estimated temperature and temperature of the
+            water baths
         da_random_state
             For testing purposes. Similar to random seed. The seed for dask.
             Makes random not so random. To produce reproducable results for
@@ -1493,8 +1498,6 @@ class DataStore(xr.Dataset):
             variance are calculated.
         reduce_memory_usage : bool
             Use less memory but at the expense of longer computation time
-
-        TODO Always dask array
 
         Returns
         -------
@@ -1639,6 +1642,17 @@ class DataStore(xr.Dataset):
                     self[store_tmpb + '_MC_set'] = self['gamma_MC'] / (
                         np.log(self['r_rst'] / self['r_rast']) + self['d_MC'] -
                         self['alpha_MC']) - 273.15
+
+                if var_only_sections:
+                    # sets the values outside the reference sections to NaN
+                    xi = self.ufunc_per_section(
+                        x_indices=True, calc_per='all')
+                    x_mask_ = [
+                        True if ix in xi else False for ix in range(self.x.size)
+                        ]
+                    x_mask = np.reshape(x_mask_, (1, -1, 1))
+                    self[label + '_MC_set'] = self[label + '_MC_set'].where(
+                        x_mask)
 
                 avg_axis = self[label + '_MC_set'].get_axis_num(avg_dims)
 
