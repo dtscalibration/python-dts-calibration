@@ -5,6 +5,224 @@ import numpy as np
 
 def plot_residuals_reference_sections(
         resid,
+        sections,
+        fig=None,
+        title=None,
+        plot_avg_std=None,
+        plot_names=True,
+        robust=True,
+        units='',
+        fig_kwargs=None,
+        method='split'):
+    """
+    Analyze the residuals of the reference sections, between the Stokes
+    signal and a best-fit
+    decaying exponential.
+
+    Parameters
+    ----------
+    plot_avg_std
+    resid : DataArray
+        The residuals of the fit to estimate the noise in the measured
+        Stokes signal. is returned by `ds.variance_stokes`
+    sections : Dict[str, List[slice]]
+        The sections obj is normally used to set DataStore.sections, now is
+        used toobtain the
+        section names to plot the names on top of the residuals.
+    fig : Figurehandle, optional
+    title : str, optional
+        Adds a title to the plot
+    plot_names : bool
+        Whether the names of the sections are plotted on top of the residuals
+    method: str
+        'split' will remove the distance between sections to cut down on the
+        whitespace.
+        'single' will use the previous method, where all sections are in one
+        plot.
+
+    Returns
+    -------
+    fig : Figurehandle
+
+    """
+    if method == 'single':
+        plot_residuals_reference_sections_single(
+            resid,
+            fig=fig,
+            title=title,
+            plot_avg_std=plot_avg_std,
+            plot_names=plot_names,
+            sections=sections,
+            robust=robust,
+            units=units,
+            fig_kwargs=fig_kwargs)
+
+    elif method != 'split':
+        raise AssertionError('Unknown method')
+
+    else:
+        # Set up the axes with gridspec
+        if fig_kwargs is None:
+            fig_kwargs = dict()
+
+        if fig is None:
+            fig = plt.figure(figsize=(8, 6), **fig_kwargs)
+
+        if title:
+            fig.suptitle(title)
+
+        # Create the unsorted list
+        section_list = []
+        section_name_list = []
+        for section in sections:
+            for sl in sections[section]:
+                section_list.append(sl)
+                section_name_list.append(section)
+
+        # Make dictionaries to start sorting
+        sections_dict = {}
+        section_start_dict = {}
+        for ii in range(len(section_list)):
+            sections_dict[str(ii)] = [section_name_list[ii],
+                                      section_list[ii]]
+            section_start_dict[str(ii)] = section_list[ii].start
+
+        sorted_sections = sorted(sections_dict,
+                                 key=section_start_dict.__getitem__,
+                                 reverse=True)
+
+        # Create the sorted name and slice lists
+        section_name_list = [sections_dict[name][0] for name in
+                             sorted_sections]
+        section_list = [sections_dict[name][1] for name in
+                        sorted_sections]
+
+        resid_sections = [resid.sel(x=section) for section in section_list]
+
+        section_ylims = [[sl.start, sl.stop] for sl in section_list]
+        section_height_ratios = [sl.stop-sl.start for sl in section_list]
+        nsections = len(section_list)
+
+        grid = plt.GridSpec(
+                ncols=3,
+                nrows=nsections+1,
+                height_ratios=[sum(section_height_ratios)/5] +
+                section_height_ratios,
+                width_ratios=[0.2, 0.8, 0.1],
+                hspace=0.15,
+                wspace=0.15,
+                left=0.08,
+                bottom=0.12,
+                right=0.9,
+                top=0.88)
+
+        _x_ax_avg = fig.add_subplot(grid[0, 1])
+        x_ax_avg = _x_ax_avg.twinx()
+
+        cbar_ax = fig.add_subplot(grid[1:, 2])
+
+        section_axes = [0]*nsections
+        section_ax_avg = [0]*nsections
+
+        legend_ax = fig.add_subplot(grid[0, 0])
+
+        for ii in range(nsections):
+            section_axes[ii] = fig.add_subplot(grid[ii+1, 1])
+            section_ax_avg[ii] = fig.add_subplot(grid[ii+1, 0])
+
+        # Link all 2dplot axes to their bottom row
+        for section_ax in section_axes[:-1]:
+            section_axes[-1].get_shared_x_axes().join(section_axes[-1],
+                                                      section_ax)
+            section_ax.set_xticklabels([])
+
+        # Link all 2dplot axes to their avg axes
+        for ii in range(nsections):
+            section_ax_avg[ii].get_shared_y_axes().join(section_ax_avg[ii],
+                                                        section_axes[ii])
+            section_axes[ii].set_yticklabels([])
+
+        # Link all avg axes to their bottom row
+        for section_avg in section_ax_avg[:-1]:
+            section_ax_avg[-1].get_shared_x_axes().join(section_ax_avg[-1],
+                                                        section_avg)
+            section_avg.set_xticklabels([])
+
+        # Link the x ax avg to the bottom row
+        section_axes[-1].get_shared_x_axes().join(section_axes[-1], x_ax_avg)
+        x_ax_avg.set_xticklabels([])
+
+        # Determine vmin, vmax;
+        vmin, vmax = resid.quantile([.01, .99])
+
+        # Plot the data
+        for ii in range(nsections):
+            resid_sections[ii].plot(ax=section_axes[ii],
+                                    cbar_ax=cbar_ax,
+                                    cbar_kwargs={'extend': 'both'},
+                                    vmin=vmin, vmax=vmax)
+            section_axes[ii].set_ylabel('')
+
+            resid.sel(x=section_list[ii]).std(dim='time').plot(
+                                                        ax=section_ax_avg[ii],
+                                                        y='x',
+                                                        c='blue')
+            resid.sel(x=section_list[ii]).mean(dim='time').plot(
+                                                         ax=section_ax_avg[ii],
+                                                         y='x',
+                                                         c='orange')
+            section_ax_avg[ii].axvline(0, linestyle='-',
+                                       c='black', linewidth=0.8)
+            section_ax_avg[ii].set_ylabel('')
+
+        cbar_ax.set_ylabel(units)
+
+        for ii, section_avg in enumerate(section_ax_avg):
+            section_avg.set_ylim(section_ylims[ii])
+            ticks = section_avg.set_yticks(section_ylims[ii])
+            ticks[0].label1.set_verticalalignment('bottom')
+            ticks[1].label1.set_verticalalignment('top')
+        section_ax_avg[-1].set_xticks([np.ceil(vmin), 0, np.floor(vmax)])
+        section_ax_avg[-1].set_xlabel(units)
+
+        for section_ax in section_axes[:-1]:
+            section_ax.set_xlabel('')
+
+        section_ax_avg[np.ceil(nsections/2).astype(int)-1].set_ylabel('x (m)')
+
+        # plot the x ax avg
+        resid.std(dim='x').plot(ax=x_ax_avg, c='blue')
+        resid.mean(dim='x').plot(ax=x_ax_avg, c='orange')
+        x_ax_avg.axhline(0, linestyle='-', c='black', linewidth=0.8)
+        x_ax_avg.set_xlabel('')
+        x_ax_avg.set_ylabel(units)
+        _x_ax_avg.set_yticks([])
+
+        # make the legend
+        legend_ax.fill_between([], [], facecolor='blue', label='STD')
+        legend_ax.fill_between([], [], facecolor='orange', label='MEAN')
+        legend_ax.legend(loc='center')
+        legend_ax.axis('off')
+
+        # add section names
+        if plot_names:
+            for ii, section in enumerate(section_list):
+                xlim = section_axes[ii].get_xlim()
+                xc = (xlim[1] + xlim[0]) / 2
+                yc = (section.start + section.stop) / 2
+                section_axes[ii].text(
+                    xc,
+                    yc,
+                    s=section_name_list[ii],
+                    horizontalalignment='center',
+                    verticalalignment='center',
+                    bbox=dict(facecolor='white', alpha=0.55, edgecolor='none'))
+
+        return fig
+
+
+def plot_residuals_reference_sections_single(
+        resid,
         fig=None,
         title=None,
         plot_avg_std=None,
