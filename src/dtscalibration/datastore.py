@@ -166,7 +166,6 @@ class DataStore(xr.Dataset):
                                               'refer ' \
                                               'to a valid timeserie already ' \
                                               'stored in ds.data_vars'
-            check_dims(self, sections, ('time',))
 
             for k, v in sections.items():
                 assert isinstance(v, (list, tuple)), \
@@ -819,6 +818,52 @@ class DataStore(xr.Dataset):
             dim=dim) / (1 / self[tmp_var_label]).sum(dim=dim)
 
         pass
+
+    def in_confidence_interval(self, ci_label, conf_ints, sections=None):
+        """
+        Returns an array with bools wether the temperature of the reference
+        sections are within the confidence intervals
+
+        Parameters
+        ----------
+        sections : Dict[str, List[slice]]
+        ci_label
+        conf_ints
+
+        Returns
+        -------
+
+        """
+        # dim_x = 'x'
+        # dim_time = 'hours'
+        # tmp_label = 'TMPW'
+        # ci_label = 'TMPW_MC'
+        if sections is None:
+            sections = self.sections
+
+        tmp_dn = self[ci_label].sel(CI=conf_ints[0], method='nearest')
+        tmp_up = self[ci_label].sel(CI=conf_ints[1], method='nearest')
+
+        ref = self.ufunc_per_section(
+            sections=sections,
+            label='ST',
+            ref_temp_broadcasted=True,
+            calc_per='all')
+        ix_resid = self.ufunc_per_section(
+            sections=sections,
+            x_indices=True,
+            calc_per='all')
+        ref_sorted = np.full(
+            shape=tmp_dn.shape, fill_value=np.nan)
+        ref_sorted[ix_resid, :] = ref
+        ref_da = xr.DataArray(
+            data=ref_sorted,
+            coords=tmp_dn.coords)
+
+        mask_dn = ref_da >= tmp_dn
+        mask_up = ref_da <= tmp_up
+
+        return np.logical_and(mask_dn, mask_up)
 
     def calibration_single_ended(
             self,
@@ -1780,6 +1825,7 @@ class DataStore(xr.Dataset):
 
     def ufunc_per_section(
             self,
+            sections=None,
             func=None,
             label=None,
             subtract_from_label=None,
@@ -1799,6 +1845,7 @@ class DataStore(xr.Dataset):
 
         Parameters
         ----------
+        sections : Dict[str, List[slice]]
         func : callable, str
             A numpy function, or lambda function to apple to each 'calc_per'.
         label
@@ -1866,6 +1913,15 @@ class DataStore(xr.Dataset):
             ref_temp_broadcasted=False,
             calc_per='stretch')
 
+        # broadcast the temperature of the reference sections to
+        stretch/section/all dimensions. The value of the reference
+        temperature (a timeseries) is broadcasted to the shape of self[
+        label]. The self[label] is not used for anything else.
+        temp_ref = d.ufunc_per_section(
+            label='ST',
+            ref_temp_broadcasted=True,
+            calc_per='all')
+
         # x-coordinate index
         ix_loc = d.ufunc_per_section(x_indices=True)
 
@@ -1876,6 +1932,8 @@ class DataStore(xr.Dataset):
         array is returned
         Else a numpy array is returned
         """
+        if sections is None:
+            sections = self.sections
 
         if not func:
 
@@ -1913,23 +1971,19 @@ class DataStore(xr.Dataset):
         assert calc_per in ['all', 'section', 'stretch']
 
         if not x_indices and \
-            hasattr(self[label].data, 'chunks') or \
-            (subtract_from_label and
-             hasattr(self[subtract_from_label].data, 'chunks')):
+            ((label and hasattr(self[label].data, 'chunks')) or
+             (subtract_from_label and hasattr(self[subtract_from_label].data,
+                                              'chunks'))):
             concat = da.concatenate
         else:
             concat = np.concatenate
 
         out = dict()
 
-        for k, section in self.sections.items():
+        for k, section in sections.items():
             out[k] = []
             for stretch in section:
-
-                if not x_indices:
-                    arg1 = self[label].sel(x=stretch).data
-
-                else:
+                if x_indices:
                     assert not subtract_from_label
                     assert not temp_err
                     assert not ref_temp_broadcasted
@@ -1938,6 +1992,9 @@ class DataStore(xr.Dataset):
                         self.x.size)
                     arg1 = self['_x_indices'].sel(x=stretch).data
                     del self['_x_indices']
+
+                else:
+                    arg1 = self[label].sel(x=stretch).data
 
                 if subtract_from_label:
                     # calculate std wrt other series
@@ -2083,7 +2140,7 @@ def open_datastore(
     ds_kwargs = {k: v for k, v in kwargs.items() if k not in xr_kws}
 
     if chunks is None:
-        chunks = {'x': 'auto', 'time': -1}
+        chunks = {}
 
     ds_xr = xr.open_dataset(
         filename_or_obj,
