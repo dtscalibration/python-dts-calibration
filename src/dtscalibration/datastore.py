@@ -537,11 +537,9 @@ class DataStore(xr.Dataset):
                 return dims[0]
 
             else:
-                l = list(self['ST'].dims)
-                return next(l.remove(self.get_time_dim()))
-
-
-
+                time_dim = self.get_time_dim()
+                l = list(self['ST'].dims)  # noqa: E741
+                return next(l.remove(time_dim))
 
     def variance_stokes(
             self,
@@ -1029,7 +1027,6 @@ class DataStore(xr.Dataset):
 
         check_dims(self, [st_label, ast_label], correct_dims=(x_dim, time_dim))
 
-
         if method == 'ols':
             nt, z, p_val = calibration_single_ended_ols(
                 self, st_label, ast_label)
@@ -1289,8 +1286,9 @@ class DataStore(xr.Dataset):
 
         if store_p_val and (method == 'wls' or method == 'external'):
             # TODO: add params1 dimension
-            if 'params1' in self.coords:
-                if self.coords['params1'].size != p_val.size:
+
+            if store_p_val in self:
+                if self[store_p_val].size != p_val.size:
                     if store_p_val in self:
                         del self[store_p_val]
                     if store_p_cov in self:
@@ -1307,8 +1305,8 @@ class DataStore(xr.Dataset):
         if store_p_cov and (method == 'wls' or method == 'external'):
             # TODO: add params1 dimension
             # TODO: add params2 dimension
-            if 'params1' in self.coords:
-                if self.coords['params1'].size != p_val.size:
+            if store_p_cov in self:
+                if self[store_p_cov].size != p_cov.size:
                     if store_p_val in self:
                         del self[store_p_val]
                     if store_p_cov in self:
