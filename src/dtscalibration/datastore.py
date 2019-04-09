@@ -157,17 +157,31 @@ class DataStore(xr.Dataset):
 
     @sections.setter
     def sections(self, sections: Dict[str, List[slice]]):
+        sections_fix = None
+
         if sections:
             assert isinstance(sections, dict)
 
-            for key in sections:
-                assert key in self.data_vars, 'The keys of the ' \
+            # be less restrictive for capitalized labels
+            # find lower cases label
+            labels = np.reshape([[s.lower(), s] for s in
+                                 self.data_vars.keys()], (-1,)).tolist()
+
+            sections_fix = dict()
+            for k, v in sections.items():
+                if k.lower() in labels:
+                    i_lower_case = labels.index(k.lower())
+                    i_normal_case = i_lower_case + 1
+                    k_normal_case = labels[i_normal_case]
+                    sections_fix[k_normal_case] = v
+                else:
+                    assert k in self.data_vars, 'The keys of the ' \
                                               'sections-dictionary should ' \
                                               'refer ' \
                                               'to a valid timeserie already ' \
                                               'stored in ds.data_vars'
 
-            for k, v in sections.items():
+            for k, v in sections_fix.items():
                 assert isinstance(v, (list, tuple)), \
                     'The values of the sections-dictionary ' \
                     'should be lists of slice objects.'
@@ -180,7 +194,7 @@ class DataStore(xr.Dataset):
                         f'Better define the {k} section. You tried {vi}, ' \
                         'which is out of reach'
 
-        self.attrs['_sections'] = yaml.dump(sections)
+        self.attrs['_sections'] = yaml.dump(sections_fix)
         pass
 
     @sections.deleter
@@ -468,6 +482,67 @@ class DataStore(xr.Dataset):
         encoding.update({var: compcoords.copy() for var in self.coords})
         return encoding
 
+    def get_time_dim(self, data_var_key=None):
+        """
+        Find relevant time dimension. by educative guessing
+
+        Parameters
+        ----------
+        data_var_key : str
+            The data variable key that contains a relevant time dimension. If
+            None, 'ST' is used.
+
+        Returns
+        -------
+
+        """
+        options = ['date', 'time', 'day', 'days', 'hour', 'hours', 'minute',
+                   'minutes', 'second', 'seconds']
+        if data_var_key is None:
+            if 'ST' in self.data_vars:
+                data_var_key = 'ST'
+            elif 'st' in self.data_vars:
+                data_var_key = 'st'
+            else:
+                return 'time'
+
+        dims = self[data_var_key].dims
+        # find all dims in options
+        in_opt = [next(filter(lambda s: s == d, options), None) for d in
+                  dims]
+        # exclude Nones from list
+        return next(filter(None, in_opt))
+
+    def get_x_dim(self, data_var_key=None):
+        """
+        Find relevant x dimension. by educative guessing
+
+        Parameters
+        ----------
+        data_var_key : str
+            The data variable key that contains a relevant time dimension. If
+            None, 'ST' is used.
+
+        Returns
+        -------
+
+        """
+        if data_var_key is None:
+            return 'x'
+
+        else:
+            dims = self[data_var_key].dims
+
+            if len(dims) == 1:
+                return dims[0]
+
+            else:
+                l = list(self['ST'].dims)
+                return next(l.remove(self.get_time_dim()))
+
+
+
+
     def variance_stokes(
             self,
             st_label,
@@ -513,7 +588,10 @@ class DataStore(xr.Dataset):
         else:
             assert self.sections, 'sections are not defined'
 
-        check_dims(self, [st_label], correct_dims=('x', 'time'))
+        time_dim = self.get_time_dim()
+        x_dim = self.get_x_dim()
+
+        check_dims(self, [st_label], correct_dims=(x_dim, time_dim))
         check_timestep_allclose(self, eps=0.01)
 
         data_dict = da.compute(
@@ -554,10 +632,7 @@ class DataStore(xr.Dataset):
             resid_sorted[ix_resid, :] = resid
             resid_da = xr.DataArray(
                 data=resid_sorted,
-                dims=('x', 'time'),
-                coords={
-                    'x': self.x,
-                    'time': self.time})
+                coords=self[st_label].coords)
 
             return var_I, resid_da
 
@@ -607,7 +682,10 @@ class DataStore(xr.Dataset):
         else:
             assert self.sections, 'sections are not defined'
 
-        check_dims(self, [st_label], correct_dims=('x', 'time'))
+        time_dim = self.get_time_dim()
+        x_dim = self.get_x_dim()
+
+        check_dims(self, [st_label], correct_dims=(x_dim, time_dim))
         check_timestep_allclose(self, eps=0.01)
 
         nt = self.time.size
@@ -731,10 +809,7 @@ class DataStore(xr.Dataset):
             resid_sorted[ix_resid, :] = resid
             resid_da = xr.DataArray(
                 data=resid_sorted,
-                dims=('x', 'time'),
-                coords={
-                    'x': self.x,
-                    'time': self.time})
+                coords=self[st_label].coords)
 
             return var_I, resid_da
 
@@ -949,7 +1024,11 @@ class DataStore(xr.Dataset):
         else:
             assert self.sections, 'sections are not defined'
 
-        check_dims(self, [st_label, ast_label], correct_dims=('x', 'time'))
+        time_dim = self.get_time_dim()
+        x_dim = self.get_x_dim()
+
+        check_dims(self, [st_label, ast_label], correct_dims=(x_dim, time_dim))
+
 
         if method == 'ols':
             nt, z, p_val = calibration_single_ended_ols(
@@ -977,7 +1056,7 @@ class DataStore(xr.Dataset):
         self[store_gamma] = (tuple(), gamma)
         self[store_dalpha] = (tuple(), dalpha)
         self[store_alpha] = (('x',), dalpha * self.x.data)
-        self[store_c] = (('time',), c)
+        self[store_c] = ((time_dim,), c)
 
         # store variances in DataStore
         if method == 'wls' or method == 'external':
@@ -987,14 +1066,14 @@ class DataStore(xr.Dataset):
 
             self[store_gamma + variance_suffix] = (tuple(), gammavar)
             self[store_dalpha + variance_suffix] = (tuple(), dalphavar)
-            self[store_c + variance_suffix] = (('time',), cvar)
+            self[store_c + variance_suffix] = ((time_dim,), cvar)
 
         # deal with FW
         if store_tmpf:
             tempF_data = gamma / \
                          (np.log(self[st_label].data / self[ast_label].data)
                           + c + self.x.data[:, None] * dalpha) - 273.15
-            self[store_tmpf] = (('x', 'time'), tempF_data)
+            self[store_tmpf] = ((x_dim, time_dim), tempF_data)
 
         if store_p_val and (method == 'wls' or method == 'external'):
             self[store_p_val] = (('params1',), p_val)
@@ -1112,9 +1191,11 @@ class DataStore(xr.Dataset):
         else:
             assert self.sections, 'sections are not defined'
 
-        check_dims(
-            self, [st_label, ast_label, rst_label, rast_label],
-            correct_dims=('x', 'time'))
+        time_dim = self.get_time_dim()
+        x_dim = self.get_x_dim()
+
+        check_dims(self, [st_label, ast_label, rst_label, rast_label],
+                   correct_dims=(x_dim, time_dim))
 
         if method == 'ols':
             nt, z, p_val = calibration_double_ended_ols(
@@ -1150,8 +1231,8 @@ class DataStore(xr.Dataset):
 
         # store calibration parameters in DataStore
         self[store_gamma] = (tuple(), gamma)
-        self[store_alpha] = (('x',), alpha)
-        self[store_d] = (('time',), d)
+        self[store_alpha] = ((x_dim,), alpha)
+        self[store_d] = ((time_dim,), d)
 
         # store variances in DataStore
         if method == 'wls' or method == 'external':
@@ -1169,14 +1250,14 @@ class DataStore(xr.Dataset):
             tempF_data = gamma / \
                          (np.log(self[st_label].data / self[ast_label].data)
                           + d + alpha[:, None]) - 273.15
-            self[store_tmpf] = (('x', 'time'), tempF_data)
+            self[store_tmpf] = ((x_dim, time_dim), tempF_data)
 
         # deal with BW
         if store_tmpb or (store_tmpw and method == 'ols'):
             tempB_data = gamma / \
                          (np.log(self[rst_label].data / self[rast_label].data)
                           + d - alpha[:, None]) - 273.15
-            self[store_tmpb] = (('x', 'time'), tempB_data)
+            self[store_tmpb] = ((x_dim, time_dim), tempB_data)
 
         if store_tmpw and method == 'wls':
             self.conf_int_double_ended(
@@ -1208,6 +1289,17 @@ class DataStore(xr.Dataset):
 
         if store_p_val and (method == 'wls' or method == 'external'):
             # TODO: add params1 dimension
+            if 'params1' in self.coords:
+                if self.coords['params1'].size != p_val.size:
+                    if store_p_val in self:
+                        del self[store_p_val]
+                    if store_p_cov in self:
+                        del self[store_p_cov]
+                    if 'params1' in self.coords:
+                        del self.coords['params1']
+                    if 'params2' in self.coords:
+                        del self.coords['params2']
+
             self[store_p_val] = (('params1',), p_val)
         else:
             pass
@@ -1215,6 +1307,17 @@ class DataStore(xr.Dataset):
         if store_p_cov and (method == 'wls' or method == 'external'):
             # TODO: add params1 dimension
             # TODO: add params2 dimension
+            if 'params1' in self.coords:
+                if self.coords['params1'].size != p_val.size:
+                    if store_p_val in self:
+                        del self[store_p_val]
+                    if store_p_cov in self:
+                        del self[store_p_cov]
+                    if 'params1' in self.coords:
+                        del self.coords['params1']
+                    if 'params2' in self.coords:
+                        del self.coords['params2']
+
             self[store_p_cov] = (('params1', 'params2'), p_cov)
         else:
             pass
