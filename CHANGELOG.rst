@@ -3,13 +3,10 @@ Changelog
 =========
 0.6.3 (2019-04-03)
 ------------------
-* Added reading support for zipped silixa files. Still rarely fails due to
-upstream bug.
+* Added reading support for zipped silixa files. Still rarely fails due to upstream bug.
 * pretty __repr__
-* Reworked double ended calibration procedure. Integrated differential
-attenuation outside of reference sections is now calculated seperately.
-* New approach for estimation of Stokes variance. Not restricted to a
-decaying exponential
+* Reworked double ended calibration procedure. Integrated differential attenuation outside of reference sections is now calculated seperately.
+* New approach for estimation of Stokes variance. Not restricted to a decaying exponential
 * Bug in averaging TMPF and TMPB to TMPW
 * Modified residuals plot, especially useful for long fibers (Great work Bart!)
 * Example notebooks updatred accordingly
