@@ -97,7 +97,8 @@ class DataStore(xr.Dataset):
         if hasattr(self, '_sections') and self.sections:
             preamble_new += '\n'
 
-            unit = self.x.units
+            x_dim = self.get_x_dim()
+            unit = self[x_dim].units
             for k, v in self.sections.items():
                 preamble_new += '    {0: <23}'.format(k)
                 vl = ['{0:.2f}{2} - {1:.2f}{2}'.format(vi.start, vi.stop, unit)
@@ -190,7 +191,9 @@ class DataStore(xr.Dataset):
                     assert isinstance(vi, slice), \
                         'The values of the sections-dictionary should ' \
                         'be lists of slice objects.'
-                    assert self.x.sel(x=vi).size > 0, \
+
+                    x_dim = self.get_x_dim()
+                    assert self[x_dim].sel(x=vi).size > 0, \
                         f'Better define the {k} section. You tried {vi}, ' \
                         'which is out of reach'
 
@@ -279,7 +282,8 @@ class DataStore(xr.Dataset):
         """
         Returns the keys of all timeseires that can be used for calibration.
         """
-        return [k for k, v in self.data_vars.items() if v.dims == ('time',)]
+        time_dim = self.get_time_dim()
+        return [k for k, v in self.data_vars.items() if v.dims == (time_dim,)]
 
     def resample_datastore(
             self,
@@ -538,8 +542,9 @@ class DataStore(xr.Dataset):
 
             else:
                 time_dim = self.get_time_dim()
-                l = list(self['ST'].dims)  # noqa: E741
-                return next(l.remove(time_dim))
+                l = list(dims)
+                l.remove(time_dim)  # noqa: E741
+                return l[0]
 
     def variance_stokes(
             self,
@@ -696,7 +701,7 @@ class DataStore(xr.Dataset):
         for k, stretches in self.sections.items():
             for stretch in stretches:
                 y_list.append(self[st_label].sel(x=stretch).data.T.reshape(-1))
-                _x = self.x.sel(x=stretch).data.copy()
+                _x = self[x_dim].sel(x=stretch).data.copy()
                 _x -= _x[0]
                 x_list.append(da.tile(_x, nt))
                 len_stretch_list.append(_x.size)
@@ -794,13 +799,13 @@ class DataStore(xr.Dataset):
                     resid[lenis:lenie].reshape((leni, nt), order='F'))
 
             _resid = np.concatenate(resid_res)
-            _resid_x = self.ufunc_per_section(label='x', calc_per='all')
+            _resid_x = self.ufunc_per_section(label=x_dim, calc_per='all')
             isort = np.argsort(_resid_x)
             resid_x = _resid_x[isort]  # get indices from ufunc directly
             resid = _resid[isort, :]
 
             ix_resid = np.array(
-                [np.argmin(np.abs(ai - self.x.data)) for ai in resid_x])
+                [np.argmin(np.abs(ai - self[x_dim].data)) for ai in resid_x])
 
             resid_sorted = np.full(
                 shape=self[st_label].shape, fill_value=np.nan)
@@ -1052,7 +1057,7 @@ class DataStore(xr.Dataset):
 
         self[store_gamma] = (tuple(), gamma)
         self[store_dalpha] = (tuple(), dalpha)
-        self[store_alpha] = (('x',), dalpha * self.x.data)
+        self[store_alpha] = ((x_dim,), dalpha * self[x_dim].data)
         self[store_c] = ((time_dim,), c)
 
         # store variances in DataStore
@@ -1069,7 +1074,7 @@ class DataStore(xr.Dataset):
         if store_tmpf:
             tempF_data = gamma / \
                          (np.log(self[st_label].data / self[ast_label].data)
-                          + c + self.x.data[:, None] * dalpha) - 273.15
+                          + c + self[x_dim].data[:, None] * dalpha) - 273.15
             self[store_tmpf] = ((x_dim, time_dim), tempF_data)
 
         if store_p_val and (method == 'wls' or method == 'external'):
@@ -1239,8 +1244,8 @@ class DataStore(xr.Dataset):
             alphavar = p_var[nt + 1:]
 
             self[store_gamma + variance_suffix] = (tuple(), gammavar)
-            self[store_alpha + variance_suffix] = (('x',), alphavar)
-            self[store_d + variance_suffix] = (('time',), dvar)
+            self[store_alpha + variance_suffix] = ((x_dim,), alphavar)
+            self[store_d + variance_suffix] = ((time_dim,), dvar)
 
         # deal with FW
         if store_tmpf or (store_tmpw and method == 'ols'):
@@ -1405,6 +1410,9 @@ class DataStore(xr.Dataset):
         else:
             state = da.random.RandomState()
 
+        time_dim = self.get_time_dim(data_var_key=st_label)
+        x_dim = self.get_x_dim(data_var_key=st_label)
+
         no, nt = self[st_label].data.shape
         npar = nt + 2  # number of parameters
 
@@ -1423,7 +1431,7 @@ class DataStore(xr.Dataset):
             c = p_val[2:nt + 2]
             self['gamma_MC'] = (tuple(), gamma)
             self['dalpha_MC'] = (tuple(), dalpha)
-            self['c_MC'] = (('time',), c)
+            self['c_MC'] = ((time_dim,), c)
 
         elif isinstance(p_cov, bool) and p_cov:
             raise NotImplementedError(
@@ -1445,10 +1453,10 @@ class DataStore(xr.Dataset):
             self['dalpha_MC'] = (('MC',), dalpha)
             self['c_MC'] = ((
                 'MC',
-                'time',
+                time_dim,
             ), c)
 
-        rsize = (self.MC.size, self.x.size, self.time.size)
+        rsize = (self.MC.size, self[x_dim].size, self.time.size)
 
         if reduce_memory_usage:
             memchunk = da.ones((mc_sample_size, no, nt),
@@ -1468,7 +1476,7 @@ class DataStore(xr.Dataset):
             loc = da.from_array(self[st_labeli].data, chunks=memchunk[1:])
 
             self[k] = (
-                ('MC', 'x', 'time'),
+                ('MC', x_dim, time_dim),
                 state.normal(
                     loc=loc,  # has chunks=memchunk[1:]
                     scale=st_vari ** 0.5,
@@ -1477,14 +1485,14 @@ class DataStore(xr.Dataset):
 
         self[store_tmpf + '_MC_set'] = self['gamma_MC'] / (
             np.log(self['r_st'] / self['r_ast']) + self['c_MC'] +
-            self['dalpha_MC'] * self.x) - 273.15
+            self['dalpha_MC'] * self[x_dim]) - 273.15
 
         if ci_avg_time_flag and not ci_avg_x_flag:
-            avg_dims = ['MC', 'time']
+            avg_dims = ['MC', time_dim]
         elif ci_avg_x_flag and not ci_avg_time_flag:
-            avg_dims = ['MC', 'x']
+            avg_dims = ['MC', x_dim]
         elif ci_avg_x_flag and ci_avg_time_flag:
-            avg_dims = ['MC', 'time', 'x']
+            avg_dims = ['MC', time_dim, x_dim]
         else:
             avg_dims = ['MC']
 
@@ -1495,11 +1503,11 @@ class DataStore(xr.Dataset):
                 dim=avg_dims)**2
 
         if ci_avg_time_flag and not ci_avg_x_flag:
-            chunks_axis = self[store_tmpf + '_MC_set'].get_axis_num('x')
+            chunks_axis = self[store_tmpf + '_MC_set'].get_axis_num(x_dim)
             new_chunks = ((len(conf_ints),),) + (
                 self[store_tmpf + '_MC_set'].chunks[chunks_axis],)
         elif ci_avg_x_flag and not ci_avg_time_flag:
-            chunks_axis = self[store_tmpf + '_MC_set'].get_axis_num('time')
+            chunks_axis = self[store_tmpf + '_MC_set'].get_axis_num(time_dim)
             new_chunks = ((len(conf_ints),),) + (
                 self[store_tmpf + '_MC_set'].chunks[chunks_axis],)
         elif ci_avg_x_flag and ci_avg_time_flag:
@@ -1520,13 +1528,13 @@ class DataStore(xr.Dataset):
             new_axis=0)  # The new CI dimension is added as first axis
 
         if ci_avg_time_flag and not ci_avg_x_flag:
-            self[store_tmpf + '_MC'] = (('CI', 'x'), q)
+            self[store_tmpf + '_MC'] = (('CI', x_dim), q)
         elif ci_avg_x_flag and not ci_avg_time_flag:
-            self[store_tmpf + '_MC'] = (('CI', 'time'), q)
+            self[store_tmpf + '_MC'] = (('CI', time_dim), q)
         elif ci_avg_x_flag and ci_avg_time_flag:
             self[store_tmpf + '_MC'] = (('CI',), q)
         else:
-            self[store_tmpf + '_MC'] = (('CI', 'x', 'time'), q)
+            self[store_tmpf + '_MC'] = (('CI', x_dim, time_dim), q)
 
         if remove_mc_set_flag:
             drop_var = [
@@ -1656,6 +1664,9 @@ class DataStore(xr.Dataset):
         else:
             state = da.random.RandomState()
 
+        time_dim = self.get_time_dim(data_var_key=st_label)
+        x_dim = self.get_x_dim(data_var_key=st_label)
+
         del_tmpf_after, del_tmpb_after = False, False
 
         if store_tmpw and not store_tmpf:
@@ -1703,8 +1714,8 @@ class DataStore(xr.Dataset):
             alpha = p_val[nt + 1:]
 
             self['gamma_MC'] = (tuple(), gamma)
-            self['alpha_MC'] = (('x',), alpha)
-            self['d_MC'] = (('time',), d)
+            self['alpha_MC'] = ((x_dim,), alpha)
+            self['d_MC'] = ((time_dim,), d)
 
         elif isinstance(p_cov, bool) and p_cov:
             raise NotImplementedError(
@@ -1729,7 +1740,7 @@ class DataStore(xr.Dataset):
             d = po_mc[:, 1:nt + 1]
 
             self['gamma_MC'] = (('MC',), gamma)
-            self['d_MC'] = (('MC', 'time'), d)
+            self['d_MC'] = (('MC', time_dim), d)
 
             # calculate alpha seperately
             alpha = np.zeros((mc_sample_size, no), dtype=float)
@@ -1748,7 +1759,7 @@ class DataStore(xr.Dataset):
 
                 alpha[:, not_ix_sec] = not_alpha_mc
 
-            self['alpha_MC'] = (('MC', 'x'), alpha)
+            self['alpha_MC'] = (('MC', x_dim), alpha)
 
         for k, st_labeli, st_vari in zip(
             ['r_st', 'r_ast', 'r_rst', 'r_rast'],
@@ -1757,7 +1768,7 @@ class DataStore(xr.Dataset):
             loc = da.from_array(self[st_labeli].data, chunks=memchunk[1:])
 
             self[k] = (
-                ('MC', 'x', 'time'),
+                ('MC', x_dim, time_dim),
                 state.normal(
                     loc=loc,  # has chunks=memchunk[1:]
                     scale=st_vari ** 0.5,
@@ -1765,17 +1776,17 @@ class DataStore(xr.Dataset):
                     chunks=memchunk))
 
         if ci_avg_time_flag:
-            avg_dims = ['MC', 'time']
-            avg2_dims = ['MC', 'time']
-            ci_dims = ('CI', 'x')
+            avg_dims = ['MC', time_dim]
+            avg2_dims = ['MC', time_dim]
+            ci_dims = ('CI', x_dim)
         elif ci_avg_x_flag:
-            avg_dims = ['MC', 'x']
-            avg2_dims = ['MC', 'x']
-            ci_dims = ('CI', 'time')
+            avg_dims = ['MC', x_dim]
+            avg2_dims = ['MC', x_dim]
+            ci_dims = ('CI', time_dim)
         else:
             avg_dims = ['MC']
             avg2_dims = ['MC']
-            ci_dims = ('CI', 'x', 'time')
+            ci_dims = ('CI', x_dim, time_dim)
 
         for label, del_label in zip([store_tmpf, store_tmpb],
                                     [del_tmpf_after, del_tmpb_after]):
@@ -1794,7 +1805,7 @@ class DataStore(xr.Dataset):
                     xi = self.ufunc_per_section(
                         x_indices=True, calc_per='all')
                     x_mask_ = [
-                        True if ix in xi else False for ix in range(self.x.size)
+                        True if ix in xi else False for ix in range(self[x_dim].size)
                         ]
                     x_mask = np.reshape(x_mask_, (1, -1, 1))
                     self[label + '_MC_set'] = self[label + '_MC_set'].where(
@@ -1907,21 +1918,24 @@ class DataStore(xr.Dataset):
         resid_da : xarray.DataArray
             The residuals as DataArray
         """
+        time_dim = self.get_time_dim(data_var_key=label)
+        x_dim = self.get_x_dim(data_var_key=label)
+
         resid_temp = self.ufunc_per_section(
             label=label, temp_err=True, calc_per='all')
-        resid_x = self.ufunc_per_section(label='x', calc_per='all')
+        resid_x = self.ufunc_per_section(label=x_dim, calc_per='all')
 
         resid_ix = np.array(
-            [np.argmin(np.abs(ai - self.x.data)) for ai in resid_x])
+            [np.argmin(np.abs(ai - self[x_dim].data)) for ai in resid_x])
 
         resid_sorted = np.full(shape=self[label].shape, fill_value=np.nan)
         resid_sorted[resid_ix, :] = resid_temp
         resid_da = xr.DataArray(
             data=resid_sorted,
-            dims=('x', 'time'),
+            dims=(x_dim, time_dim),
             coords={
-                'x': self.x,
-                'time': self.time})
+                x_dim: self[x_dim],
+                time_dim: self.time})
         return resid_da
 
     def ufunc_per_section(
@@ -2071,6 +2085,8 @@ class DataStore(xr.Dataset):
 
         assert calc_per in ['all', 'section', 'stretch']
 
+        x_dim = self.get_x_dim(data_var_key=label)
+
         if not x_indices and \
             ((label and hasattr(self[label].data, 'chunks')) or
              (subtract_from_label and hasattr(self[subtract_from_label].data,
@@ -2089,8 +2105,8 @@ class DataStore(xr.Dataset):
                     assert not temp_err
                     assert not ref_temp_broadcasted
                     # so it is slicable with x-indices
-                    self['_x_indices'] = self.x.astype(int) * 0 + np.arange(
-                        self.x.size)
+                    self['_x_indices'] = self[x_dim].astype(int) * 0 + np.arange(
+                        self[x_dim].size)
                     arg1 = self['_x_indices'].sel(x=stretch).data
                     del self['_x_indices']
 
@@ -2100,7 +2116,7 @@ class DataStore(xr.Dataset):
                 if subtract_from_label:
                     # calculate std wrt other series
                     # check_dims(self, [subtract_from_label],
-                    #            correct_dims=('x', 'time'))
+                    #            correct_dims=(x_dim, time_dim))
 
                     assert not temp_err
 
@@ -2135,10 +2151,10 @@ class DataStore(xr.Dataset):
             out = func(concat(list(out.values()), axis=0), **func_kwargs)
 
             if (hasattr(out, 'chunks') and len(out.chunks) > 0 and
-                    'x' in self[label].dims):
+                    x_dim in self[label].dims):
                 # also sum the chunksize in the x dimension
                 # first find out where the x dim is
-                ixdim = self[label].dims.index('x')
+                ixdim = self[label].dims.index(x_dim)
                 c_old = out.chunks
                 c_new = list(c_old)
                 c_new[ixdim] = sum(c_old[ixdim])
