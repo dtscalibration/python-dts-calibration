@@ -123,6 +123,10 @@ method.
 
 .. parsed-literal::
 
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration/src/dtscalibration/plot.py:300: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+      if (np.issubdtype(resid[time_dim].dtype, np.float) or
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration/src/dtscalibration/plot.py:301: FutureWarning: Conversion of the second argument of issubdtype from `int` to `np.signedinteger` is deprecated. In future, it will be treated as `np.int64 == np.dtype(int).type`.
+      np.issubdtype(resid[time_dim].dtype, np.int)):
     /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration/.tox/docs/lib/python3.6/site-packages/numpy/lib/nanfunctions.py:1628: RuntimeWarning: Degrees of freedom <= 0 for slice.
       keepdims=keepdims)
     /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration/.tox/docs/lib/python3.6/site-packages/xarray/core/nanops.py:161: RuntimeWarning: Mean of empty slice

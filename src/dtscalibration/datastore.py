@@ -542,7 +542,7 @@ class DataStore(xr.Dataset):
 
             else:
                 time_dim = self.get_time_dim()
-                l = list(dims)
+                l = list(dims)  # noqa: E741
                 l.remove(time_dim)  # noqa: E741
                 return l[0]
 
