@@ -75,7 +75,6 @@ class DataStore(xr.Dataset):
         dtscalibration.open_datastore : Load (calibrated) measurements from
         netCDF-like file
         """
-
     __slots__ = ()
 
     def __init__(self, *args, **kwargs):
@@ -86,6 +85,8 @@ class DataStore(xr.Dataset):
 
         if 'sections' in kwargs:
             self.sections = kwargs['sections']
+
+        self.attrs['_initialized']=True
 
     def __unicode__(self):
         # __repr__ from xarray is used and edited.
