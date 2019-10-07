@@ -86,7 +86,7 @@ class DataStore(xr.Dataset):
         if 'sections' in kwargs:
             self.sections = kwargs['sections']
 
-        self.attrs['_initialized']=True
+        self.attrs['_initialized'] = 1
 
     def __unicode__(self):
         # __repr__ from xarray is used and edited.
