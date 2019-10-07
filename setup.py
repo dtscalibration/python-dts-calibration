@@ -24,7 +24,7 @@ def read(*names, **kwargs):
 
 setup(
     name='dtscalibration',
-    version='0.6.2',
+    version='0.6.4',
     license='BSD 3-Clause License',
     description='A Python package to load raw DTS files, perform a calibration, and plot the '
                 'result',
@@ -63,7 +63,8 @@ setup(
         'xarray',
         'pyyaml',
         'xmltodict',
-        'scipy',
+        'scipy<1.3',  # <1.3 as current requirement for statsmodel. check
+        # statsmodel repo for fix again in July 2019.
         'patsy',  # a dependency of statsmodels
         'statsmodels',
         'nbsphinx',

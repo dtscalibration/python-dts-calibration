@@ -531,6 +531,7 @@ def calc_weighted_alpha_double(
         ast_var,
         rst_var,
         rast_var):
+    time_dim = ds.get_time_dim()
 
     i_var_fw = ds.i_var_fw(
         st_var,
@@ -550,7 +551,7 @@ def calc_weighted_alpha_double(
 
     A = (i_bw - i_fw) / 2
 
-    E_var = 1 / (1 / A_var).sum(dim='time')
-    E = (A / A_var).sum(dim='time') * E_var
+    E_var = 1 / (1 / A_var).sum(dim=time_dim)
+    E = (A / A_var).sum(dim=time_dim) * E_var
 
     return E, E_var

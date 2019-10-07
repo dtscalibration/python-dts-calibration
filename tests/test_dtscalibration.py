@@ -360,7 +360,7 @@ def test_variance_of_stokes_synthetic():
                         scale=yvar ** 0.5).reshape(y.shape)
 
     ds = DataStore({
-        'test_ST': (['x', 'time'], y),
+        'ST': (['x', 'time'], y),
         'probe1Temperature':  (['time'], range(nt)),
         'userAcquisitionTimeFW': (['time'], np.ones(nt)),
         },
@@ -370,7 +370,7 @@ def test_variance_of_stokes_synthetic():
         attrs={'isDoubleEnded': '0'})
 
     sections = {'probe1Temperature': [slice(0., 20.), ]}
-    test_ST_var, _ = ds.variance_stokes(st_label='test_ST',
+    test_ST_var, _ = ds.variance_stokes(st_label='ST',
                                         sections=sections)
 
     np.testing.assert_almost_equal(test_ST_var, yvar,
@@ -696,7 +696,7 @@ def test_exponential_variance_of_stokes_synthetic():
                         scale=yvar ** 0.5).reshape(y.shape)
 
     ds = DataStore({
-        'test_ST': (['x', 'time'], y),
+        'ST': (['x', 'time'], y),
         'probe1Temperature':  (['time'], range(nt)),
         'userAcquisitionTimeFW': (['time'], np.ones(nt)),
         },
@@ -707,7 +707,7 @@ def test_exponential_variance_of_stokes_synthetic():
 
     sections = {'probe1Temperature': [slice(0., 20.), ]}
     test_ST_var, _ = ds.variance_stokes_exponential(
-        st_label='test_ST', sections=sections)
+        st_label='ST', sections=sections)
 
     np.testing.assert_almost_equal(test_ST_var, yvar,
                                    decimal=1)

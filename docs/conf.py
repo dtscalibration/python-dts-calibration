@@ -35,7 +35,7 @@ project = 'dtscalibration'
 year = '2018'
 author = 'Bas des Tombe'
 copyright = '{0}, {1}'.format(year, author)
-version = release = '0.6.2'
+version = release = '0.6.4'
 
 pygments_style = 'trac'
 templates_path = ['.']
