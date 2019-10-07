@@ -110,7 +110,7 @@ def test_read_data_from_single_file_single_ended():
 
 def test_empty_construction():
     ds = DataStore()
-    assert ds._initialized, 'Empty obj in not initialized'
+    assert hasattr(ds, '_initialized'), 'Empty obj in not initialized'
     pass
 
 
