@@ -76,6 +76,8 @@ class DataStore(xr.Dataset):
         netCDF-like file
         """
 
+    __slots__ = ()
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
