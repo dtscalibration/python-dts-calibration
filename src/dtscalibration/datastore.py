@@ -1767,7 +1767,10 @@ class DataStore(xr.Dataset):
             ['r_st', 'r_ast', 'r_rst', 'r_rast'],
             [st_label, ast_label, rst_label, rast_label],
                 [st_var, ast_var, rst_var, rast_var]):
-            loc = da.from_array(self[st_labeli].data, chunks=memchunk[1:])
+            if type(self[st_labeli].data) == da.core.Array:
+                loc = da.asarray(self[st_labeli].data, chunks=memchunk[1:])
+            else:
+                loc = da.from_array(self[st_labeli].data, chunks=memchunk[1:])
 
             self[k] = (
                 ('MC', x_dim, time_dim),
