@@ -63,8 +63,7 @@ setup(
         'xarray',
         'pyyaml',
         'xmltodict',
-        'scipy<1.3',  # <1.3 as current requirement for statsmodel. check
-        # statsmodel repo for fix again in July 2019.
+        'scipy',
         'patsy',  # a dependency of statsmodels
         'statsmodels',
         'nbsphinx',
