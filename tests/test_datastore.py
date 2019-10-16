@@ -317,6 +317,7 @@ def test_read_single_silixa_v45():
 
     pass
 
+
 def test_read_single_silixa_v7():
     filepath = data_dir_single_silixa_v7
     ds = read_silixa_files(
