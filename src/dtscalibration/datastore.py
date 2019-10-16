@@ -75,7 +75,7 @@ class DataStore(xr.Dataset):
         dtscalibration.open_datastore : Load (calibrated) measurements from
         netCDF-like file
         """
-    __slots__ = ()
+    __slots__ = ('__name__')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -88,7 +88,7 @@ class DataStore(xr.Dataset):
 
         self.attrs['_initialized'] = 1
 
-    def __unicode__(self):
+    def __repr__(self):
         # __repr__ from xarray is used and edited.
         #   'xarray' is prepended. so we remove it and add 'dtscalibration'
         s = xr.core.formatting.dataset_repr(self)
