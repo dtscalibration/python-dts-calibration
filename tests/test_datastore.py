@@ -35,6 +35,7 @@ if 1:
     data_dir_sensornet_single_ended = os.path.join(
         wd, 'data', 'sensornet_oryx_v3.7')
     data_dir_single_silixa_v45 = os.path.join(wd, 'data', 'silixa_v4.5')
+    data_dir_single_silixa_v7 = os.path.join(wd, 'data', 'silixa_v7.0')
 
     # zips
     data_dir_zipped_single_ended = os.path.join(
@@ -316,6 +317,27 @@ def test_read_single_silixa_v45():
 
     pass
 
+def test_read_single_silixa_v7():
+    filepath = data_dir_single_silixa_v7
+    ds = read_silixa_files(
+        directory=filepath, timezone_netcdf='UTC', file_ext='*.xml',
+        load_in_memory=False)
+
+    assert ds._initialized
+
+    for k in ['ST', 'AST']:
+        assert isinstance(ds[k].data, da.Array)
+
+    ds = read_silixa_files(
+        directory=filepath, timezone_netcdf='UTC', file_ext='*.xml',
+        load_in_memory=True)
+
+    assert ds._initialized
+
+    for k in ['ST', 'AST']:
+        assert isinstance(ds[k].data, np.ndarray)
+
+    pass
 
 @pytest.mark.skip(reason="Randomly fails. Has to do with delayed reading out of"
                          "zips with dask.")

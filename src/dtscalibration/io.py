@@ -88,7 +88,7 @@ def silixa_xml_version_check(filepathlist):
 
     version_string = attrs['customData:SystemSettings:softwareVersion']
 
-    # Get major version from string. Tested for Ultima v4, v6, XT-DTS v6
+    # Get major version from string. Tested for Ultima v4, v6, v7 XT-DTS v6
     major_version = int(version_string.replace(' ', '').split(':')[-1][0])
 
     return major_version
@@ -96,6 +96,7 @@ def silixa_xml_version_check(filepathlist):
 
 def read_silixa_files_routine_v6(
         filepathlist,
+        xml_version=6,
         timezone_netcdf='UTC',
         silent=False,
         load_in_memory='auto'):
@@ -279,7 +280,7 @@ def read_silixa_files_routine_v6(
     ts_dtype = np.dtype(_ts_dtype + _time_dtype)
 
     @dask.delayed
-    def grab_timeseries_per_file(file_handle):
+    def grab_timeseries_per_file(file_handle, xml_version):
         """
 
         Parameters
@@ -328,12 +329,17 @@ def read_silixa_files_routine_v6(
             else:
                 file_name = os.path.split(file_handle)[-1]
 
-            tstamp = np.int64(file_name[10:27])
+            if xml_version == 6:
+                tstamp = np.int64(file_name[10:27])
+            elif xml_version == 7:
+                tstamp = np.int64(file_name[15:27])
+            else:
+                raise ValueError('Unknown version number: {}'.format(xml_version))
 
             out += [tstamp, startDateTimeIndex, endDateTimeIndex]
         return np.array(tuple(out), dtype=ts_dtype)
 
-    ts_lst_dly = [grab_timeseries_per_file(fp) for fp in filepathlist]
+    ts_lst_dly = [grab_timeseries_per_file(fp, xml_version) for fp in filepathlist]
     ts_lst = [
         da.from_delayed(x, shape=tuple(), dtype=ts_dtype) for x in ts_lst_dly]
     ts_arr = da.stack(ts_lst).compute()
