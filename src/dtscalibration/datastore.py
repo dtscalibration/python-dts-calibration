@@ -75,6 +75,7 @@ class DataStore(xr.Dataset):
         dtscalibration.open_datastore : Load (calibrated) measurements from
         netCDF-like file
         """
+    __slots__ = ('__name__')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -85,7 +86,9 @@ class DataStore(xr.Dataset):
         if 'sections' in kwargs:
             self.sections = kwargs['sections']
 
-    def __unicode__(self):
+        self.attrs['_initialized'] = 1
+
+    def __repr__(self):
         # __repr__ from xarray is used and edited.
         #   'xarray' is prepended. so we remove it and add 'dtscalibration'
         s = xr.core.formatting.dataset_repr(self)
@@ -154,7 +157,7 @@ class DataStore(xr.Dataset):
 
         """
         assert hasattr(self, '_sections'), 'first set the sections'
-        return yaml.load(self.attrs['_sections'])
+        return yaml.load(self.attrs['_sections'], Loader=yaml.FullLoader)
 
     @sections.setter
     def sections(self, sections: Dict[str, List[slice]]):
@@ -1765,7 +1768,10 @@ class DataStore(xr.Dataset):
             ['r_st', 'r_ast', 'r_rst', 'r_rast'],
             [st_label, ast_label, rst_label, rast_label],
                 [st_var, ast_var, rst_var, rast_var]):
-            loc = da.from_array(self[st_labeli].data, chunks=memchunk[1:])
+            if type(self[st_labeli].data) == da.core.Array:
+                loc = da.asarray(self[st_labeli].data, chunks=memchunk[1:])
+            else:
+                loc = da.from_array(self[st_labeli].data, chunks=memchunk[1:])
 
             self[k] = (
                 ('MC', x_dim, time_dim),
