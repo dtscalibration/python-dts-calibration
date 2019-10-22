@@ -390,7 +390,7 @@ def test_read_sensornet_files_single_ended():
     pass
 
 
-def test_read_sensornet_files_single_ended():
+def test_read_sensornet_files_double_ended():
     filepath = data_dir_sensornet_double_ended
     ds = read_sensornet_files(
         directory=filepath,

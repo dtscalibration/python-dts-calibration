@@ -779,7 +779,7 @@ def read_sensornet_files_routine_v3(
             REV_AST[:, ii] = data['REV-AST']
 
     if double_ended_flag:
-        #Get fiber length, and starting point for reverse channel reversal
+        # Get fiber length, and starting point for reverse channel reversal
         fiber_start = -50
         fiber_end = float(meta['fibre end'])
 
