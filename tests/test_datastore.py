@@ -34,6 +34,8 @@ if 1:
         wd, 'data', 'double_single_ended', 'channel_1')
     data_dir_sensornet_single_ended = os.path.join(
         wd, 'data', 'sensornet_oryx_v3.7')
+    data_dir_sensornet_double_ended = os.path.join(
+        wd, 'data', 'sensornet_halo_v1.0')
     data_dir_single_silixa_v45 = os.path.join(wd, 'data', 'silixa_v4.5')
     data_dir_single_silixa_v7 = os.path.join(wd, 'data', 'silixa_v7.0')
 
@@ -61,6 +63,8 @@ else:
         '..', '..', 'tests', 'data', 'double_single_ended', 'channel_1')
     data_dir_sensornet_single_ended = os.path.join(
         '..', '..', 'tests', 'data', 'sensornet_oryx_v3.7')
+    data_dir_sensornet_double_ended = os.path.join(
+        '..', '..', 'tests', 'data', 'sensornet_halo_v1.0')
 
 
 def test_read_data_from_single_file_double_ended():
@@ -375,6 +379,19 @@ def test_read_long_silixa_files():
 
 def test_read_sensornet_files_single_ended():
     filepath = data_dir_sensornet_single_ended
+    ds = read_sensornet_files(
+        directory=filepath,
+        timezone_netcdf='UTC',
+        timezone_input_files='UTC',
+        file_ext='*.ddf')
+
+    assert ds._initialized
+
+    pass
+
+
+def test_read_sensornet_files_single_ended():
+    filepath = data_dir_sensornet_double_ended
     ds = read_sensornet_files(
         directory=filepath,
         timezone_netcdf='UTC',
