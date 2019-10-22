@@ -696,8 +696,11 @@ def read_sensornet_files_routine_v3(
     attrs = meta
 
     # Add standardised required attributes
-    attrs['isDoubleEnded'] = str(
-        1 - (meta['differential loss correction'] == 'single-ended'))
+    if meta['differential loss correction'] == 'single-ended':
+        attrs['isDoubleEnded'] = '0'
+    elif meta['differential loss correction'] == 'combined':
+        attrs['isDoubleEnded'] = '1'
+
     double_ended_flag = bool(int(attrs['isDoubleEnded']))
 
     attrs['forwardMeasurementChannel'] = meta['forward channel'][-1]
@@ -772,8 +775,23 @@ def read_sensornet_files_routine_v3(
         TMP[:, ii] = data['TMP']
 
         if double_ended_flag:
-            REV_ST[:, ii] = data['REV_ST']
-            REV_AST[:, ii] = data['REV_AST']
+            REV_ST[:, ii] = data['REV-ST']
+            REV_AST[:, ii] = data['REV-AST']
+
+    if double_ended_flag:
+        #Get fiber length, and starting point for reverse channel reversal
+        fiber_start = -50
+        fiber_end = float(meta['fibre end'])
+
+        fiber_start_index = (np.abs(x - fiber_start)).argmin()
+        fiber_end_index = (np.abs(x - fiber_end)).argmin()
+
+        x = x[fiber_start_index:fiber_end_index]
+        TMP = TMP[fiber_start_index:fiber_end_index]
+        ST = ST[fiber_start_index:fiber_end_index]
+        AST = AST[fiber_start_index:fiber_end_index]
+        REV_ST = REV_ST[fiber_end_index:fiber_start_index:-1]
+        REV_AST = REV_AST[fiber_end_index:fiber_start_index:-1]
 
     data_vars = {
         'ST': (['x', 'time'], ST, dim_attrs['ST']),
@@ -975,9 +993,29 @@ def read_sensornet_single(filename):
                 data['ST'][ii] = float(fileline[2])
                 data['AST'][ii] = float(fileline[3])
 
+        elif meta['differential loss correction'] == 'combined':
+            data = {
+                'x': np.zeros(datalength),
+                'TMP': np.zeros(datalength),
+                'ST': np.zeros(datalength),
+                'AST': np.zeros(datalength),
+                'REV-ST': np.zeros(datalength),
+                'REV-AST': np.zeros(datalength)}
+
+            for ii in range(0, datalength):
+                fileline = fileobject.readline().replace(',', '.').split('\t')
+
+                data['x'][ii] = float(fileline[0])
+                data['TMP'][ii] = float(fileline[1])
+                data['ST'][ii] = float(fileline[2])
+                data['AST'][ii] = float(fileline[3])
+                data['REV-ST'][ii] = float(fileline[4])
+                data['REV-AST'][ii] = float(fileline[5])
+
         else:
-            raise NotImplementedError(
-                'double-ended DDF files ' + 'are not implemented yet')
+            raise ValueError(
+                'unknown differential loss correction: "' +
+                meta['differential loss correction']+'"')
 
     return data, meta
 
