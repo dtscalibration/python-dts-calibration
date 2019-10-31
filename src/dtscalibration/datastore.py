@@ -168,15 +168,6 @@ class DataStore(xr.Dataset):
         if sections:
             assert isinstance(sections, dict)
 
-            if 0:  # maybe in the future? Or enforce SI units?
-                # ensure units are set for x-dim
-                # required for plotting functions, common sense, and __repr__
-                msg = """Please give the x-dimension a unit first. 
-                For example with:
-                ds['x'].attrs['units'] = 'm'"""
-                x_dim = self.get_x_dim()
-                assert 'units' in self[x_dim], msg
-
             # be less restrictive for capitalized labels
             # find lower cases label
             labels = np.reshape([[s.lower(), s] for s in
@@ -862,7 +853,7 @@ class DataStore(xr.Dataset):
                 try:
                     resid_res.append(
                         resid[lenis:lenie].reshape((leni, nt), order='F'))
-                except:
+                except:  # noqa: E722
                     # Dask array does not support order
                     resid_res.append(
                         resid[lenis:lenie].T.reshape((nt, leni)).T)
