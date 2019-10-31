@@ -838,14 +838,12 @@ class DataStore(xr.Dataset):
 
         beta = a[:n_sections]
         beta_expand_to_sec = np.hstack(
-            [
-                np.repeat(beta[i], leni * nt)
-                for i, leni in enumerate(len_stretch_list)])
-        G = a[n_sections:]
+            [np.repeat(float(beta[i]), leni * nt)
+             for i, leni in enumerate(len_stretch_list)])
+        G = np.asarray(a[n_sections:])
         G_expand_to_sec = np.hstack(
-            [
-                np.repeat(G[i * nt:(i + 1) * nt], leni)
-                for i, leni in enumerate(len_stretch_list)])
+            [np.repeat(G[i * nt:(i + 1) * nt], leni)
+             for i, leni in enumerate(len_stretch_list)])
 
         I_est = np.exp(G_expand_to_sec) * np.exp(x * beta_expand_to_sec)
         resid = I_est - y
@@ -1109,8 +1107,8 @@ class DataStore(xr.Dataset):
 
         elif method == 'wls' or method == 'external':
             if method == 'wls':
-                for vari in [st_var, ast_var]:
-                    assert isinstance(vari, float)
+                st_var = float(st_var)
+                ast_var = float(ast_var)
 
                 nt, z, p_val, p_var, p_cov = calibration_single_ended_wls(
                     self, st_label, ast_label, st_var, ast_var, solver=solver)
@@ -1277,8 +1275,10 @@ class DataStore(xr.Dataset):
         elif method == 'wls' or method == 'external':
             # External is also/always weighted
             if method == 'wls':
-                for vari in [st_var, ast_var, rst_var, rast_var]:
-                    assert isinstance(vari, float)
+                st_var = float(st_var)
+                ast_var = float(ast_var)
+                rst_var = float(rst_var)
+                rast_var = float(rast_var)
 
                 nt, z, p_val, p_var, p_cov = calibration_double_ended_wls(
                     self,

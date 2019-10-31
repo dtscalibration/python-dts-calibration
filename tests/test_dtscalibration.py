@@ -126,6 +126,11 @@ def test_double_ended_variance_estimate_synthetic():
     rst_label = 'mrst'
     rast_label = 'mrast'
 
+    mst_var = float(mst_var)
+    mast_var = float(mast_var)
+    mrst_var = float(mrst_var)
+    mrast_var = float(mrast_var)
+
     # MC variance
     ds.calibration_double_ended(sections=sections,
                                 st_label=st_label,
@@ -183,12 +188,12 @@ def test_double_ended_variance_estimate_synthetic():
 
     for (_, v1), (_, v2) in zip(stdsf1.items(), stdsf2.items()):
         for v1i, v2i in zip(v1, v2):
-            print('Real VAR: ', v1i ** 2, 'Estimated VAR: ', v2i)
+            print('Real VAR: ', v1i ** 2, 'Estimated VAR: ', float(v2i))
             np.testing.assert_almost_equal(v1i ** 2, v2i, decimal=2)
 
     for (_, v1), (_, v2) in zip(stdsb1.items(), stdsb2.items()):
         for v1i, v2i in zip(v1, v2):
-            print('Real VAR: ', v1i ** 2, 'Estimated VAR: ', v2i)
+            print('Real VAR: ', v1i ** 2, 'Estimated VAR: ', float(v2i))
             np.testing.assert_almost_equal(v1i ** 2, v2i, decimal=2)
 
     pass
@@ -262,6 +267,8 @@ def test_single_ended_variance_estimate_synthetic():
                                     sections=sections)
     mast_var, _ = ds.variance_stokes(st_label=ast_label,
                                      sections=sections)
+    mst_var = float(mst_var)
+    mast_var = float(mast_var)
 
     # MC variqnce
     ds.calibration_single_ended(sections=sections,
@@ -304,7 +311,7 @@ def test_single_ended_variance_estimate_synthetic():
 
     for (_, v1), (_, v2) in zip(stdsf1.items(), stdsf2.items()):
         for v1i, v2i in zip(v1, v2):
-            print('Real VAR: ', v1i ** 2, 'Estimated VAR: ', v2i)
+            print('Real VAR: ', v1i ** 2, 'Estimated VAR: ', float(v2i))
             np.testing.assert_almost_equal(v1i ** 2, v2i, decimal=2)
 
     pass
@@ -463,6 +470,11 @@ def test_double_ended_exponential_variance_estimate_synthetic():
     ast_label = 'mast'
     rst_label = 'mrst'
     rast_label = 'mrast'
+
+    mst_var = float(mst_var)
+    mast_var = float(mast_var)
+    mrst_var = float(mrst_var)
+    mrast_var = float(mrast_var)
 
     # MC variance
     ds.calibration_double_ended(sections=sections,
