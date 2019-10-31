@@ -115,7 +115,6 @@ def test_read_data_from_single_file_single_ended():
 
 def test_empty_construction():
     ds = DataStore()
-    assert hasattr(ds, '_initialized'), 'Empty obj in not initialized'
     pass
 
 
@@ -218,8 +217,6 @@ def test_read_silixa_files_single_ended():
     ds = read_silixa_files(
         directory=filepath, timezone_netcdf='UTC', file_ext='*.xml')
 
-    assert ds._initialized
-
     pass
 
 
@@ -227,8 +224,6 @@ def test_read_silixa_files_double_ended():
     filepath = data_dir_double_ended
     ds = read_silixa_files(
         directory=filepath, timezone_netcdf='UTC', file_ext='*.xml')
-
-    assert ds._initialized
 
     pass
 
@@ -305,16 +300,12 @@ def test_read_single_silixa_v45():
         directory=filepath, timezone_netcdf='UTC', file_ext='*.xml',
         load_in_memory=False)
 
-    assert ds._initialized
-
     for k in ['ST', 'AST']:
         assert isinstance(ds[k].data, da.Array)
 
     ds = read_silixa_files(
         directory=filepath, timezone_netcdf='UTC', file_ext='*.xml',
         load_in_memory=True)
-
-    assert ds._initialized
 
     for k in ['ST', 'AST']:
         assert isinstance(ds[k].data, np.ndarray)
@@ -328,16 +319,12 @@ def test_read_single_silixa_v7():
         directory=filepath, timezone_netcdf='UTC', file_ext='*.xml',
         load_in_memory=False)
 
-    assert ds._initialized
-
     for k in ['ST', 'AST']:
         assert isinstance(ds[k].data, da.Array)
 
     ds = read_silixa_files(
         directory=filepath, timezone_netcdf='UTC', file_ext='*.xml',
         load_in_memory=True)
-
-    assert ds._initialized
 
     for k in ['ST', 'AST']:
         assert isinstance(ds[k].data, np.ndarray)
@@ -362,8 +349,6 @@ def test_read_silixa_zipped():
                 file_ext='*.xml',
                 load_in_memory=True)
 
-        assert ds._initialized
-
     pass
 
 
@@ -371,8 +356,6 @@ def test_read_long_silixa_files():
     filepath = data_dir_silixa_long
     ds = read_silixa_files(
         directory=filepath, timezone_netcdf='UTC', file_ext='*.xml')
-
-    assert ds._initialized
 
     pass
 
@@ -385,8 +368,6 @@ def test_read_sensornet_files_single_ended():
         timezone_input_files='UTC',
         file_ext='*.ddf')
 
-    assert ds._initialized
-
     pass
 
 
@@ -397,8 +378,6 @@ def test_read_sensornet_files_double_ended():
         timezone_netcdf='UTC',
         timezone_input_files='UTC',
         file_ext='*.ddf')
-
-    assert ds._initialized
 
     pass
 
@@ -444,7 +423,6 @@ def test_resample_datastore():
     assert ds.time.size == 3
 
     ds_resampled = ds.resample_datastore(how='mean', time="47S")
-    assert ds_resampled._initialized
 
     assert ds_resampled.time.size == 2
 

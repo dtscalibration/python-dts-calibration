@@ -55,7 +55,7 @@ class DataStore(xr.Dataset):
             name.
         attrs : dict-like, optional
             Global attributes to save on this datastore.
-        sections : dict, optional
+        sections : Dict[str, List[slice]], optional
             Sections for calibration. The dictionary should contain key-var
             couples in which the key is the name of the calibration temp time
             series. And the var is a list of slice objects as 'slice(start,
@@ -86,9 +86,7 @@ class DataStore(xr.Dataset):
         if 'sections' in kwargs:
             self.sections = kwargs['sections']
 
-        self.attrs['_initialized'] = 1
-
-    def __repr__(self):
+    def __unicode__(self):
         # __repr__ from xarray is used and edited.
         #   'xarray' is prepended. so we remove it and add 'dtscalibration'
         s = xr.core.formatting.dataset_repr(self)
@@ -101,7 +99,11 @@ class DataStore(xr.Dataset):
             preamble_new += '\n'
 
             x_dim = self.get_x_dim()
-            unit = self[x_dim].units
+            if 'units' in self[x_dim]:
+                unit = self[x_dim].units
+            else:
+                unit = ''
+
             for k, v in self.sections.items():
                 preamble_new += '    {0: <23}'.format(k)
                 vl = ['{0:.2f}{2} - {1:.2f}{2}'.format(vi.start, vi.stop, unit)
@@ -165,6 +167,15 @@ class DataStore(xr.Dataset):
 
         if sections:
             assert isinstance(sections, dict)
+
+            if 0:  # maybe in the future? Or enforce SI units?
+                # ensure units are set for x-dim
+                # required for plotting functions, common sense, and __repr__
+                msg = """Please give the x-dimension a unit first. 
+                For example with:
+                ds['x'].attrs['units'] = 'm'"""
+                x_dim = self.get_x_dim()
+                assert 'units' in self[x_dim], msg
 
             # be less restrictive for capitalized labels
             # find lower cases label
@@ -472,21 +483,74 @@ class DataStore(xr.Dataset):
             unlimited_dims=unlimited_dims,
             compute=compute)
 
-    def get_default_encoding(self):
+    def get_default_encoding(self, time_chunks_from_key=None):
         """
 
         Returns
         -------
 
         """
-        # TODO: set scale parameter
+        # The following variables are stored with a sufficiently large
+        # precision in 32 bit
+        float32l = ['ST', 'AST', 'REV-ST', 'REV-AST', 'time', 'timestart',
+                    'timeend',
+                    'acquisitionTime', 'x']
+        int32l = ['filename_tstamp', 'acquisitiontimeFW', 'acquisitiontimeBW',
+                  'userAcquisitionTimeFW', 'userAcquisitionTimeBW']
+
+        # default variable compression
         compdata = dict(
             zlib=True, complevel=6,
             shuffle=False)  # , least_significant_digit=None
+
+        # default coordinate compression
         compcoords = dict(zlib=True, complevel=4)
 
+        # construct encoding dict
         encoding = {var: compdata.copy() for var in self.data_vars}
         encoding.update({var: compcoords.copy() for var in self.coords})
+
+        for k, v in encoding.items():
+            if k in float32l:
+                v['dtype'] = 'float32'
+
+            if k in int32l:
+                v['dtype'] = 'int32'
+
+        if time_chunks_from_key is not None:
+            # obtain optimal chunk sizes in time and x dim
+            if self[time_chunks_from_key].dims == ('x', 'time'):
+                x_chunk, t_chunk = da.ones(self[time_chunks_from_key].shape,
+                                           chunks=(-1, 'auto'),
+                                           dtype='float64').chunks
+
+            elif self[time_chunks_from_key].dims == ('time', 'x'):
+                x_chunk, t_chunk = da.ones(self[time_chunks_from_key].shape,
+                                           chunks=('auto', -1),
+                                           dtype='float64').chunks
+            else:
+                assert 0, 'something went wrong with your Stokes dimensions'
+
+            for k, v in encoding.items():
+                # By writing and compressing the data in chunks, some sort of
+                # parallism is possible.
+                if self[k].dims == ('x', 'time'):
+                    chunks = (x_chunk[0], t_chunk[0])
+
+                elif self[k].dims == ('time', 'x'):
+                    chunks = (t_chunk[0], x_chunk[0])
+
+                elif self[k].dims == ('x',):
+                    chunks = (x_chunk[0],)
+
+                elif self[k].dims == ('time',):
+                    chunks = (t_chunk[0],)
+
+                else:
+                    continue
+
+                v['chunksizes'] = chunks
+
         return encoding
 
     def get_time_dim(self, data_var_key=None):
@@ -1113,7 +1177,7 @@ class DataStore(xr.Dataset):
             store_p_cov='p_cov',
             store_p_val='p_val',
             variance_suffix='_var',
-            method='ols',
+            method='wls',
             solver='sparse',
             nt=None,
             z=None,
