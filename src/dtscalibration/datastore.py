@@ -861,9 +861,13 @@ class DataStore(xr.Dataset):
                     len_stretch_list,
                     nt * np.cumsum([0] + len_stretch_list[:-1]),
                     nt * np.cumsum(len_stretch_list)):
-
-                resid_res.append(
-                    resid[lenis:lenie].reshape((leni, nt), order='F'))
+                try:
+                    resid_res.append(
+                        resid[lenis:lenie].reshape((leni, nt), order='F'))
+                except:
+                    # Dask array does not support order
+                    resid_res.append(
+                        resid[lenis:lenie].T.reshape((nt, leni)).T)
 
             _resid = np.concatenate(resid_res)
             _resid_x = self.ufunc_per_section(label=x_dim, calc_per='all')
