@@ -176,7 +176,7 @@ def test_io_sections_property():
             'probe1Temperature': (['time'], range(5)),
             'probe2Temperature': (['time'], range(5))},
         coords={
-            'x': range(100),
+            'x': ('x', range(100), {'units': 'm'}),
             'time': range(5)})
 
     sections = {
@@ -185,6 +185,7 @@ def test_io_sections_property():
         'probe2Temperature': [slice(24., 34.),
                               slice(85., 95.)],  # warm bath
     }
+    ds['x'].attrs['units'] = 'm'
 
     ds.sections = sections
 
