@@ -1,4 +1,3 @@
-
 6. Calibration of double ended measurement with OLS
 ===================================================
 
@@ -133,6 +132,13 @@ channel should be aligned.
                                    rst_label=rst_label,
                                    rast_label=rast_label,
                                    method='ols')
+
+
+.. parsed-literal::
+
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/dask/array/core.py:1328: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
+      FutureWarning,
+
 
 After calibration, two data variables are added to the ``DataStore``
 object: - ``TMPF``, temperature calculated along the forward direction -
