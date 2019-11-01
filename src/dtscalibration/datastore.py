@@ -86,7 +86,7 @@ class DataStore(xr.Dataset):
         if 'sections' in kwargs:
             self.sections = kwargs['sections']
 
-    def __unicode__(self):
+    def __repr__(self):
         # __repr__ from xarray is used and edited.
         #   'xarray' is prepended. so we remove it and add 'dtscalibration'
         s = xr.core.formatting.dataset_repr(self)
