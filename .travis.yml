@@ -10,6 +10,7 @@ env:
     - TOXENV=check
     - TOXENV=docs
 matrix:
+  fast_finish: true
   include:
     - python: '3.6'
       env:
@@ -20,6 +21,7 @@ matrix:
         - TOXENV=py37,report,codecov,check
       services:
         - xvfb
+  allow_failures:
     - python: '3.8'
       dist: xenial
       env:
