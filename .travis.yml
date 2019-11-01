@@ -10,7 +10,6 @@ env:
     - TOXENV=check
     - TOXENV=docs
 matrix:
-  fast_finish: true
   include:
     - python: '3.6'
       env:
