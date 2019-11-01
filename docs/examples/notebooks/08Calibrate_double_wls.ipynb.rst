@@ -1,4 +1,3 @@
-
 8. Calibration of double ended measurement with WLS and confidence intervals
 ============================================================================
 
@@ -112,6 +111,13 @@ solver because it saves us memory.
         method='wls',
         solver='sparse')
 
+
+.. parsed-literal::
+
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/dask/array/core.py:1328: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
+      FutureWarning,
+
+
 .. code:: ipython3
 
     ds.TMPW.plot()
@@ -121,7 +127,7 @@ solver because it saves us memory.
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x129d4bd30>
+    <matplotlib.collections.QuadMesh at 0x12938db70>
 
 
 
@@ -149,9 +155,9 @@ are calculated.
 
 The confidence intervals differ per time step. If you would like to
 calculate confidence intervals of all time steps together you have the
-option ``ci_avg_time_flag=True``. 'We can say with 95% confidence that
+option ``ci_avg_time_flag=True``. ‘We can say with 95% confidence that
 the temperature remained between this line and this line during the
-entire measurement period'. This is ideal if you'd like to calculate the
+entire measurement period’. This is ideal if you’d like to calculate the
 background temperature with a confidence interval.
 
 .. code:: ipython3
@@ -190,7 +196,7 @@ background temperature with a confidence interval.
 
 The DataArrays ``TMPF_MC`` and ``TMPB_MC`` and the dimension ``CI`` are
 added. ``MC`` stands for monte carlo and the ``CI`` dimension holds the
-confidence interval 'coordinates'.
+confidence interval ‘coordinates’.
 
 .. code:: ipython3
 
@@ -234,15 +240,15 @@ confidence interval 'coordinates'.
         d_var                  (time) float64 4.854e-07 4.854e-07 ... 4.854e-07
         TMPF                   (x, time) float64 16.8 17.05 16.32 ... 13.49 13.78
         TMPB                   (x, time) float64 16.8 16.83 16.88 ... 13.74 13.69
-        TMPF_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(699, 6)>
-        TMPB_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(699, 6)>
-        TMPW                   (x, time) float64 dask.array<shape=(787, 6), chunksize=(699, 6)>
-        TMPW_MC_var            (x, time) float64 dask.array<shape=(787, 6), chunksize=(699, 6)>
+        TMPF_MC_var            (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
+        TMPB_MC_var            (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
+        TMPW                   (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
+        TMPW_MC_var            (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
         p_val                  (params1) float64 482.6 1.465 ... -0.005271 -0.005165
         p_cov                  (params1, params2) float64 0.03927 ... 1.835e-07
-        TMPF_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 699, 6)>
-        TMPB_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 699, 6)>
-        TMPW_MC                (CI, x, time) float64 dask.array<shape=(3, 787, 6), chunksize=(3, 699, 6)>
+        TMPF_MC                (CI, x, time) float64 dask.array<chunksize=(3, 787, 6), meta=np.ndarray>
+        TMPB_MC                (CI, x, time) float64 dask.array<chunksize=(3, 787, 6), meta=np.ndarray>
+        TMPW_MC                (CI, x, time) float64 dask.array<chunksize=(3, 787, 6), meta=np.ndarray>
 
 
 

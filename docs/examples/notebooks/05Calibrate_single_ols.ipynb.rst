@@ -1,4 +1,3 @@
-
 5. Calibration of double ended measurement with OLS
 ===================================================
 
@@ -118,6 +117,13 @@ anymore.
     ds100.calibration_single_ended(st_label='ST',
                                    ast_label='AST',
                                    method='ols')
+
+
+.. parsed-literal::
+
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/dask/array/core.py:1328: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
+      FutureWarning,
+
 
 Lets compare our calibrated values with the device calibration
 

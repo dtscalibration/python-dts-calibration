@@ -71,8 +71,11 @@ setup(
         'toolz',
         'matplotlib',
         'netCDF4',
-        'pandas>=0.24.1'
+        'pandas>=0.24.1',
         # eg: 'aspectlib==1.1.1', 'six>=1.7',
+        # https://github.com/pydata/xarray/issues/3401 cloud pickle should be
+        # possible to remove from requirements soon. 2019/10/31
+        'cloudpickle',
         ],
     extras_require={
         # eg:

@@ -1,4 +1,3 @@
-
 2. Common DataStore functions
 =============================
 
@@ -91,7 +90,7 @@ dimension. ``dim`` can be any dimension (e.g., ``time``, ``x``). The
 returned ``DataStore`` does not contain that dimension anymore.
 
 Normally, you would like to keep the attributes (the informative texts
-from the loaded files), so set ``keep_attrs`` to ``True``. They don't
+from the loaded files), so set ``keep_attrs`` to ``True``. They don’t
 take any space compared to your Stokes data, so keep them.
 
 Note that also the sections are stored as attribute. If you delete the
