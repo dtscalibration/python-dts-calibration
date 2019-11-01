@@ -1,6 +1,10 @@
 
 Changelog
 =========
+0.6.7 (2019-11-01)
+------------------
+* Use twine to check if the compiled package meets all the requirements of Pypi
+
 0.6.6 (2019-11-01)
 ------------------
 * Use twine to check if the compiled package meets all the requirements of Pypi
