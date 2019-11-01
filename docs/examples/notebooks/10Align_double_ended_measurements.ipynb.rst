@@ -1,4 +1,3 @@
-
 10. Align double ended measurements
 ===================================
 
@@ -42,7 +41,7 @@ measurements. Do this before the calibration steps.
 
 
 Because our loaded files were already nicely aligned, we are purposely
-offsetting the forward and backward channel by 3 \`spacial indices'.
+offsetting the forward and backward channel by 3 \`spacial indices’.
 
 .. code:: ipython3
 
@@ -68,9 +67,9 @@ and is dropped
 
 .. parsed-literal::
 
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration/src/dtscalibration/datastore_utils.py:240: RuntimeWarning: invalid value encountered in log
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/src/dtscalibration/datastore_utils.py:240: RuntimeWarning: invalid value encountered in log
       i_f = np.log(st / ast)
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration/src/dtscalibration/datastore_utils.py:241: RuntimeWarning: invalid value encountered in log
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/src/dtscalibration/datastore_utils.py:241: RuntimeWarning: invalid value encountered in log
       i_b = np.log(rst / rast)
 
 
@@ -114,4 +113,4 @@ which suggestion to follow. Usually the two suggested shift are close
         units:             m
 
 
-Note that our fiber has become shorter by 2\*3 spatial indices
+Note that our fiber has become shorter by 2*3 spatial indices

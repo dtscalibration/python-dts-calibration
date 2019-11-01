@@ -114,8 +114,7 @@ def test_read_data_from_single_file_single_ended():
 
 
 def test_empty_construction():
-    ds = DataStore()
-    assert hasattr(ds, '_initialized'), 'Empty obj in not initialized'
+    ds = DataStore()  # noqa: F841
     pass
 
 
@@ -177,7 +176,7 @@ def test_io_sections_property():
             'probe1Temperature': (['time'], range(5)),
             'probe2Temperature': (['time'], range(5))},
         coords={
-            'x': range(100),
+            'x': ('x', range(100), {'units': 'm'}),
             'time': range(5)})
 
     sections = {
@@ -186,6 +185,7 @@ def test_io_sections_property():
         'probe2Temperature': [slice(24., 34.),
                               slice(85., 95.)],  # warm bath
     }
+    ds['x'].attrs['units'] = 'm'
 
     ds.sections = sections
 
@@ -218,7 +218,7 @@ def test_read_silixa_files_single_ended():
     ds = read_silixa_files(
         directory=filepath, timezone_netcdf='UTC', file_ext='*.xml')
 
-    assert ds._initialized
+    np.testing.assert_almost_equal(ds.ST.sum(), 11387947.857, decimal=3)
 
     pass
 
@@ -228,7 +228,7 @@ def test_read_silixa_files_double_ended():
     ds = read_silixa_files(
         directory=filepath, timezone_netcdf='UTC', file_ext='*.xml')
 
-    assert ds._initialized
+    np.testing.assert_almost_equal(ds.ST.sum(), 19613502.2617, decimal=3)
 
     pass
 
@@ -305,16 +305,12 @@ def test_read_single_silixa_v45():
         directory=filepath, timezone_netcdf='UTC', file_ext='*.xml',
         load_in_memory=False)
 
-    assert ds._initialized
-
     for k in ['ST', 'AST']:
         assert isinstance(ds[k].data, da.Array)
 
     ds = read_silixa_files(
         directory=filepath, timezone_netcdf='UTC', file_ext='*.xml',
         load_in_memory=True)
-
-    assert ds._initialized
 
     for k in ['ST', 'AST']:
         assert isinstance(ds[k].data, np.ndarray)
@@ -328,16 +324,12 @@ def test_read_single_silixa_v7():
         directory=filepath, timezone_netcdf='UTC', file_ext='*.xml',
         load_in_memory=False)
 
-    assert ds._initialized
-
     for k in ['ST', 'AST']:
         assert isinstance(ds[k].data, da.Array)
 
     ds = read_silixa_files(
         directory=filepath, timezone_netcdf='UTC', file_ext='*.xml',
         load_in_memory=True)
-
-    assert ds._initialized
 
     for k in ['ST', 'AST']:
         assert isinstance(ds[k].data, np.ndarray)
@@ -348,22 +340,20 @@ def test_read_single_silixa_v7():
                          "zips with dask.")
 def test_read_silixa_zipped():
     files = [
-        data_dir_zipped_single_ended,
-        data_dir_zipped_double_ended,
-        data_dir_zipped_double_ended2,
-        data_dir_zipped_silixa_long,
+        (data_dir_zipped_single_ended, 11387947.857184),
+        (data_dir_zipped_double_ended, 19613502.26171),
+        (data_dir_zipped_double_ended2, 28092965.5188),
+        (data_dir_zipped_silixa_long, 2.88763942e+08)
         # data_dir_zipped_sensornet_single_ended
     ]
-    for file in files:
+    for file, stsum in files:
         with zipf(file) as fh:
             ds = read_silixa_files(
                 zip_handle=fh,
                 timezone_netcdf='UTC',
                 file_ext='*.xml',
                 load_in_memory=True)
-
-        assert ds._initialized
-
+            np.testing.assert_almost_equal(ds.ST.sum(), stsum, decimal=0)
     pass
 
 
@@ -371,9 +361,7 @@ def test_read_long_silixa_files():
     filepath = data_dir_silixa_long
     ds = read_silixa_files(
         directory=filepath, timezone_netcdf='UTC', file_ext='*.xml')
-
-    assert ds._initialized
-
+    np.testing.assert_almost_equal(ds.ST.sum(), 133223729.17096, decimal=0)
     pass
 
 
@@ -384,9 +372,7 @@ def test_read_sensornet_files_single_ended():
         timezone_netcdf='UTC',
         timezone_input_files='UTC',
         file_ext='*.ddf')
-
-    assert ds._initialized
-
+    np.testing.assert_almost_equal(ds.ST.sum(), 3015991.361, decimal=2)
     pass
 
 
@@ -398,8 +384,7 @@ def test_read_sensornet_files_double_ended():
         timezone_input_files='UTC',
         file_ext='*.ddf')
 
-    assert ds._initialized
-
+    np.testing.assert_almost_equal(ds.ST.sum(), 2832389.888, decimal=2)
     pass
 
 
@@ -444,7 +429,6 @@ def test_resample_datastore():
     assert ds.time.size == 3
 
     ds_resampled = ds.resample_datastore(how='mean', time="47S")
-    assert ds_resampled._initialized
 
     assert ds_resampled.time.size == 2
 

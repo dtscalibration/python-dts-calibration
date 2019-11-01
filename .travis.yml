@@ -1,6 +1,6 @@
 language: python
 python:
-    - "3.6"
+    - "3.7"
 cache: pip
 env:
   global:
@@ -13,11 +13,11 @@ matrix:
   include:
     - python: '3.6'
       env:
-        - TOXENV=py36,report,codecov,check
+        - TOXENV=py36
     - python: '3.7'
       dist: xenial
       env:
-        - TOXENV=py37
+        - TOXENV=py37,report,codecov,check
       services:
         - xvfb
 before_install:

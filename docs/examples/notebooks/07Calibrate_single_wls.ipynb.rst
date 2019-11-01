@@ -1,4 +1,3 @@
-
 7. Calibration of single ended measurement with WLS and confidence intervals
 ============================================================================
 
@@ -156,9 +155,9 @@ are calculated.
 
 The confidence intervals differ per time step. If you would like to
 calculate confidence intervals of all time steps together you have the
-option ``ci_avg_time_flag=True``. 'We can say with 95% confidence that
+option ``ci_avg_time_flag=True``. ‘We can say with 95% confidence that
 the temperature remained between this line and this line during the
-entire measurement period'.
+entire measurement period’.
 
 .. code:: ipython3
 
@@ -172,6 +171,13 @@ entire measurement period'.
                                 store_p_val='p_val',
                                 store_p_cov='p_cov'
                                 )
+
+
+.. parsed-literal::
+
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/dask/array/core.py:1328: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
+      FutureWarning,
+
 
 .. code:: ipython3
 
