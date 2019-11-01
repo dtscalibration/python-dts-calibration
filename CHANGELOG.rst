@@ -1,6 +1,31 @@
 
 Changelog
 =========
+0.6.7 (2019-11-01)
+------------------
+* Use twine to check if the compiled package meets all the requirements of Pypi
+
+0.6.6 (2019-11-01)
+------------------
+* Use twine to check if the compiled package meets all the requirements of Pypi
+
+0.6.5 (2019-11-01)
+------------------
+* Major bug fix version.
+* More flexibility in defining the time and space dimensions
+* Fixed unsave yaml loading
+* Added support for Silixa 7 files
+* Start using `__slots__` as it is something new
+* xarray doesn't have the attribute `._initialized` anymore. Rewritten teststo make more sense by checking the sum of the Stokes instead.
+* Support for double ended Sensornet files and tests
+* Bug fixing
+
+
+0.6.4 (2019-04-09)
+------------------
+* More flexibility in defining the time dimension
+* Cleanup of some plotting functions
+
 0.6.3 (2019-04-03)
 ------------------
 * Added reading support for zipped silixa files. Still rarely fails due to upstream bug.
@@ -51,7 +76,6 @@ Changelog
 
 0.5.2 (2018-10-26)
 ------------------
-
 * New resample_datastore method (see basic usage notebook)
 * New notebook on basic usage of DataStore
 * Support for Silixa v4 (Windows xp based system) and Silixa v6 (Windows 7) measurement files
@@ -62,7 +86,6 @@ Changelog
 
 0.5.1 (2018-10-19)
 ------------------
-
 * Rewritten the routine that reads Silixa measurement files
 * dts-calibration is now citable
 * Refractored the MC confidence interval routine
@@ -74,7 +97,6 @@ Changelog
 
 0.4.0 (2018-09-06)
 ------------------
-
 * Single ended calibration
 * Confidence intervals for single ended calibration
 * Example notebooks have figures embedded
@@ -84,12 +106,10 @@ Changelog
 
 0.2.0 (2018-08-16)
 ------------------
-
 * Double ended calibration
 * Confidence intervals for double ended calibration
 
 
 0.1.0 (2018-08-01)
 ------------------
-
 * First release on PyPI.

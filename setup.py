@@ -24,7 +24,7 @@ def read(*names, **kwargs):
 
 setup(
     name='dtscalibration',
-    version='0.6.4',
+    version='0.6.7',
     license='BSD 3-Clause License',
     description='A Python package to load raw DTS files, perform a calibration, and plot the '
                 'result',
@@ -32,6 +32,7 @@ setup(
         re.compile('^.. start-badges.*^.. end-badges', re.M | re.S).sub('', read('README.rst')),
         re.sub(':[a-z]+:`~?(.*?)`', r'``\1``', read('CHANGELOG.rst'))
         ),
+    long_description_content_type='text/x-rst',
     author='Bas des Tombe',
     author_email='bdestombe@gmail.com',
     url='https://github.com/bdestombe/python-dts-calibration',
