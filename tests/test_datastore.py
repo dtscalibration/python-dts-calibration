@@ -120,8 +120,8 @@ def test_empty_construction():
 
 def test_repr():
     ds = DataStore()
-    assert ds.__repr__().find('dtscalibration')
-    assert ds.__repr__().find('Sections')
+    assert str(ds).find('dtscalibration') != -1
+    assert str(ds).find('Sections') != -1
     pass
 
 
