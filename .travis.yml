@@ -21,8 +21,12 @@ matrix:
       services:
         - xvfb
     - python: '3.8'
+      dist: xenial
       env:
         - TOXENV=py38
+      services:
+        - xvfb
+
 before_install:
   - python --version
   - uname -a
