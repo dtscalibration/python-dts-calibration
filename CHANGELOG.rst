@@ -1,6 +1,25 @@
 
 Changelog
 =========
+0.6.5 (2019-11-01)
+------------------
+* Major bug fix version.
+* More flexibility in defining the time and space dimensions
+* Fixed unsave yaml loading
+* Added support for Silixa 7 files
+* Start using __slots__ as it is something new
+* xarray doesn't have the attribute ._initialized anymore. Rewritten tests to
+ make more sense by checking the sum of the Stokes instead.
+* Support for double ended Sensornet files + test
+* Bug fixing
+
+
+0.6.4 (2019-04-09)
+------------------
+* More flexibility in defining the time dimension
+* Cleanup of some plotting functions
+
+
 0.6.3 (2019-04-03)
 ------------------
 * Added reading support for zipped silixa files. Still rarely fails due to upstream bug.
