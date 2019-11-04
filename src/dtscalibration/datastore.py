@@ -552,7 +552,7 @@ class DataStore(xr.Dataset):
 
         Examples
         --------
-        >>> ds.to_mf_netcdf(folder_path='.')
+        ds.to_mf_netcdf(folder_path='.')
 
         See Also
         --------
