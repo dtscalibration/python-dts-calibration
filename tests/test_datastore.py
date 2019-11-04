@@ -10,6 +10,7 @@ import pytest
 
 from dtscalibration import DataStore
 from dtscalibration import open_datastore
+from dtscalibration import open_mf_datastore
 from dtscalibration import read_sensornet_files
 from dtscalibration import read_silixa_files
 from dtscalibration.datastore_utils import shift_double_ended
@@ -385,6 +386,32 @@ def test_read_sensornet_files_double_ended():
         file_ext='*.ddf')
 
     np.testing.assert_almost_equal(ds.ST.sum(), 2832389.888, decimal=2)
+    pass
+
+
+def test_to_mf_netcdf_open_mf_datastore():
+    filepath = data_dir_single_ended
+    ds = read_silixa_files(directory=filepath, file_ext='*.xml')
+
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        print('created temporary directory', tmpdirname)
+
+        # work around the effects of deafault encoding.
+        path = os.path.join(tmpdirname, 'ds_merged.nc')
+        ds.to_netcdf(path)
+        ds1 = open_datastore(path)
+
+        # Test saving
+        ds1 = ds1.chunk({'time': 1})
+        ds1.to_mf_netcdf(folder_path=tmpdirname, filename_preamble='file_',
+                         filename_extension='.nc')
+
+        # Test loading
+        path = os.path.join(tmpdirname, 'file_*.nc')
+        ds2 = open_mf_datastore(path=path)
+
+        np.testing.assert_equal(ds1.ST.sum(), ds2.ST.sum())
+
     pass
 
 

@@ -5,6 +5,7 @@ import os
 from typing import Dict
 from typing import List
 
+import dask
 import dask.array as da
 import numpy as np
 import scipy.sparse as sp
@@ -474,6 +475,156 @@ class DataStore(xr.Dataset):
             unlimited_dims=unlimited_dims,
             compute=compute)
 
+    def to_mf_netcdf(
+        self,
+        folder_path=None,
+        filename_preamble='file_',
+        filename_extension='.nc',
+        format='netCDF4',
+        engine='netcdf4',
+        encoding=None,
+        mode='w',
+        compute=True,
+        time_chunks_from_key='ST'):
+
+        """
+        Write DataStore to multiple to multiple netCDF files.
+
+        Splits the DataStore along the time dimension using the chunks. It
+        first checks if all chunks in `ds` are time aligned. If this is not
+        the case, calculate optimal chunk sizes using the
+        `time_chunks_from_key` array. The files are written per time-chunk to
+        disk.
+
+        Almost similar to xarray.save_mfdataset,
+
+        Parameters
+        ----------
+        folder_path : str, Path
+            Folder to place the files
+        filename_preamble : str
+            Filename is `filename_preamble + '0000' + filename_extension
+        filename_extension : str
+            Filename is `filename_preamble + '0000' + filename_extension
+        mode : {'w', 'a'}, optional
+            Write ('w') or append ('a') mode. If mode='w', any existing file at
+            these locations will be overwritten.
+        format : {'NETCDF4', 'NETCDF4_CLASSIC', 'NETCDF3_64BIT',
+                  'NETCDF3_CLASSIC'}, optional
+            File format for the resulting netCDF file:
+            * NETCDF4: Data is stored in an HDF5 file, using netCDF4 API
+              features.
+            * NETCDF4_CLASSIC: Data is stored in an HDF5 file, using only
+              netCDF 3 compatible API features.
+            * NETCDF3_64BIT: 64-bit offset version of the netCDF 3 file format,
+              which fully supports 2+ GB files, but is only compatible with
+              clients linked against netCDF version 3.6.0 or later.
+            * NETCDF3_CLASSIC: The classic netCDF 3 file format. It does not
+              handle 2+ GB files very well.
+            All formats are supported by the netCDF4-python library.
+            scipy.io.netcdf only supports the last two formats.
+            The default format is NETCDF4 if you are saving a file to disk and
+            have the netCDF4-python library available. Otherwise, xarray falls
+            back to using scipy to write netCDF files and defaults to the
+            NETCDF3_64BIT format (scipy does not support netCDF4).
+        engine : {'netcdf4', 'scipy', 'h5netcdf'}, optional
+            Engine to use when writing netCDF files. If not provided, the
+            default engine is chosen based on available dependencies, with a
+            preference for 'netcdf4' if writing to a file on disk.
+            See `Dataset.to_netcdf` for additional information.
+        encoding : list of dict, optional
+            Defaults to reasonable compression/encoding.
+            If you want to define your own encoding, you first needs to know the
+            time-chunk sizes this routine will write to disk. After which you
+            need to provide a list with the encoding specified for each chunk.
+            Use a list of empty dicts to disable encoding.
+            Nested dictionary with variable names as keys and dictionaries of
+            variable specific encodings as values, e.g.,
+            ``{'my_variable': {'dtype': 'int16', 'scale_factor': 0.1,
+                               'zlib': True}, ...}``
+            The `h5netcdf` engine supports both the NetCDF4-style compression
+            encoding parameters ``{'zlib': True, 'complevel': 9}`` and the h5py
+            ones ``{'compression': 'gzip', 'compression_opts': 9}``.
+            This allows using any compression plugin installed in the HDF5
+            library, e.g. LZF.
+        compute: boolean
+            If true compute immediately, otherwise return a
+            ``dask.delayed.Delayed`` object that can be computed later.
+        time_chunks_from_key: str
+
+        Examples
+        --------
+        >>> ds.to_mf_netcdf(folder_path='.')
+
+        See Also
+        --------
+        dtscalibration.open_mf_datastore
+        xarray.save_mfdataset
+
+        """
+        try:
+            # This fails if not all chunks of the data_vars are time aligned.
+            # In case we let Dask estimate an optimal chunk size.
+            t_chunks = self.chunks['time']
+
+        except:
+            if self[time_chunks_from_key].dims == ('x', 'time'):
+                _, t_chunks = da.ones(self[time_chunks_from_key].shape,
+                                            chunks=(-1, 'auto'),
+                                            dtype='float64').chunks
+
+            elif self[time_chunks_from_key].dims == ('time', 'x'):
+                _, t_chunks = da.ones(self[time_chunks_from_key].shape,
+                                            chunks=('auto', -1),
+                                            dtype='float64').chunks
+            else:
+                assert 0, 'something went wrong with your Stokes dimensions'
+
+        bnds = np.cumsum((0,) + t_chunks)
+        x = [range(bu, bd) for bu, bd in zip(bnds[:-1], bnds[1:])]
+
+        datasets = [self.isel(time=xi) for xi in x]
+        paths = [os.path.join(folder_path,
+                              filename_preamble +
+                              "{:04d}".format(ix) +
+                              filename_extension) for ix in range(len(x))]
+
+        encodings = []
+        for ids, ds in enumerate(datasets):
+            if encoding is None:
+                encodings.append(ds.get_default_encoding(
+                    time_chunks_from_key=time_chunks_from_key))
+
+            else:
+                encodings.append(encoding[ids])
+
+        writers, stores = zip(*[
+            xr.backends.api.to_netcdf(
+                ds, path, mode, format, None, engine,
+                compute=compute,
+                multifile=True,
+                encoding=enc)
+            for ds, path, enc in zip(datasets, paths, encodings)])
+
+        try:
+            writes = [w.sync(compute=compute) for w in writers]
+        finally:
+            if compute:
+                for store in stores:
+                    store.close()
+
+        if not compute:
+            def _finalize_store(write, store):
+                """ Finalize this store by explicitly syncing and closing"""
+                del write  # ensure writing is done first
+                store.close()
+                pass
+
+            return dask.delayed([dask.delayed(_finalize_store)(w, s)
+                                 for w, s in zip(writes, stores)])
+
+        pass
+
     def get_default_encoding(self, time_chunks_from_key=None):
         """
 
@@ -484,7 +635,7 @@ class DataStore(xr.Dataset):
         # The following variables are stored with a sufficiently large
         # precision in 32 bit
         float32l = ['ST', 'AST', 'REV-ST', 'REV-AST', 'time', 'timestart',
-                    'timeend',
+                    'TMP', 'timeend',
                     'acquisitionTime', 'x']
         int32l = ['filename_tstamp', 'acquisitiontimeFW', 'acquisitiontimeBW',
                   'userAcquisitionTimeFW', 'userAcquisitionTimeBW']
@@ -507,6 +658,7 @@ class DataStore(xr.Dataset):
 
             if k in int32l:
                 v['dtype'] = 'int32'
+                # v['_FillValue'] = -9999  # Int does not support NaN
 
         if time_chunks_from_key is not None:
             # obtain optimal chunk sizes in time and x dim
@@ -2348,6 +2500,37 @@ def open_datastore(
     ds_xr.close()
 
     return ds
+
+
+def open_mf_datastore(path, combine='by_coords', **kwargs):
+    """
+    Open a datastore from multiple netCDF files. This script assumes the
+    datastore was split along the time dimension. But only variables with a
+    time dimension should be concatenated in the time dimension. Other
+    options from xarray do not support this.
+
+    Parameters
+    ----------
+    combine : {'by_coords', 'nested'}, optional
+        Leave it at by_coords
+    path : str
+        A file path to the stored netcdf files.
+    Returns
+    -------
+    dataset : Dataset
+        The newly created dataset.
+    """
+    from xarray.backends.api import open_mfdataset
+
+    paths = sorted(glob.glob(path))
+    assert paths, 'No files match found with: ' + path
+
+    xds = open_mfdataset(paths=paths, combine=combine, **kwargs)
+
+    return DataStore(
+        data_vars=xds.data_vars,
+        coords=xds.coords,
+        attrs=xds.attrs)
 
 
 def read_silixa_files(

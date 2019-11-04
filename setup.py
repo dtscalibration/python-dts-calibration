@@ -22,6 +22,16 @@ def read(*names, **kwargs):
         ).read()
 
 
+def get_authors(file='AUTHORS.rst'):
+    auth1 = read(file).split('*')[1:]
+
+    auth2 = []
+    for ai in auth1:
+        auth2.append(ai.split('-')[0].strip())
+
+    return ', '.join(auth2)
+
+
 setup(
     name='dtscalibration',
     version='0.6.7',
@@ -29,13 +39,14 @@ setup(
     description='A Python package to load raw DTS files, perform a calibration, and plot the '
                 'result',
     long_description='%s\n%s' % (
-        re.compile('^.. start-badges.*^.. end-badges', re.M | re.S).sub('', read('README.rst')),
+        re.compile('^.. start-badges.*^.. end-badges', re.M | re.S
+                   ).sub('', read('README.rst')),
         re.sub(':[a-z]+:`~?(.*?)`', r'``\1``', read('CHANGELOG.rst'))
         ),
     long_description_content_type='text/x-rst',
-    author='Bas des Tombe',
+    author=get_authors(file='AUTHORS.rst'),
     author_email='bdestombe@gmail.com',
-    url='https://github.com/bdestombe/python-dts-calibration',
+    url='https://github.com/dtscalibration/python-dts-calibration',
     packages=find_packages('src'),
     package_dir={
         '': 'src'},
@@ -44,9 +55,9 @@ setup(
     include_package_data=True,
     zip_safe=False,
     classifiers=[
-        # complete classifier list: http://pypi.python.org/pypi?%3Aaction=list_classifiers
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
+        'Intended Audience :: Science/Research',
         'License :: OSI Approved :: BSD License',
         'Operating System :: Unix',
         'Operating System :: POSIX',

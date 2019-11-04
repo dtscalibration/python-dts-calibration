@@ -18,7 +18,7 @@ _dim_attrs = {
     ('TMP', 'temperature'):
         dict(
             name='TMP',
-            description='temperature calibrated by device',
+            description='Temperature calibrated by device',
             units='degC'),
     ('ST',): dict(name='ST', description='Stokes intensity', units='-'),
     ('AST',): dict(name='AST', description='anti-Stokes intensity', units='-'),
