@@ -476,19 +476,17 @@ class DataStore(xr.Dataset):
             compute=compute)
 
     def to_mf_netcdf(
-        self,
-        folder_path=None,
-        filename_preamble='file_',
-        filename_extension='.nc',
-        format='netCDF4',
-        engine='netcdf4',
-        encoding=None,
-        mode='w',
-        compute=True,
-        time_chunks_from_key='ST'):
-
-        """
-        Write DataStore to multiple to multiple netCDF files.
+            self,
+            folder_path=None,
+            filename_preamble='file_',
+            filename_extension='.nc',
+            format='netCDF4',
+            engine='netcdf4',
+            encoding=None,
+            mode='w',
+            compute=True,
+            time_chunks_from_key='ST'):
+        """Write DataStore to multiple to multiple netCDF files.
 
         Splits the DataStore along the time dimension using the chunks. It
         first checks if all chunks in `ds` are time aligned. If this is not
@@ -562,21 +560,22 @@ class DataStore(xr.Dataset):
         xarray.save_mfdataset
 
         """
+
         try:
             # This fails if not all chunks of the data_vars are time aligned.
             # In case we let Dask estimate an optimal chunk size.
             t_chunks = self.chunks['time']
 
-        except:
+        except:  # noqa: E722
             if self[time_chunks_from_key].dims == ('x', 'time'):
                 _, t_chunks = da.ones(self[time_chunks_from_key].shape,
-                                            chunks=(-1, 'auto'),
-                                            dtype='float64').chunks
+                                      chunks=(-1, 'auto'),
+                                      dtype='float64').chunks
 
             elif self[time_chunks_from_key].dims == ('time', 'x'):
                 _, t_chunks = da.ones(self[time_chunks_from_key].shape,
-                                            chunks=('auto', -1),
-                                            dtype='float64').chunks
+                                      chunks=('auto', -1),
+                                      dtype='float64').chunks
             else:
                 assert 0, 'something went wrong with your Stokes dimensions'
 
