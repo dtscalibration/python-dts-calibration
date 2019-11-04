@@ -5,6 +5,7 @@ import os
 from typing import Dict
 from typing import List
 
+import dask
 import dask.array as da
 import numpy as np
 import scipy.sparse as sp
@@ -473,6 +474,118 @@ class DataStore(xr.Dataset):
             encoding=encoding,
             unlimited_dims=unlimited_dims,
             compute=compute)
+
+    def to_mf_netcdf(
+        self,
+        folder_path=None,
+        filename_preamble='file_',
+        filename_extension='.nc',
+        format='netCDF4',
+        engine='netcdf4',
+        encoding=None,
+        mode='w',
+        compute=True,
+        time_chunks_from_key='ST'):
+
+        """
+        Write DataStore to multiple to multiple netCDF files.
+
+        Splits the DataStore along the time dimension using the chunks.
+
+        Almost similar to xarray.save_mfdataset,
+
+        mode : {'w', 'a'}, optional
+            Write ('w') or append ('a') mode. If mode='w', any existing file at
+            these locations will be overwritten.
+        format : {'NETCDF4', 'NETCDF4_CLASSIC', 'NETCDF3_64BIT',
+                  'NETCDF3_CLASSIC'}, optional
+            File format for the resulting netCDF file:
+            * NETCDF4: Data is stored in an HDF5 file, using netCDF4 API
+              features.
+            * NETCDF4_CLASSIC: Data is stored in an HDF5 file, using only
+              netCDF 3 compatible API features.
+            * NETCDF3_64BIT: 64-bit offset version of the netCDF 3 file format,
+              which fully supports 2+ GB files, but is only compatible with
+              clients linked against netCDF version 3.6.0 or later.
+            * NETCDF3_CLASSIC: The classic netCDF 3 file format. It does not
+              handle 2+ GB files very well.
+            All formats are supported by the netCDF4-python library.
+            scipy.io.netcdf only supports the last two formats.
+            The default format is NETCDF4 if you are saving a file to disk and
+            have the netCDF4-python library available. Otherwise, xarray falls
+            back to using scipy to write netCDF files and defaults to the
+            NETCDF3_64BIT format (scipy does not support netCDF4).
+        groups : list of str, optional
+            Paths to the netCDF4 group in each corresponding file to which to save
+            datasets (only works for format='NETCDF4'). The groups will be created
+            if necessary.
+        engine : {'netcdf4', 'scipy', 'h5netcdf'}, optional
+            Engine to use when writing netCDF files. If not provided, the
+            default engine is chosen based on available dependencies, with a
+            preference for 'netcdf4' if writing to a file on disk.
+            See `Dataset.to_netcdf` for additional information.
+        compute: boolean
+            If true compute immediately, otherwise return a
+            ``dask.delayed.Delayed`` object that can be computed later.
+        time_chunks_from_key: str
+
+        """
+
+        if encoding is None:
+            encoding = self.get_default_encoding(
+                time_chunks_from_key=time_chunks_from_key)
+
+        try:
+            # This fails if not all chunks of the data_vars are time aligned.
+            # In case we let Dask estimate an optimal chunk size.
+            t_chunks = self.chunks['time']
+
+        except:
+            if self[time_chunks_from_key].dims == ('x', 'time'):
+                _, t_chunks = da.ones(self[time_chunks_from_key].shape,
+                                            chunks=(-1, 'auto'),
+                                            dtype='float64').chunks
+
+            elif self[time_chunks_from_key].dims == ('time', 'x'):
+                _, t_chunks = da.ones(self[time_chunks_from_key].shape,
+                                            chunks=('auto', -1),
+                                            dtype='float64').chunks
+            else:
+                assert 0, 'something went wrong with your Stokes dimensions'
+
+        bnds = np.cumsum((0,) + t_chunks)
+        x = [range(bu, bd) for bu, bd in zip(bnds[:-1], bnds[1:])]
+
+        datasets = [self.isel(time=xi) for xi in x]
+        paths = [os.path.join(folder_path,
+                              filename_preamble +
+                              "{:04d}".format(ix) +
+                              filename_extension) for ix in range(len(x))]
+
+        writers, stores = zip(*[
+            xr.backends.api.to_netcdf(
+                ds, path, mode, format, None, engine, compute=compute,
+                multifile=True, encoding=encoding)
+            for ds, path in zip(datasets, paths)])
+
+        try:
+            writes = [w.sync(compute=compute) for w in writers]
+        finally:
+            if compute:
+                for store in stores:
+                    store.close()
+
+        if not compute:
+            def _finalize_store(write, store):
+                """ Finalize this store by explicitly syncing and closing"""
+                del write  # ensure writing is done first
+                store.close()
+                pass
+
+            return dask.delayed([dask.delayed(_finalize_store)(w, s)
+                                 for w, s in zip(writes, stores)])
+
+        pass
 
     def get_default_encoding(self, time_chunks_from_key=None):
         """
@@ -2348,6 +2461,81 @@ def open_datastore(
     ds_xr.close()
 
     return ds
+
+
+def open_mf_datastore(path, **kwargs):
+    """
+    Open a datastore from multiple netCDF files. This script assumes the
+    datastore was split along the time dimension. But only variables with a
+    time dimension should be concatenated in the time dimension. Other
+    options from xarray do not support this.
+
+    Parameters
+    ----------
+    path : str
+        A file path to the stored netcdf files.
+    Returns
+    -------
+    dataset : Dataset
+        The newly created dataset.
+    """
+    # custom open_mfdataset, because every datavar that doesn't have a
+    # time-dim, is written to every netcdf.
+    # And concatenated in the time dimension when auto merging.
+
+    paths = sorted(glob.glob(path))
+
+    assert paths, 'No files match found with: ' + path
+
+    # wrap the open_dataset, getattr, and preprocess with delayed
+    open_ = dask.delayed(xr.backends.api.open_dataset)
+    getattr_ = dask.delayed(getattr)
+    datasets = [open_(p, chunks={}, **kwargs) for p in paths]
+    file_objs = [getattr_(ds, '_file_obj') for ds in datasets]
+    try:
+        datasets, file_objs = dask.compute(datasets, file_objs,
+                                           scheduler="processes")  # this does not
+                                                        # compute the underlying datasets
+    except:
+        datasets, file_objs = dask.compute(datasets, file_objs,
+                                           scheduler="synchronous")
+    # datasets = dask.compute(datasets)
+
+    attrs = datasets[0].attrs
+    data_vars = {}
+    coords = {}
+
+    for dsi in datasets:
+        for datin, datout in [(dsi.coords, coords), (dsi.data_vars, data_vars)]:
+            for k, v in datin.items():
+                if k in datout and 'time' in v.dims:
+                    datout[k]['data'].append(v.data)
+                elif k not in datout and 'time' in v.dims:
+                    datout[k] = {
+                        'data':  [v.data],
+                        'dims':  v.dims,
+                        'attrs': v.attrs
+                        }
+                elif k not in datout and 'time' not in v.dims:
+                    datout[k] = (v.dims, v.data, v.attrs)
+                elif k in datout and 'time' not in v.dims:
+                    pass
+                else:
+                    assert 0
+
+    for datout in [coords, data_vars]:
+        for k, v in datout.items():
+            if isinstance(v, dict):
+                datout[k] = (datout[k]['dims'],
+                             da.concatenate(
+                                 datout[k]['data'],
+                                 axis=datout[k]['dims'].index('time')),
+                             datout[k]['attrs'])
+
+    return DataStore(
+        data_vars=data_vars,
+        coords=coords,
+        attrs=attrs)#.sortby('time')
 
 
 def read_silixa_files(
