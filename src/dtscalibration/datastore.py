@@ -490,10 +490,22 @@ class DataStore(xr.Dataset):
         """
         Write DataStore to multiple to multiple netCDF files.
 
-        Splits the DataStore along the time dimension using the chunks.
+        Splits the DataStore along the time dimension using the chunks. It
+        first checks if all chunks in `ds` are time aligned. If this is not
+        the case, calculate optimal chunk sizes using the
+        `time_chunks_from_key` array. The files are written per time-chunk to
+        disk.
 
         Almost similar to xarray.save_mfdataset,
 
+        Parameters
+        ----------
+        folder_path : str, Path
+            Folder to place the files
+        filename_preamble : str
+            Filename is `filename_preamble + '0000' + filename_extension
+        filename_extension : str
+            Filename is `filename_preamble + '0000' + filename_extension
         mode : {'w', 'a'}, optional
             Write ('w') or append ('a') mode. If mode='w', any existing file at
             these locations will be overwritten.
@@ -515,26 +527,41 @@ class DataStore(xr.Dataset):
             have the netCDF4-python library available. Otherwise, xarray falls
             back to using scipy to write netCDF files and defaults to the
             NETCDF3_64BIT format (scipy does not support netCDF4).
-        groups : list of str, optional
-            Paths to the netCDF4 group in each corresponding file to which to save
-            datasets (only works for format='NETCDF4'). The groups will be created
-            if necessary.
         engine : {'netcdf4', 'scipy', 'h5netcdf'}, optional
             Engine to use when writing netCDF files. If not provided, the
             default engine is chosen based on available dependencies, with a
             preference for 'netcdf4' if writing to a file on disk.
             See `Dataset.to_netcdf` for additional information.
+        encoding : list of dict, optional
+            Defaults to reasonable compression/encoding.
+            If you want to define your own encoding, you first needs to know the
+            time-chunk sizes this routine will write to disk. After which you
+            need to provide a list with the encoding specified for each chunk.
+            Use a list of empty dicts to disable encoding.
+            Nested dictionary with variable names as keys and dictionaries of
+            variable specific encodings as values, e.g.,
+            ``{'my_variable': {'dtype': 'int16', 'scale_factor': 0.1,
+                               'zlib': True}, ...}``
+            The `h5netcdf` engine supports both the NetCDF4-style compression
+            encoding parameters ``{'zlib': True, 'complevel': 9}`` and the h5py
+            ones ``{'compression': 'gzip', 'compression_opts': 9}``.
+            This allows using any compression plugin installed in the HDF5
+            library, e.g. LZF.
         compute: boolean
             If true compute immediately, otherwise return a
             ``dask.delayed.Delayed`` object that can be computed later.
         time_chunks_from_key: str
 
+        Examples
+        --------
+        >>> ds.to_mf_netcdf(folder_path='.')
+
+        See Also
+        --------
+        dtscalibration.open_mf_datastore
+        xarray.save_mfdataset
+
         """
-
-        if encoding is None:
-            encoding = self.get_default_encoding(
-                time_chunks_from_key=time_chunks_from_key)
-
         try:
             # This fails if not all chunks of the data_vars are time aligned.
             # In case we let Dask estimate an optimal chunk size.
@@ -562,11 +589,22 @@ class DataStore(xr.Dataset):
                               "{:04d}".format(ix) +
                               filename_extension) for ix in range(len(x))]
 
+        encodings = []
+        for ids, ds in enumerate(datasets):
+            if encoding is None:
+                encodings.append(ds.get_default_encoding(
+                    time_chunks_from_key=time_chunks_from_key))
+
+            else:
+                encodings.append(encoding[ids])
+
         writers, stores = zip(*[
             xr.backends.api.to_netcdf(
-                ds, path, mode, format, None, engine, compute=compute,
-                multifile=True, encoding=encoding)
-            for ds, path in zip(datasets, paths)])
+                ds, path, mode, format, None, engine,
+                compute=compute,
+                multifile=True,
+                encoding=enc)
+            for ds, path, enc in zip(datasets, paths, encodings)])
 
         try:
             writes = [w.sync(compute=compute) for w in writers]
@@ -597,7 +635,7 @@ class DataStore(xr.Dataset):
         # The following variables are stored with a sufficiently large
         # precision in 32 bit
         float32l = ['ST', 'AST', 'REV-ST', 'REV-AST', 'time', 'timestart',
-                    'timeend',
+                    'TMP', 'timeend',
                     'acquisitionTime', 'x']
         int32l = ['filename_tstamp', 'acquisitiontimeFW', 'acquisitiontimeBW',
                   'userAcquisitionTimeFW', 'userAcquisitionTimeBW']
@@ -620,6 +658,7 @@ class DataStore(xr.Dataset):
 
             if k in int32l:
                 v['dtype'] = 'int32'
+                # v['_FillValue'] = -9999  # Int does not support NaN
 
         if time_chunks_from_key is not None:
             # obtain optimal chunk sizes in time and x dim
@@ -2463,7 +2502,7 @@ def open_datastore(
     return ds
 
 
-def open_mf_datastore(path, **kwargs):
+def open_mf_datastore(path, combine='by_coords', **kwargs):
     """
     Open a datastore from multiple netCDF files. This script assumes the
     datastore was split along the time dimension. But only variables with a
@@ -2472,6 +2511,8 @@ def open_mf_datastore(path, **kwargs):
 
     Parameters
     ----------
+    combine : {'by_coords', 'nested'}, optional
+        Leave it at by_coords
     path : str
         A file path to the stored netcdf files.
     Returns
@@ -2479,63 +2520,17 @@ def open_mf_datastore(path, **kwargs):
     dataset : Dataset
         The newly created dataset.
     """
-    # custom open_mfdataset, because every datavar that doesn't have a
-    # time-dim, is written to every netcdf.
-    # And concatenated in the time dimension when auto merging.
+    from xarray.backends.api import open_mfdataset
 
     paths = sorted(glob.glob(path))
-
     assert paths, 'No files match found with: ' + path
 
-    # wrap the open_dataset, getattr, and preprocess with delayed
-    open_ = dask.delayed(xr.backends.api.open_dataset)
-    getattr_ = dask.delayed(getattr)
-    datasets = [open_(p, chunks={}, **kwargs) for p in paths]
-    file_objs = [getattr_(ds, '_file_obj') for ds in datasets]
-    try:
-        datasets, file_objs = dask.compute(datasets, file_objs,
-                                           scheduler="processes")  # this does not
-                                                        # compute the underlying datasets
-    except:
-        datasets, file_objs = dask.compute(datasets, file_objs,
-                                           scheduler="synchronous")
-    # datasets = dask.compute(datasets)
-
-    attrs = datasets[0].attrs
-    data_vars = {}
-    coords = {}
-
-    for dsi in datasets:
-        for datin, datout in [(dsi.coords, coords), (dsi.data_vars, data_vars)]:
-            for k, v in datin.items():
-                if k in datout and 'time' in v.dims:
-                    datout[k]['data'].append(v.data)
-                elif k not in datout and 'time' in v.dims:
-                    datout[k] = {
-                        'data':  [v.data],
-                        'dims':  v.dims,
-                        'attrs': v.attrs
-                        }
-                elif k not in datout and 'time' not in v.dims:
-                    datout[k] = (v.dims, v.data, v.attrs)
-                elif k in datout and 'time' not in v.dims:
-                    pass
-                else:
-                    assert 0
-
-    for datout in [coords, data_vars]:
-        for k, v in datout.items():
-            if isinstance(v, dict):
-                datout[k] = (datout[k]['dims'],
-                             da.concatenate(
-                                 datout[k]['data'],
-                                 axis=datout[k]['dims'].index('time')),
-                             datout[k]['attrs'])
+    xds = open_mfdataset(paths=paths, combine=combine, **kwargs)
 
     return DataStore(
-        data_vars=data_vars,
-        coords=coords,
-        attrs=attrs)#.sortby('time')
+        data_vars=xds.data_vars,
+        coords=xds.coords,
+        attrs=xds.attrs)
 
 
 def read_silixa_files(
