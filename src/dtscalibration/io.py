@@ -55,6 +55,12 @@ _dim_attrs = {
 #   tuple as key contains the possible keys, which is expanded below.
 dim_attrs = {k: v for kl, v in _dim_attrs.items() for k in kl}
 
+dim_attrs_apsensing = dim_attrs
+dim_attrs_apsensing['TEMP'] = dim_attrs_apsensing.pop('TMP')
+dim_attrs_apsensing['TEMP']['name'] = 'TEMP'
+dim_attrs_apsensing.pop('acquisitionTime')
+dim_attrs_apsensing.pop('userAcquisitionTimeFW')
+dim_attrs_apsensing.pop('userAcquisitionTimeBW')
 
 @contextmanager
 def open_file(path, **kwargs):
@@ -948,6 +954,275 @@ def read_silixa_attrs_singlefile(filename, sep):
         doc = doc_[u'logs'][u'log']
 
     return metakey(dict(), doc, '')
+
+
+def read_apsensing_files_routine(
+        filepathlist,
+        timezone_netcdf='UTC',
+        silent=False,
+        load_in_memory='auto'):
+    """
+    Internal routine that reads AP Sensing files.
+    Use dtscalibration.read_apsensing_files function instead.
+
+    The AP sensing files are not timezone aware
+
+    Parameters
+    ----------
+    load_in_memory
+    filepathlist
+    timezone_netcdf
+    silent
+
+    Returns
+    -------
+
+    """
+    import dask
+    from xml.etree import ElementTree
+
+    # Open the first xml file using ET, get the name space and amount of data
+    xml_tree = ElementTree.parse(filepathlist[0])
+    namespace = get_xml_namespace(xml_tree.getroot())
+
+    logtree = xml_tree.find(('{0}wellSet/{0}well/{0}wellboreSet'+
+                            '/{0}wellbore/{0}wellLogSet/{0}wellLog').format(namespace))
+    logdata_tree = logtree.find('./{0}logData'.format(namespace))
+
+    # Amount of datapoints is the size of the logdata tree
+    nx = len(logdata_tree)
+
+    sep = ':'
+    ns = {'s': namespace[1:-1]}
+
+    # Obtain metadata from the first file
+    attrs, skip_chars = read_apsensing_attrs_singlefile(filepathlist[0], sep)
+
+    # Add standardised required attributes
+    # No example of DE file available
+    attrs['isDoubleEnded'] = '0'
+    double_ended_flag = bool(int(attrs['isDoubleEnded']))
+
+    attrs['forwardMeasurementChannel'] = attrs[
+        'wellbore:dtsMeasurementSet:dtsMeasurement:connectedToFiber:uidRef']
+    attrs['backwardMeasurementChannel'] = 'N/A'
+
+    data_item_names = [
+        attrs['wellbore:wellLogSet:wellLog:logCurveInfo_{0}:mnemonic'.format(x)] for x in range(0, 4)]
+
+    nitem = len(data_item_names)
+
+    ntime = len(filepathlist)
+
+    # print summary
+    if not silent:
+        print(
+            '%s files were found, each representing a single timestep' % ntime)
+        print(
+            '%s recorded vars were found: ' % nitem +
+            ', '.join(data_item_names))
+        print('Recorded at %s points along the cable' % nx)
+
+        if double_ended_flag:
+            print('The measurement is double ended')
+        else:
+            print('The measurement is single ended')
+
+    # Gather data
+    arr_path = 's:' + '/s:'.join(['wellSet', 'well', 'wellboreSet', 'wellbore',
+                                  'wellLogSet', 'wellLog', 'logData', 'data'])
+
+    @dask.delayed
+    def grab_data_per_file(file_handle):
+        """
+
+        Parameters
+        ----------
+        file_handle
+
+        Returns
+        -------
+
+        """
+
+        with open_file(file_handle, mode='r') as f_h:
+            if skip_chars:
+                f_h.read(3)
+            eltree = ElementTree.parse(f_h)
+            arr_el = eltree.findall(arr_path, namespaces=ns)
+
+            # remove the breaks on both sides of the string
+            # split the string on the comma
+            arr_str = [arr_eli.text.split(',') for arr_eli in arr_el]
+        return np.array(arr_str, dtype=float)
+
+    data_lst_dly = [grab_data_per_file(fp) for fp in filepathlist]
+
+    data_lst = [
+        da.from_delayed(x, shape=(nx, nitem), dtype=np.float)
+        for x in data_lst_dly]
+    data_arr = da.stack(data_lst).T  # .compute()
+
+    # Check whether to compute data_arr (if possible 25% faster)
+    data_arr_cnk = data_arr.rechunk({0: -1, 1: -1, 2: 'auto'})
+    if load_in_memory == 'auto' and data_arr_cnk.npartitions <= 5:
+        if not silent:
+            print('Reading the data from disk')
+        data_arr = data_arr_cnk.compute()
+    elif load_in_memory:
+        if not silent:
+            print('Reading the data from disk')
+        data_arr = data_arr_cnk.compute()
+    else:
+        if not silent:
+            print('Not reading the data from disk')
+        data_arr = data_arr_cnk
+
+    data_vars = {}
+    for name, data_arri in zip(data_item_names, data_arr):
+        if name == 'LAF':
+            continue
+
+        if name in dim_attrs_apsensing:
+            data_vars[name] = (['x', 'time'], data_arri, dim_attrs_apsensing[name])
+
+        else:
+            raise ValueError(
+                'Dont know what to do with the' +
+                ' {} data column'.format(name))
+
+    _time_dtype = [
+    ('filename_tstamp', np.int64),
+    ('acquisitionTime', '<U29')]
+    ts_dtype = np.dtype(_time_dtype)
+
+    @dask.delayed
+    def grab_timeseries_per_file(file_handle):
+        """
+
+        Parameters
+        ----------
+        file_handle
+
+        Returns
+        -------
+
+        """
+        with open_file(file_handle, mode='r') as f_h:
+            if skip_chars:
+                f_h.read(3)
+            eltree = ElementTree.parse(f_h)
+
+            out = []
+
+            # get all the time related data
+            creationDate = eltree.find( ('{0}wellSet/{0}well/{0}wellboreSet'+
+                                          '/{0}wellbore/{0}wellLogSet/{0}wellLog'+
+                                          '/{0}creationDate').format(namespace)
+                                        ).text
+
+            if isinstance(file_handle, tuple):
+                file_name = os.path.split(file_handle[0])[-1]
+            else:
+                file_name = os.path.split(file_handle)[-1]
+
+            tstamp = np.int64(file_name[-20:-4])
+
+            out += [tstamp, creationDate]
+        return np.array(tuple(out), dtype=ts_dtype)
+
+    ts_lst_dly = [grab_timeseries_per_file(fp) for fp in filepathlist]
+    ts_lst = [
+        da.from_delayed(x, shape=tuple(), dtype=ts_dtype) for x in ts_lst_dly]
+    ts_arr = da.stack(ts_lst).compute()
+
+    data_vars['creationDate'] = (('time',), [pd.Timestamp(item[1]) for item in ts_arr])
+
+    # construct the coordinate dictionary
+    coords = {
+        'x': ('x', data_arr[0, :, 0], dim_attrs_apsensing['x']),
+        'filename': ('time', [os.path.split(f)[1] for f in filepathlist]),
+        'time': data_vars['creationDate'] }
+
+    return data_vars, coords, attrs
+
+
+def read_apsensing_attrs_singlefile(filename, sep):
+    """
+
+    Parameters
+    ----------
+    filename
+    sep
+
+    Returns
+    -------
+
+    """
+    import xmltodict
+    from xml.parsers.expat import ExpatError
+
+    def metakey(meta, dict_to_parse, prefix):
+        """
+        Fills the metadata dictionairy with data from dict_to_parse.
+        The dict_to_parse is the raw data from a silixa xml-file.
+        dict_to_parse is a nested dictionary to represent the
+        different levels of hierarchy. For example,
+        toplevel = {lowlevel: {key: value}}.
+        This function returns {'toplevel:lowlevel:key': value}.
+        Where prefix is the flattened hierarchy.
+
+        Parameters
+        ----------
+        meta : dict
+            the output dictionairy with prcessed metadata
+        dict_to_parse : dict
+        prefix
+
+        Returns
+        -------
+
+        """
+
+        for key in dict_to_parse:
+            if prefix == "":
+
+                prefix_parse = key.replace('@', '')
+            else:
+                prefix_parse = sep.join([prefix, key.replace('@', '')])
+
+            if prefix_parse == sep.join(('wellbore', 'wellLogSet', 'wellLog', 'logData', 'data')):
+                # skip the LAF , ST data
+                continue
+
+            if hasattr(dict_to_parse[key], 'keys'):
+                # Nested dictionaries, flatten hierarchy.
+                meta.update(metakey(meta, dict_to_parse[key], prefix_parse))
+
+            elif isinstance(dict_to_parse[key], list):
+                # if the key has values for the multiple channels
+                for ival, val in enumerate(dict_to_parse[key]):
+                    num_key = prefix_parse + '_' + str(ival)
+                    meta.update(metakey(meta, val, num_key))
+            else:
+
+                meta[prefix_parse] = dict_to_parse[key]
+
+        return meta
+
+    with open_file(filename) as fh:
+        data = fh.read()
+        try:
+            doc_ = xmltodict.parse(data)
+            skip_chars = False
+        # the first 3 characters can be weird, skip them
+        except ExpatError:
+            doc_ = xmltodict.parse(data[3:])
+            skip_chars = True
+
+    doc = doc_[u'WITSMLComposite'][u'wellSet'][u'well'][u'wellboreSet']
+
+    return metakey(dict(), doc, ''), skip_chars
 
 
 def read_sensornet_single(filename):
