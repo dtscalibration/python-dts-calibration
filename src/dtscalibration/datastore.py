@@ -186,6 +186,7 @@ class DataStore(xr.Dataset):
                                               'to a valid timeserie already ' \
                                               'stored in ds.data_vars'
 
+            sections_fix_slice_fixed = dict()
             for k, v in sections_fix.items():
                 assert isinstance(v, (list, tuple)), \
                     'The values of the sections-dictionary ' \
@@ -201,7 +202,10 @@ class DataStore(xr.Dataset):
                         f'Better define the {k} section. You tried {vi}, ' \
                         'which is out of reach'
 
-        self.attrs['_sections'] = yaml.dump(sections_fix)
+                sections_fix_slice_fixed[k] = [
+                    slice(float(vi.start), float(vi.stop)) for vi in v]
+
+        self.attrs['_sections'] = yaml.dump(sections_fix_slice_fixed)
         pass
 
     @sections.deleter
