@@ -163,6 +163,11 @@ def test_sections_property():
     assert ds.sections == sections1
     assert ds.sections != sections2
 
+    # test if accepts singleton numpy arrays
+    ds.sections = {
+        'probe1Temperature': [
+            slice(np.array(0.), np.array(17.)), slice(70., 80.)]}
+
     # delete property
     del ds.sections
     assert ds.sections is None
