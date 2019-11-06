@@ -401,7 +401,7 @@ def test_to_mf_netcdf_open_mf_datastore():
         path = os.path.join(tmpdirname, 'ds_merged.nc')
         ds.to_netcdf(path)
         ds.close()
-        time.pause(3)  # to ensure all is written on Windows and file released
+        time.sleep(2)  # to ensure all is written on Windows and file released
         ds1 = open_datastore(path, load_in_memory=True)
 
         # Test saving
@@ -410,7 +410,7 @@ def test_to_mf_netcdf_open_mf_datastore():
                          filename_extension='.nc')
         correct_val = float(ds1.ST.sum())
         ds1.close()
-        time.pause(3)  # to ensure all is written on Windows and file released
+        time.sleep(2)  # to ensure all is written on Windows and file released
 
         # Test loading
         path = os.path.join(tmpdirname, 'file_*.nc')
