@@ -162,7 +162,7 @@ class DataStore(xr.Dataset):
 
     @sections.setter
     def sections(self, sections: Dict[str, List[slice]]):
-        sections_fix = None
+        sections_fix_slice_fixed = None
 
         if sections:
             assert isinstance(sections, dict)
@@ -187,6 +187,7 @@ class DataStore(xr.Dataset):
                                               'stored in ds.data_vars'
 
             sections_fix_slice_fixed = dict()
+
             for k, v in sections_fix.items():
                 assert isinstance(v, (list, tuple)), \
                     'The values of the sections-dictionary ' \
