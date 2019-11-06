@@ -2407,6 +2407,7 @@ def open_datastore(
         cache=None,
         drop_variables=None,
         backend_kwargs=None,
+        load_in_memory=False,
         **kwargs):
     """Load and decode a datastore from a file or file-like object.
     Parameters
@@ -2473,13 +2474,16 @@ def open_datastore(
         A dictionary of keyword arguments to pass on to the backend. This
         may be useful when backend options would improve performance or
         allow user control of dataset processing.
+
     Returns
     -------
     dataset : Dataset
         The newly created dataset.
+
     See Also
     --------
-    read_xml_dir
+    xarray.open_dataset
+    xarray.load_dataset
     """
 
     xr_kws = inspect.signature(xr.open_dataset).parameters.keys()
@@ -2489,33 +2493,37 @@ def open_datastore(
     if chunks is None:
         chunks = {}
 
-    ds_xr = xr.open_dataset(
-        filename_or_obj,
-        group=group,
-        decode_cf=decode_cf,
-        mask_and_scale=mask_and_scale,
-        decode_times=decode_times,
-        concat_characters=concat_characters,
-        decode_coords=decode_coords,
-        engine=engine,
-        chunks=chunks,
-        lock=lock,
-        cache=cache,
-        drop_variables=drop_variables,
-        backend_kwargs=backend_kwargs)
+    with xr.open_dataset(
+            filename_or_obj,
+            group=group,
+            decode_cf=decode_cf,
+            mask_and_scale=mask_and_scale,
+            decode_times=decode_times,
+            concat_characters=concat_characters,
+            decode_coords=decode_coords,
+            engine=engine,
+            chunks=chunks,
+            lock=lock,
+            cache=cache,
+            drop_variables=drop_variables,
+            backend_kwargs=backend_kwargs) as ds_xr:
+        ds = DataStore(
+            data_vars=ds_xr.data_vars,
+            coords=ds_xr.coords,
+            attrs=ds_xr.attrs,
+            **ds_kwargs)
 
-    ds = DataStore(
-        data_vars=ds_xr.data_vars,
-        coords=ds_xr.coords,
-        attrs=ds_xr.attrs,
-        **ds_kwargs)
+        if load_in_memory:
+            if "cache" in kwargs:
+                raise TypeError("cache has no effect in this context")
+            return ds.load()
 
-    ds_xr.close()
-
-    return ds
+        else:
+            return ds
 
 
-def open_mf_datastore(path, combine='by_coords', **kwargs):
+def open_mf_datastore(path, combine='by_coords', load_in_memory=False,
+                      **kwargs):
     """
     Open a datastore from multiple netCDF files. This script assumes the
     datastore was split along the time dimension. But only variables with a
@@ -2538,12 +2546,19 @@ def open_mf_datastore(path, combine='by_coords', **kwargs):
     paths = sorted(glob.glob(path))
     assert paths, 'No files match found with: ' + path
 
-    xds = open_mfdataset(paths=paths, combine=combine, **kwargs)
+    with open_mfdataset(paths=paths, combine=combine, **kwargs) as xds:
+        ds = DataStore(
+            data_vars=xds.data_vars,
+            coords=xds.coords,
+            attrs=xds.attrs)
 
-    return DataStore(
-        data_vars=xds.data_vars,
-        coords=xds.coords,
-        attrs=xds.attrs)
+        if load_in_memory:
+            if "cache" in kwargs:
+                raise TypeError("cache has no effect in this context")
+            return ds.load()
+
+        else:
+            return ds
 
 
 def read_silixa_files(
