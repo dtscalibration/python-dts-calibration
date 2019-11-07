@@ -188,7 +188,7 @@ def plot_residuals_reference_sections(
             ticks = section_avg.set_yticks(section_ylims[ii])
             ticks[0].label1.set_verticalalignment('bottom')
             ticks[1].label1.set_verticalalignment('top')
-        section_ax_avg[-1].set_xticks([np.ceil(vmin), 0, np.floor(vmax)])
+        section_ax_avg[-1].set_xticks([np.floor(vmin*10)/10, 0, np.ceil(vmax*10)/10])
         section_ax_avg[-1].set_xlabel(units)
 
         for section_ax in section_axes[:-1]:
