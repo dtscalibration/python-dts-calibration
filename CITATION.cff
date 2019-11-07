@@ -12,10 +12,8 @@ authors:
     given-names: Bart
     orcid: "https://orcid.org/0000-0003-4487-9822"
 cff-version: "1.0.3"
-date-released: 2019-11-07
 doi: "10.5281/zenodo.1410097"
 license: "BSD-3-Clause"
-message: "If you use this software, please cite it using these metadata."
 repository-code: "https://github.com/dtscalibration/python-dts-calibration"
 title: "Python distributed temperature sensing calibration"
 version: "v0.7.0"
