@@ -28,7 +28,6 @@ Changelog
 * Support for double ended Sensornet files and tests
 * Bug fixing
 
-
 0.6.4 (2019-04-09)
 ------------------
 * More flexibility in defining the time dimension
