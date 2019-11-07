@@ -1,6 +1,14 @@
 
 Changelog
 =========
+0.7.0 (2019-11-07)
+------------------
+* Ensure order of dimension upon initialization of DataStore. Resamplingwould lead to issues
+* Bug in section definition (reported by Robert Law)
+* Rewritten calibration solvers to align with article of this package
+* Removed old calibration solvers
+* New possibilities of saving and loading large DataStores saved to multiplenetCDF files
+
 0.6.7 (2019-11-01)
 ------------------
 * Use twine to check if the compiled package meets all the requirements of Pypi
