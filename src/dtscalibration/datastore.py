@@ -79,6 +79,30 @@ class DataStore(xr.Dataset):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        # check order of the dimensions of the data_vars
+        # first 'x' (if in initiated DataStore), then 'time', then the rest
+        ideal_dim = []  # perfect order dims
+        all_dim = list(self.dims)
+
+        if all_dim:
+            x_dim = self.get_x_dim()
+            if x_dim in all_dim:
+                ideal_dim.append(x_dim)
+                all_dim.pop(all_dim.index(x_dim))
+
+            time_dim = self.get_time_dim()
+            if time_dim:
+                if time_dim in all_dim:
+                    ideal_dim.append(time_dim)
+                    all_dim.pop(all_dim.index(time_dim))
+
+                ideal_dim += all_dim
+
+                for name, var in self._variables.items():
+                    var_dims = tuple(
+                        dim for dim in ideal_dim if dim in (var.dims + (...,)))
+                    self._variables[name] = var.transpose(*var_dims)
+
         if '_sections' not in self.attrs:
             self.attrs['_sections'] = yaml.dump(None)
 
@@ -726,8 +750,14 @@ class DataStore(xr.Dataset):
         # find all dims in options
         in_opt = [next(filter(lambda s: s == d, options), None) for d in
                   dims]
-        # exclude Nones from list
-        return next(filter(None, in_opt))
+
+        if in_opt and in_opt != [None]:
+            # exclude Nones from list
+            return next(filter(None, in_opt))
+
+        else:
+            # there is no time dimension
+            return None
 
     def get_x_dim(self, data_var_key=None):
         """

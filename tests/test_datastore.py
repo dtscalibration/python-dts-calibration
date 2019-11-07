@@ -471,6 +471,10 @@ def test_resample_datastore():
     ds_resampled = ds.resample_datastore(how='mean', time="47S")
 
     assert ds_resampled.time.size == 2
+    assert ds_resampled.ST.dims == ('x', 'time'), 'The dimension have to be ' \
+                                                  'manually transposed after ' \
+                                                  'resampling. To guarantee ' \
+                                                  'the order'
 
     pass
 
