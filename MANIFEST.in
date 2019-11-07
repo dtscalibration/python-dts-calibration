@@ -13,12 +13,14 @@ include .bumpversion.cfg
 include .coveragerc
 include .cookiecutterrc
 include .editorconfig
+include .zenodo.json
 
 include AUTHORS.rst
 include CHANGELOG.rst
 include CONTRIBUTING.rst
 include LICENSE
 include README.rst
+include CITATION.cff
 
 include tox.ini .travis.yml appveyor.yml .readthedocs.yml .style.yapf
 
