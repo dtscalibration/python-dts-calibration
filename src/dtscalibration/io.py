@@ -55,7 +55,7 @@ _dim_attrs = {
 #   tuple as key contains the possible keys, which is expanded below.
 dim_attrs = {k: v for kl, v in _dim_attrs.items() for k in kl}
 
-dim_attrs_apsensing = dim_attrs
+dim_attrs_apsensing = dict(dim_attrs)
 dim_attrs_apsensing['TEMP'] = dim_attrs_apsensing.pop('TMP')
 dim_attrs_apsensing['TEMP']['name'] = 'TEMP'
 dim_attrs_apsensing.pop('acquisitionTime')
@@ -98,6 +98,28 @@ def silixa_xml_version_check(filepathlist):
     major_version = int(version_string.replace(' ', '').split(':')[-1][0])
 
     return major_version
+
+
+def sensortran_binary_version_check(filepathlist):
+    """Function which tests which version the sensortran binaries are.
+
+    Parameters
+    ----------
+    filepathlist
+
+    Returns
+    -------
+
+    """
+    import struct
+
+    fname = filepathlist[0]
+
+    with open(fname, 'rb') as f:
+        f.read(2)
+        version = struct.unpack('<h', f.read(2))[0]
+
+    return version
 
 
 def read_silixa_files_routine_v6(
@@ -954,6 +976,204 @@ def read_silixa_attrs_singlefile(filename, sep):
         doc = doc_[u'logs'][u'log']
 
     return metakey(dict(), doc, '')
+
+
+def read_sensortran_files_routine(
+        filepathlist_dts,
+        filepathlist_temp,
+        timezone_netcdf='UTC',
+        silent=False):
+    """
+    Internal routine that reads sensortran files.
+    Use dtscalibration.read_sensortran_files function instead.
+
+    The sensortran files are in UTC time
+
+    Parameters
+    ----------
+    filepathlist_dts
+    filepathlist_temp
+    timezone_netcdf
+    silent
+
+    Returns
+    -------
+
+    """
+
+    # Obtain metadata from the first file
+    data_dts, meta_dts = read_sensortran_single(filepathlist_dts[0])
+    data_temp, meta_temp = read_sensortran_single(filepathlist_temp[0])
+
+    attrs = meta_dts
+
+    # Add standardised required attributes
+    attrs['isDoubleEnded'] = '0'
+
+    attrs['forwardMeasurementChannel'] = meta_dts['channel_id']-1
+    attrs['backwardMeasurementChannel'] = 'N/A'
+
+    # obtain basic data info
+    nx = meta_temp['num_points']
+
+    ntime = len(filepathlist_dts)
+
+    # print summary
+    if not silent:
+        print(
+            '%s files were found,' % ntime +
+            ' each representing a single timestep')
+        print('Recorded at %s points along the cable' % nx)
+
+        print('The measurement is single ended')
+
+    #   Gather data
+    # x has already been read. should not change over time
+    x = data_temp['x']
+
+    # Define all variables
+    referenceTemperature = np.zeros(ntime)
+    acquisitiontimeFW = np.ones(ntime)
+
+    timestamp = [''] * ntime
+    ST = np.zeros((nx, ntime), dtype=np.int32)
+    AST = np.zeros((nx, ntime), dtype=np.int32)
+    TMP = np.zeros((nx, ntime))
+
+    ST_zero = np.zeros((ntime))
+    AST_zero = np.zeros((ntime))
+
+    for ii in range(ntime):
+        data_dts, meta_dts = read_sensortran_single(filepathlist_dts[ii])
+        data_temp, meta_temp = read_sensortran_single(filepathlist_temp[ii])
+
+        timestamp[ii] = data_dts['time']
+
+        referenceTemperature[ii] = data_temp['reference_temperature']-273.15
+
+        ST[:, ii] = data_dts['ST'][:nx]
+        AST[:, ii] = data_dts['AST'][:nx]
+        TMP[:, ii] = data_temp['TMP']
+
+        zero_index = (meta_dts['num_points']-nx) // 2
+        ST_zero[ii] = np.mean(data_dts['ST'][nx+zero_index:])
+        AST_zero[ii] = np.mean(data_dts['AST'][nx+zero_index:])
+
+    data_vars = {
+        'ST': (['x', 'time'], ST, dim_attrs['ST']),
+        'AST': (['x', 'time'], AST, dim_attrs['AST']),
+        'TMP':
+            (
+                ['x', 'time'], TMP, {
+                    'name': 'TMP',
+                    'description': 'Temperature calibrated by device',
+                    'units': meta_temp['y_units']}),
+        'referenceTemperature':
+            (
+                'time', referenceTemperature, {
+                    'name': 'reference temperature',
+                    'description': 'Internal reference '
+                                   'temperature',
+                    'units': 'degC'}),
+        'ST_zero': (['time'], ST_zero, {
+                    'name': 'ST_zero',
+                    'description': 'Stokes zero count',
+                    'units': meta_dts['y_units']}),
+        'AST_zero': (['time'], AST_zero, {
+                    'name': 'AST_zero',
+                    'description': 'anit-Stokes zero count',
+                    'units': meta_dts['y_units']}),
+        'userAcquisitionTimeFW':
+            ('time', acquisitiontimeFW, dim_attrs['userAcquisitionTimeFW'])}
+
+    filenamelist_dts = [os.path.split(f)[-1] for f in filepathlist_dts]
+    filenamelist_temp = [os.path.split(f)[-1] for f in filepathlist_temp]
+
+    coords = {
+        'x': ('x', x, {'name': 'distance',
+                       'description': 'Length along fiber',
+                       'long_description': 'Starting at connector of forward channel',
+                       'units': 'm'}),
+        'filename': ('time', filenamelist_dts),
+        'filename_temp': ('time', filenamelist_temp)}
+
+    dtFW = data_vars['userAcquisitionTimeFW'][1].astype('timedelta64[s]')
+
+    tcoords = coords_time(
+        np.array(timestamp).astype('datetime64[ns]'),
+        timezone_netcdf=timezone_netcdf,
+        timezone_input_files='UTC',
+        dtFW=dtFW,
+        double_ended_flag=False)
+
+    coords.update(tcoords)
+
+    return data_vars, coords, attrs
+
+
+def read_sensortran_single(fname):
+    """
+    Internal routine that reads a single sensortran file.
+    Use dtscalibration.read_sensortran_files function instead.
+
+    Parameters
+    ----------
+    fname
+
+    Returns
+    -------
+    data, metadata
+    """
+    import struct
+    from datetime import datetime
+    import numpy as np
+
+    meta = {}
+    data = {}
+    with open(fname, 'rb') as f:
+        meta['survey_type'] = struct.unpack('<h', f.read(2))[0]
+        meta['hdr_version'] = struct.unpack('<h', f.read(2))[0]
+        meta['x_units'] = struct.unpack('<i', f.read(4))[0]
+        meta['y_units'] = struct.unpack('<i', f.read(4))[0]
+        meta['num_points'] = struct.unpack('<i', f.read(4))[0]
+        meta['num_pulses'] = struct.unpack('<i', f.read(4))[0]
+        meta['channel_id'] = struct.unpack('<i', f.read(4))[0]
+        meta['num_subtraces'] = struct.unpack('<i', f.read(4))[0]
+        meta['num_skipped'] = struct.unpack('<i', f.read(4))[0]
+
+        data['reference_temperature'] = struct.unpack('<f', f.read(4))[0]
+        data['time'] = datetime.fromtimestamp(struct.unpack('<i', f.read(4))[0])
+
+        meta['probe_name'] = f.read(128).decode('utf-16').split('\x00')[0]
+
+        meta['hdr_size'] = struct.unpack('<i', f.read(4))[0]
+        meta['hw_config'] = struct.unpack('<i', f.read(4))[0]
+
+        data_1 = f.read(meta['num_points']*4)
+        data_2 = f.read(meta['num_points']*4)
+
+        if meta['survey_type'] == 0:
+            distance = np.frombuffer(data_1,
+                                     dtype=np.float32)
+            temperature = np.frombuffer(data_2,
+                                        dtype=np.float32)
+            data['x'] = distance
+            data['TMP']= temperature
+
+        if meta['survey_type'] == 2:
+            ST = np.frombuffer(data_1,
+                               dtype=np.int32)
+            AST = np.frombuffer(data_2,
+                                dtype=np.int32)
+            data['ST'] = ST
+            data['AST'] = AST
+
+    x_units_map = {0: 'm', 1: 'ft', 2: 'n/a'}
+    meta['x_units'] = x_units_map[meta['x_units']]
+    y_units_map = {0: 'K', 1: 'degC', 2: 'degF', 3: 'counts'}
+    meta['y_units'] = y_units_map[meta['y_units']]
+
+    return data, meta
 
 
 def read_apsensing_files_routine(
