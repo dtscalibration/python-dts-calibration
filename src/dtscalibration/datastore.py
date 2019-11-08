@@ -21,13 +21,13 @@ from .calibrate_utils import calibration_single_ended_ols
 from .calibrate_utils import calibration_single_ended_wls
 from .datastore_utils import check_dims
 from .datastore_utils import check_timestep_allclose
-from .io import read_sensornet_files_routine_v3
 from .io import read_apsensing_files_routine
+from .io import read_sensornet_files_routine_v3
 from .io import read_sensortran_files_routine
 from .io import read_silixa_files_routine_v4
 from .io import read_silixa_files_routine_v6
-from .io import silixa_xml_version_check
 from .io import sensortran_binary_version_check
+from .io import silixa_xml_version_check
 from .io import ziphandle_to_filepathlist
 
 dtsattr_namelist = ['double_ended_flag']
