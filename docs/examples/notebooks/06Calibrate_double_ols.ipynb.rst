@@ -54,13 +54,13 @@ channel should be aligned.
     
             Parameters
             ----------
-            store_p_cov
-            store_p_val
-            nt
-            z
-            p_val
-            p_var
-            p_cov
+            store_p_cov : str
+                Key to store the covariance matrix of the calibrated parameters
+            store_p_val : str
+                Key to store the values of the calibrated parameters
+            p_val : array-like, optional
+            p_var : array-like, optional
+            p_cov : array-like, optional
             sections : dict, optional
             st_label : str
                 Label of the forward stokes measurement
@@ -132,13 +132,6 @@ channel should be aligned.
                                    rst_label=rst_label,
                                    rast_label=rast_label,
                                    method='ols')
-
-
-.. parsed-literal::
-
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/dask/array/core.py:1328: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
-      FutureWarning,
-
 
 After calibration, two data variables are added to the ``DataStore``
 object: - ``TMPF``, temperature calculated along the forward direction -

@@ -1,0 +1,18 @@
+{
+    "creators": [
+        {
+            "affiliation": "Water Resources Section, Faculty of Civil Engineering and Geosciences, Delft University of Technology, Delft, Netherlands",
+            "name": "des Tombe, Bas François",
+            "orcid": "0000-0002-3302-7387"
+        },
+        {
+            "affiliation": "Water Resources Section, Faculty of Civil Engineering and Geosciences, Delft University of Technology, Delft, Netherlands",
+            "name": "Schilperoort, Bart",
+            "orcid": "0000-0003-4487-9822"
+        }
+    ],
+    "license": {
+        "id": "BSD-3-Clause"
+    },
+    "title": "Python distributed temperature sensing calibration"
+}

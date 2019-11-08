@@ -2,6 +2,7 @@
 import hashlib
 import os
 import tempfile
+import time
 from zipfile import ZipFile as zipf
 
 import dask.array as da
@@ -161,6 +162,11 @@ def test_sections_property():
 
     assert ds.sections == sections1
     assert ds.sections != sections2
+
+    # test if accepts singleton numpy arrays
+    ds.sections = {
+        'probe1Temperature': [
+            slice(np.array(0.), np.array(17.)), slice(70., 80.)]}
 
     # delete property
     del ds.sections
@@ -344,9 +350,8 @@ def test_read_silixa_zipped():
         (data_dir_zipped_single_ended, 11387947.857184),
         (data_dir_zipped_double_ended, 19613502.26171),
         (data_dir_zipped_double_ended2, 28092965.5188),
-        (data_dir_zipped_silixa_long, 2.88763942e+08)
-        # data_dir_zipped_sensornet_single_ended
-    ]
+        (data_dir_zipped_silixa_long, 2.88763942e+08)]
+
     for file, stsum in files:
         with zipf(file) as fh:
             ds = read_silixa_files(
@@ -355,6 +360,7 @@ def test_read_silixa_zipped():
                 file_ext='*.xml',
                 load_in_memory=True)
             np.testing.assert_almost_equal(ds.ST.sum(), stsum, decimal=0)
+            ds.close()
     pass
 
 
@@ -399,18 +405,25 @@ def test_to_mf_netcdf_open_mf_datastore():
         # work around the effects of deafault encoding.
         path = os.path.join(tmpdirname, 'ds_merged.nc')
         ds.to_netcdf(path)
-        ds1 = open_datastore(path)
+        ds.close()
+        time.sleep(2)  # to ensure all is written on Windows and file released
+        ds1 = open_datastore(path, load_in_memory=True)
 
         # Test saving
         ds1 = ds1.chunk({'time': 1})
         ds1.to_mf_netcdf(folder_path=tmpdirname, filename_preamble='file_',
                          filename_extension='.nc')
+        correct_val = float(ds1.ST.sum())
+        ds1.close()
+        time.sleep(2)  # to ensure all is written on Windows and file released
 
         # Test loading
         path = os.path.join(tmpdirname, 'file_*.nc')
-        ds2 = open_mf_datastore(path=path)
+        ds2 = open_mf_datastore(path=path, load_in_memory=True)
+        test_val = float(ds1.ST.sum())
 
-        np.testing.assert_equal(ds1.ST.sum(), ds2.ST.sum())
+        np.testing.assert_equal(correct_val, test_val)
+        ds2.close()
 
     pass
 
@@ -458,6 +471,10 @@ def test_resample_datastore():
     ds_resampled = ds.resample_datastore(how='mean', time="47S")
 
     assert ds_resampled.time.size == 2
+    assert ds_resampled.ST.dims == ('x', 'time'), 'The dimension have to be ' \
+                                                  'manually transposed after ' \
+                                                  'resampling. To guarantee ' \
+                                                  'the order'
 
     pass
 

@@ -1,4 +1,4 @@
-5. Calibration of double ended measurement with OLS
+5. Calibration of single-ended measurement with OLS
 ===================================================
 
 A double ended calibration is performed with Ordinary Least Squares.
@@ -62,13 +62,9 @@ anymore.
                 Key to store the covariance matrix of the calibrated parameters
             store_p_val : str
                 Key to store the values of the calibrated parameters
-            nt : int, optional
-                Number of timesteps. Should be defined if method=='external'
-            z : array-like, optional
-                Distances. Should be defined if method=='external'
-            p_val
-            p_var
-            p_cov
+            p_val : array-like, optional
+            p_var : array-like, optional
+            p_cov : array-like, optional
             sections : dict, optional
             st_label : str
                 Label of the forward stokes measurement

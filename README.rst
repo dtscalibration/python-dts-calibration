@@ -44,9 +44,9 @@ Overview
     :alt: PyPI Package latest release
     :target: https://pypi.python.org/pypi/dtscalibration
 
-.. |commits-since| image:: https://img.shields.io/github/commits-since/dtscalibration/python-dts-calibration/v0.6.7.svg
+.. |commits-since| image:: https://img.shields.io/github/commits-since/dtscalibration/python-dts-calibration/v0.7.1.svg
     :alt: Commits since latest release
-    :target: https://github.com/dtscalibration/python-dts-calibration/compare/v0.6.7...master
+    :target: https://github.com/dtscalibration/python-dts-calibration/compare/v0.7.1...master
 
 .. |wheel| image:: https://img.shields.io/pypi/wheel/dtscalibration.svg
     :alt: PyPI Wheel
@@ -74,6 +74,7 @@ A Python package to load raw DTS files, perform a calibration, and plot the resu
 
 * Free software: BSD 3-Clause License
 
+
 Installation
 ============
 
@@ -86,6 +87,18 @@ Or the development version directly from GitHub
 ::
 
     pip install https://github.com/dtscalibration/python-dts-calibration/zipball/master --upgrade
+
+Devices currently supported
+===========================
+Silixa Ltd.:
+
+* Ultima .xml files (up to version 7.0)
+* XT-DTS .xml files (up to version 7.0)
+
+Sensornet Ltd.:
+
+* Oryx .ddf files
+* Halo .ddf files
 
 Learn by examples
 =================

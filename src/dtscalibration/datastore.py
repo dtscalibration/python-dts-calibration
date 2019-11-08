@@ -15,10 +15,8 @@ import yaml
 from scipy.optimize import minimize
 from scipy.sparse import linalg as ln
 
-from .calibrate_utils import calibration_double_ended_ols
-from .calibrate_utils import calibration_double_ended_wls
-from .calibrate_utils import calibration_single_ended_ols
-from .calibrate_utils import calibration_single_ended_wls
+from .calibrate_utils import calibration_double_ended_solver
+from .calibrate_utils import calibration_single_ended_solver
 from .datastore_utils import check_dims
 from .datastore_utils import check_timestep_allclose
 from .io import read_apsensing_files_routine
@@ -83,6 +81,30 @@ class DataStore(xr.Dataset):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        # check order of the dimensions of the data_vars
+        # first 'x' (if in initiated DataStore), then 'time', then the rest
+        ideal_dim = []  # perfect order dims
+        all_dim = list(self.dims)
+
+        if all_dim:
+            x_dim = self.get_x_dim()
+            if x_dim in all_dim:
+                ideal_dim.append(x_dim)
+                all_dim.pop(all_dim.index(x_dim))
+
+            time_dim = self.get_time_dim()
+            if time_dim:
+                if time_dim in all_dim:
+                    ideal_dim.append(time_dim)
+                    all_dim.pop(all_dim.index(time_dim))
+
+                ideal_dim += all_dim
+
+                for name, var in self._variables.items():
+                    var_dims = tuple(
+                        dim for dim in ideal_dim if dim in (var.dims + (...,)))
+                    self._variables[name] = var.transpose(*var_dims)
 
         if '_sections' not in self.attrs:
             self.attrs['_sections'] = yaml.dump(None)
@@ -167,7 +189,7 @@ class DataStore(xr.Dataset):
 
     @sections.setter
     def sections(self, sections: Dict[str, List[slice]]):
-        sections_fix = None
+        sections_fix_slice_fixed = None
 
         if sections:
             assert isinstance(sections, dict)
@@ -191,6 +213,8 @@ class DataStore(xr.Dataset):
                                               'to a valid timeserie already ' \
                                               'stored in ds.data_vars'
 
+            sections_fix_slice_fixed = dict()
+
             for k, v in sections_fix.items():
                 assert isinstance(v, (list, tuple)), \
                     'The values of the sections-dictionary ' \
@@ -206,7 +230,10 @@ class DataStore(xr.Dataset):
                         f'Better define the {k} section. You tried {vi}, ' \
                         'which is out of reach'
 
-        self.attrs['_sections'] = yaml.dump(sections_fix)
+                sections_fix_slice_fixed[k] = [
+                    slice(float(vi.start), float(vi.stop)) for vi in v]
+
+        self.attrs['_sections'] = yaml.dump(sections_fix_slice_fixed)
         pass
 
     @sections.deleter
@@ -726,8 +753,14 @@ class DataStore(xr.Dataset):
         # find all dims in options
         in_opt = [next(filter(lambda s: s == d, options), None) for d in
                   dims]
-        # exclude Nones from list
-        return next(filter(None, in_opt))
+
+        if in_opt and in_opt != [None]:
+            # exclude Nones from list
+            return next(filter(None, in_opt))
+
+        else:
+            # there is no time dimension
+            return None
 
     def get_x_dim(self, data_var_key=None):
         """
@@ -1174,8 +1207,6 @@ class DataStore(xr.Dataset):
             variance_suffix='_var',
             method='ols',
             solver='sparse',
-            nt=None,
-            z=None,
             p_val=None,
             p_var=None,
             p_cov=None):
@@ -1187,13 +1218,9 @@ class DataStore(xr.Dataset):
             Key to store the covariance matrix of the calibrated parameters
         store_p_val : str
             Key to store the values of the calibrated parameters
-        nt : int, optional
-            Number of timesteps. Should be defined if method=='external'
-        z : array-like, optional
-            Distances. Should be defined if method=='external'
-        p_val
-        p_var
-        p_cov
+        p_val : array-like, optional
+        p_var : array-like, optional
+        p_cov : array-like, optional
         sections : dict, optional
         st_label : str
             Label of the forward stokes measurement
@@ -1241,25 +1268,42 @@ class DataStore(xr.Dataset):
         else:
             assert self.sections, 'sections are not defined'
 
-        time_dim = self.get_time_dim()
         x_dim = self.get_x_dim()
+        time_dim = self.get_time_dim()
+        nt = self[time_dim].size
 
         check_dims(self, [st_label, ast_label], correct_dims=(x_dim, time_dim))
 
+        assert not np.any(
+            self[st_label] <= 0.), \
+            'There is uncontrolled noise in the ST signal'
+        assert not np.any(
+            self[ast_label] <= 0.), \
+            'There is uncontrolled noise in the AST signal'
+
         if method == 'ols':
-            nt, z, p_val = calibration_single_ended_ols(
-                self, st_label, ast_label)
+            p_val, p_var = calibration_single_ended_solver(
+                self, st_label, ast_label,
+                st_var=None,     # ols
+                ast_var=None,    # ols
+                calc_cov=False,  # worthless if ols
+                solver=solver)
 
-        elif method == 'wls' or method == 'external':
-            if method == 'wls':
-                st_var = float(st_var)
-                ast_var = float(ast_var)
+        elif method == 'wls':
+            st_var = np.array(st_var, dtype=float)
+            ast_var = np.array(ast_var, dtype=float)
 
-                nt, z, p_val, p_var, p_cov = calibration_single_ended_wls(
-                    self, st_label, ast_label, st_var, ast_var, solver=solver)
-            else:
-                for input_item in [nt, z, p_val, p_var, p_cov]:
-                    assert input_item is not None
+            p_val, p_var, p_cov = calibration_single_ended_solver(
+                self, st_label, ast_label, st_var, ast_var,
+                solver=solver)
+
+        elif method == 'external':
+            for input_item in [p_val, p_var, p_cov]:
+                assert input_item is not None, \
+                    'Define p_val, p_var, p_cov when using an external solver'
+
+        elif method == 'external_split':
+            raise ValueError('Not implemented yet')
 
         else:
             raise ValueError('Choose a valid method')
@@ -1292,6 +1336,9 @@ class DataStore(xr.Dataset):
             self[store_tmpf] = ((x_dim, time_dim), tempF_data)
 
         if store_p_val and (method == 'wls' or method == 'external'):
+            if store_p_val in self:
+                if self[store_p_val].size != p_val.size:
+                    del self[store_p_val]
             self[store_p_val] = (('params1',), p_val)
         else:
             pass
@@ -1326,8 +1373,6 @@ class DataStore(xr.Dataset):
             variance_suffix='_var',
             method='wls',
             solver='sparse',
-            nt=None,
-            z=None,
             p_val=None,
             p_var=None,
             p_cov=None,
@@ -1337,13 +1382,13 @@ class DataStore(xr.Dataset):
 
         Parameters
         ----------
-        store_p_cov
-        store_p_val
-        nt
-        z
-        p_val
-        p_var
-        p_cov
+        store_p_cov : str
+            Key to store the covariance matrix of the calibrated parameters
+        store_p_val : str
+            Key to store the values of the calibrated parameters
+        p_val : array-like, optional
+        p_var : array-like, optional
+        p_cov : array-like, optional
         sections : dict, optional
         st_label : str
             Label of the forward stokes measurement
@@ -1407,38 +1452,50 @@ class DataStore(xr.Dataset):
         else:
             assert self.sections, 'sections are not defined'
 
-        time_dim = self.get_time_dim()
         x_dim = self.get_x_dim()
+        time_dim = self.get_time_dim()
+        nt = self[time_dim].size
 
         check_dims(self, [st_label, ast_label, rst_label, rast_label],
                    correct_dims=(x_dim, time_dim))
 
         if method == 'ols':
-            nt, z, p_val = calibration_double_ended_ols(
-                self, st_label, ast_label, rst_label, rast_label)
+            p_val, p_var = calibration_double_ended_solver(
+                self,
+                st_label,
+                ast_label,
+                rst_label,
+                rast_label,
+                st_var,
+                ast_var,
+                rst_var,
+                rast_var,
+                calc_cov=False,
+                solver=solver)
 
-        elif method == 'wls' or method == 'external':
-            # External is also/always weighted
-            if method == 'wls':
-                st_var = float(st_var)
-                ast_var = float(ast_var)
-                rst_var = float(rst_var)
-                rast_var = float(rast_var)
+        elif method == 'wls':
+            st_var = np.array(st_var, dtype=float)
+            ast_var = np.array(ast_var, dtype=float)
+            rst_var = np.array(rst_var, dtype=float)
+            rast_var = np.array(rast_var, dtype=float)
 
-                nt, z, p_val, p_var, p_cov = calibration_double_ended_wls(
-                    self,
-                    st_label,
-                    ast_label,
-                    rst_label,
-                    rast_label,
-                    st_var,
-                    ast_var,
-                    rst_var,
-                    rast_var,
-                    solver=solver)
-            else:
-                for input_item in [nt, z, p_val, p_var, p_cov]:
-                    assert input_item is not None
+            p_val, p_var, p_cov = calibration_double_ended_solver(
+                self,
+                st_label,
+                ast_label,
+                rst_label,
+                rast_label,
+                st_var,
+                ast_var,
+                rst_var,
+                rast_var,
+                solver=solver)
+        elif method == 'external':
+            for input_item in [p_val, p_var, p_cov]:
+                assert input_item is not None
+
+        elif method == 'external_split':
+            raise ValueError('Not implemented yet')
 
         else:
             raise ValueError('Choose a valid method')
@@ -1505,38 +1562,33 @@ class DataStore(xr.Dataset):
         else:
             pass
 
-        if store_p_val and (method == 'wls' or method == 'external'):
-            # TODO: add params1 dimension
-
+        if store_p_val and method == 'ols':
             if store_p_val in self:
                 if self[store_p_val].size != p_val.size:
+                    del self[store_p_val]
+
+                    if 'params1' in self.coords:
+                        del self.coords['params1']
+
+            self[store_p_val] = (('params1',), p_val)
+        else:
+            pass
+
+        if store_p_val and (method == 'wls' or method == 'external'):
+            assert store_p_cov, 'Might as well store the covariance matrix'
+
+            if store_p_cov in self:
+                if self[store_p_cov].size != p_cov.size:
+                    del self[store_p_cov]
+
                     if store_p_val in self:
                         del self[store_p_val]
-                    if store_p_cov in self:
-                        del self[store_p_cov]
                     if 'params1' in self.coords:
                         del self.coords['params1']
                     if 'params2' in self.coords:
                         del self.coords['params2']
 
             self[store_p_val] = (('params1',), p_val)
-        else:
-            pass
-
-        if store_p_cov and (method == 'wls' or method == 'external'):
-            # TODO: add params1 dimension
-            # TODO: add params2 dimension
-            if store_p_cov in self:
-                if self[store_p_cov].size != p_cov.size:
-                    if store_p_val in self:
-                        del self[store_p_val]
-                    if store_p_cov in self:
-                        del self[store_p_cov]
-                    if 'params1' in self.coords:
-                        del self.coords['params1']
-                    if 'params2' in self.coords:
-                        del self.coords['params2']
-
             self[store_p_cov] = (('params1', 'params2'), p_cov)
         else:
             pass
@@ -1667,10 +1719,7 @@ class DataStore(xr.Dataset):
 
             self['gamma_MC'] = (('MC',), gamma)
             self['dalpha_MC'] = (('MC',), dalpha)
-            self['c_MC'] = ((
-                'MC',
-                time_dim,
-            ), c)
+            self['c_MC'] = (('MC', time_dim), c)
 
         rsize = (self.MC.size, self[x_dim].size, self.time.size)
 
@@ -2396,6 +2445,7 @@ def open_datastore(
         cache=None,
         drop_variables=None,
         backend_kwargs=None,
+        load_in_memory=False,
         **kwargs):
     """Load and decode a datastore from a file or file-like object.
     Parameters
@@ -2462,13 +2512,16 @@ def open_datastore(
         A dictionary of keyword arguments to pass on to the backend. This
         may be useful when backend options would improve performance or
         allow user control of dataset processing.
+
     Returns
     -------
     dataset : Dataset
         The newly created dataset.
+
     See Also
     --------
-    read_xml_dir
+    xarray.open_dataset
+    xarray.load_dataset
     """
 
     xr_kws = inspect.signature(xr.open_dataset).parameters.keys()
@@ -2478,33 +2531,37 @@ def open_datastore(
     if chunks is None:
         chunks = {}
 
-    ds_xr = xr.open_dataset(
-        filename_or_obj,
-        group=group,
-        decode_cf=decode_cf,
-        mask_and_scale=mask_and_scale,
-        decode_times=decode_times,
-        concat_characters=concat_characters,
-        decode_coords=decode_coords,
-        engine=engine,
-        chunks=chunks,
-        lock=lock,
-        cache=cache,
-        drop_variables=drop_variables,
-        backend_kwargs=backend_kwargs)
+    with xr.open_dataset(
+            filename_or_obj,
+            group=group,
+            decode_cf=decode_cf,
+            mask_and_scale=mask_and_scale,
+            decode_times=decode_times,
+            concat_characters=concat_characters,
+            decode_coords=decode_coords,
+            engine=engine,
+            chunks=chunks,
+            lock=lock,
+            cache=cache,
+            drop_variables=drop_variables,
+            backend_kwargs=backend_kwargs) as ds_xr:
+        ds = DataStore(
+            data_vars=ds_xr.data_vars,
+            coords=ds_xr.coords,
+            attrs=ds_xr.attrs,
+            **ds_kwargs)
 
-    ds = DataStore(
-        data_vars=ds_xr.data_vars,
-        coords=ds_xr.coords,
-        attrs=ds_xr.attrs,
-        **ds_kwargs)
+        if load_in_memory:
+            if "cache" in kwargs:
+                raise TypeError("cache has no effect in this context")
+            return ds.load()
 
-    ds_xr.close()
-
-    return ds
+        else:
+            return ds
 
 
-def open_mf_datastore(path, combine='by_coords', **kwargs):
+def open_mf_datastore(path, combine='by_coords', load_in_memory=False,
+                      **kwargs):
     """
     Open a datastore from multiple netCDF files. This script assumes the
     datastore was split along the time dimension. But only variables with a
@@ -2527,12 +2584,19 @@ def open_mf_datastore(path, combine='by_coords', **kwargs):
     paths = sorted(glob.glob(path))
     assert paths, 'No files match found with: ' + path
 
-    xds = open_mfdataset(paths=paths, combine=combine, **kwargs)
+    with open_mfdataset(paths=paths, combine=combine, **kwargs) as xds:
+        ds = DataStore(
+            data_vars=xds.data_vars,
+            coords=xds.coords,
+            attrs=xds.attrs)
 
-    return DataStore(
-        data_vars=xds.data_vars,
-        coords=xds.coords,
-        attrs=xds.attrs)
+        if load_in_memory:
+            if "cache" in kwargs:
+                raise TypeError("cache has no effect in this context")
+            return ds.load()
+
+        else:
+            return ds
 
 
 def read_silixa_files(
