@@ -2620,10 +2620,10 @@ def read_silixa_files(
 
 
 def read_sensortran_files(
-    directory,
-    timezone_netcdf='UTC',
-    silent=False,
-    **kwargs):
+        directory,
+        timezone_netcdf='UTC',
+        silent=False,
+        **kwargs):
     """Read a folder with measurement files. Each measurement file contains
     values for a
     single timestep. Remember to check which timezone you are working in.
@@ -2647,20 +2647,21 @@ def read_sensortran_files(
         The newly created datastore.
     """
 
-    filepathlist_dts = sorted(glob.glob(os.path.join(directory, '*BinaryRawDTS.dat')))
+    filepathlist_dts = sorted(glob.glob(os.path.join(directory,
+                                                     '*BinaryRawDTS.dat')))
 
     # Make sure that the list of files contains any files
     assert len(
-        filepathlist_dts) >= 1, 'No RawDTS measurement files found in provided ' \
-                                'directory: \n' + \
-                            str(directory)
+        filepathlist_dts) >= 1, 'No RawDTS measurement files found ' \
+                                'in provided directory: \n' + \
+                                str(directory)
 
     filepathlist_temp = [f.replace('RawDTS', 'Temp') for f in filepathlist_dts]
 
     for ii, fname in enumerate(filepathlist_dts):
         # Check if corresponding temperature file exists
         if not os.path.isfile(filepathlist_temp[ii]):
-            raise FileNotFoundError('Could not find BinaryTemp '+
+            raise FileNotFoundError('Could not find BinaryTemp ' +
                                     'file corresponding to {}'.format(fname))
 
     version = sensortran_binary_version_check(filepathlist_dts)
@@ -2673,7 +2674,8 @@ def read_sensortran_files(
             silent=silent)
     else:
         raise NotImplementedError(
-                'Sensortran binary version ' + '{0} not implemented'.format(version))
+                'Sensortran binary version ' +
+                '{0} not implemented'.format(version))
 
     ds = DataStore(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
     return ds
@@ -2743,6 +2745,7 @@ def read_apsensing_files(
 
     ds = DataStore(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
     return ds
+
 
 def read_sensornet_files(
         filepathlist=None,

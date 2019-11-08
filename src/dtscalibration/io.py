@@ -62,6 +62,7 @@ dim_attrs_apsensing.pop('acquisitionTime')
 dim_attrs_apsensing.pop('userAcquisitionTimeFW')
 dim_attrs_apsensing.pop('userAcquisitionTimeBW')
 
+
 @contextmanager
 def open_file(path, **kwargs):
     if isinstance(path, tuple):
@@ -362,12 +363,14 @@ def read_silixa_files_routine_v6(
             elif xml_version == 7:
                 tstamp = np.int64(file_name[15:27])
             else:
-                raise ValueError('Unknown version number: {}'.format(xml_version))
+                raise ValueError('Unknown version number: {}'.format(
+                                                                xml_version))
 
             out += [tstamp, startDateTimeIndex, endDateTimeIndex]
         return np.array(tuple(out), dtype=ts_dtype)
 
-    ts_lst_dly = [grab_timeseries_per_file(fp, xml_version) for fp in filepathlist]
+    ts_lst_dly = [
+            grab_timeseries_per_file(fp, xml_version) for fp in filepathlist]
     ts_lst = [
         da.from_delayed(x, shape=tuple(), dtype=ts_dtype) for x in ts_lst_dly]
     ts_arr = da.stack(ts_lst).compute()
@@ -1092,7 +1095,8 @@ def read_sensortran_files_routine(
     coords = {
         'x': ('x', x, {'name': 'distance',
                        'description': 'Length along fiber',
-                       'long_description': 'Starting at connector of forward channel',
+                       'long_description': 'Starting at connector ' +
+                                           'of forward channel',
                        'units': 'm'}),
         'filename': ('time', filenamelist_dts),
         'filename_temp': ('time', filenamelist_temp)}
@@ -1142,7 +1146,8 @@ def read_sensortran_single(fname):
         meta['num_skipped'] = struct.unpack('<i', f.read(4))[0]
 
         data['reference_temperature'] = struct.unpack('<f', f.read(4))[0]
-        data['time'] = datetime.fromtimestamp(struct.unpack('<i', f.read(4))[0])
+        data['time'] = datetime.fromtimestamp(
+                        struct.unpack('<i', f.read(4))[0])
 
         meta['probe_name'] = f.read(128).decode('utf-16').split('\x00')[0]
 
@@ -1158,7 +1163,7 @@ def read_sensortran_single(fname):
             temperature = np.frombuffer(data_2,
                                         dtype=np.float32)
             data['x'] = distance
-            data['TMP']= temperature
+            data['TMP'] = temperature
 
         if meta['survey_type'] == 2:
             ST = np.frombuffer(data_1,
@@ -1205,8 +1210,8 @@ def read_apsensing_files_routine(
     xml_tree = ElementTree.parse(filepathlist[0])
     namespace = get_xml_namespace(xml_tree.getroot())
 
-    logtree = xml_tree.find(('{0}wellSet/{0}well/{0}wellboreSet'+
-                            '/{0}wellbore/{0}wellLogSet/{0}wellLog').format(namespace))
+    logtree = xml_tree.find(('{0}wellSet/{0}well/{0}wellboreSet/{0}wellbore' +
+                            '/{0}wellLogSet/{0}wellLog').format(namespace))
     logdata_tree = logtree.find('./{0}logData'.format(namespace))
 
     # Amount of datapoints is the size of the logdata tree
@@ -1228,7 +1233,8 @@ def read_apsensing_files_routine(
     attrs['backwardMeasurementChannel'] = 'N/A'
 
     data_item_names = [
-        attrs['wellbore:wellLogSet:wellLog:logCurveInfo_{0}:mnemonic'.format(x)] for x in range(0, 4)]
+       attrs['wellbore:wellLogSet:wellLog:logCurveInfo_{0}:mnemonic'.format(x)]
+       for x in range(0, 4)]
 
     nitem = len(data_item_names)
 
@@ -1304,7 +1310,9 @@ def read_apsensing_files_routine(
             continue
 
         if name in dim_attrs_apsensing:
-            data_vars[name] = (['x', 'time'], data_arri, dim_attrs_apsensing[name])
+            data_vars[name] = (['x', 'time'],
+                               data_arri,
+                               dim_attrs_apsensing[name])
 
         else:
             raise ValueError(
@@ -1312,8 +1320,8 @@ def read_apsensing_files_routine(
                 ' {} data column'.format(name))
 
     _time_dtype = [
-    ('filename_tstamp', np.int64),
-    ('acquisitionTime', '<U29')]
+     ('filename_tstamp', np.int64),
+     ('acquisitionTime', '<U29')]
     ts_dtype = np.dtype(_time_dtype)
 
     @dask.delayed
@@ -1336,10 +1344,11 @@ def read_apsensing_files_routine(
             out = []
 
             # get all the time related data
-            creationDate = eltree.find( ('{0}wellSet/{0}well/{0}wellboreSet'+
-                                          '/{0}wellbore/{0}wellLogSet/{0}wellLog'+
-                                          '/{0}creationDate').format(namespace)
-                                        ).text
+            creationDate = eltree.find(('{0}wellSet/{0}well/{0}wellboreSet' +
+                                        '/{0}wellbore/{0}wellLogSet' +
+                                        '/{0}wellLog/{0}creationDate'
+                                        ).format(namespace)
+                                       ).text
 
             if isinstance(file_handle, tuple):
                 file_name = os.path.split(file_handle[0])[-1]
@@ -1356,13 +1365,14 @@ def read_apsensing_files_routine(
         da.from_delayed(x, shape=tuple(), dtype=ts_dtype) for x in ts_lst_dly]
     ts_arr = da.stack(ts_lst).compute()
 
-    data_vars['creationDate'] = (('time',), [pd.Timestamp(item[1]) for item in ts_arr])
+    data_vars['creationDate'] = (('time',),
+                                 [pd.Timestamp(item[1]) for item in ts_arr])
 
     # construct the coordinate dictionary
     coords = {
         'x': ('x', data_arr[0, :, 0], dim_attrs_apsensing['x']),
         'filename': ('time', [os.path.split(f)[1] for f in filepathlist]),
-        'time': data_vars['creationDate'] }
+        'time': data_vars['creationDate']}
 
     return data_vars, coords, attrs
 
@@ -1411,7 +1421,8 @@ def read_apsensing_attrs_singlefile(filename, sep):
             else:
                 prefix_parse = sep.join([prefix, key.replace('@', '')])
 
-            if prefix_parse == sep.join(('wellbore', 'wellLogSet', 'wellLog', 'logData', 'data')):
+            if prefix_parse == sep.join(('wellbore', 'wellLogSet',
+                                         'wellLog', 'logData', 'data')):
                 # skip the LAF , ST data
                 continue
 
