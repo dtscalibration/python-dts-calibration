@@ -1056,7 +1056,8 @@ def read_sensortran_files_routine(
 
         ST[:, ii] = data_dts['ST'][:nx]
         AST[:, ii] = data_dts['AST'][:nx]
-        TMP[:, ii] = data_temp['TMP']
+        # The TMP can vary by 1 or 2 datapoints, dynamically assign the values
+        TMP[:meta_temp['num_points'], ii] = data_temp['TMP'][:nx]
 
         zero_index = (meta_dts['num_points']-nx) // 2
         ST_zero[ii] = np.mean(data_dts['ST'][nx+zero_index:])
