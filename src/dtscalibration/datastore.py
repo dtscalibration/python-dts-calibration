@@ -2785,7 +2785,7 @@ def read_apsensing_files(
     datastore : DataStore
         The newly created datastore.
     """
-    if not file_ext == '.xml':
+    if not file_ext == '*.xml':
         raise NotImplementedError('Only .xml files are supported for now')
 
     if filepathlist is None:
