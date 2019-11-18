@@ -12,7 +12,9 @@ import pytest
 from dtscalibration import DataStore
 from dtscalibration import open_datastore
 from dtscalibration import open_mf_datastore
+from dtscalibration import read_apsensing_files
 from dtscalibration import read_sensornet_files
+from dtscalibration import read_sensortran_files
 from dtscalibration import read_silixa_files
 from dtscalibration.datastore_utils import shift_double_ended
 from dtscalibration.datastore_utils import suggest_cable_shift_double_ended
@@ -40,6 +42,8 @@ if 1:
         wd, 'data', 'sensornet_halo_v1.0')
     data_dir_single_silixa_v45 = os.path.join(wd, 'data', 'silixa_v4.5')
     data_dir_single_silixa_v7 = os.path.join(wd, 'data', 'silixa_v7.0')
+    data_dir_ap_sensing = os.path.join(wd, 'data', 'ap_sensing')
+    data_dir_sensortran_binary = os.path.join(wd, 'data', 'sensortran_binary')
 
     # zips
     data_dir_zipped_single_ended = os.path.join(
@@ -343,8 +347,8 @@ def test_read_single_silixa_v7():
 
     pass
 
-@pytest.mark.skip(reason="Randomly fails. Has to do with delayed reading out of"
-                         "zips with dask.")
+@pytest.mark.skip(reason="Randomly fails. Has to do with delayed reading"
+                         "out of zips with dask.")
 def test_read_silixa_zipped():
     files = [
         (data_dir_zipped_single_ended, 11387947.857184),
@@ -392,6 +396,27 @@ def test_read_sensornet_files_double_ended():
         file_ext='*.ddf')
 
     np.testing.assert_almost_equal(ds.ST.sum(), 2832389.888, decimal=2)
+    pass
+
+
+def test_read_apsensing_files():
+    filepath = data_dir_ap_sensing
+    ds = read_apsensing_files(
+        directory=filepath,
+        timezone_netcdf='UTC',
+        timezone_input_files='UTC',
+        file_ext='*.xml')
+    np.testing.assert_almost_equal(ds.ST.sum(), 10415.2837, decimal=2)
+    pass
+
+
+def test_read_sensortran_files():
+    filepath = data_dir_sensortran_binary
+    ds = read_sensortran_files(
+        directory=filepath,
+        timezone_netcdf='UTC')
+    np.testing.assert_almost_equal(ds.ST.astype(np.float64).sum(),
+                                   1.43244125e+12, decimal=0)
     pass
 
 
@@ -471,10 +496,10 @@ def test_resample_datastore():
     ds_resampled = ds.resample_datastore(how='mean', time="47S")
 
     assert ds_resampled.time.size == 2
-    assert ds_resampled.ST.dims == ('x', 'time'), 'The dimension have to be ' \
-                                                  'manually transposed after ' \
-                                                  'resampling. To guarantee ' \
-                                                  'the order'
+    assert ds_resampled.ST.dims == ('x', 'time'), 'The dimension have to ' \
+                                                  'be manually transposed ' \
+                                                  'after resampling. To ' \
+                                                  'guarantee the order'
 
     pass
 
