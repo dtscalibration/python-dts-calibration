@@ -415,8 +415,9 @@ def test_read_sensortran_files():
     ds = read_sensortran_files(
         directory=filepath,
         timezone_netcdf='UTC')
-    np.testing.assert_almost_equal(ds.ST.astype(np.float64).sum(),
-                                   1.43244125e+12, decimal=0)
+    np.testing.assert_approx_equal(ds.ST.values.astype(np.int64).sum(),
+                                   np.int64(143244125428),
+                                   significant=12)
     pass
 
 
