@@ -41,7 +41,7 @@ channel should be aligned.
     Recorded at 1693 points along the cable
     The measurement is double ended
     Reading the data from disk
-
+    
 
 .. code:: ipython3
 
@@ -118,7 +118,7 @@ channel should be aligned.
             -------
     
             
-
+    
 
 .. code:: ipython3
 
@@ -152,7 +152,7 @@ the other, as we do not have more information about the weighing.
 
 
 
-.. image:: 06Calibrate_double_ols.ipynb_files/06Calibrate_double_ols.ipynb_7_0.png
+.. image:: 06Calibrate_double_ols.ipynb_files%5C06Calibrate_double_ols.ipynb_7_0.png
 
 
 Lets compare our calibrated values with the device calibration. Lets
@@ -168,7 +168,7 @@ first.
 
 
 
-.. image:: 06Calibrate_double_ols.ipynb_files/06Calibrate_double_ols.ipynb_9_0.png
+.. image:: 06Calibrate_double_ols.ipynb_files%5C06Calibrate_double_ols.ipynb_9_0.png
 
 
 The device calibration sections and calibration sections defined by us

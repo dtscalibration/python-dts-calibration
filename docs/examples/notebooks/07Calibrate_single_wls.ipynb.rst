@@ -53,7 +53,7 @@ estimated temperature via Monte Carlo.
     Recorded at 1461 points along the cable
     The measurement is single ended
     Reading the data from disk
-
+    
 
 .. code:: ipython3
 
@@ -114,7 +114,7 @@ estimated temperature via Monte Carlo.
             -------
     
             
-
+    
 
 .. code:: ipython3
 
@@ -171,9 +171,9 @@ entire measurement period’.
 
 .. parsed-literal::
 
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/dask/array/core.py:1328: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
+    d:\github\pydts2\python-dts-calibration\.tox\docs\lib\site-packages\dask\array\core.py:1333: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
       FutureWarning,
-
+    
 
 .. code:: ipython3
 
@@ -203,7 +203,7 @@ Lets compare our calibrated values with the device calibration
 
 
 
-.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_12_0.png
+.. image:: 07Calibrate_single_wls.ipynb_files%5C07Calibrate_single_wls.ipynb_12_0.png
 
 
 .. code:: ipython3
@@ -212,7 +212,7 @@ Lets compare our calibrated values with the device calibration
 
 
 
-.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_13_0.png
+.. image:: 07Calibrate_single_wls.ipynb_files%5C07Calibrate_single_wls.ipynb_13_0.png
 
 
 .. code:: ipython3
@@ -225,7 +225,7 @@ Lets compare our calibrated values with the device calibration
 
 
 
-.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_14_0.png
+.. image:: 07Calibrate_single_wls.ipynb_files%5C07Calibrate_single_wls.ipynb_14_0.png
 
 
 We can tell from the graph above that the 95% confidence interval widens
@@ -239,7 +239,7 @@ this should be around 0.0059 degC.
 
 
 
-.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_16_0.png
+.. image:: 07Calibrate_single_wls.ipynb_files%5C07Calibrate_single_wls.ipynb_16_0.png
 
 
 The variance of the temperature measurement appears to be larger than
@@ -259,7 +259,7 @@ Lets have a look at the Stokes and anti-Stokes signal.
 
 
 
-.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_18_0.png
+.. image:: 07Calibrate_single_wls.ipynb_files%5C07Calibrate_single_wls.ipynb_18_0.png
 
 
 Clearly there was a bad splice at 30 m that resulted in the sharp
