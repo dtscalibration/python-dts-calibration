@@ -100,6 +100,14 @@ Sensornet Ltd.:
 * Oryx .ddf files
 * Halo .ddf files
 
+AP Sensing:
+
+* CP320 .xml files (single ended only)
+
+SensorTran:
+
+* SensorTran 5100 .dat binary files (single ended only)
+
 Learn by examples
 =================
 Interactively run the example notebooks online by clicking the launch-binder button.
