@@ -2752,6 +2752,7 @@ def read_apsensing_files(
         timezone_netcdf='UTC',
         timezone_input_files='UTC',
         silent=False,
+        load_in_memory='auto',
         **kwargs):
     """Read a folder with measurement files. Each measurement file contains
     values for a single timestep. Remember to check which timezone
@@ -2773,6 +2774,8 @@ def read_apsensing_files(
         file extension of the measurement files
     silent : bool
         If set tot True, some verbose texts are not printed to stdout/screen
+    load_in_memory : {'auto', True, False}
+        If 'auto' the Stokes data is only loaded to memory for small files
     kwargs : dict-like, optional
         keyword-arguments are passed to DataStore initialization
 
@@ -2805,7 +2808,8 @@ def read_apsensing_files(
     data_vars, coords, attrs = read_apsensing_files_routine(
         filepathlist,
         timezone_netcdf=timezone_netcdf,
-        silent=silent)
+        silent=silent,
+        load_in_memory=load_in_memory)
 
     ds = DataStore(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
     return ds

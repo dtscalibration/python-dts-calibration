@@ -410,13 +410,47 @@ def test_read_apsensing_files():
     pass
 
 
+def test_read_apsensing_files_loadinmemory():
+    filepath = data_dir_ap_sensing
+
+    # False
+    ds = read_apsensing_files(
+        directory=filepath,
+        timezone_netcdf='UTC',
+        file_ext='*.xml',
+        load_in_memory=False)
+    for k in ['ST', 'AST']:
+        assert isinstance(ds[k].data, da.Array)
+
+    # auto -> True Because small amount of data
+    ds = read_apsensing_files(
+        directory=filepath,
+        timezone_netcdf='UTC',
+        file_ext='*.xml',
+        load_in_memory='auto')
+    for k in ['ST', 'AST']:
+        assert isinstance(ds[k].data, np.ndarray)
+
+    # True
+    ds = read_apsensing_files(
+        directory=filepath,
+        timezone_netcdf='UTC',
+        file_ext='*.xml',
+        load_in_memory=True)
+    for k in ['ST', 'AST']:
+        assert isinstance(ds[k].data, np.ndarray)
+
+    pass
+
+
 def test_read_sensortran_files():
     filepath = data_dir_sensortran_binary
     ds = read_sensortran_files(
         directory=filepath,
         timezone_netcdf='UTC')
-    np.testing.assert_almost_equal(ds.ST.astype(np.float64).sum(),
-                                   1.43244125e+12, decimal=0)
+    np.testing.assert_approx_equal(ds.ST.values.astype(np.int64).sum(),
+                                   np.int64(1432441254828),
+                                   significant=12)
     pass
 
 

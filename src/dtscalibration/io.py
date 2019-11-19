@@ -1195,10 +1195,10 @@ def read_apsensing_files_routine(
 
     Parameters
     ----------
-    load_in_memory
     filepathlist
     timezone_netcdf
     silent
+    load_in_memory
 
     Returns
     -------
