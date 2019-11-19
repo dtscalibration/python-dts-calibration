@@ -62,7 +62,7 @@ is a duplex measurement.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x13d29d10>
+    <matplotlib.legend.Legend at 0x126d8cd0>
 
 
 
@@ -91,7 +91,7 @@ channel 2.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x13da5c90>
+    <matplotlib.legend.Legend at 0x127ebf10>
 
 
 
@@ -126,7 +126,7 @@ set to allow for double ended calibration
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x13d413f0>]
+    [<matplotlib.lines.Line2D at 0x13ec5810>]
 
 
 

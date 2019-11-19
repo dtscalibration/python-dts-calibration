@@ -136,7 +136,7 @@ incorporated into the calibration routine.
 
 .. parsed-literal::
 
-    <matplotlib.lines.Line2D at 0x139273d0>
+    <matplotlib.lines.Line2D at 0x134e4d70>
 
 
 
