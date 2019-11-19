@@ -45,7 +45,7 @@ anymore.
     Recorded at 1461 points along the cable
     The measurement is single ended
     Reading the data from disk
-
+    
 
 .. code:: ipython3
 
@@ -106,7 +106,7 @@ anymore.
             -------
     
             
-
+    
 
 .. code:: ipython3
 
@@ -117,9 +117,9 @@ anymore.
 
 .. parsed-literal::
 
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/dask/array/core.py:1328: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
+    d:\github\pydts2\python-dts-calibration\.tox\docs\lib\site-packages\dask\array\core.py:1333: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
       FutureWarning,
-
+    
 
 Lets compare our calibrated values with the device calibration
 
@@ -134,6 +134,6 @@ Lets compare our calibrated values with the device calibration
 
 
 
-.. image:: 05Calibrate_single_ols.ipynb_files/05Calibrate_single_ols.ipynb_7_0.png
+.. image:: 05Calibrate_single_ols.ipynb_files%5C05Calibrate_single_ols.ipynb_7_0.png
 
 

@@ -56,7 +56,7 @@ estimated temperature via Monte Carlo.
     Recorded at 1693 points along the cable
     The measurement is double ended
     Reading the data from disk
-
+    
 
 .. code:: ipython3
 
@@ -87,7 +87,7 @@ as an estimate of the variance in measured signals.
 
 
 
-.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_8_0.png
+.. image:: 08Calibrate_double_wls.ipynb_files%5C08Calibrate_double_wls.ipynb_8_0.png
 
 
 We calibrate the measurement with a single method call. The labels refer
@@ -120,12 +120,12 @@ solver because it saves us memory.
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x107e2f290>
+    <matplotlib.collections.QuadMesh at 0x14609a70>
 
 
 
 
-.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_11_1.png
+.. image:: 08Calibrate_double_wls.ipynb_files%5C08Calibrate_double_wls.ipynb_11_1.png
 
 
 Confidence intervals
@@ -184,7 +184,7 @@ background temperature with a confidence interval.
 
 
 
-.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_15_0.png
+.. image:: 08Calibrate_double_wls.ipynb_files%5C08Calibrate_double_wls.ipynb_15_0.png
 
 
 The DataArrays ``TMPF_MC`` and ``TMPB_MC`` and the dimension ``CI`` are
@@ -197,14 +197,8 @@ confidence interval ‘coordinates’.
     plt.ylabel('$\sigma$ ($^\circ$C)');
 
 
-.. parsed-literal::
 
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/matplotlib/mathtext.py:2468: SyntaxWarning: Exception creating Regex for oneOf, building MatchFirst
-      p.subsuperop    <<= oneOf(["_", "^"])
-
-
-
-.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_17_1.png
+.. image:: 08Calibrate_double_wls.ipynb_files%5C08Calibrate_double_wls.ipynb_17_0.png
 
 
 .. code:: ipython3
