@@ -19,9 +19,12 @@ from .calibrate_utils import calibration_double_ended_solver
 from .calibrate_utils import calibration_single_ended_solver
 from .datastore_utils import check_dims
 from .datastore_utils import check_timestep_allclose
+from .io import read_apsensing_files_routine
 from .io import read_sensornet_files_routine_v3
+from .io import read_sensortran_files_routine
 from .io import read_silixa_files_routine_v4
 from .io import read_silixa_files_routine_v6
+from .io import sensortran_binary_version_check
 from .io import silixa_xml_version_check
 from .io import ziphandle_to_filepathlist
 
@@ -2675,6 +2678,138 @@ def read_silixa_files(
     else:
         raise NotImplementedError(
             'Silixa xml version ' + '{0} not implemented'.format(xml_version))
+
+    ds = DataStore(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
+    return ds
+
+
+def read_sensortran_files(
+        directory,
+        timezone_netcdf='UTC',
+        silent=False,
+        **kwargs):
+    """Read a folder with measurement files. Each measurement file contains
+    values for a
+    single timestep. Remember to check which timezone you are working in.
+
+    The sensortran files are already timezone aware
+
+    Parameters
+    ----------
+    directory : str, Path
+        Path to folder containing BinaryRawDTS and BinaryTemp files
+    timezone_netcdf : str, optional
+        Timezone string of the netcdf file. UTC follows CF-conventions.
+    silent : bool
+        If set tot True, some verbose texts are not printed to stdout/screen
+    kwargs : dict-like, optional
+        keyword-arguments are passed to DataStore initialization
+
+    Returns
+    -------
+    datastore : DataStore
+        The newly created datastore.
+    """
+
+    filepathlist_dts = sorted(glob.glob(os.path.join(directory,
+                                                     '*BinaryRawDTS.dat')))
+
+    # Make sure that the list of files contains any files
+    assert len(
+        filepathlist_dts) >= 1, 'No RawDTS measurement files found ' \
+                                'in provided directory: \n' + \
+                                str(directory)
+
+    filepathlist_temp = [f.replace('RawDTS', 'Temp') for f in filepathlist_dts]
+
+    for ii, fname in enumerate(filepathlist_dts):
+        # Check if corresponding temperature file exists
+        if not os.path.isfile(filepathlist_temp[ii]):
+            raise FileNotFoundError('Could not find BinaryTemp ' +
+                                    'file corresponding to {}'.format(fname))
+
+    version = sensortran_binary_version_check(filepathlist_dts)
+
+    if version == 3:
+        data_vars, coords, attrs = read_sensortran_files_routine(
+            filepathlist_dts,
+            filepathlist_temp,
+            timezone_netcdf=timezone_netcdf,
+            silent=silent)
+    else:
+        raise NotImplementedError(
+                'Sensortran binary version ' +
+                '{0} not implemented'.format(version))
+
+    ds = DataStore(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
+    return ds
+
+
+def read_apsensing_files(
+        filepathlist=None,
+        directory=None,
+        file_ext='*.xml',
+        timezone_netcdf='UTC',
+        timezone_input_files='UTC',
+        silent=False,
+        load_in_memory='auto',
+        **kwargs):
+    """Read a folder with measurement files. Each measurement file contains
+    values for a single timestep. Remember to check which timezone
+    you are working in.
+
+    Parameters
+    ----------
+    filepathlist : list of str, optional
+        List of paths that point the the silixa files
+    directory : str, Path, optional
+        Path to folder
+    timezone_netcdf : str, optional
+        Timezone string of the netcdf file. UTC follows CF-conventions.
+    timezone_input_files : str, optional
+        Timezone string of the measurement files.
+        Remember to check when measurements are taken.
+        Also if summertime is used.
+    file_ext : str, optional
+        file extension of the measurement files
+    silent : bool
+        If set tot True, some verbose texts are not printed to stdout/screen
+    load_in_memory : {'auto', True, False}
+        If 'auto' the Stokes data is only loaded to memory for small files
+    kwargs : dict-like, optional
+        keyword-arguments are passed to DataStore initialization
+
+    Notes
+    -----
+    Only XML files are supported for now
+
+    Returns
+    -------
+    datastore : DataStore
+        The newly created datastore.
+    """
+    if not file_ext == '*.xml':
+        raise NotImplementedError('Only .xml files are supported for now')
+
+    if filepathlist is None:
+        filepathlist = sorted(glob.glob(os.path.join(directory, file_ext)))
+
+        # Make sure that the list of files contains any files
+        assert len(
+            filepathlist) >= 1, 'No measurement files found in provided ' \
+                                'directory: \n' + \
+                                str(directory)
+
+    # Make sure that the list of files contains any files
+    assert len(
+        filepathlist) >= 1, 'No measurement files found in provided ' \
+                            'list/directory'
+
+    data_vars, coords, attrs = read_apsensing_files_routine(
+        filepathlist,
+        timezone_netcdf=timezone_netcdf,
+        silent=silent,
+        load_in_memory=load_in_memory)
 
     ds = DataStore(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
     return ds

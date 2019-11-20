@@ -89,7 +89,7 @@ Or the development version directly from GitHub
     pip install https://github.com/dtscalibration/python-dts-calibration/zipball/master --upgrade
 
 Devices currently supported
-============
+===========================
 Silixa Ltd.:
 
 * Ultima .xml files (up to version 7.0)
@@ -99,6 +99,14 @@ Sensornet Ltd.:
 
 * Oryx .ddf files
 * Halo .ddf files
+
+AP Sensing:
+
+* CP320 .xml files (single ended only)
+
+SensorTran:
+
+* SensorTran 5100 .dat binary files (single ended only)
 
 Learn by examples
 =================

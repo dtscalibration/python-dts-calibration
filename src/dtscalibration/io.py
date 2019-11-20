@@ -55,6 +55,13 @@ _dim_attrs = {
 #   tuple as key contains the possible keys, which is expanded below.
 dim_attrs = {k: v for kl, v in _dim_attrs.items() for k in kl}
 
+dim_attrs_apsensing = dict(dim_attrs)
+dim_attrs_apsensing['TEMP'] = dim_attrs_apsensing.pop('TMP')
+dim_attrs_apsensing['TEMP']['name'] = 'TEMP'
+dim_attrs_apsensing.pop('acquisitionTime')
+dim_attrs_apsensing.pop('userAcquisitionTimeFW')
+dim_attrs_apsensing.pop('userAcquisitionTimeBW')
+
 
 @contextmanager
 def open_file(path, **kwargs):
@@ -92,6 +99,28 @@ def silixa_xml_version_check(filepathlist):
     major_version = int(version_string.replace(' ', '').split(':')[-1][0])
 
     return major_version
+
+
+def sensortran_binary_version_check(filepathlist):
+    """Function which tests which version the sensortran binaries are.
+
+    Parameters
+    ----------
+    filepathlist
+
+    Returns
+    -------
+
+    """
+    import struct
+
+    fname = filepathlist[0]
+
+    with open(fname, 'rb') as f:
+        f.read(2)
+        version = struct.unpack('<h', f.read(2))[0]
+
+    return version
 
 
 def read_silixa_files_routine_v6(
@@ -334,12 +363,14 @@ def read_silixa_files_routine_v6(
             elif xml_version == 7:
                 tstamp = np.int64(file_name[15:27])
             else:
-                raise ValueError('Unknown version number: {}'.format(xml_version))
+                raise ValueError('Unknown version number: {}'.format(
+                                                                xml_version))
 
             out += [tstamp, startDateTimeIndex, endDateTimeIndex]
         return np.array(tuple(out), dtype=ts_dtype)
 
-    ts_lst_dly = [grab_timeseries_per_file(fp, xml_version) for fp in filepathlist]
+    ts_lst_dly = [
+            grab_timeseries_per_file(fp, xml_version) for fp in filepathlist]
     ts_lst = [
         da.from_delayed(x, shape=tuple(), dtype=ts_dtype) for x in ts_lst_dly]
     ts_arr = da.stack(ts_lst).compute()
@@ -948,6 +979,482 @@ def read_silixa_attrs_singlefile(filename, sep):
         doc = doc_[u'logs'][u'log']
 
     return metakey(dict(), doc, '')
+
+
+def read_sensortran_files_routine(
+        filepathlist_dts,
+        filepathlist_temp,
+        timezone_netcdf='UTC',
+        silent=False):
+    """
+    Internal routine that reads sensortran files.
+    Use dtscalibration.read_sensortran_files function instead.
+
+    The sensortran files are in UTC time
+
+    Parameters
+    ----------
+    filepathlist_dts
+    filepathlist_temp
+    timezone_netcdf
+    silent
+
+    Returns
+    -------
+
+    """
+
+    # Obtain metadata from the first file
+    data_dts, meta_dts = read_sensortran_single(filepathlist_dts[0])
+    data_temp, meta_temp = read_sensortran_single(filepathlist_temp[0])
+
+    attrs = meta_dts
+
+    # Add standardised required attributes
+    attrs['isDoubleEnded'] = '0'
+
+    attrs['forwardMeasurementChannel'] = meta_dts['channel_id']-1
+    attrs['backwardMeasurementChannel'] = 'N/A'
+
+    # obtain basic data info
+    nx = meta_temp['num_points']
+
+    ntime = len(filepathlist_dts)
+
+    # print summary
+    if not silent:
+        print(
+            '%s files were found,' % ntime +
+            ' each representing a single timestep')
+        print('Recorded at %s points along the cable' % nx)
+
+        print('The measurement is single ended')
+
+    #   Gather data
+    # x has already been read. should not change over time
+    x = data_temp['x']
+
+    # Define all variables
+    referenceTemperature = np.zeros(ntime)
+    acquisitiontimeFW = np.ones(ntime)
+
+    timestamp = [''] * ntime
+    ST = np.zeros((nx, ntime), dtype=np.int32)
+    AST = np.zeros((nx, ntime), dtype=np.int32)
+    TMP = np.zeros((nx, ntime))
+
+    ST_zero = np.zeros((ntime))
+    AST_zero = np.zeros((ntime))
+
+    for ii in range(ntime):
+        data_dts, meta_dts = read_sensortran_single(filepathlist_dts[ii])
+        data_temp, meta_temp = read_sensortran_single(filepathlist_temp[ii])
+
+        timestamp[ii] = data_dts['time']
+
+        referenceTemperature[ii] = data_temp['reference_temperature']-273.15
+
+        ST[:, ii] = data_dts['ST'][:nx]
+        AST[:, ii] = data_dts['AST'][:nx]
+        # The TMP can vary by 1 or 2 datapoints, dynamically assign the values
+        TMP[:meta_temp['num_points'], ii] = data_temp['TMP'][:nx]
+
+        zero_index = (meta_dts['num_points']-nx) // 2
+        ST_zero[ii] = np.mean(data_dts['ST'][nx+zero_index:])
+        AST_zero[ii] = np.mean(data_dts['AST'][nx+zero_index:])
+
+    data_vars = {
+        'ST': (['x', 'time'], ST, dim_attrs['ST']),
+        'AST': (['x', 'time'], AST, dim_attrs['AST']),
+        'TMP':
+            (
+                ['x', 'time'], TMP, {
+                    'name': 'TMP',
+                    'description': 'Temperature calibrated by device',
+                    'units': meta_temp['y_units']}),
+        'referenceTemperature':
+            (
+                'time', referenceTemperature, {
+                    'name': 'reference temperature',
+                    'description': 'Internal reference '
+                                   'temperature',
+                    'units': 'degC'}),
+        'ST_zero': (['time'], ST_zero, {
+                    'name': 'ST_zero',
+                    'description': 'Stokes zero count',
+                    'units': meta_dts['y_units']}),
+        'AST_zero': (['time'], AST_zero, {
+                    'name': 'AST_zero',
+                    'description': 'anit-Stokes zero count',
+                    'units': meta_dts['y_units']}),
+        'userAcquisitionTimeFW':
+            ('time', acquisitiontimeFW, dim_attrs['userAcquisitionTimeFW'])}
+
+    filenamelist_dts = [os.path.split(f)[-1] for f in filepathlist_dts]
+    filenamelist_temp = [os.path.split(f)[-1] for f in filepathlist_temp]
+
+    coords = {
+        'x': ('x', x, {'name': 'distance',
+                       'description': 'Length along fiber',
+                       'long_description': 'Starting at connector ' +
+                                           'of forward channel',
+                       'units': 'm'}),
+        'filename': ('time', filenamelist_dts),
+        'filename_temp': ('time', filenamelist_temp)}
+
+    dtFW = data_vars['userAcquisitionTimeFW'][1].astype('timedelta64[s]')
+
+    tcoords = coords_time(
+        np.array(timestamp).astype('datetime64[ns]'),
+        timezone_netcdf=timezone_netcdf,
+        timezone_input_files='UTC',
+        dtFW=dtFW,
+        double_ended_flag=False)
+
+    coords.update(tcoords)
+
+    return data_vars, coords, attrs
+
+
+def read_sensortran_single(fname):
+    """
+    Internal routine that reads a single sensortran file.
+    Use dtscalibration.read_sensortran_files function instead.
+
+    Parameters
+    ----------
+    fname
+
+    Returns
+    -------
+    data, metadata
+    """
+    import struct
+    from datetime import datetime
+    import numpy as np
+
+    meta = {}
+    data = {}
+    with open(fname, 'rb') as f:
+        meta['survey_type'] = struct.unpack('<h', f.read(2))[0]
+        meta['hdr_version'] = struct.unpack('<h', f.read(2))[0]
+        meta['x_units'] = struct.unpack('<i', f.read(4))[0]
+        meta['y_units'] = struct.unpack('<i', f.read(4))[0]
+        meta['num_points'] = struct.unpack('<i', f.read(4))[0]
+        meta['num_pulses'] = struct.unpack('<i', f.read(4))[0]
+        meta['channel_id'] = struct.unpack('<i', f.read(4))[0]
+        meta['num_subtraces'] = struct.unpack('<i', f.read(4))[0]
+        meta['num_skipped'] = struct.unpack('<i', f.read(4))[0]
+
+        data['reference_temperature'] = struct.unpack('<f', f.read(4))[0]
+        data['time'] = datetime.fromtimestamp(
+                        struct.unpack('<i', f.read(4))[0])
+
+        meta['probe_name'] = f.read(128).decode('utf-16').split('\x00')[0]
+
+        meta['hdr_size'] = struct.unpack('<i', f.read(4))[0]
+        meta['hw_config'] = struct.unpack('<i', f.read(4))[0]
+
+        data_1 = f.read(meta['num_points']*4)
+        data_2 = f.read(meta['num_points']*4)
+
+        if meta['survey_type'] == 0:
+            distance = np.frombuffer(data_1,
+                                     dtype=np.float32)
+            temperature = np.frombuffer(data_2,
+                                        dtype=np.float32)
+            data['x'] = distance
+            data['TMP'] = temperature
+
+        if meta['survey_type'] == 2:
+            ST = np.frombuffer(data_1,
+                               dtype=np.int32)
+            AST = np.frombuffer(data_2,
+                                dtype=np.int32)
+            data['ST'] = ST
+            data['AST'] = AST
+
+    x_units_map = {0: 'm', 1: 'ft', 2: 'n/a'}
+    meta['x_units'] = x_units_map[meta['x_units']]
+    y_units_map = {0: 'K', 1: 'degC', 2: 'degF', 3: 'counts'}
+    meta['y_units'] = y_units_map[meta['y_units']]
+
+    return data, meta
+
+
+def read_apsensing_files_routine(
+        filepathlist,
+        timezone_netcdf='UTC',
+        silent=False,
+        load_in_memory='auto'):
+    """
+    Internal routine that reads AP Sensing files.
+    Use dtscalibration.read_apsensing_files function instead.
+
+    The AP sensing files are not timezone aware
+
+    Parameters
+    ----------
+    filepathlist
+    timezone_netcdf
+    silent
+    load_in_memory
+
+    Returns
+    -------
+
+    """
+    import dask
+    from xml.etree import ElementTree
+
+    # Open the first xml file using ET, get the name space and amount of data
+    xml_tree = ElementTree.parse(filepathlist[0])
+    namespace = get_xml_namespace(xml_tree.getroot())
+
+    logtree = xml_tree.find(('{0}wellSet/{0}well/{0}wellboreSet/{0}wellbore' +
+                            '/{0}wellLogSet/{0}wellLog').format(namespace))
+    logdata_tree = logtree.find('./{0}logData'.format(namespace))
+
+    # Amount of datapoints is the size of the logdata tree
+    nx = len(logdata_tree)
+
+    sep = ':'
+    ns = {'s': namespace[1:-1]}
+
+    # Obtain metadata from the first file
+    attrs, skip_chars = read_apsensing_attrs_singlefile(filepathlist[0], sep)
+
+    # Add standardised required attributes
+    # No example of DE file available
+    attrs['isDoubleEnded'] = '0'
+    double_ended_flag = bool(int(attrs['isDoubleEnded']))
+
+    attrs['forwardMeasurementChannel'] = attrs[
+        'wellbore:dtsMeasurementSet:dtsMeasurement:connectedToFiber:uidRef']
+    attrs['backwardMeasurementChannel'] = 'N/A'
+
+    data_item_names = [
+       attrs['wellbore:wellLogSet:wellLog:logCurveInfo_{0}:mnemonic'.format(x)]
+       for x in range(0, 4)]
+
+    nitem = len(data_item_names)
+
+    ntime = len(filepathlist)
+
+    # print summary
+    if not silent:
+        print(
+            '%s files were found, each representing a single timestep' % ntime)
+        print(
+            '%s recorded vars were found: ' % nitem +
+            ', '.join(data_item_names))
+        print('Recorded at %s points along the cable' % nx)
+
+        if double_ended_flag:
+            print('The measurement is double ended')
+        else:
+            print('The measurement is single ended')
+
+    # Gather data
+    arr_path = 's:' + '/s:'.join(['wellSet', 'well', 'wellboreSet', 'wellbore',
+                                  'wellLogSet', 'wellLog', 'logData', 'data'])
+
+    @dask.delayed
+    def grab_data_per_file(file_handle):
+        """
+
+        Parameters
+        ----------
+        file_handle
+
+        Returns
+        -------
+
+        """
+
+        with open_file(file_handle, mode='r') as f_h:
+            if skip_chars:
+                f_h.read(3)
+            eltree = ElementTree.parse(f_h)
+            arr_el = eltree.findall(arr_path, namespaces=ns)
+
+            # remove the breaks on both sides of the string
+            # split the string on the comma
+            arr_str = [arr_eli.text.split(',') for arr_eli in arr_el]
+        return np.array(arr_str, dtype=float)
+
+    data_lst_dly = [grab_data_per_file(fp) for fp in filepathlist]
+
+    data_lst = [
+        da.from_delayed(x, shape=(nx, nitem), dtype=np.float)
+        for x in data_lst_dly]
+    data_arr = da.stack(data_lst).T  # .compute()
+
+    # Check whether to compute data_arr (if possible 25% faster)
+    data_arr_cnk = data_arr.rechunk({0: -1, 1: -1, 2: 'auto'})
+    if load_in_memory == 'auto' and data_arr_cnk.npartitions <= 5:
+        if not silent:
+            print('Reading the data from disk')
+        data_arr = data_arr_cnk.compute()
+    elif load_in_memory:
+        if not silent:
+            print('Reading the data from disk')
+        data_arr = data_arr_cnk.compute()
+    else:
+        if not silent:
+            print('Not reading the data from disk')
+        data_arr = data_arr_cnk
+
+    data_vars = {}
+    for name, data_arri in zip(data_item_names, data_arr):
+        if name == 'LAF':
+            continue
+
+        if name in dim_attrs_apsensing:
+            data_vars[name] = (['x', 'time'],
+                               data_arri,
+                               dim_attrs_apsensing[name])
+
+        else:
+            raise ValueError(
+                'Dont know what to do with the' +
+                ' {} data column'.format(name))
+
+    _time_dtype = [
+     ('filename_tstamp', np.int64),
+     ('acquisitionTime', '<U29')]
+    ts_dtype = np.dtype(_time_dtype)
+
+    @dask.delayed
+    def grab_timeseries_per_file(file_handle):
+        """
+
+        Parameters
+        ----------
+        file_handle
+
+        Returns
+        -------
+
+        """
+        with open_file(file_handle, mode='r') as f_h:
+            if skip_chars:
+                f_h.read(3)
+            eltree = ElementTree.parse(f_h)
+
+            out = []
+
+            # get all the time related data
+            creationDate = eltree.find(('{0}wellSet/{0}well/{0}wellboreSet' +
+                                        '/{0}wellbore/{0}wellLogSet' +
+                                        '/{0}wellLog/{0}creationDate'
+                                        ).format(namespace)
+                                       ).text
+
+            if isinstance(file_handle, tuple):
+                file_name = os.path.split(file_handle[0])[-1]
+            else:
+                file_name = os.path.split(file_handle)[-1]
+
+            tstamp = np.int64(file_name[-20:-4])
+
+            out += [tstamp, creationDate]
+        return np.array(tuple(out), dtype=ts_dtype)
+
+    ts_lst_dly = [grab_timeseries_per_file(fp) for fp in filepathlist]
+    ts_lst = [
+        da.from_delayed(x, shape=tuple(), dtype=ts_dtype) for x in ts_lst_dly]
+    ts_arr = da.stack(ts_lst).compute()
+
+    data_vars['creationDate'] = (('time',),
+                                 [pd.Timestamp(item[1]) for item in ts_arr])
+
+    # construct the coordinate dictionary
+    coords = {
+        'x': ('x', data_arr[0, :, 0], dim_attrs_apsensing['x']),
+        'filename': ('time', [os.path.split(f)[1] for f in filepathlist]),
+        'time': data_vars['creationDate']}
+
+    return data_vars, coords, attrs
+
+
+def read_apsensing_attrs_singlefile(filename, sep):
+    """
+
+    Parameters
+    ----------
+    filename
+    sep
+
+    Returns
+    -------
+
+    """
+    import xmltodict
+    from xml.parsers.expat import ExpatError
+
+    def metakey(meta, dict_to_parse, prefix):
+        """
+        Fills the metadata dictionairy with data from dict_to_parse.
+        The dict_to_parse is the raw data from a silixa xml-file.
+        dict_to_parse is a nested dictionary to represent the
+        different levels of hierarchy. For example,
+        toplevel = {lowlevel: {key: value}}.
+        This function returns {'toplevel:lowlevel:key': value}.
+        Where prefix is the flattened hierarchy.
+
+        Parameters
+        ----------
+        meta : dict
+            the output dictionairy with prcessed metadata
+        dict_to_parse : dict
+        prefix
+
+        Returns
+        -------
+
+        """
+
+        for key in dict_to_parse:
+            if prefix == "":
+
+                prefix_parse = key.replace('@', '')
+            else:
+                prefix_parse = sep.join([prefix, key.replace('@', '')])
+
+            if prefix_parse == sep.join(('wellbore', 'wellLogSet',
+                                         'wellLog', 'logData', 'data')):
+                # skip the LAF , ST data
+                continue
+
+            if hasattr(dict_to_parse[key], 'keys'):
+                # Nested dictionaries, flatten hierarchy.
+                meta.update(metakey(meta, dict_to_parse[key], prefix_parse))
+
+            elif isinstance(dict_to_parse[key], list):
+                # if the key has values for the multiple channels
+                for ival, val in enumerate(dict_to_parse[key]):
+                    num_key = prefix_parse + '_' + str(ival)
+                    meta.update(metakey(meta, val, num_key))
+            else:
+
+                meta[prefix_parse] = dict_to_parse[key]
+
+        return meta
+
+    with open_file(filename) as fh:
+        data = fh.read()
+        try:
+            doc_ = xmltodict.parse(data)
+            skip_chars = False
+        # the first 3 characters can be weird, skip them
+        except ExpatError:
+            doc_ = xmltodict.parse(data[3:])
+            skip_chars = True
+
+    doc = doc_[u'WITSMLComposite'][u'wellSet'][u'well'][u'wellboreSet']
+
+    return metakey(dict(), doc, ''), skip_chars
 
 
 def read_sensornet_single(filename):

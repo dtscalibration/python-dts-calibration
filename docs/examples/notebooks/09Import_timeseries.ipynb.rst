@@ -34,7 +34,7 @@ Step 1: load the measurement files
 
 .. parsed-literal::
 
-    ../../tests/data/external_temperature_timeseries/Loodswaternet2018-03-28 02h.csv 
+    ..\..\tests\data\external_temperature_timeseries\Loodswaternet2018-03-28 02h.csv 
     
     "time","Pt100 2"
      2018-03-28 02:00:05, 12.748
@@ -42,7 +42,7 @@ Step 1: load the measurement files
      2018-03-28 02:00:15, 12.746
      2018-03-28 02:00:20, 12.747
     
-
+    
 
 .. code:: ipython3
 
@@ -87,7 +87,7 @@ measurements to add the external timeseries to
     Recorded at 1693 points along the cable
     The measurement is double ended
     Reading the data from disk
-
+    
 
 Step 2: Add the temperature measurements of the external probe to the DataStore.
 --------------------------------------------------------------------------------
@@ -138,7 +138,7 @@ times we have DTS measurements
         userAcquisitionTimeBW  (time) float32 2.0 2.0 2.0 2.0 2.0 2.0
         external_probe         (time_external) float64 12.75 12.75 ... 12.76 12.76
         external_probe_dts     (time) float64 12.75 12.75 12.75 12.75 12.75 12.75
-
+    
 
 Now we can use ``external_probe_dts`` when we define sections and use it
 for calibration
