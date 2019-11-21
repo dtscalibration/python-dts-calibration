@@ -1268,7 +1268,7 @@ class DataStore(xr.Dataset):
             for.
         fix_dalpha : tuple
             A tuple containing two floats. The first float is the value of
-            dalpha ($\Delta\alpha$ in paper), and the second item is the
+            dalpha (Delta alpha in paper), and the second item is the
             variance of the estimate of dalpha.
             Covariances between alpha and other parameters are not accounted
             for.
