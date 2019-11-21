@@ -17,6 +17,8 @@ from scipy.sparse import linalg as ln
 
 from .calibrate_utils import calibration_double_ended_solver
 from .calibrate_utils import calibration_single_ended_solver
+from .calibrate_utils import wls_sparse
+from .calibrate_utils import wls_stats
 from .datastore_utils import check_dims
 from .datastore_utils import check_timestep_allclose
 from .io import read_apsensing_files_routine
@@ -994,7 +996,7 @@ class DataStore(xr.Dataset):
                 dtype=float,
                 copy=False)
 
-            mod_wls = sm.WLS(lny, X.todense(), weights=w**2)
+            mod_wls = sm.WLS(lny, X.toarray(), weights=w**2)
             res_wls = mod_wls.fit()
             # print(res_wls.summary())
             a = res_wls.params
@@ -1209,7 +1211,8 @@ class DataStore(xr.Dataset):
             solver='sparse',
             p_val=None,
             p_var=None,
-            p_cov=None):
+            p_cov=None,
+            fix_gamma=None):
         """
 
         Parameters
@@ -1257,6 +1260,11 @@ class DataStore(xr.Dataset):
             Either use the homemade weighted sparse solver or the weighted
             dense matrix solver of
             statsmodels
+        fix_gamma : tuple
+            A tuple containing two floats. The first float is the value of
+            gamma, and the second item is the variance of the estimate of gamma.
+            Covariances between gamma and other parameters are not accounted
+            for.
 
         Returns
         -------
@@ -1281,21 +1289,82 @@ class DataStore(xr.Dataset):
             self[ast_label] <= 0.), \
             'There is uncontrolled noise in the AST signal'
 
-        if method == 'ols':
-            p_val, p_var = calibration_single_ended_solver(
-                self, st_label, ast_label,
-                st_var=None,     # ols
-                ast_var=None,    # ols
-                calc_cov=False,  # worthless if ols
-                solver=solver)
+        # if method == 'ols':
+        #     p_val, p_var = calibration_single_ended_solver(
+        #         self, st_label, ast_label,
+        #         st_var=None,     # ols
+        #         ast_var=None,    # ols
+        #         calc_cov=False,  # worthless if ols
+        #         solver=solver)
+        #
+        # elif method == 'wls':
+        #     st_var = np.array(st_var, dtype=float)
+        #     ast_var = np.array(ast_var, dtype=float)
+        #
+        #     p_val, p_var, p_cov = calibration_single_ended_solver(
+        #         self, st_label, ast_label, st_var, ast_var,
+        #         solver=solver)
 
-        elif method == 'wls':
-            st_var = np.array(st_var, dtype=float)
-            ast_var = np.array(ast_var, dtype=float)
+        if method == 'ols' or method == 'wls':
+            if method == 'ols':
+                st_var = None     # ols
+                ast_var = None    # ols
+                calc_cov = False
+            else:
+                st_var = np.array(st_var, dtype=float)
+                ast_var = np.array(ast_var, dtype=float)
+                calc_cov = True
 
-            p_val, p_var, p_cov = calibration_single_ended_solver(
-                self, st_label, ast_label, st_var, ast_var,
-                solver=solver)
+            if fix_gamma:
+                split = calibration_single_ended_solver(
+                    self, st_label, ast_label, st_var, ast_var,
+                    calc_cov=calc_cov, solver='external_split')
+
+                # Move the coefficients times the fixed gamma to the
+                # observations
+                y = split['y'] - \
+                    fix_gamma[0] * split['X_gamma'].toarray().flatten()
+                # Use only the remaining coefficients
+                X = sp.hstack((split['X_dalpha'], split['X_c']))
+                # variances are added. weight is the inverse of the variance
+                # of the observations
+                if method == 'wls':
+                    w = 1 / (1 / split['w'] +
+                             fix_gamma[1] *
+                             split['X_gamma'].toarray().flatten())
+                else:
+                    w = 1.
+                p0_est = split['p0_est'][1:]
+
+                if solver == 'sparse':
+                    out = wls_sparse(
+                        X, y, w=w, x0=p0_est,
+                        calc_cov=calc_cov,
+                        verbose=False)
+
+                elif solver == 'stats':
+                    out = wls_stats(
+                        X, y, w=w,
+                        calc_cov=calc_cov,
+                        verbose=False)
+
+                # Added fixed gamma and its variance to the solution
+                p_val = np.concatenate(([fix_gamma[0]], out[0]))
+                p_var = np.concatenate(([fix_gamma[1]], out[1]))
+
+                if calc_cov:
+                    p_cov = np.eye(p_val.size) * fix_gamma[1]
+                    p_cov[1:, 1:] = out[2]
+
+            else:
+                out = calibration_single_ended_solver(
+                    self, st_label, ast_label, st_var, ast_var,
+                    calc_cov=calc_cov, solver=solver)
+
+                if calc_cov:
+                    p_val, p_var, p_cov = out
+                else:
+                    p_val, p_var = out
 
         elif method == 'external':
             for input_item in [p_val, p_var, p_cov]:

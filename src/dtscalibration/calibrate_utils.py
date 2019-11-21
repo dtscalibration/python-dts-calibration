@@ -397,7 +397,7 @@ def wls_sparse(X, y, w=1., calc_cov=False, verbose=False, **kwargs):
 
         if sp.issparse(arg):
             # arg is square of size double: 1 + nt + no; single: 2 : nt
-            arg_inv = np.linalg.inv(arg.todense())
+            arg_inv = np.linalg.inv(arg.toarray())
         else:
             arg_inv = np.linalg.inv(arg)
 
@@ -447,7 +447,7 @@ def wls_stats(X, y, w=1., calc_cov=False, verbose=False):
     w = np.asarray(w)
 
     if sp.issparse(X):
-        X = X.todense()
+        X = X.toarray()
 
     mod_wls = sm.WLS(y, X, weights=w)
     res_wls = mod_wls.fit()
