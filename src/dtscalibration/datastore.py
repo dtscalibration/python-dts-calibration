@@ -867,7 +867,7 @@ class DataStore(xr.Dataset):
         resid = np.concatenate(resid_list)
 
         # unbiased estimater ddof=1, originally thought it was npar
-        var_I = resid.std(ddof=1)**2
+        var_I = resid.var(ddof=1)
 
         if not reshape_residuals:
             return var_I, resid
@@ -1025,7 +1025,7 @@ class DataStore(xr.Dataset):
 
         I_est = np.exp(G_expand_to_sec) * np.exp(x * beta_expand_to_sec)
         resid = I_est - y
-        var_I = resid.std(ddof=1)**2
+        var_I = resid.var(ddof=1)
 
         if not reshape_residuals:
             return var_I, resid
@@ -1764,8 +1764,8 @@ class DataStore(xr.Dataset):
         avg_axis = self[store_tmpf + '_MC_set'].get_axis_num(avg_dims)
 
         self[store_tmpf + '_MC' + store_tempvar] = (
-            self[store_tmpf + '_MC_set'] - self[store_tmpf]).std(
-                dim=avg_dims)**2
+            self[store_tmpf + '_MC_set'] - self[store_tmpf]).var(
+                dim=avg_dims, ddof=1)
 
         if ci_avg_time_flag and not ci_avg_x_flag:
             chunks_axis = self[store_tmpf + '_MC_set'].get_axis_num(x_dim)
@@ -2089,8 +2089,8 @@ class DataStore(xr.Dataset):
                     else:
                         q = self[label + '_MC_set']
 
-                    self[label + '_MC' + store_tempvar] = q.std(
-                        dim=avg_dims) ** 2
+                    self[label + '_MC' + store_tempvar] = q.var(
+                        dim=avg_dims, ddof=1)
 
                 if conf_ints and not del_label:
                     if ci_avg_time_flag:
@@ -2113,8 +2113,6 @@ class DataStore(xr.Dataset):
 
         # Weighted mean of the forward and backward
         if store_tmpw:
-            self.coords['MC2'] = range(2 * mc_sample_size)
-
             tmpw_var = 1 / (1 / self[store_tmpf + '_MC' + store_tempvar] +
                             1 / self[store_tmpb + '_MC' + store_tempvar])
 
@@ -2134,8 +2132,8 @@ class DataStore(xr.Dataset):
                 else:
                     # subtract the mean temperature
                     q = self[store_tmpw + '_MC_set'] - self[store_tmpw]
-                    self[store_tmpw + '_MC' + store_tempvar] = q.std(
-                            dim=avg2_dims)**2
+                    self[store_tmpw + '_MC' + store_tempvar] = q.var(
+                            dim=avg2_dims, ddof=1)
 
             # Calculate the CI of the weighted MC_set
             if conf_ints:
@@ -2160,8 +2158,7 @@ class DataStore(xr.Dataset):
         if remove_mc_set_flag:
             remove_MC_set = [
                 'r_st', 'r_ast', 'r_rst', 'r_rast', 'gamma_MC', 'alpha_MC',
-                'd_MC', 'TMPF_MC_set', 'TMPB_MC_set', 'TMPW_MC_set', 'MC',
-                'MC2']
+                'd_MC', 'TMPF_MC_set', 'TMPB_MC_set', 'TMPW_MC_set', 'MC']
             for k in remove_MC_set:
                 if k in self:
                     del self[k]
@@ -2346,7 +2343,7 @@ class DataStore(xr.Dataset):
                 -------
 
                 """
-                return np.std(a)**2
+                return np.var(a, ddof=1)
 
         else:
             assert callable(func)
