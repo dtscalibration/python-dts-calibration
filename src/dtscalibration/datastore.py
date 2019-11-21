@@ -1212,7 +1212,8 @@ class DataStore(xr.Dataset):
             p_val=None,
             p_var=None,
             p_cov=None,
-            fix_gamma=None):
+            fix_gamma=None,
+            fix_dalpha=None):
         """
 
         Parameters
@@ -1265,6 +1266,12 @@ class DataStore(xr.Dataset):
             gamma, and the second item is the variance of the estimate of gamma.
             Covariances between gamma and other parameters are not accounted
             for.
+        fix_dalpha : tuple
+            A tuple containing two floats. The first float is the value of
+            dalpha ($\Delta\alpha$ in paper), and the second item is the
+            variance of the estimate of dalpha.
+            Covariances between alpha and other parameters are not accounted
+            for.
 
         Returns
         -------
@@ -1288,22 +1295,6 @@ class DataStore(xr.Dataset):
         assert not np.any(
             self[ast_label] <= 0.), \
             'There is uncontrolled noise in the AST signal'
-
-        # if method == 'ols':
-        #     p_val, p_var = calibration_single_ended_solver(
-        #         self, st_label, ast_label,
-        #         st_var=None,     # ols
-        #         ast_var=None,    # ols
-        #         calc_cov=False,  # worthless if ols
-        #         solver=solver)
-        #
-        # elif method == 'wls':
-        #     st_var = np.array(st_var, dtype=float)
-        #     ast_var = np.array(ast_var, dtype=float)
-        #
-        #     p_val, p_var, p_cov = calibration_single_ended_solver(
-        #         self, st_label, ast_label, st_var, ast_var,
-        #         solver=solver)
 
         if method == 'ols' or method == 'wls':
             if method == 'ols':
@@ -1355,6 +1346,52 @@ class DataStore(xr.Dataset):
                 if calc_cov:
                     p_cov = np.eye(p_val.size) * fix_gamma[1]
                     p_cov[1:, 1:] = out[2]
+
+            elif fix_dalpha:
+                split = calibration_single_ended_solver(
+                    self, st_label, ast_label, st_var, ast_var,
+                    calc_cov=calc_cov, solver='external_split')
+
+                # Move the coefficients times the fixed dalpha to the
+                # observations
+                y = split['y'] - \
+                    fix_dalpha[0] * split['X_dalpha'].toarray().flatten()
+                # Use only the remaining coefficients
+                X = sp.hstack((split['X_gamma'], split['X_c']))
+                # variances are added. weight is the inverse of the variance
+                # of the observations
+                if method == 'wls':
+                    w = 1 / (1 / split['w'] +
+                             fix_dalpha[1] *
+                             split['X_dalpha'].toarray().flatten())
+                else:
+                    w = 1.
+
+                p0_est = np.concatenate((
+                    split['p0_est'][[0]], split['p0_est'][2:]))
+
+                if solver == 'sparse':
+                    out = wls_sparse(
+                        X, y, w=w, x0=p0_est,
+                        calc_cov=calc_cov,
+                        verbose=False)
+
+                elif solver == 'stats':
+                    out = wls_stats(
+                        X, y, w=w,
+                        calc_cov=calc_cov,
+                        verbose=False)
+
+                # Added fixed gamma and its variance to the solution
+                p_val = np.concatenate((out[0][[0]], [fix_dalpha[0]], out[0][1:]))
+                p_var = np.concatenate((out[1][[0]], [fix_dalpha[1]], out[1][1:]))
+
+                if calc_cov:
+                    p_cov = np.eye(p_val.size) * fix_dalpha[1]
+                    p_cov[0, 0] = out[2][0, 0]
+                    p_cov[0, 2:] = out[2][0, 1:]
+                    p_cov[2:, 0] = out[2][1:, 0]
+                    p_cov[2:, 2:] = out[2][1:, 1:]
 
             else:
                 out = calibration_single_ended_solver(
