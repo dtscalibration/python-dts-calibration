@@ -1306,7 +1306,53 @@ class DataStore(xr.Dataset):
                 ast_var = np.array(ast_var, dtype=float)
                 calc_cov = True
 
-            if fix_gamma:
+            if fix_gamma and fix_dalpha:
+                split = calibration_single_ended_solver(
+                    self, st_label, ast_label, st_var, ast_var,
+                    calc_cov=calc_cov, solver='external_split')
+
+                # Move the coefficients times the fixed gamma to the
+                # observations
+                y = split['y'] - \
+                    fix_gamma[0] * split['X_gamma'].toarray().flatten() - \
+                    fix_dalpha[0] * split['X_dalpha'].toarray().flatten()
+                # Use only the remaining coefficients
+                X = split['X_c']
+                # variances are added. weight is the inverse of the variance
+                # of the observations
+                if method == 'wls':
+                    w = 1 / (1 / split['w'] +
+                             fix_gamma[1] *
+                             split['X_gamma'].toarray().flatten() +
+                             fix_dalpha[1] *
+                             split['X_dalpha'].toarray().flatten())
+                else:
+                    w = 1.
+
+                p0_est = split['p0_est'][2:]
+
+                if solver == 'sparse':
+                    out = wls_sparse(
+                        X, y, w=w, x0=p0_est,
+                        calc_cov=calc_cov,
+                        verbose=False)
+
+                elif solver == 'stats':
+                    out = wls_stats(
+                        X, y, w=w,
+                        calc_cov=calc_cov,
+                        verbose=False)
+
+                # Added fixed gamma and its variance to the solution
+                p_val = np.concatenate(([fix_gamma[0], fix_dalpha[0]], out[0]))
+                p_var = np.concatenate(([fix_gamma[1], fix_dalpha[1]], out[1]))
+
+                if calc_cov:
+                    p_cov = np.eye(p_val.size) * fix_gamma[1]
+                    p_cov[1, 1] = fix_dalpha[1]
+                    p_cov[2:, 2:] = out[2]
+
+            elif fix_gamma:
                 split = calibration_single_ended_solver(
                     self, st_label, ast_label, st_var, ast_var,
                     calc_cov=calc_cov, solver='external_split')
