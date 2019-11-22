@@ -160,7 +160,7 @@ def test_double_ended_variance_estimate_synthetic():
         store_tmpw='TMPW',
         store_tempvar='_var',
         conf_ints=[2.5, 50., 97.5],
-        mc_sample_size=50,
+        mc_sample_size=100,
         ci_avg_time_flag=False,
         da_random_state=state)
 
@@ -355,7 +355,7 @@ def test_variance_of_stokes_synthetic():
     """
     yvar = 5.
 
-    nx = 50
+    nx = 500
     x = np.linspace(0., 20., nx)
 
     nt = 200
@@ -959,7 +959,7 @@ def test_double_ended_exponential_variance_estimate_synthetic():
         store_tmpw='TMPW',
         store_tempvar='_var',
         conf_ints=[2.5, 50., 97.5],
-        mc_sample_size=50,
+        mc_sample_size=100,
         ci_avg_time_flag=False,
         da_random_state=state)
 
@@ -1535,7 +1535,7 @@ def test_exponential_variance_of_stokes_synthetic():
     """
     yvar = 5.
 
-    nx = 50
+    nx = 500
     x = np.linspace(0., 20., nx)
 
     nt = 200
