@@ -28,7 +28,7 @@ timeseries is already part of the ``DataStore`` object.
     Recorded at 1693 points along the cable
     The measurement is double ended
     Reading the data from disk
-    
+
 
 First we have a look at which temperature timeseries are available for
 calibration. Therefore we access ``ds.data_vars`` and we find
@@ -48,17 +48,17 @@ all timeseries that can be used for calibration.
 .. parsed-literal::
 
     ['acquisitionTime', 'referenceTemperature', 'probe1Temperature', 'probe2Temperature', 'referenceProbeVoltage', 'probe1Voltage', 'probe2Voltage', 'userAcquisitionTimeFW', 'userAcquisitionTimeBW']
-    
+
 
 .. parsed-literal::
 
-    d:\github\pydts2\python-dts-calibration\.tox\docs\lib\site-packages\pandas\plotting\_matplotlib\converter.py:103: FutureWarning: Using an implicitly registered datetime converter for a matplotlib plotting method. The converter was registered by pandas on import. Future versions of pandas will require you to explicitly register matplotlib converters.
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/pandas/plotting/_matplotlib/converter.py:103: FutureWarning: Using an implicitly registered datetime converter for a matplotlib plotting method. The converter was registered by pandas on import. Future versions of pandas will require you to explicitly register matplotlib converters.
     
     To register the converters:
     	>>> from pandas.plotting import register_matplotlib_converters
     	>>> register_matplotlib_converters()
       warnings.warn(msg, FutureWarning)
-    
+
 
 A calibration is needed to estimate temperature from Stokes and
 anti-Stokes measurements. There are three unknowns for a single ended

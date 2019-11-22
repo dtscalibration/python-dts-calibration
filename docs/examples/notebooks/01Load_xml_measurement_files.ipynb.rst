@@ -33,8 +33,8 @@ The example data files are located in
 
 .. parsed-literal::
 
-    ..\..\tests\data\double_ended2
-    
+    ../../tests/data/double_ended2
+
 
 .. code:: ipython3
 
@@ -54,7 +54,7 @@ The example data files are located in
     channel 1_20180328014106243.xml
     channel 1_20180328014110917.xml
     channel 1_20180328014115480.xml
-    
+
 
 Define in which timezone the measurements are taken. In this case it is
 the timezone of the Silixa Ultima computer was set to
@@ -78,7 +78,7 @@ polluted with files other than measurement files.
     Recorded at 1693 points along the cable
     The measurement is double ended
     Reading the data from disk
-    
+
 
 The object tries to gather as much metadata from the measurement files
 as possible (temporal and spatial coordinates, filenames, temperature
@@ -137,6 +137,6 @@ the first files and stored as attributes of the ``DataStore``.
         endIndex:#text:                                                          ...
     
     .. and many more attributes. See: ds.attrs
-    
+
 
 
