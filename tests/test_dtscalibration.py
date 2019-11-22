@@ -160,7 +160,7 @@ def test_double_ended_variance_estimate_synthetic():
         store_tmpw='TMPW',
         store_tempvar='_var',
         conf_ints=[2.5, 50., 97.5],
-        mc_sample_size=500,
+        mc_sample_size=50,
         ci_avg_time_flag=False,
         da_random_state=state)
 
@@ -289,7 +289,7 @@ def test_single_ended_variance_estimate_synthetic():
         store_tmpf='TMPF',
         store_tempvar='_var',
         conf_ints=[2.5, 50., 97.5],
-        mc_sample_size=500,
+        mc_sample_size=50,
         ci_avg_time_flag=False,
         da_random_state=state
         )
@@ -480,7 +480,7 @@ def test_double_ended_ols_wls_estimate_synthetic():
                                 rast_var=1e-7,
                                 method='wls',
                                 solver='sparse',
-                                tmpw_mc_size=500)
+                                tmpw_mc_size=5)
 
     np.testing.assert_almost_equal(
         ds.gamma.values, gamma, decimal=6)
@@ -591,7 +591,7 @@ def test_double_ended_ols_wls_fix_gamma_estimate_synthetic():
                                 rast_var=1e-7,
                                 method='wls',
                                 solver='sparse',
-                                tmpw_mc_size=500,
+                                tmpw_mc_size=5,
                                 fix_gamma=(gamma, 0.))
 
     np.testing.assert_almost_equal(
@@ -705,7 +705,7 @@ def test_double_ended_ols_wls_fix_alpha_estimate_synthetic():
                                 rast_var=1e-7,
                                 method='wls',
                                 solver='sparse',
-                                tmpw_mc_size=500,
+                                tmpw_mc_size=5,
                                 fix_alpha=(alpha, np.zeros_like(alpha)))
 
     np.testing.assert_almost_equal(
@@ -820,7 +820,7 @@ def test_double_ended_ols_wls_fix_alpha_fix_gamma_estimate_synthetic():
                                 rast_var=1e-7,
                                 method='wls',
                                 solver='sparse',
-                                tmpw_mc_size=500,
+                                tmpw_mc_size=5,
                                 fix_gamma=(gamma, 0.),
                                 fix_alpha=(alpha, np.zeros_like(alpha)))
 
@@ -959,7 +959,7 @@ def test_double_ended_exponential_variance_estimate_synthetic():
         store_tmpw='TMPW',
         store_tempvar='_var',
         conf_ints=[2.5, 50., 97.5],
-        mc_sample_size=500,
+        mc_sample_size=50,
         ci_avg_time_flag=False,
         da_random_state=state)
 
@@ -1468,7 +1468,7 @@ def test_single_ended_exponential_variance_estimate_synthetic():
         store_tmpf='TMPF',
         store_tempvar='_var',
         conf_ints=[2.5, 50., 97.5],
-        mc_sample_size=500,
+        mc_sample_size=50,
         ci_avg_time_flag=False,
         da_random_state=state
         )
