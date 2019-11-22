@@ -1,6 +1,11 @@
 
 Changelog
 =========
+0.7.2 (2019-11-22)
+------------------
+* Set alpha and or gamma to known value, with corresponding variance.
+* Bug in computation of the weights for single and double-ended calibration
+
 0.7.0 (2019-11-07)
 ------------------
 * Ensure order of dimension upon initialization of DataStore. Resamplingwould lead to issues
