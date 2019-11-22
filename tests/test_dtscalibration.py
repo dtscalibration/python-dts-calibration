@@ -485,6 +485,118 @@ def test_double_ended_ols_wls_estimate_synthetic():
     np.testing.assert_almost_equal(
         ds.gamma.values, gamma, decimal=6)
     np.testing.assert_almost_equal(
+        ds.alpha.values, alpha, decimal=6)
+    np.testing.assert_almost_equal(
+        ds.TMPF.values, temp_real - 273.15, decimal=4)
+    np.testing.assert_almost_equal(
+        ds.TMPB.values, temp_real - 273.15, decimal=4)
+    np.testing.assert_almost_equal(
+        ds.TMPW.values, temp_real - 273.15, decimal=4)
+
+
+def test_double_ended_ols_wls_fix_gamma_estimate_synthetic():
+    """Checks whether the coefficients are correctly defined by creating a
+    synthetic measurement set, and derive the parameters from this set.
+    Without variance.
+    They should be the same as the parameters used to create the synthetic
+    measurment set"""
+    from dtscalibration import DataStore
+    import numpy as np
+
+    np.random.seed(0)
+
+    cable_len = 100.
+    nt = 500
+    time = np.arange(nt)
+    x = np.linspace(0., cable_len, 100)
+    ts_cold = np.ones(nt) * 4.
+    ts_warm = np.ones(nt) * 20.
+
+    C_p = 15246
+    C_m = 2400.
+    dalpha_r = 0.0005284
+    dalpha_m = 0.0004961
+    dalpha_p = 0.0005607
+    gamma = 482.6
+    cold_mask = x < 0.5 * cable_len
+    warm_mask = np.invert(cold_mask)  # == False
+    temp_real = np.ones((len(x), nt))
+    temp_real[cold_mask] *= ts_cold + 273.15
+    temp_real[warm_mask] *= ts_warm + 273.15
+
+    st = C_p * np.exp(-dalpha_r * x[:, None]) * \
+        np.exp(-dalpha_p * x[:, None]) * np.exp(gamma / temp_real) / \
+        (np.exp(-gamma / temp_real) - 1)
+    ast = C_m * np.exp(-dalpha_r * x[:, None]) * \
+        np.exp(-dalpha_m * x[:, None]) / (np.exp(-gamma / temp_real) - 1)
+    rst = C_p * np.exp(-dalpha_r * (-x[:, None] + cable_len)) * \
+        np.exp(-dalpha_p * (-x[:, None] + cable_len)) * \
+        np.exp(gamma / temp_real) / (np.exp(-gamma / temp_real) - 1)
+    rast = C_m * np.exp(-dalpha_r * (-x[:, None] + cable_len)) * np.exp(
+        -dalpha_m * (-x[:, None] + cable_len)) / \
+        (np.exp(-gamma / temp_real) - 1)
+
+    alpha = np.mean(np.log(rst / rast) - np.log(st / ast), axis=1) / 2
+
+    ds = DataStore({
+        'st':                    (['x', 'time'], st),
+        'ast':                   (['x', 'time'], ast),
+        'rst':                   (['x', 'time'], rst),
+        'rast':                  (['x', 'time'], rast),
+        'userAcquisitionTimeFW': (['time'], np.ones(nt)),
+        'userAcquisitionTimeBW': (['time'], np.ones(nt)),
+        'cold':                  (['time'], ts_cold),
+        'warm':                  (['time'], ts_warm)
+        },
+        coords={
+            'x':    x,
+            'time': time},
+        attrs={
+            'isDoubleEnded': '1'})
+
+    sections = {
+        'cold': [slice(0., 0.5 * cable_len)],
+        'warm': [slice(0.5 * cable_len, cable_len)]}
+
+    # OLS
+    ds.calibration_double_ended(sections=sections,
+                                st_label='st',
+                                ast_label='ast',
+                                rst_label='rst',
+                                rast_label='rast',
+                                method='ols',
+                                solver='sparse',
+                                fix_gamma=(gamma, 0.))
+
+    np.testing.assert_almost_equal(
+        ds.gamma.values, gamma, decimal=6)
+    np.testing.assert_almost_equal(
+        ds.alpha.values, alpha, decimal=8)
+    np.testing.assert_almost_equal(
+        ds.TMPF.values, temp_real - 273.15, decimal=4)
+    np.testing.assert_almost_equal(
+        ds.TMPB.values, temp_real - 273.15, decimal=4)
+    np.testing.assert_almost_equal(
+        ds.TMPW.values, temp_real - 273.15, decimal=4)
+
+    # WLS
+    ds.calibration_double_ended(sections=sections,
+                                st_label='st',
+                                ast_label='ast',
+                                rst_label='rst',
+                                rast_label='rast',
+                                st_var=1e-7,
+                                ast_var=1e-7,
+                                rst_var=1e-7,
+                                rast_var=1e-7,
+                                method='wls',
+                                solver='sparse',
+                                tmpw_mc_size=500,
+                                fix_gamma=(gamma, 0.))
+
+    np.testing.assert_almost_equal(
+        ds.gamma.values, gamma, decimal=6)
+    np.testing.assert_almost_equal(
         ds.alpha.values, alpha, decimal=7)
     np.testing.assert_almost_equal(
         ds.TMPF.values, temp_real - 273.15, decimal=5)
@@ -492,6 +604,238 @@ def test_double_ended_ols_wls_estimate_synthetic():
         ds.TMPB.values, temp_real - 273.15, decimal=5)
     np.testing.assert_almost_equal(
         ds.TMPW.values, temp_real - 273.15, decimal=4)
+
+    pass
+
+
+def test_double_ended_ols_wls_fix_alpha_estimate_synthetic():
+    """Checks whether the coefficients are correctly defined by creating a
+    synthetic measurement set, and derive the parameters from this set.
+    Without variance.
+    They should be the same as the parameters used to create the synthetic
+    measurment set"""
+    from dtscalibration import DataStore
+    import numpy as np
+
+    np.random.seed(0)
+
+    cable_len = 100.
+    nt = 500
+    time = np.arange(nt)
+    x = np.linspace(0., cable_len, 100)
+    ts_cold = np.ones(nt) * 4.
+    ts_warm = np.ones(nt) * 20.
+
+    C_p = 15246
+    C_m = 2400.
+    dalpha_r = 0.0005284
+    dalpha_m = 0.0004961
+    dalpha_p = 0.0005607
+    gamma = 482.6
+    cold_mask = x < 0.5 * cable_len
+    warm_mask = np.invert(cold_mask)  # == False
+    temp_real = np.ones((len(x), nt))
+    temp_real[cold_mask] *= ts_cold + 273.15
+    temp_real[warm_mask] *= ts_warm + 273.15
+
+    st = C_p * np.exp(-dalpha_r * x[:, None]) * \
+        np.exp(-dalpha_p * x[:, None]) * np.exp(gamma / temp_real) / \
+        (np.exp(-gamma / temp_real) - 1)
+    ast = C_m * np.exp(-dalpha_r * x[:, None]) * \
+        np.exp(-dalpha_m * x[:, None]) / (np.exp(-gamma / temp_real) - 1)
+    rst = C_p * np.exp(-dalpha_r * (-x[:, None] + cable_len)) * \
+        np.exp(-dalpha_p * (-x[:, None] + cable_len)) * \
+        np.exp(gamma / temp_real) / (np.exp(-gamma / temp_real) - 1)
+    rast = C_m * np.exp(-dalpha_r * (-x[:, None] + cable_len)) * np.exp(
+        -dalpha_m * (-x[:, None] + cable_len)) / \
+        (np.exp(-gamma / temp_real) - 1)
+
+    alpha = np.mean(np.log(rst / rast) - np.log(st / ast), axis=1) / 2
+
+    ds = DataStore({
+        'st':                    (['x', 'time'], st),
+        'ast':                   (['x', 'time'], ast),
+        'rst':                   (['x', 'time'], rst),
+        'rast':                  (['x', 'time'], rast),
+        'userAcquisitionTimeFW': (['time'], np.ones(nt)),
+        'userAcquisitionTimeBW': (['time'], np.ones(nt)),
+        'cold':                  (['time'], ts_cold),
+        'warm':                  (['time'], ts_warm)
+        },
+        coords={
+            'x':    x,
+            'time': time},
+        attrs={
+            'isDoubleEnded': '1'})
+
+    sections = {
+        'cold': [slice(0., 0.5 * cable_len)],
+        'warm': [slice(0.5 * cable_len, cable_len)]}
+
+    # OLS
+    ds.calibration_double_ended(sections=sections,
+                                st_label='st',
+                                ast_label='ast',
+                                rst_label='rst',
+                                rast_label='rast',
+                                method='ols',
+                                solver='sparse',
+                                fix_alpha=(alpha, np.zeros_like(alpha)))
+
+    np.testing.assert_almost_equal(
+        ds.gamma.values, gamma, decimal=6)
+    np.testing.assert_almost_equal(
+        ds.alpha.values, alpha, decimal=8)
+    np.testing.assert_almost_equal(
+        ds.TMPF.values, temp_real - 273.15, decimal=4)
+    np.testing.assert_almost_equal(
+        ds.TMPB.values, temp_real - 273.15, decimal=4)
+    np.testing.assert_almost_equal(
+        ds.TMPW.values, temp_real - 273.15, decimal=4)
+
+    # WLS
+    ds.calibration_double_ended(sections=sections,
+                                st_label='st',
+                                ast_label='ast',
+                                rst_label='rst',
+                                rast_label='rast',
+                                st_var=1e-7,
+                                ast_var=1e-7,
+                                rst_var=1e-7,
+                                rast_var=1e-7,
+                                method='wls',
+                                solver='sparse',
+                                tmpw_mc_size=500,
+                                fix_alpha=(alpha, np.zeros_like(alpha)))
+
+    np.testing.assert_almost_equal(
+        ds.gamma.values, gamma, decimal=6)
+    np.testing.assert_almost_equal(
+        ds.alpha.values, alpha, decimal=7)
+    np.testing.assert_almost_equal(
+        ds.TMPF.values, temp_real - 273.15, decimal=5)
+    np.testing.assert_almost_equal(
+        ds.TMPB.values, temp_real - 273.15, decimal=5)
+    np.testing.assert_almost_equal(
+        ds.TMPW.values, temp_real - 273.15, decimal=4)
+
+    pass
+
+
+def test_double_ended_ols_wls_fix_alpha_fix_gamma_estimate_synthetic():
+    """Checks whether the coefficients are correctly defined by creating a
+    synthetic measurement set, and derive the parameters from this set.
+    Without variance.
+    They should be the same as the parameters used to create the synthetic
+    measurment set"""
+    from dtscalibration import DataStore
+    import numpy as np
+
+    np.random.seed(0)
+
+    cable_len = 100.
+    nt = 500
+    time = np.arange(nt)
+    x = np.linspace(0., cable_len, 100)
+    ts_cold = np.ones(nt) * 4.
+    ts_warm = np.ones(nt) * 20.
+
+    C_p = 15246
+    C_m = 2400.
+    dalpha_r = 0.0005284
+    dalpha_m = 0.0004961
+    dalpha_p = 0.0005607
+    gamma = 482.6
+    cold_mask = x < 0.5 * cable_len
+    warm_mask = np.invert(cold_mask)  # == False
+    temp_real = np.ones((len(x), nt))
+    temp_real[cold_mask] *= ts_cold + 273.15
+    temp_real[warm_mask] *= ts_warm + 273.15
+
+    st = C_p * np.exp(-dalpha_r * x[:, None]) * \
+        np.exp(-dalpha_p * x[:, None]) * np.exp(gamma / temp_real) / \
+        (np.exp(-gamma / temp_real) - 1)
+    ast = C_m * np.exp(-dalpha_r * x[:, None]) * \
+        np.exp(-dalpha_m * x[:, None]) / (np.exp(-gamma / temp_real) - 1)
+    rst = C_p * np.exp(-dalpha_r * (-x[:, None] + cable_len)) * \
+        np.exp(-dalpha_p * (-x[:, None] + cable_len)) * \
+        np.exp(gamma / temp_real) / (np.exp(-gamma / temp_real) - 1)
+    rast = C_m * np.exp(-dalpha_r * (-x[:, None] + cable_len)) * np.exp(
+        -dalpha_m * (-x[:, None] + cable_len)) / \
+        (np.exp(-gamma / temp_real) - 1)
+
+    alpha = np.mean(np.log(rst / rast) - np.log(st / ast), axis=1) / 2
+
+    ds = DataStore({
+        'st':                    (['x', 'time'], st),
+        'ast':                   (['x', 'time'], ast),
+        'rst':                   (['x', 'time'], rst),
+        'rast':                  (['x', 'time'], rast),
+        'userAcquisitionTimeFW': (['time'], np.ones(nt)),
+        'userAcquisitionTimeBW': (['time'], np.ones(nt)),
+        'cold':                  (['time'], ts_cold),
+        'warm':                  (['time'], ts_warm)
+        },
+        coords={
+            'x':    x,
+            'time': time},
+        attrs={
+            'isDoubleEnded': '1'})
+
+    sections = {
+        'cold': [slice(0., 0.5 * cable_len)],
+        'warm': [slice(0.5 * cable_len, cable_len)]}
+
+    # OLS
+    ds.calibration_double_ended(sections=sections,
+                                st_label='st',
+                                ast_label='ast',
+                                rst_label='rst',
+                                rast_label='rast',
+                                method='ols',
+                                solver='sparse',
+                                fix_gamma=(gamma, 0.),
+                                fix_alpha=(alpha, np.zeros_like(alpha)))
+
+    np.testing.assert_almost_equal(
+        ds.gamma.values, gamma, decimal=6)
+    np.testing.assert_almost_equal(
+        ds.alpha.values, alpha, decimal=8)
+    np.testing.assert_almost_equal(
+        ds.TMPF.values, temp_real - 273.15, decimal=4)
+    np.testing.assert_almost_equal(
+        ds.TMPB.values, temp_real - 273.15, decimal=4)
+    np.testing.assert_almost_equal(
+        ds.TMPW.values, temp_real - 273.15, decimal=4)
+
+    # WLS
+    ds.calibration_double_ended(sections=sections,
+                                st_label='st',
+                                ast_label='ast',
+                                rst_label='rst',
+                                rast_label='rast',
+                                st_var=1e-7,
+                                ast_var=1e-7,
+                                rst_var=1e-7,
+                                rast_var=1e-7,
+                                method='wls',
+                                solver='sparse',
+                                tmpw_mc_size=500,
+                                fix_gamma=(gamma, 0.),
+                                fix_alpha=(alpha, np.zeros_like(alpha)))
+
+    np.testing.assert_almost_equal(
+        ds.gamma.values, gamma, decimal=6)
+    np.testing.assert_almost_equal(
+        ds.alpha.values, alpha, decimal=7)
+    np.testing.assert_almost_equal(
+        ds.TMPF.values, temp_real - 273.15, decimal=5)
+    np.testing.assert_almost_equal(
+        ds.TMPB.values, temp_real - 273.15, decimal=5)
+    np.testing.assert_almost_equal(
+        ds.TMPW.values, temp_real - 273.15, decimal=4)
+
+    pass
 
 
 def test_double_ended_exponential_variance_estimate_synthetic():

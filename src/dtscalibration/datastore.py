@@ -1529,7 +1529,9 @@ class DataStore(xr.Dataset):
             p_var=None,
             p_cov=None,
             remove_mc_set_flag=True,
-            reduce_memory_usage=False):
+            reduce_memory_usage=False,
+            fix_gamma=None,
+            fix_alpha=None):
         """
 
         Parameters
@@ -1593,6 +1595,18 @@ class DataStore(xr.Dataset):
             Either use the homemade weighted sparse solver or the weighted
             dense matrix solver of
             statsmodels
+        fix_gamma : tuple
+            A tuple containing two floats. The first float is the value of
+            gamma, and the second item is the variance of the estimate of gamma.
+            Covariances between gamma and other parameters are not accounted
+            for.
+        fix_alpha : tuple
+            A tuple containing two arrays. The first array contains the
+            values of integrated differential att (integral of Delta alpha
+            between 0 and x in paper), and the second array
+            contains the variance of the estimate of alpha.
+            Covariances (in-) between alpha and other parameters are not
+            accounted for.
 
         Returns
         -------
@@ -1611,37 +1625,217 @@ class DataStore(xr.Dataset):
         check_dims(self, [st_label, ast_label, rst_label, rast_label],
                    correct_dims=(x_dim, time_dim))
 
-        if method == 'ols':
-            p_val, p_var = calibration_double_ended_solver(
-                self,
-                st_label,
-                ast_label,
-                rst_label,
-                rast_label,
-                st_var,
-                ast_var,
-                rst_var,
-                rast_var,
-                calc_cov=False,
-                solver=solver)
+        if method == 'ols' or method == 'wls':
+            if method == 'ols':
+                st_var = None     # ols
+                ast_var = None    # ols
+                rst_var = None     # ols
+                rast_var = None    # ols
+                calc_cov = False
+            else:
+                st_var = np.array(st_var, dtype=float)
+                ast_var = np.array(ast_var, dtype=float)
+                rst_var = np.array(rst_var, dtype=float)
+                rast_var = np.array(rast_var, dtype=float)
+                calc_cov = True
 
-        elif method == 'wls':
-            st_var = np.array(st_var, dtype=float)
-            ast_var = np.array(ast_var, dtype=float)
-            rst_var = np.array(rst_var, dtype=float)
-            rast_var = np.array(rast_var, dtype=float)
+            if fix_alpha and fix_gamma:
+                assert np.size(fix_alpha[0]) == self[x_dim].size, \
+                    'define alpha for each location'
+                assert np.size(fix_alpha[1]) == self[x_dim].size, \
+                    'define var alpha for each location'
+                # The array with the integrated differential att is termed E
+                split = calibration_double_ended_solver(
+                    self, st_label, ast_label, rst_label, rast_label,
+                    st_var, ast_var, rst_var, rast_var,
+                    calc_cov=calc_cov, solver='external_split')
 
-            p_val, p_var, p_cov = calibration_double_ended_solver(
-                self,
-                st_label,
-                ast_label,
-                rst_label,
-                rast_label,
-                st_var,
-                ast_var,
-                rst_var,
-                rast_var,
-                solver=solver)
+                # X_gamma
+                X_E = sp.vstack((
+                    -split['E'],
+                    split['E'],
+                    split['E']))
+                X_gamma = sp.vstack((
+                    split['Z_gamma'],
+                    split['Z_gamma'],
+                    split['Zero_gamma'])).toarray().flatten()
+                # Use only the remaining coefficients
+                # Stack all X's
+                X = sp.vstack((
+                    split['Z_d'],
+                    split['Z_d'],
+                    split['Zero_d']))
+
+                # Move the coefficients times the fixed gamma to the
+                # observations
+                y = np.concatenate((split['y_F'],
+                                    split['y_B'],
+                                    (split['y_B'] - split['y_F']) / 2))
+                y -= X_E.dot(fix_alpha[0])
+                y -= fix_gamma[0] * X_gamma
+                # variances are added. weight is the inverse of the variance
+                # of the observations
+                if method == 'wls':
+                    w_ = np.concatenate((split['w_F'], split['w_B'],
+                                         split['w_E']))
+                    w = 1 / (1 / w_ + X_E.dot(fix_alpha[1]) +
+                             fix_gamma[1] * X_gamma)
+
+                else:
+                    w = 1.
+
+                p0_est = split['p0_est'][1:1 + nt]
+
+                if solver == 'sparse':
+                    out = wls_sparse(
+                        X, y, w=w, x0=p0_est,
+                        calc_cov=calc_cov,
+                        verbose=False)
+
+                elif solver == 'stats':
+                    out = wls_stats(
+                        X, y, w=w,
+                        calc_cov=calc_cov,
+                        verbose=False)
+
+                # Added fixed gamma and its variance to the solution
+                p_val = np.concatenate(([fix_gamma[0]], out[0], fix_alpha[0]))
+                p_var = np.concatenate(([fix_gamma[1]], out[1], fix_alpha[1]))
+
+                if calc_cov:
+                    p_cov = np.eye(p_val.size)
+                    p_cov[0, 0] = fix_gamma[1]
+                    p_cov[1:1 + nt, 1:1 + nt] = out[2]
+                    ival_cov = np.arange(1 + nt, p_val.size)
+                    p_cov[ival_cov, ival_cov] = fix_alpha[1]
+
+            elif fix_gamma:
+                split = calibration_double_ended_solver(
+                    self, st_label, ast_label, rst_label, rast_label,
+                    st_var, ast_var, rst_var, rast_var,
+                    calc_cov=calc_cov, solver='external_split')
+
+                # X_gamma
+                X_gamma = sp.vstack((
+                    split['Z_gamma'],
+                    split['Z_gamma'],
+                    split['Zero_gamma'])).toarray().flatten()
+                # Use only the remaining coefficients
+                X = sp.vstack(
+                    (sp.hstack((split['Z_d'], -split['E'])),
+                     sp.hstack((split['Z_d'], split['E'])),
+                     sp.hstack((split['Zero_d'], split['E']))))
+                # Move the coefficients times the fixed gamma to the
+                # observations
+                y = np.concatenate((split['y_F'],
+                                    split['y_B'],
+                                    (split['y_B'] - split['y_F']) / 2))
+                y -= fix_gamma[0] * X_gamma
+                # variances are added. weight is the inverse of the variance
+                # of the observations
+                if method == 'wls':
+                    w_ = np.concatenate((split['w_F'], split['w_B'],
+                                         split['w_E']))
+                    w = 1 / (1 / w_ + fix_gamma[1] * X_gamma)
+
+                else:
+                    w = 1.
+                p0_est = split['p0_est'][1:]
+
+                if solver == 'sparse':
+                    out = wls_sparse(
+                        X, y, w=w, x0=p0_est,
+                        calc_cov=calc_cov,
+                        verbose=False)
+
+                elif solver == 'stats':
+                    out = wls_stats(
+                        X, y, w=w,
+                        calc_cov=calc_cov,
+                        verbose=False)
+
+                # Added fixed gamma and its variance to the solution
+                p_val = np.concatenate(([fix_gamma[0]], out[0]))
+                p_var = np.concatenate(([fix_gamma[1]], out[1]))
+
+                if calc_cov:
+                    p_cov = np.eye(p_val.size) * fix_gamma[1]
+                    p_cov[1:, 1:] = out[2]
+
+            elif fix_alpha:
+                assert np.size(fix_alpha[0]) == self[x_dim].size, \
+                    'define alpha for each location'
+                assert np.size(fix_alpha[1]) == self[x_dim].size, \
+                    'define var alpha for each location'
+                # The array with the integrated differential att is termed E
+                split = calibration_double_ended_solver(
+                    self, st_label, ast_label, rst_label, rast_label,
+                    st_var, ast_var, rst_var, rast_var,
+                    calc_cov=calc_cov, solver='external_split')
+
+                # X_gamma
+                X_E = sp.vstack((
+                    -split['E'],
+                    split['E'],
+                    split['E']))
+                # Use only the remaining coefficients
+                # Stack all X's
+                X = sp.vstack(
+                    (sp.hstack((split['Z_gamma'], split['Z_d'])),
+                     sp.hstack((split['Z_gamma'], split['Z_d'])),
+                     sp.hstack((split['Zero_gamma'], split['Zero_d']))))
+                # Move the coefficients times the fixed gamma to the
+                # observations
+                y = np.concatenate((split['y_F'],
+                                    split['y_B'],
+                                    (split['y_B'] - split['y_F']) / 2))
+                y -= X_E.dot(fix_alpha[0])
+
+                # variances are added. weight is the inverse of the variance
+                # of the observations
+                if method == 'wls':
+                    w_ = np.concatenate((split['w_F'], split['w_B'],
+                                         split['w_E']))
+                    w = 1 / (1 / w_ + X_E.dot(fix_alpha[1]))
+
+                else:
+                    w = 1.
+
+                p0_est = split['p0_est'][:1 + nt]
+
+                if solver == 'sparse':
+                    out = wls_sparse(
+                        X, y, w=w, x0=p0_est,
+                        calc_cov=calc_cov,
+                        verbose=False)
+
+                elif solver == 'stats':
+                    out = wls_stats(
+                        X, y, w=w,
+                        calc_cov=calc_cov,
+                        verbose=False)
+
+                # Added fixed gamma and its variance to the solution
+                p_val = np.concatenate((out[0], fix_alpha[0]))
+                p_var = np.concatenate((out[1], fix_alpha[1]))
+
+                if calc_cov:
+                    p_cov = np.eye(p_val.size)
+                    p_cov[:1 + nt, :1 + nt] = out[2]
+                    ival_cov = np.arange(1 + nt, p_val.size)
+                    p_cov[ival_cov, ival_cov] = fix_alpha[1]
+
+            else:
+                out = calibration_double_ended_solver(
+                    self, st_label, ast_label, rst_label, rast_label,
+                    st_var, ast_var, rst_var, rast_var,
+                    calc_cov=calc_cov, solver=solver)
+
+                if calc_cov:
+                    p_val, p_var, p_cov = out
+                else:
+                    p_val, p_var = out
+
         elif method == 'external':
             for input_item in [p_val, p_var, p_cov]:
                 assert input_item is not None
