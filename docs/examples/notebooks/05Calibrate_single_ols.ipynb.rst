@@ -45,7 +45,7 @@ anymore.
     Recorded at 1461 points along the cable
     The measurement is single ended
     Reading the data from disk
-    
+
 
 .. code:: ipython3
 
@@ -101,12 +101,23 @@ anymore.
                 Either use the homemade weighted sparse solver or the weighted
                 dense matrix solver of
                 statsmodels
+            fix_gamma : tuple
+                A tuple containing two floats. The first float is the value of
+                gamma, and the second item is the variance of the estimate of gamma.
+                Covariances between gamma and other parameters are not accounted
+                for.
+            fix_dalpha : tuple
+                A tuple containing two floats. The first float is the value of
+                dalpha (Delta alpha in paper), and the second item is the
+                variance of the estimate of dalpha.
+                Covariances between alpha and other parameters are not accounted
+                for.
     
             Returns
             -------
     
             
-    
+
 
 .. code:: ipython3
 
@@ -117,9 +128,9 @@ anymore.
 
 .. parsed-literal::
 
-    d:\github\pydts2\python-dts-calibration\.tox\docs\lib\site-packages\dask\array\core.py:1333: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/dask/array/core.py:1328: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
       FutureWarning,
-    
+
 
 Lets compare our calibrated values with the device calibration
 
@@ -134,6 +145,6 @@ Lets compare our calibrated values with the device calibration
 
 
 
-.. image:: 05Calibrate_single_ols.ipynb_files%5C05Calibrate_single_ols.ipynb_7_0.png
+.. image:: 05Calibrate_single_ols.ipynb_files/05Calibrate_single_ols.ipynb_7_0.png
 
 

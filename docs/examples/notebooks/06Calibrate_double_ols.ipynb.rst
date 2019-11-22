@@ -41,7 +41,7 @@ channel should be aligned.
     Recorded at 1693 points along the cable
     The measurement is double ended
     Reading the data from disk
-    
+
 
 .. code:: ipython3
 
@@ -113,12 +113,24 @@ channel should be aligned.
                 Either use the homemade weighted sparse solver or the weighted
                 dense matrix solver of
                 statsmodels
+            fix_gamma : tuple
+                A tuple containing two floats. The first float is the value of
+                gamma, and the second item is the variance of the estimate of gamma.
+                Covariances between gamma and other parameters are not accounted
+                for.
+            fix_alpha : tuple
+                A tuple containing two arrays. The first array contains the
+                values of integrated differential att (integral of Delta alpha
+                between 0 and x in paper), and the second array
+                contains the variance of the estimate of alpha.
+                Covariances (in-) between alpha and other parameters are not
+                accounted for.
     
             Returns
             -------
     
             
-    
+
 
 .. code:: ipython3
 
@@ -152,7 +164,7 @@ the other, as we do not have more information about the weighing.
 
 
 
-.. image:: 06Calibrate_double_ols.ipynb_files%5C06Calibrate_double_ols.ipynb_7_0.png
+.. image:: 06Calibrate_double_ols.ipynb_files/06Calibrate_double_ols.ipynb_7_0.png
 
 
 Lets compare our calibrated values with the device calibration. Lets
@@ -168,7 +180,7 @@ first.
 
 
 
-.. image:: 06Calibrate_double_ols.ipynb_files%5C06Calibrate_double_ols.ipynb_9_0.png
+.. image:: 06Calibrate_double_ols.ipynb_files/06Calibrate_double_ols.ipynb_9_0.png
 
 
 The device calibration sections and calibration sections defined by us

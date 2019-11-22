@@ -38,7 +38,7 @@ measurements. Do this before the calibration steps.
     Recorded at 1693 points along the cable
     The measurement is double ended
     Reading the data from disk
-    
+
 
 Because our loaded files were already nicely aligned, we are purposely
 offsetting the forward and backward channel by 3 \`spacial indices’.
@@ -51,7 +51,7 @@ offsetting the forward and backward channel by 3 \`spacial indices’.
 .. parsed-literal::
 
     I dont know what to do with the following data ['TMP']
-    
+
 
 The device-calibrated temperature doesnot have a valid meaning anymore
 and is dropped
@@ -67,14 +67,14 @@ and is dropped
 
 .. parsed-literal::
 
-    d:\github\pydts2\python-dts-calibration\src\dtscalibration\datastore_utils.py:240: RuntimeWarning: invalid value encountered in log
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/src/dtscalibration/datastore_utils.py:240: RuntimeWarning: invalid value encountered in log
       i_f = np.log(st / ast)
-    d:\github\pydts2\python-dts-calibration\src\dtscalibration\datastore_utils.py:241: RuntimeWarning: invalid value encountered in log
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/src/dtscalibration/datastore_utils.py:241: RuntimeWarning: invalid value encountered in log
       i_b = np.log(rst / rast)
-    
 
 
-.. image:: 10Align_double_ended_measurements.ipynb_files%5C10Align_double_ended_measurements.ipynb_8_1.png
+
+.. image:: 10Align_double_ended_measurements.ipynb_files/10Align_double_ended_measurements.ipynb_8_1.png
 
 
 The two approaches suggest a shift of -3 and -4. It is up to the user
@@ -111,6 +111,6 @@ which suggestion to follow. Usually the two suggested shift are close
         description:       Length along fiber
         long_description:  Starting at connector of forward channel
         units:             m
-    
+
 
 Note that our fiber has become shorter by 2*3 spatial indices

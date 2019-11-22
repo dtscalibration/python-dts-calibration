@@ -26,8 +26,8 @@ The example data files are located in
 
 .. parsed-literal::
 
-    ..\..\tests\data\sensortran_binary
-    
+    ../../tests/data/sensortran_binary
+
 
 .. code:: ipython3
 
@@ -46,7 +46,7 @@ The example data files are located in
     16_11_31_BinaryTemp.dat
     16_29_23_BinaryRawDTS.dat
     16_29_23_BinaryTemp.dat
-    
+
 
 We will simply load in the binary files
 
@@ -60,7 +60,7 @@ We will simply load in the binary files
     3 files were found, each representing a single timestep
     Recorded at 11582 points along the cable
     The measurement is single ended
-    
+
 
 The object tries to gather as much metadata from the measurement files
 as possible (temporal and spatial coordinates, filenames, temperature
@@ -108,7 +108,7 @@ time is needed for estimating variances, and is set a constant 1s.
         num_skipped:                 0
     
     .. and many more attributes. See: ds.attrs
-    
+
 
 The sensortran files differ from other manufacturers, in that they
 return the ‘counts’ of the Stokes and anti-Stokes signals. These are not
@@ -136,7 +136,7 @@ incorporated into the calibration routine.
 
 .. parsed-literal::
 
-    <matplotlib.lines.Line2D at 0x134e4d70>
+    <matplotlib.lines.Line2D at 0x126a2b490>
 
 
 

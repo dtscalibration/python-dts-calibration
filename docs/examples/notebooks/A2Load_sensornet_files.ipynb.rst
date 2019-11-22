@@ -22,8 +22,8 @@ The example data files are located in
 
 .. parsed-literal::
 
-    ..\..\tests\data\sensornet_oryx_v3.7
-    
+    ../../tests/data/sensornet_oryx_v3.7
+
 
 .. code:: ipython3
 
@@ -43,7 +43,7 @@ The example data files are located in
     channel 1 20180107 202319 00001.ddf
     channel 1 20180107 202349 00001.ddf
     channel 1 20180107 202418 00001.ddf
-    
+
 
 We will simply load in the sensornet files. As the sensornet files are
 of low spatial and temporal resolution, reading the data lazily into
@@ -59,7 +59,7 @@ dask is not supported.
     7 files were found, each representing a single timestep
     Recorded at 2068 points along the cable
     The measurement is single ended
-    
+
 
 The object tries to gather as much metadata from the measurement files
 as possible (temporal and spatial coordinates, filenames, temperature
@@ -107,7 +107,7 @@ the first files and stored as attributes of the ``DataStore``.
         reverse channel:                   N/A
     
     .. and many more attributes. See: ds.attrs
-    
+
 
 Double ended sensornet files are also supported. Note the REV-ST and
 REV-AST data variables.
@@ -167,4 +167,4 @@ REV-AST data variables.
         reverse channel:                   channel 1 reverse
     
     .. and many more attributes. See: ds.attrs
-    
+

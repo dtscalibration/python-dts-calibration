@@ -23,8 +23,8 @@ The example data files are located in
 
 .. parsed-literal::
 
-    ..\..\tests\data\ap_sensing
-    
+    ../../tests/data/ap_sensing
+
 
 .. code:: ipython3
 
@@ -40,7 +40,7 @@ The example data files are located in
     _AP Sensing_N4386B_3_20180118201727.xml
     _AP Sensing_N4386B_3_20180118202957.xml
     _AP Sensing_N4386B_3_20180118205357.xml
-    
+
 
 We will simply load in the .xml files
 
@@ -56,7 +56,7 @@ We will simply load in the .xml files
     Recorded at 7101 points along the cable
     The measurement is single ended
     Reading the data from disk
-    
+
 
 The object tries to gather as much metadata from the measurement files
 as possible (temporal and spatial coordinates, filenames, temperature
@@ -96,4 +96,4 @@ Calibration follows as usual (see the other notebooks).
         wellbore:dtsMeasurementSet:dtsMeasurement:name:                          ...
     
     .. and many more attributes. See: ds.attrs
-    
+

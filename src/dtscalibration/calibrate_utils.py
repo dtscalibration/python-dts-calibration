@@ -94,8 +94,9 @@ def calibration_single_ended_solver(
 
     # w
     if st_var is not None:
-        w = (1 / ds_sec[st_label] ** 2 * st_var +
-             1 / ds_sec[ast_label] ** 2 * ast_var).values.ravel()
+        w = 1 / (
+            ds_sec[st_label] ** 2 * st_var +
+            ds_sec[ast_label] ** 2 * ast_var).values.ravel()
 
     else:
         w = 1.  # unweighted
@@ -273,16 +274,25 @@ def calibration_double_ended_solver(
     y = np.concatenate((y_F, y_B, (y_B - y_F) / 2))
 
     # w
-    if st_var is not None:
-        w_F = (1 / ds_sec[st_label] ** 2 * st_var +
-               1 / ds_sec[ast_label] ** 2 * ast_var).values.ravel()
-        w_B = (1 / ds_sec[rst_label] ** 2 * rst_var +
-               1 / ds_sec[rast_label] ** 2 * rast_var).values.ravel()
+    if st_var is not None:  # WLS
+        w_F = 1 / (
+            ds_sec[st_label] ** 2 * st_var +
+            ds_sec[ast_label] ** 2 * ast_var).values.ravel()
+        w_B = 1 / (
+            ds_sec[rst_label] ** 2 * rst_var +
+            ds_sec[rast_label] ** 2 * rast_var).values.ravel()
+        w_E = 1 / (
+            ds_sec[st_label] ** 2 * st_var / 2 +
+            ds_sec[ast_label] ** 2 * ast_var / 2 +
+            ds_sec[rst_label] ** 2 * rst_var / 2 +
+            ds_sec[rast_label] ** 2 * rast_var / 2).values.ravel()
 
-        w = np.concatenate((w_F, w_B, (w_B + w_F) / 2))
+    else:  # OLS
+        w_F = np.ones(nt * nx)
+        w_B = np.ones(nt * nx)
+        w_E = np.ones(nt * nx)
 
-    else:
-        w = 1.  # unweighted
+    w = np.concatenate((w_F, w_B, w_E))
 
     if solver == 'sparse':
         if calc_cov:
@@ -309,6 +319,7 @@ def calibration_double_ended_solver(
             y_B=y_B,
             w_F=w_F,
             w_B=w_B,
+            w_E=w_E,
             Z_gamma=Z_gamma,
             Z_d=Z_d,
             E=E,
@@ -397,7 +408,7 @@ def wls_sparse(X, y, w=1., calc_cov=False, verbose=False, **kwargs):
 
         if sp.issparse(arg):
             # arg is square of size double: 1 + nt + no; single: 2 : nt
-            arg_inv = np.linalg.inv(arg.todense())
+            arg_inv = np.linalg.inv(arg.toarray())
         else:
             arg_inv = np.linalg.inv(arg)
 
@@ -447,7 +458,7 @@ def wls_stats(X, y, w=1., calc_cov=False, verbose=False):
     w = np.asarray(w)
 
     if sp.issparse(X):
-        X = X.todense()
+        X = X.toarray()
 
     mod_wls = sm.WLS(y, X, weights=w)
     res_wls = mod_wls.fit()

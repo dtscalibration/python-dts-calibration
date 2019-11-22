@@ -75,7 +75,7 @@ Now this data has to be inserted into an xarray ``Dataset``
         AST      (x, time) float64 -0.2459 -0.5932 0.1111 0.3748 ... 36.2 35.7 35.16
     Attributes:
         _sections:  null\n...\n
-    
+
 
 For calibration, a few more paramaters are needed:
 
@@ -116,14 +116,14 @@ example).
 
 .. parsed-literal::
 
-    d:\github\pydts2\python-dts-calibration\.tox\docs\lib\site-packages\dask\array\core.py:1333: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/dask/array/core.py:1328: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
       FutureWarning,
-    
+
 
 
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x12552cf0>]
+    [<matplotlib.lines.Line2D at 0x12ab91950>]
 
 

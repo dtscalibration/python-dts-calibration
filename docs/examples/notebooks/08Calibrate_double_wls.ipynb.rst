@@ -56,7 +56,7 @@ estimated temperature via Monte Carlo.
     Recorded at 1693 points along the cable
     The measurement is double ended
     Reading the data from disk
-    
+
 
 .. code:: ipython3
 
@@ -87,7 +87,7 @@ as an estimate of the variance in measured signals.
 
 
 
-.. image:: 08Calibrate_double_wls.ipynb_files%5C08Calibrate_double_wls.ipynb_8_0.png
+.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_8_0.png
 
 
 We calibrate the measurement with a single method call. The labels refer
@@ -120,12 +120,12 @@ solver because it saves us memory.
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x12ea5330>
+    <matplotlib.collections.QuadMesh at 0x122b55ad0>
 
 
 
 
-.. image:: 08Calibrate_double_wls.ipynb_files%5C08Calibrate_double_wls.ipynb_11_1.png
+.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_11_1.png
 
 
 Confidence intervals
@@ -184,7 +184,7 @@ background temperature with a confidence interval.
 
 
 
-.. image:: 08Calibrate_double_wls.ipynb_files%5C08Calibrate_double_wls.ipynb_15_0.png
+.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_15_0.png
 
 
 The DataArrays ``TMPF_MC`` and ``TMPB_MC`` and the dimension ``CI`` are
@@ -197,8 +197,14 @@ confidence interval ‘coordinates’.
     plt.ylabel('$\sigma$ ($^\circ$C)');
 
 
+.. parsed-literal::
 
-.. image:: 08Calibrate_double_wls.ipynb_files%5C08Calibrate_double_wls.ipynb_17_0.png
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/matplotlib/mathtext.py:2468: SyntaxWarning: Exception creating Regex for oneOf, building MatchFirst
+      p.subsuperop    <<= oneOf(["_", "^"])
+
+
+
+.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_17_1.png
 
 
 .. code:: ipython3
@@ -228,17 +234,17 @@ confidence interval ‘coordinates’.
         gamma                  float64 482.6
         alpha                  (x) float64 -0.007156 -0.003301 ... -0.005165
         d                      (time) float64 1.465 1.465 1.465 1.465 1.465 1.465
-        gamma_var              float64 0.03989
+        gamma_var              float64 0.04116
         alpha_var              (x) float64 1.734e-07 1.814e-07 ... 1.835e-07
-        d_var                  (time) float64 4.963e-07 4.963e-07 ... 4.963e-07
-        TMPF                   (x, time) float64 16.79 17.04 16.32 ... 13.51 13.77
-        TMPB                   (x, time) float64 16.8 16.82 16.87 ... 13.76 13.68
+        d_var                  (time) float64 5.115e-07 5.115e-07 ... 5.115e-07
+        TMPF                   (x, time) float64 16.79 17.04 16.31 ... 13.52 13.77
+        TMPB                   (x, time) float64 16.8 16.82 16.87 ... 13.77 13.68
         TMPF_MC_var            (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
         TMPB_MC_var            (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
         TMPW                   (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
         TMPW_MC_var            (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
         p_val                  (params1) float64 482.6 1.465 ... -0.005271 -0.005165
-        p_cov                  (params1, params2) float64 0.03989 ... 1.835e-07
+        p_cov                  (params1, params2) float64 0.04116 ... 1.835e-07
         TMPF_MC                (CI, x, time) float64 dask.array<chunksize=(3, 787, 6), meta=np.ndarray>
         TMPB_MC                (CI, x, time) float64 dask.array<chunksize=(3, 787, 6), meta=np.ndarray>
         TMPW_MC                (CI, x, time) float64 dask.array<chunksize=(3, 787, 6), meta=np.ndarray>

@@ -46,7 +46,7 @@ We load in both channels into seperate datastores
     Recorded at 8936 points along the cable
     The measurement is single ended
     Reading the data from disk
-    
+
 
 When plotting the data the two datasets already look quite similar as it
 is a duplex measurement.
@@ -62,12 +62,12 @@ is a duplex measurement.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x126d8cd0>
+    <matplotlib.legend.Legend at 0x11eb1a790>
 
 
 
 
-.. image:: 11Merge_single_measurements_into_double.ipynb_files%5C11Merge_single_measurements_into_double.ipynb_6_1.png
+.. image:: 11Merge_single_measurements_into_double.ipynb_files/11Merge_single_measurements_into_double.ipynb_6_1.png
 
 
 The second channel has to be flipped around to align the fibers
@@ -91,12 +91,12 @@ channel 2.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x127ebf10>
+    <matplotlib.legend.Legend at 0x11ecd0b50>
 
 
 
 
-.. image:: 11Merge_single_measurements_into_double.ipynb_files%5C11Merge_single_measurements_into_double.ipynb_8_1.png
+.. image:: 11Merge_single_measurements_into_double.ipynb_files/11Merge_single_measurements_into_double.ipynb_8_1.png
 
 
 Now the second channel has been reversed, we can merge the two channels.
@@ -126,12 +126,12 @@ set to allow for double ended calibration
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x13ec5810>]
+    [<matplotlib.lines.Line2D at 0x11edc13d0>]
 
 
 
 
-.. image:: 11Merge_single_measurements_into_double.ipynb_files%5C11Merge_single_measurements_into_double.ipynb_10_1.png
+.. image:: 11Merge_single_measurements_into_double.ipynb_files/11Merge_single_measurements_into_double.ipynb_10_1.png
 
 
 To perfectly align the two measurements we can use the alignment
@@ -151,10 +151,10 @@ that.
     I dont know what to do with the following data ['TMP']
     I dont know what to do with the following data ['TMP']
     I dont know what to do with the following data ['TMP']
-    
 
 
-.. image:: 11Merge_single_measurements_into_double.ipynb_files%5C11Merge_single_measurements_into_double.ipynb_12_1.png
+
+.. image:: 11Merge_single_measurements_into_double.ipynb_files/11Merge_single_measurements_into_double.ipynb_12_1.png
 
 
 Now we can calibrate the data double ended as usual.

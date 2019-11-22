@@ -1,6 +1,16 @@
 
 Changelog
 =========
+0.7.2 (2019-11-22)
+------------------
+* Set alpha and or gamma to known value, with corresponding variance.
+* Bug in computation of the weights for single and double-ended calibration
+* Added notebook about merging two single ended measurements
+* Added example notebook on how to create a custom datastore
+* Added notebook examples for loading in data from the different manufa..
+* Loading AP Sensing files and tests
+* Loading Sensortran files
+
 0.7.0 (2019-11-07)
 ------------------
 * Ensure order of dimension upon initialization of DataStore. Resamplingwould lead to issues
