@@ -110,7 +110,7 @@ SensorTran:
 
 Learn by examples
 =================
-Interactively run the example notebooks online by clicking |example-notebooks|.
+Interactively run the example notebooks online by clicking the example-notebooks button in the beginning of this README.
 
 Documentation
 =============
