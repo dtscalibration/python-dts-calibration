@@ -7,19 +7,19 @@ Overview
 .. list-table::
     :stub-columns: 1
 
-    * - docs
+    * - Docs
       - |docs|
-    * - tests
+    * - Tests
       - | |travis|
         | |appveyor|
         | |codecov|
-    * - package
+    * - Package
       - | |version|
         | |wheel|
         | |supported-versions|
         | |supported-implementations|
         | |commits-since|
-    * - citable
+    * - Citable
       - |zenodo|
     * - Example notebooks
       - |example-notebooks|
@@ -110,7 +110,7 @@ SensorTran:
 
 Learn by examples
 =================
-Interactively run the example notebooks online by clicking the launch-binder button.
+Interactively run the example notebooks online by clicking |example-notebooks|.
 
 Documentation
 =============
