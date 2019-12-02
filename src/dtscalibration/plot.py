@@ -185,6 +185,7 @@ def plot_residuals_reference_sections(
 
         for ii, section_avg in enumerate(section_ax_avg):
             section_avg.set_ylim(section_ylims[ii])
+            section_avg.set_xlim([vmin, vmax])
             ticks = section_avg.set_yticks(section_ylims[ii])
             ticks[0].label1.set_verticalalignment('bottom')
             ticks[1].label1.set_verticalalignment('top')
