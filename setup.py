@@ -73,7 +73,7 @@ setup(
     install_requires=[
         'numpy',
         'xarray',
-        'pyyaml<=5.1.2',
+        'pyyaml',
         'xmltodict',
         'scipy',
         'patsy',  # a dependency of statsmodels
