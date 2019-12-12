@@ -88,6 +88,18 @@ Or the development version directly from GitHub
 
     pip install https://github.com/dtscalibration/python-dts-calibration/zipball/master --upgrade
 
+Package features
+================
+* Advanced calibration routine
+   * Both single- and double-ended setups
+   * Confidence intervals of calibrated temperature
+   * Time integration of calibration parameters
+   * Weighted least-squares
+* Fixing parameters to a previously determined value
+* Dynamic reference section definition
+* Tools for merging and aligning double-ended setups
+* Data formats of most manufacturers are supported
+
 Devices currently supported
 ===========================
 Silixa Ltd.:
