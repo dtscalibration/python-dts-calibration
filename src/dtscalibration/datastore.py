@@ -187,7 +187,7 @@ class DataStore(xr.Dataset):
 
         """
         assert hasattr(self, '_sections'), 'first set the sections'
-        return yaml.load(self.attrs['_sections'], Loader=yaml.FullLoader)
+        return yaml.load(self.attrs['_sections'], Loader=yaml.UnsafeLoader)
 
     @sections.setter
     def sections(self, sections: Dict[str, List[slice]]):

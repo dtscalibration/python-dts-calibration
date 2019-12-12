@@ -95,6 +95,72 @@ def check_timestep_allclose(ds, eps=0.01):
                                               'for all time steps'
 
 
+def merge_double_ended(ds_fw, ds_bw, cable_length, plot_result=True):
+    """
+    Some measurements are not set up on the DTS-device as double-ended
+    meausurements. This means that the two channels have to be merged manually.
+
+    This function can merge two single-ended DataStore objects into a single
+    double-ended DataStore. There is no interpolation, the two arrays are
+    flipped and overlayed, based on the entered cable length. This can
+    introduce spatial inaccuracies with extremely long cables.
+
+    Parameters
+    ----------
+    ds_fw : DataSore object
+        DataStore object representing the forward measurement channel
+    ds_bw : DataSore object
+        DataStore object representing the backward measurement channel
+    cable_length : float
+        Manually estimated cable length to base alignment on
+    plot_result : bool
+        Plot the aligned Stokes of the forward and backward channels
+
+    Returns
+    -------
+    ds : DataStore object
+        With the two channels merged
+    """
+    assert (ds_fw.attrs['isDoubleEnded'] == '0' and
+            ds_bw.attrs['isDoubleEnded'] == '0'), \
+        "(one of the) input DataStores is already double ended"
+
+    assert (ds_fw.time.size == ds_bw.time.size), \
+        "The two input DataStore objects are not of the same size in the " +\
+        "time dimension."
+
+    ds = ds_fw.copy()
+    ds_bw = ds_bw.copy()
+
+    ds_bw['x'] = cable_length - ds_bw.x.values
+
+    # TODO: check if reindexing matters, and should be used.
+    # one way to do it is performed below, but this could create artifacts
+    x_resolution = ds.x.values[1] - ds.x.values[0]
+    ds_bw = ds_bw.reindex({'x': ds.x},
+                          method='nearest',
+                          tolerance=0.99*x_resolution)
+
+    ds_bw = ds_bw.sortby('x')
+
+    ds['REV-ST'] = (['x', 'time'], ds_bw.ST.values)
+    ds['REV-AST'] = (['x', 'time'], ds_bw.AST.values)
+
+    ds = ds.dropna(dim='x')
+
+    ds.attrs['isDoubleEnded'] = '1'
+    ds['userAcquisitionTimeBW'] = ('time',
+                                   ds_bw['userAcquisitionTimeFW'].values)
+
+    if plot_result:
+        fig, ax = plt.subplots()
+        ds['ST'].isel(time=0).plot(ax=ax, label='Stokes forward')
+        ds['REV-ST'].isel(time=0).plot(ax=ax, label='Stokes backward')
+        ax.legend()
+
+    return ds
+
+
 def shift_double_ended(ds, i_shift):
     """
     The cable length was initially configured during the DTS measurement. For double ended
