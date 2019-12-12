@@ -1,5 +1,5 @@
-11. Merge single-ended measurements into a double-ended datastore
-=================================================================
+11. Merge two single-ended measurements into a double-ended datastore
+=====================================================================
 
 Often people have set up a double ended cable to be measured as if it
 were two single ended setups, to prevent loss of data as some
@@ -11,7 +11,7 @@ to be merged into a single datastore and aligned.
 
     import os
     from dtscalibration import read_silixa_files
-    from dtscalibration.datastore_utils import suggest_cable_shift_double_ended, shift_double_ended
+    from dtscalibration.datastore_utils import suggest_cable_shift_double_ended, shift_double_ended, merge_double_ended
     import numpy as np
     import matplotlib.pyplot as plt
     %matplotlib inline
@@ -46,7 +46,7 @@ We load in both channels into seperate datastores
     Recorded at 8936 points along the cable
     The measurement is single ended
     Reading the data from disk
-
+    
 
 When plotting the data the two datasets already look quite similar as it
 is a duplex measurement.
@@ -62,12 +62,12 @@ is a duplex measurement.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x11eb1a790>
+    <matplotlib.legend.Legend at 0x14fb0b50>
 
 
 
 
-.. image:: 11Merge_single_measurements_into_double.ipynb_files/11Merge_single_measurements_into_double.ipynb_6_1.png
+.. image:: 11Merge_single_measurements_into_double.ipynb_files%5C11Merge_single_measurements_into_double.ipynb_6_1.png
 
 
 The second channel has to be flipped around to align the fibers
@@ -75,71 +75,37 @@ correctly. To do this properly, a cable length has to be defined. This
 is the distance along the fiber between the connectors of channel 1 and
 channel 2.
 
+Make sure the two datasets are aligned time-wise and have the same
+amount of measurements in time. Now we can merge the two channels using
+the utilify function *merge_double_ended*
+
 .. code:: ipython3
 
     cable_length = 2017.7
     
-    ds_ch2['x'] = cable_length - ds_ch2.x.values
-    ds_ch2 = ds_ch2.sortby('x')
+    ds = merge_double_ended(ds_fw = ds_ch1,
+                            ds_bw = ds_ch2,
+                            cable_length = cable_length,
+                            plot_result = False)
     
-    ds_ch1.isel(time=0).ST.plot(label='ST ch1')
-    ds_ch2.isel(time=0).ST.plot(label='ST ch2')
-    plt.legend()
-
-
+    print((ds.isel(time=0).ST - ds.isel(time=0)['REV-ST']).sum().values)
 
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x11ecd0b50>
-
-
-
-
-.. image:: 11Merge_single_measurements_into_double.ipynb_files/11Merge_single_measurements_into_double.ipynb_8_1.png
-
-
-Now the second channel has been reversed, we can merge the two channels.
-Make sure the two datasets are aligned time-wise and have the same
-amount of measurements in time. After merging some attributes have to be
-set to allow for double ended calibration
-
-.. code:: ipython3
-
-    ds_ch1 = ds_ch1.sel(x=slice(0, cable_length))
-    ds_ch2 = ds_ch2.sel(x=slice(0, cable_length))
+    -3712866.0382
     
-    ds = ds_ch1
-    
-    ds['REV-ST'] = (['x','time'], ds_ch2.ST.values)
-    ds['REV-AST'] = (['x','time'], ds_ch2.AST.values)
-    
-    ds.attrs['isDoubleEnded'] = '1'
-    ds['userAcquisitionTimeBW'] = ('time', ds_ch2['userAcquisitionTimeFW'].values)
-    
-    plt.figure()
-    ds['ST'].isel(time=0).plot()
-    ds['REV-ST'].isel(time=0).plot()
-
-
-
-
-.. parsed-literal::
-
-    [<matplotlib.lines.Line2D at 0x11edc13d0>]
-
-
-
-
-.. image:: 11Merge_single_measurements_into_double.ipynb_files/11Merge_single_measurements_into_double.ipynb_10_1.png
-
 
 To perfectly align the two measurements we can use the alignment
-utility. It turns out we were off by 3 datapoints, so let’s shift it by
-that.
+utility. Before we do so, we select only the data of the phyisical cable
+and 10 meters of the internal reference coil.
+
+It turns out we were off by 3 datapoints, so let’s shift it by that.
 
 .. code:: ipython3
 
+    ds = ds.sel(x=slice(-10, cable_length + 10))
+    
     shift1, shift2 = suggest_cable_shift_double_ended(ds.isel(time=[0,-1]).compute(),
                                                       np.arange(-10, 10, 1, dtype=int))
     
@@ -151,10 +117,10 @@ that.
     I dont know what to do with the following data ['TMP']
     I dont know what to do with the following data ['TMP']
     I dont know what to do with the following data ['TMP']
+    
 
 
-
-.. image:: 11Merge_single_measurements_into_double.ipynb_files/11Merge_single_measurements_into_double.ipynb_12_1.png
+.. image:: 11Merge_single_measurements_into_double.ipynb_files%5C11Merge_single_measurements_into_double.ipynb_10_1.png
 
 
 Now we can calibrate the data double ended as usual.
