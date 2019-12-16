@@ -94,31 +94,18 @@ Package features
    * Both single- and double-ended setups
    * Confidence intervals of calibrated temperature
    * Time integration of calibration parameters
-   * Weighted least-squares
-* Fixing parameters to a previously determined value
+   * Fixing parameters to a previously determined value
+   * Weighted least-squares calibration
 * Dynamic reference section definition
 * Tools for merging and aligning double-ended setups
 * Data formats of most manufacturers are supported
 
 Devices currently supported
 ===========================
-Silixa Ltd.:
-
-* Ultima .xml files (up to version 7.0)
-* XT-DTS .xml files (up to version 7.0)
-
-Sensornet Ltd.:
-
-* Oryx .ddf files
-* Halo .ddf files
-
-AP Sensing:
-
-* CP320 .xml files (single ended only)
-
-SensorTran:
-
-* SensorTran 5100 .dat binary files (single ended only)
+* Silixa Ltd.: **Ultima** & **XT-DTS** .xml files *(up to version 7.0)*
+* Sensornet Ltd.: **Oryx** & **Halo** .ddf files
+* AP Sensing: **CP320** .xml files *(single ended only)*
+* SensorTran: **SensorTran 5100** .dat binary files *(single ended only)*
 
 Learn by examples
 =================
