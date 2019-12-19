@@ -16,6 +16,7 @@ from dtscalibration import read_apsensing_files
 from dtscalibration import read_sensornet_files
 from dtscalibration import read_sensortran_files
 from dtscalibration import read_silixa_files
+from dtscalibration.datastore_utils import merge_double_ended
 from dtscalibration.datastore_utils import shift_double_ended
 from dtscalibration.datastore_utils import suggest_cable_shift_double_ended
 
@@ -44,6 +45,12 @@ if 1:
     data_dir_single_silixa_v7 = os.path.join(wd, 'data', 'silixa_v7.0')
     data_dir_ap_sensing = os.path.join(wd, 'data', 'ap_sensing')
     data_dir_sensortran_binary = os.path.join(wd, 'data', 'sensortran_binary')
+    data_dir_double_single_ch1 = os.path.join(wd, 'data',
+                                              'double_single_ended',
+                                              'channel_1')
+    data_dir_double_single_ch2 = os.path.join(wd, 'data',
+                                              'double_single_ended',
+                                              'channel_2')
 
     # zips
     data_dir_zipped_single_ended = os.path.join(
@@ -592,3 +599,28 @@ def test_suggest_cable_shift_double_ended():
     suggest_cable_shift_double_ended(ds, irange, plot_result=True)
 
     pass
+
+
+def test_merge_double_ended():
+    # Checking if alignment keeps working as designed and if the expected
+    # result changed
+    filepath_fw = data_dir_double_single_ch1
+    filepath_bw = data_dir_double_single_ch2
+
+    ds_fw = read_silixa_files(
+                directory=filepath_fw)
+
+    ds_bw = read_silixa_files(
+                directory=filepath_bw)
+
+    cable_length = 2017.7
+    ds = merge_double_ended(ds_fw, ds_bw,
+                            cable_length=cable_length,
+                            plot_result=True)
+
+    result = (ds.isel(time=0).ST -
+              ds.isel(time=0)['REV-ST']).sum().values
+
+    np.testing.assert_approx_equal(result,
+                                   -3712866.0382,
+                                   significant=10)
