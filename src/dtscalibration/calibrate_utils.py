@@ -151,6 +151,7 @@ def calibration_double_ended_solver(
         calc_cov=True,
         solver='sparse',
         matching_indices=None,
+        timevariant_asym_att_x=None,
         verbose=False):
     """
     Parameters
@@ -196,7 +197,15 @@ def calibration_double_ended_solver(
     matching_indices : array-like
         Is an array of size (np, 2), where np is the number of paired
         locations. This array is produced by `matching_sections()`.
-
+    timevariant_asym_att_x : iterable, optional
+        Connectors cause assymetrical attenuation. Normal double ended
+        calibration assumes symmetrical attenuation. An additional loss
+        term is added in the 'shadow' of the forward and backward
+        measurements. This loss term varies over time. Provide a list
+        containing the x locations of the connectors along the fiber.
+        Each location introduces an additional 2*nt parameters to solve
+        for. Requiering either an additional calibration section or
+        matching sections.
     verbose : bool
 
     Returns
@@ -246,6 +255,7 @@ def calibration_double_ended_solver(
     x_sec = ds_sec['x'].values
     nx = x_sec.size
     nt = ds.time.size
+    nta = len(timevariant_asym_att_x) if timevariant_asym_att_x else None
 
     # Calculate E for outside of calibration sections and as initial estimate
     # for the E calibration.
@@ -265,38 +275,38 @@ def calibration_double_ended_solver(
     E, Z_d, Z_gamma, Zero_d, Zero_gamma = construct_submatrices(
         nt, nx, st_label, ds)
 
-    if matching_indices is not None:
-        # The matching indices are location indices along the entire fiber.
-        # This calibration routine deals only with measurements along the
-        # reference sections. The coefficient matrix X is build around
-        # ds_sec = ds.isel(x=ix_sec). X needs to become larger.
-        # Therefore, the matching indices are first gathered for the reference
-        # sections, after which those for outside the reference sections.
-        # Double-ended setups mostly benefit from matching sections if there is
-        # asymetrical attenuation, e.g., due to connectors.
-
-        # select the indices in refence sections
-        hix = np.array(list(filter(
-            lambda x: x in ix_sec, matching_indices[:, 0])))
-        tix = np.array(list(filter(
-            lambda x: x in ix_sec, matching_indices[:, 1])))
-
-        npair = hix.size
-
-        assert hix.size == tix.size, 'Both locations of a matching pair ' \
-                                     'should either be used in a calibration ' \
-                                     'section or outside the calibration ' \
-                                     'sections'
-        assert hix.size > 0, 'no matching sections in calibration'
-
-        # Convert to indices along reference sections. To index ds_sec.
-        ixglob_to_ix_sec = lambda x: np.where(ix_sec == x)[0]
-
-        hix_sec = np.concatenate([ixglob_to_ix_sec(x) for x in hix])
-        tix_sec = np.concatenate([ixglob_to_ix_sec(x) for x in tix])
-
-        y_mF = (F[hix_sec] + F[tix_sec]).flatten()
-        y_mB = (B[hix_sec] + B[tix_sec]).flatten()
+    # if matching_indices is not None:
+    #     # The matching indices are location indices along the entire fiber.
+    #     # This calibration routine deals only with measurements along the
+    #     # reference sections. The coefficient matrix X is build around
+    #     # ds_sec = ds.isel(x=ix_sec). X needs to become larger.
+    #     # Therefore, the matching indices are first gathered for the reference
+    #     # sections, after which those for outside the reference sections.
+    #     # Double-ended setups mostly benefit from matching sections if there is
+    #     # asymetrical attenuation, e.g., due to connectors.
+    #
+    #     # select the indices in refence sections
+    #     hix = np.array(list(filter(
+    #         lambda x: x in ix_sec, matching_indices[:, 0])))
+    #     tix = np.array(list(filter(
+    #         lambda x: x in ix_sec, matching_indices[:, 1])))
+    #
+    #     npair = hix.size
+    #
+    #     assert hix.size == tix.size, 'Both locations of a matching pair ' \
+    #                                  'should either be used in a calibration ' \
+    #                                  'section or outside the calibration ' \
+    #                                  'sections'
+    #     assert hix.size > 0, 'no matching sections in calibration'
+    #
+    #     # Convert to indices along reference sections. To index ds_sec.
+    #     ixglob_to_ix_sec = lambda x: np.where(ix_sec == x)[0]
+    #
+    #     hix_sec = np.concatenate([ixglob_to_ix_sec(x) for x in hix])
+    #     tix_sec = np.concatenate([ixglob_to_ix_sec(x) for x in tix])
+    #
+    #     y_mF = (F[hix_sec] + F[tix_sec]).flatten()
+    #     y_mB = (B[hix_sec] + B[tix_sec]).flatten()
 
 
 

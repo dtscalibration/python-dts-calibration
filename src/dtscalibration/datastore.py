@@ -1539,6 +1539,7 @@ class DataStore(xr.Dataset):
             p_cov=None,
             remove_mc_set_flag=True,
             reduce_memory_usage=False,
+            timevariant_asym_att_x=None,
             fix_gamma=None,
             fix_alpha=None,
             matching_sections=None):
@@ -1605,6 +1606,15 @@ class DataStore(xr.Dataset):
             Either use the homemade weighted sparse solver or the weighted
             dense matrix solver of
             statsmodels
+        timevariant_asym_att_x : iterable, optional
+            Connectors cause assymetrical attenuation. Normal double ended
+            calibration assumes symmetrical attenuation. An additional loss
+            term is added in the 'shadow' of the forward and backward
+            measurements. This loss term varies over time. Provide a list
+            containing the x locations of the connectors along the fiber.
+            Each location introduces an additional 2*nt parameters to solve
+            for. Requiering either an additional calibration section or
+            matching sections.
         fix_gamma : tuple
             A tuple containing two floats. The first float is the value of
             gamma, and the second item is the variance of the estimate of gamma.
@@ -1637,6 +1647,9 @@ class DataStore(xr.Dataset):
         x_dim = self.get_x_dim()
         time_dim = self.get_time_dim()
         nt = self[time_dim].size
+        nta = len(timevariant_asym_att_x) if timevariant_asym_att_x else None
+
+
 
         check_dims(self, [st_label, ast_label, rst_label, rast_label],
                    correct_dims=(x_dim, time_dim))
@@ -1661,16 +1674,29 @@ class DataStore(xr.Dataset):
                 rast_var = np.array(rast_var, dtype=float)
                 calc_cov = True
 
+            if fix_alpha or fix_gamma:
+                split = calibration_double_ended_solver(
+                    self, st_label, ast_label, rst_label, rast_label,
+                    st_var, ast_var, rst_var, rast_var,
+                    calc_cov=calc_cov, solver='external_split')
+            else:
+                out = calibration_double_ended_solver(
+                    self, st_label, ast_label, rst_label, rast_label,
+                    st_var, ast_var, rst_var, rast_var,
+                    calc_cov=calc_cov, solver=solver)
+
+                if calc_cov:
+                    p_val, p_var, p_cov = out
+                else:
+                    p_val, p_var = out
+
+            # adjust split to fix parameters
             if fix_alpha and fix_gamma:
                 assert np.size(fix_alpha[0]) == self[x_dim].size, \
                     'define alpha for each location'
                 assert np.size(fix_alpha[1]) == self[x_dim].size, \
                     'define var alpha for each location'
                 # The array with the integrated differential att is termed E
-                split = calibration_double_ended_solver(
-                    self, st_label, ast_label, rst_label, rast_label,
-                    st_var, ast_var, rst_var, rast_var,
-                    calc_cov=calc_cov, solver='external_split')
 
                 # X_gamma
                 X_E = sp.vstack((
@@ -1732,11 +1758,6 @@ class DataStore(xr.Dataset):
                     p_cov[ival_cov, ival_cov] = fix_alpha[1]
 
             elif fix_gamma:
-                split = calibration_double_ended_solver(
-                    self, st_label, ast_label, rst_label, rast_label,
-                    st_var, ast_var, rst_var, rast_var,
-                    calc_cov=calc_cov, solver='external_split')
-
                 # X_gamma
                 X_gamma = sp.vstack((
                     split['Z_gamma'],
@@ -1790,10 +1811,6 @@ class DataStore(xr.Dataset):
                 assert np.size(fix_alpha[1]) == self[x_dim].size, \
                     'define var alpha for each location'
                 # The array with the integrated differential att is termed E
-                split = calibration_double_ended_solver(
-                    self, st_label, ast_label, rst_label, rast_label,
-                    st_var, ast_var, rst_var, rast_var,
-                    calc_cov=calc_cov, solver='external_split')
 
                 # X_gamma
                 X_E = sp.vstack((
@@ -1848,15 +1865,7 @@ class DataStore(xr.Dataset):
                     p_cov[ival_cov, ival_cov] = fix_alpha[1]
 
             else:
-                out = calibration_double_ended_solver(
-                    self, st_label, ast_label, rst_label, rast_label,
-                    st_var, ast_var, rst_var, rast_var,
-                    calc_cov=calc_cov, solver=solver)
-
-                if calc_cov:
-                    p_val, p_var, p_cov = out
-                else:
-                    p_val, p_var = out
+                pass
 
         elif method == 'external':
             for input_item in [p_val, p_var, p_cov]:
@@ -1870,7 +1879,7 @@ class DataStore(xr.Dataset):
 
         gamma = p_val[0]
         d = p_val[1:nt + 1]
-        alpha = p_val[nt + 1:]
+        alpha = p_val[nt + 1:nt + 1 + self[x_dim].size]
 
         # store calibration parameters in DataStore
         self[store_gamma] = (tuple(), gamma)
@@ -1882,7 +1891,7 @@ class DataStore(xr.Dataset):
             # the variances only have ameaning if the observations are weighted
             gammavar = p_var[0]
             dvar = p_var[1:nt + 1]
-            alphavar = p_var[nt + 1:]
+            alphavar = p_var[nt + 1:nt + 1 + self[x_dim].size]
 
             self[store_gamma + variance_suffix] = (tuple(), gammavar)
             self[store_alpha + variance_suffix] = ((x_dim,), alphavar)
