@@ -17,6 +17,7 @@ from scipy.sparse import linalg as ln
 
 from .calibrate_utils import calibration_double_ended_solver
 from .calibrate_utils import calibration_single_ended_solver
+from .calibrate_utils import match_sections
 from .calibrate_utils import wls_sparse
 from .calibrate_utils import wls_stats
 from .datastore_utils import check_dims
@@ -1146,7 +1147,7 @@ class DataStore(xr.Dataset):
 
         pass
 
-    def in_confidence_interval(self, ci_label, conf_ints, sections=None):
+    def in_confidence_interval(self, ci_label, conf_ints=None, sections=None):
         """
         Returns an array with bools wether the temperature of the reference
         sections are within the confidence intervals
@@ -1154,8 +1155,11 @@ class DataStore(xr.Dataset):
         Parameters
         ----------
         sections : Dict[str, List[slice]]
-        ci_label
-        conf_ints
+        ci_label : str
+            The label of the data containing the confidence intervals.
+        conf_ints : Tuple
+            A tuple containing two floats between 0 and 1, representing the
+            levels between which the reference temperature should lay.
 
         Returns
         -------
@@ -1167,6 +1171,11 @@ class DataStore(xr.Dataset):
         # ci_label = 'TMPW_MC'
         if sections is None:
             sections = self.sections
+
+        if conf_ints is None:
+            conf_ints = self[ci_label].values
+
+        assert len(conf_ints) == 2, 'Please define conf_ints'
 
         tmp_dn = self[ci_label].sel(CI=conf_ints[0], method='nearest')
         tmp_up = self[ci_label].sel(CI=conf_ints[1], method='nearest')
@@ -1531,7 +1540,8 @@ class DataStore(xr.Dataset):
             remove_mc_set_flag=True,
             reduce_memory_usage=False,
             fix_gamma=None,
-            fix_alpha=None):
+            fix_alpha=None,
+            matching_sections=None):
         """
 
         Parameters
@@ -1607,6 +1617,12 @@ class DataStore(xr.Dataset):
             contains the variance of the estimate of alpha.
             Covariances (in-) between alpha and other parameters are not
             accounted for.
+        matching_sections : List[Tuple[slice, slice, bool]]
+            Provide a list of tuples. A tuple per matching section. Each tuple
+            has three items. The first two items are the slices of the sections
+            that are matched. The third item is a boolean and is True if the two
+            sections have a reverse direction ("J-configuration").
+
 
         Returns
         -------
@@ -1624,6 +1640,12 @@ class DataStore(xr.Dataset):
 
         check_dims(self, [st_label, ast_label, rst_label, rast_label],
                    correct_dims=(x_dim, time_dim))
+
+        if matching_sections:
+            matching_indices = match_sections(self, matching_sections)
+
+        else:
+            matching_indices = None
 
         if method == 'ols' or method == 'wls':
             if method == 'ols':
@@ -2253,7 +2275,7 @@ class DataStore(xr.Dataset):
             sections, so that the values can be compared with accuracy along the
             reference sections. Where the accuracy is the variance of the
             residuals between the estimated temperature and temperature of the
-            water baths
+            water baths.
         da_random_state
             For testing purposes. Similar to random seed. The seed for dask.
             Makes random not so random. To produce reproducable results for
@@ -2288,6 +2310,11 @@ class DataStore(xr.Dataset):
             if store_tmpb in self:
                 del_tmpb_after = True
             store_tmpb = 'TMPB'
+
+        if conf_ints:
+            assert store_tmpw, 'Current implementation requires you to ' \
+                               'define store_tmpw when istimating confidence ' \
+                               'intervals'
 
         no, nt = self[st_label].shape
         npar = nt + 1 + no  # number of parameters

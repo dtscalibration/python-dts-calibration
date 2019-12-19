@@ -150,6 +150,7 @@ def calibration_double_ended_solver(
         rast_var=None,
         calc_cov=True,
         solver='sparse',
+        matching_indices=None,
         verbose=False):
     """
     Parameters
@@ -192,6 +193,9 @@ def calibration_double_ended_solver(
         matrix solver (Eq.37). `external_split` returns a dictionary with
         matrix X split in the coefficients per parameter. The use case for
         the latter is when certain parameters are fixed/combined.
+    matching_indices : array-like
+        Is an array of size (np, 2), where np is the number of paired
+        locations. This array is produced by `matching_sections()`.
 
     verbose : bool
 
@@ -260,6 +264,41 @@ def calibration_double_ended_solver(
 
     E, Z_d, Z_gamma, Zero_d, Zero_gamma = construct_submatrices(
         nt, nx, st_label, ds)
+
+    if matching_indices is not None:
+        # The matching indices are location indices along the entire fiber.
+        # This calibration routine deals only with measurements along the
+        # reference sections. The coefficient matrix X is build around
+        # ds_sec = ds.isel(x=ix_sec). X needs to become larger.
+        # Therefore, the matching indices are first gathered for the reference
+        # sections, after which those for outside the reference sections.
+        # Double-ended setups mostly benefit from matching sections if there is
+        # asymetrical attenuation, e.g., due to connectors.
+
+        # select the indices in refence sections
+        hix = np.array(list(filter(
+            lambda x: x in ix_sec, matching_indices[:, 0])))
+        tix = np.array(list(filter(
+            lambda x: x in ix_sec, matching_indices[:, 1])))
+
+        npair = hix.size
+
+        assert hix.size == tix.size, 'Both locations of a matching pair ' \
+                                     'should either be used in a calibration ' \
+                                     'section or outside the calibration ' \
+                                     'sections'
+        assert hix.size > 0, 'no matching sections in calibration'
+
+        # Convert to indices along reference sections. To index ds_sec.
+        ixglob_to_ix_sec = lambda x: np.where(ix_sec == x)[0]
+
+        hix_sec = np.concatenate([ixglob_to_ix_sec(x) for x in hix])
+        tix_sec = np.concatenate([ixglob_to_ix_sec(x) for x in tix])
+
+        y_mF = (F[hix_sec] + F[tix_sec]).flatten()
+        y_mB = (B[hix_sec] + B[tix_sec]).flatten()
+
+
 
     # Stack all X's
     X = sp.vstack(
@@ -521,3 +560,112 @@ def calc_alpha_double(
         E = A.mean(dim=time_dim)
 
     return E, E_var
+
+
+def match_sections(ds, matching_sections,
+                   check_pair_in_calibration_section=False,
+                   check_pair_in_calibration_section_arg=None):
+    """
+    Matches location indices of two sections.
+
+    Parameters
+    ----------
+    ds
+    matching_sections : List[Tuple[slice, slice, bool]]
+        Provide a list of tuples. A tuple per matching section. Each tuple
+        has three items. The first two items are the slices of the sections
+        that are matched. The third item is a boolean and is True if the two
+        sections have a reverse direction ("J-configuration").
+    check_pair_in_calibration_section : bool
+        Use the sections check whether both items
+        of the pair are in the calibration section. It produces a warning for
+        each pair of which at least one item is outside of the calibration
+        sections. The sections are set with
+        `check_pair_in_calibration_section_arg`. If `None` the sections
+        are obtained from `ds`.
+    check_pair_in_calibration_section_arg : Dict[str, List[slice]], optional
+        If `None` the sections are obtained from `ds`.
+
+    Returns
+    -------
+    matching_indices : array-like
+        Is an array of size (np, 2), where np is the number of paired
+        locations. The array contains indices to locations along the fiber.
+
+    """
+    import warnings
+
+    for hslice, tslice, reverse_flag in matching_sections:
+        hxs = ds.x.sel(x=hslice).size
+        txs = ds.x.sel(x=tslice).size
+
+        assert hxs == txs, 'the two sections do not have matching ' \
+                           'number of items: ' + str(hslice) + 'size: ' + \
+                           str(hxs) + str(tslice) + 'size: ' + str(txs)
+
+    hix = ds.ufunc_per_section(
+        sections={0: [i[0] for i in matching_sections]},
+        x_indices=True,
+        calc_per='all')
+
+    tixl = []
+    for _, tslice, reverse_flag in matching_sections:
+        ixi = ds.ufunc_per_section(
+            sections={0: [tslice]},
+            x_indices=True,
+            calc_per='all')
+
+        if reverse_flag:
+            tixl.append(ixi[::-1])
+        else:
+            tixl.append(ixi)
+
+    tix = np.concatenate(tixl)
+
+    ix_sec = ds.ufunc_per_section(
+        x_indices=True,
+        calc_per='all',
+        sections=check_pair_in_calibration_section_arg)
+
+    if not check_pair_in_calibration_section:
+        return np.stack((hix, tix)).T
+    else:
+        # else perform checks whether both are in valid sections
+        pass
+
+    err_msg = lambda s1, s2: """
+        The current implementation requires that both locations of a matching
+        pair should either be used in a calibration section or outside the
+        calibration sections. x={:.3f}m is not in the calibration section
+        while its matching location at x={:.3f}m is.""".format(s1, s2)
+
+    xv = ds.x.values
+
+    hixl = []
+    tixl = []
+
+    for hii, tii in zip(hix, tix):
+        if hii in ix_sec and tii in ix_sec:
+            hixl.append(hii)
+            tixl.append(tii)
+
+        elif hii not in ix_sec and tii in ix_sec:
+            warnings.warn(err_msg(xv[hii], xv[tii]))
+
+        elif hii in ix_sec and tii not in ix_sec:
+            warnings.warn(err_msg(xv[tii], xv[hii]))
+
+        else:
+            warnings.warn("""x={:.3f}m and x={:.3f}m are both locatated
+            outside the calibration sections""".format(xv[hii], xv[tii]))
+
+    hix_out = np.array(hixl)
+    tix_out = np.array(tixl)
+
+    assert hix_out.size == tix_out.size, 'Both locations of a matching pair ' \
+                                 'should either be used in a calibration ' \
+                                 'section or outside the calibration ' \
+                                 'sections'
+    assert hix_out.size > 0, 'no matching sections in calibration'
+
+    return np.stack((hix_out, tix_out)).T
