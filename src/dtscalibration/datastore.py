@@ -1653,10 +1653,10 @@ class DataStore(xr.Dataset):
         check_dims(self, [st_label, ast_label, rst_label, rast_label],
                    correct_dims=(x_dim, time_dim))
 
-        if matching_sections:
-            matching_indices = match_sections(self, matching_sections)
-        else:
-            matching_indices = None
+        # if matching_sections:
+        #     matching_indices = match_sections(self, matching_sections)
+        # else:
+        #     matching_indices = None
 
         if transient_asym_att_x:
             ta_dim = 'trans_att'
