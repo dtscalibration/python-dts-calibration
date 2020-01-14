@@ -367,8 +367,6 @@ def calibration_double_ended_solver(
     #     y_mF = (F[hix_sec] + F[tix_sec]).flatten()
     #     y_mB = (B[hix_sec] + B[tix_sec]).flatten()
 
-
-
     # Stack all X's
     X = sp.vstack(
         (sp.hstack((Z_gamma, Z_d, -E, Z_TA_fw)),
@@ -676,6 +674,13 @@ def match_sections(ds, matching_sections,
     """
     import warnings
 
+    def err_msg(s1, s2):
+        return """
+        The current implementation requires that both locations of a matching
+        pair should either be used in a calibration section or outside the
+        calibration sections. x={:.3f}m is not in the calibration section
+        while its matching location at x={:.3f}m is.""".format(s1, s2)
+
     for hslice, tslice, reverse_flag in matching_sections:
         hxs = ds.x.sel(x=hslice).size
         txs = ds.x.sel(x=tslice).size
@@ -714,12 +719,6 @@ def match_sections(ds, matching_sections,
         # else perform checks whether both are in valid sections
         pass
 
-    err_msg = lambda s1, s2: """
-        The current implementation requires that both locations of a matching
-        pair should either be used in a calibration section or outside the
-        calibration sections. x={:.3f}m is not in the calibration section
-        while its matching location at x={:.3f}m is.""".format(s1, s2)
-
     xv = ds.x.values
 
     hixl = []
@@ -743,10 +742,9 @@ def match_sections(ds, matching_sections,
     hix_out = np.array(hixl)
     tix_out = np.array(tixl)
 
-    assert hix_out.size == tix_out.size, 'Both locations of a matching pair ' \
-                                 'should either be used in a calibration ' \
-                                 'section or outside the calibration ' \
-                                 'sections'
+    err = 'Both locations of a matching pair should either be used in a ' \
+          'calibration section or outside the calibration sections.'
+    assert hix_out.size == tix_out.size, err
     assert hix_out.size > 0, 'no matching sections in calibration'
 
     return np.stack((hix_out, tix_out)).T

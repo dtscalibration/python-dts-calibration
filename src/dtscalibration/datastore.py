@@ -1665,7 +1665,6 @@ class DataStore(xr.Dataset):
             assert ta_dim not in self.coords, err
             self.coords[ta_dim] = transient_asym_att_x
 
-
         if method == 'ols' or method == 'wls':
             if method == 'ols':
                 st_var = None     # ols
@@ -1903,7 +1902,7 @@ class DataStore(xr.Dataset):
                 p_val = np.concatenate((out[0][:1 + nt],
                                         fix_alpha[0],
                                         out[0][1 + nt:]))
-                p_var = np.concatenate((out[10][:1 + nt],
+                p_var = np.concatenate((out[1][:1 + nt],
                                         fix_alpha[1],
                                         out[1][1 + nt:]))
 
@@ -1973,9 +1972,9 @@ class DataStore(xr.Dataset):
                     ta_arr[self[x_dim].values >= taxi] = \
                         ta_arr[self[x_dim].values >= taxi] + tai
 
-            tempF_data = gamma / \
-                         (np.log(self[st_label].data / self[ast_label].data)
-                          + d + alpha[:, None] + ta_arr) - 273.15
+            tempF_data = gamma / (
+                np.log(self[st_label].data / self[ast_label].data) + d +
+                alpha[:, None] + ta_arr) - 273.15
             self[store_tmpf] = ((x_dim, time_dim), tempF_data)
 
         # deal with BW
@@ -1986,9 +1985,9 @@ class DataStore(xr.Dataset):
                                      self.coords[ta_dim].values):
                     ta_arr[self[x_dim].values < taxi] = \
                         ta_arr[self[x_dim].values < taxi] + tai
-            tempB_data = gamma / \
-                         (np.log(self[rst_label].data / self[rast_label].data)
-                          + d - alpha[:, None] + ta_arr) - 273.15
+            tempB_data = gamma / (
+                np.log(self[rst_label].data / self[rast_label].data) + d -
+                alpha[:, None] + ta_arr) - 273.15
             self[store_tmpb] = ((x_dim, time_dim), tempB_data)
 
         if store_tmpw and method == 'wls':
@@ -2574,15 +2573,15 @@ class DataStore(xr.Dataset):
             #     return arr
 
             if store_ta:
-                ta = po_mc[:, nt + 1 + nx_sec:
-                     ].reshape((mc_sample_size, nt, 2, nta), order='F')
+                ta = po_mc[:, nt + 1 + nx_sec:].reshape(
+                    (mc_sample_size, nt, 2, nta), order='F')
                 ta_fw = ta[:, :, 0, :]
                 ta_bw = ta[:, :, 1, :]
 
                 ta_fw_arr = da.zeros((mc_sample_size, no, nt), chunks=memchunk,
                                      dtype=float)
                 for tai, taxi in zip(ta_fw.swapaxes(0, 2), self.coords[
-                    ta_dim].values):
+                        ta_dim].values):
                     # iterate over the splices
                     i_splice = sum(self[x_dim].values < taxi)
                     mask = create_da_ta2(
@@ -2655,8 +2654,8 @@ class DataStore(xr.Dataset):
                             self[store_ta + '_bw_MC']) - 273.15
                     else:
                         self[store_tmpb + '_MC_set'] = self['gamma_MC'] / (
-                            np.log(self['r_rst'] / self['r_rast']) + self[
-                            'd_MC'] - self['alpha_MC']) - 273.15
+                            np.log(self['r_rst'] / self['r_rast']) +
+                            self['d_MC'] - self['alpha_MC']) - 273.15
 
                 if var_only_sections:
                     # sets the values outside the reference sections to NaN
