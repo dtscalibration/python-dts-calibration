@@ -53,9 +53,9 @@ http://xarray.pydata.org/en/stable/indexing.html
 
 
 
-.. parsed-literal::
+.. raw:: html
 
-    <xarray.DataArray 'ST' (x: 1461, time: 3)>
+    <pre>&lt;xarray.DataArray &#x27;ST&#x27; (x: 1461, time: 3)&gt;
     array([[-8.05791e-01,  4.28741e-01, -5.13021e-01],
            [-4.58870e-01, -1.24484e-01,  9.68469e-03],
            [ 4.89174e-01, -9.57734e-02,  5.62837e-02],
@@ -65,7 +65,7 @@ http://xarray.pydata.org/en/stable/indexing.html
            [ 2.79879e+01,  2.78331e+01,  2.88055e+01]])
     Coordinates:
       * x                  (x) float64 -80.74 -80.62 -80.49 ... 104.6 104.7 104.8
-        filename           (time) <U31 'channel 2_20180504132202074.xml' ... 'channel 2_20180504132303723.xml'
+        filename           (time) &lt;U31 &#x27;channel 2_20180504132202074.xml&#x27; ... &#x27;channel 2_20180504132303723.xml&#x27;
         filename_tstamp    (time) int64 20180504132202074 ... 20180504132303723
         timestart          (time) datetime64[ns] 2018-05-04T12:22:02.710000 ... 2018-05-04T12:23:03.716000
         timeend            (time) datetime64[ns] 2018-05-04T12:22:32.710000 ... 2018-05-04T12:23:33.716000
@@ -74,7 +74,7 @@ http://xarray.pydata.org/en/stable/indexing.html
     Attributes:
         name:         ST
         description:  Stokes intensity
-        units:        -
+        units:        -</pre>
 
 
 

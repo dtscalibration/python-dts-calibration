@@ -95,6 +95,8 @@ channel should be aligned.
                 Label of where to store gamma
             store_alpha : str
                 Label of where to store alpha
+            store_ta : str
+                Label of where to store transient alpha's
             store_tmpf : str
                 Label of where to store the calibrated temperature of the forward
                 direction
@@ -113,6 +115,15 @@ channel should be aligned.
                 Either use the homemade weighted sparse solver or the weighted
                 dense matrix solver of
                 statsmodels
+            transient_asym_att_x : iterable, optional
+                Connectors cause assymetrical attenuation. Normal double ended
+                calibration assumes symmetrical attenuation. An additional loss
+                term is added in the 'shadow' of the forward and backward
+                measurements. This loss term varies over time. Provide a list
+                containing the x locations of the connectors along the fiber.
+                Each location introduces an additional 2*nt parameters to solve
+                for. Requiering either an additional calibration section or
+                matching sections.
             fix_gamma : tuple
                 A tuple containing two floats. The first float is the value of
                 gamma, and the second item is the variance of the estimate of gamma.
@@ -125,6 +136,12 @@ channel should be aligned.
                 contains the variance of the estimate of alpha.
                 Covariances (in-) between alpha and other parameters are not
                 accounted for.
+            matching_sections : List[Tuple[slice, slice, bool]]
+                Provide a list of tuples. A tuple per matching section. Each tuple
+                has three items. The first two items are the slices of the sections
+                that are matched. The third item is a boolean and is True if the two
+                sections have a reverse direction ("J-configuration").
+    
     
             Returns
             -------

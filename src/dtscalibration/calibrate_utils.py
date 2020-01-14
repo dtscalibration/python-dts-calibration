@@ -95,8 +95,8 @@ def calibration_single_ended_solver(
     # w
     if st_var is not None:
         w = 1 / (
-            ds_sec[st_label] ** 2 * st_var +
-            ds_sec[ast_label] ** 2 * ast_var).values.ravel()
+            ds_sec[st_label] ** -2 * st_var +
+            ds_sec[ast_label] ** -2 * ast_var).values.ravel()
 
     else:
         w = 1.  # unweighted
@@ -150,8 +150,17 @@ def calibration_double_ended_solver(
         rast_var=None,
         calc_cov=True,
         solver='sparse',
+        matching_indices=None,
+        transient_asym_att_x=None,
         verbose=False):
     """
+    The construction of X differs a bit from what is presented in the
+    article. The choice to divert from the article is made because
+    then remaining modular is easier.
+    Eq34 and Eq43 become:
+    y = [F, B, (B-F)/2], F=[F_0, F_1, .., F_M], B=[B_0, B_1, .., B_M],
+    where F_m and B_m contain the coefficients for all times.
+
     Parameters
     ----------
     ds : DataStore
@@ -192,15 +201,26 @@ def calibration_double_ended_solver(
         matrix solver (Eq.37). `external_split` returns a dictionary with
         matrix X split in the coefficients per parameter. The use case for
         the latter is when certain parameters are fixed/combined.
-
+    matching_indices : array-like
+        Is an array of size (np, 2), where np is the number of paired
+        locations. This array is produced by `matching_sections()`.
+    transient_asym_att_x : iterable, optional
+        Connectors cause assymetrical attenuation. Normal double ended
+        calibration assumes symmetrical attenuation. An additional loss
+        term is added in the 'shadow' of the forward and backward
+        measurements. This loss term varies over time. Provide a list
+        containing the x locations of the connectors along the fiber.
+        Each location introduces an additional 2*nt parameters to solve
+        for. Requiering either an additional calibration section or
+        matching sections. If multiple locations are defined, the losses are
+        added.
     verbose : bool
 
     Returns
     -------
 
     """
-
-    def construct_submatrices(nt, nx, st_label, ds):
+    def construct_submatrices(nt, nx, st_label, ds, transient_asym_att_x, x_sec):
         """Wrapped in a function to reduce memory usage"""
 
         # Z \gamma  # Eq.47
@@ -234,7 +254,58 @@ def calibration_double_ended_solver(
             ([], ([], [])), shape=(nt * nx, 1))
         Zero_d = sp.coo_matrix(
             ([], ([], [])), shape=(nt * nx, nt))
-        return E, Z_d, Z_gamma, Zero_d, Zero_gamma
+
+        if transient_asym_att_x:
+            # unpublished BdT
+
+            TA_fw_list = list()
+            TA_bw_list = list()
+
+            for transient_asym_att_xi in transient_asym_att_x:
+                """For forward direction. """
+                # first index on the right hand side a the difficult splice
+                if transient_asym_att_xi >= x_sec[-1]:
+                    ix_sec_ta_ix0 = nx
+                elif transient_asym_att_xi <= x_sec[0]:
+                    ix_sec_ta_ix0 = 0
+                else:
+                    ix_sec_ta_ix0 = np.flatnonzero(
+                        x_sec >= transient_asym_att_xi)[0]
+
+                # Data is -1 for both forward and backward
+                # I_fw = 1/Tref*gamma - D - E - TA_fw. Eq39
+                data_ta_fw = -np.ones(nt * (nx - ix_sec_ta_ix0), dtype=int)
+                # skip ix_sec_ta_ix0 locations, because they are upstream of
+                # the connector.
+                coord_ta_fw_row = np.arange(
+                    nt * ix_sec_ta_ix0, nt * nx, dtype=int)
+                # nt parameters
+                coord_ta_fw_col = np.tile(
+                    np.arange(nt, dtype=int), nx - ix_sec_ta_ix0)
+                TA_fw_list.append(sp.coo_matrix(  # TA_fw
+                        (data_ta_fw, (coord_ta_fw_row, coord_ta_fw_col)),
+                        shape=(nt * nx, 2 * nt),
+                        copy=False))
+
+                # I_bw = 1/Tref*gamma - D + E - TA_bw. Eq40
+                data_ta_bw = -np.ones(nt * ix_sec_ta_ix0, dtype=int)
+                coord_ta_bw_row = np.arange(nt * ix_sec_ta_ix0, dtype=int)
+                coord_ta_bw_col = np.tile(np.arange(nt, 2 * nt, dtype=int),
+                                          ix_sec_ta_ix0)
+                TA_bw_list.append(sp.coo_matrix(  # TA_bw
+                        (data_ta_bw, (coord_ta_bw_row, coord_ta_bw_col)),
+                        shape=(nt * nx, 2 * nt),
+                        copy=False))
+            Z_TA_fw = sp.hstack(TA_fw_list)
+            Z_TA_bw = sp.hstack(TA_bw_list)
+
+        else:
+            Z_TA_fw = sp.coo_matrix(([], ([], [])), shape=(nt * nx, 0))
+            Z_TA_bw = sp.coo_matrix(([], ([], [])), shape=(nt * nx, 0))
+
+        Z_TA_E = (Z_TA_fw - Z_TA_bw) / 2
+
+        return E, Z_d, Z_gamma, Zero_d, Zero_gamma, Z_TA_fw, Z_TA_bw, Z_TA_E
 
     ix_sec = ds.ufunc_per_section(x_indices=True, calc_per='all')
     ds_sec = ds.isel(x=ix_sec)
@@ -242,9 +313,9 @@ def calibration_double_ended_solver(
     x_sec = ds_sec['x'].values
     nx = x_sec.size
     nt = ds.time.size
+    nta = len(transient_asym_att_x) if transient_asym_att_x else 0
 
-    # Calculate E for outside of calibration sections and as initial estimate
-    # for the E calibration.
+    # Calculate E as initial estimate for the E calibration.
     E_all, E_all_var = calc_alpha_double(
         ds,
         st_label,
@@ -256,16 +327,51 @@ def calibration_double_ended_solver(
         rst_var,
         rast_var)
 
-    p0_est = np.concatenate((np.asarray([485.] + nt * [1.4]), E_all[ix_sec]))
+    p0_est = np.concatenate((np.asarray([485.] + nt * [1.4]),
+                             E_all[ix_sec], nta * nt * 2 * [0.]))
 
-    E, Z_d, Z_gamma, Zero_d, Zero_gamma = construct_submatrices(
-        nt, nx, st_label, ds)
+    E, Z_d, Z_gamma, Zero_d, Zero_gamma, Z_TA_fw, Z_TA_bw, Z_TA_E = \
+        construct_submatrices(nt, nx, st_label, ds, transient_asym_att_x,
+                              x_sec)
+
+    # if matching_indices is not None:
+    #     # The matching indices are location indices along the entire fiber.
+    #     # This calibration routine deals only with measurements along the
+    #     # reference sections. The coefficient matrix X is build around
+    #     # ds_sec = ds.isel(x=ix_sec). X needs to become larger.
+    #     # Therefore, the matching indices are first gathered for the reference
+    #     # sections, after which those for outside the reference sections.
+    #     # Double-ended setups mostly benefit from matching sections if there is
+    #     # asymetrical attenuation, e.g., due to connectors.
+    #
+    #     # select the indices in refence sections
+    #     hix = np.array(list(filter(
+    #         lambda x: x in ix_sec, matching_indices[:, 0])))
+    #     tix = np.array(list(filter(
+    #         lambda x: x in ix_sec, matching_indices[:, 1])))
+    #
+    #     npair = hix.size
+    #
+    #     assert hix.size == tix.size, 'Both locations of a matching pair ' \
+    #                                  'should either be used in a calibration ' \
+    #                                  'section or outside the calibration ' \
+    #                                  'sections'
+    #     assert hix.size > 0, 'no matching sections in calibration'
+    #
+    #     # Convert to indices along reference sections. To index ds_sec.
+    #     ixglob_to_ix_sec = lambda x: np.where(ix_sec == x)[0]
+    #
+    #     hix_sec = np.concatenate([ixglob_to_ix_sec(x) for x in hix])
+    #     tix_sec = np.concatenate([ixglob_to_ix_sec(x) for x in tix])
+    #
+    #     y_mF = (F[hix_sec] + F[tix_sec]).flatten()
+    #     y_mB = (B[hix_sec] + B[tix_sec]).flatten()
 
     # Stack all X's
     X = sp.vstack(
-        (sp.hstack((Z_gamma, Z_d, -E)),
-         sp.hstack((Z_gamma, Z_d, E)),
-         sp.hstack((Zero_gamma, Zero_d, E))))
+        (sp.hstack((Z_gamma, Z_d, -E, Z_TA_fw)),
+         sp.hstack((Z_gamma, Z_d, E, Z_TA_bw)),
+         sp.hstack((Zero_gamma, Zero_d, E, Z_TA_E))))
 
     # y  # Eq.41--45
     y_F = np.log(ds_sec[st_label] / ds_sec[ast_label]).values.ravel()
@@ -276,16 +382,16 @@ def calibration_double_ended_solver(
     # w
     if st_var is not None:  # WLS
         w_F = 1 / (
-            ds_sec[st_label] ** 2 * st_var +
-            ds_sec[ast_label] ** 2 * ast_var).values.ravel()
+            ds_sec[st_label] ** -2 * st_var +
+            ds_sec[ast_label] ** -2 * ast_var).values.ravel()
         w_B = 1 / (
-            ds_sec[rst_label] ** 2 * rst_var +
-            ds_sec[rast_label] ** 2 * rast_var).values.ravel()
+            ds_sec[rst_label] ** -2 * rst_var +
+            ds_sec[rast_label] ** -2 * rast_var).values.ravel()
         w_E = 1 / (
-            ds_sec[st_label] ** 2 * st_var / 2 +
-            ds_sec[ast_label] ** 2 * ast_var / 2 +
-            ds_sec[rst_label] ** 2 * rst_var / 2 +
-            ds_sec[rast_label] ** 2 * rast_var / 2).values.ravel()
+            ds_sec[st_label] ** -2 * st_var / 2 +
+            ds_sec[ast_label] ** -2 * ast_var / 2 +
+            ds_sec[rst_label] ** -2 * rst_var / 2 +
+            ds_sec[rast_label] ** -2 * rast_var / 2).values.ravel()
 
     else:  # OLS
         w_F = np.ones(nt * nx)
@@ -322,27 +428,39 @@ def calibration_double_ended_solver(
             w_E=w_E,
             Z_gamma=Z_gamma,
             Z_d=Z_d,
+            Z_TA_fw=Z_TA_fw,
+            Z_TA_bw=Z_TA_bw,
+            Z_TA_E=Z_TA_E,
             E=E,
             Zero_gamma=Zero_gamma,
             Zero_d=Zero_d,
-            p0_est=p0_est)
+            p0_est=p0_est,
+            E_all=E_all,
+            E_all_var=E_all_var)
 
     else:
         raise ValueError("Choose a valid solver")
 
+    # p_sol contains the int diff att of all the locations within the
+    # reference sections. po_sol is its expanded version that contains also
+    # the int diff att for outside the reference sections.
+
     # put E outside of reference section in solution
     # concatenating makes a copy of the data instead of using a pointer
-    po_sol = np.concatenate((p_sol[:nt + 1], E_all))
-    po_sol[ix_sec + 1 + nt] = p_sol[nt + 1:]
+    po_sol = np.concatenate((p_sol[:nt + 1], E_all, p_sol[1 + nt + nx:]))
+    po_sol[1 + nt + ix_sec] = p_sol[1 + nt:1 + nt + nx]
 
-    po_var = np.concatenate((p_var[:nt + 1], E_all_var))
-    po_var[ix_sec + 1 + nt] = p_var[nt + 1:]
+    po_var = np.concatenate((p_var[:nt + 1], E_all_var, p_var[1 + nt + nx:]))
+    po_var[1 + nt + ix_sec] = p_var[1 + nt:1 + nt + nx]
 
     if calc_cov:
-        po_cov = np.zeros((po_sol.size, po_sol.size))
-        po_cov[nt + 1:, nt + 1:] = np.diag(E_all_var)
+        # the COV can be expensive to compute (in the least squares routine)
+        po_cov = np.diag(po_var).copy()
 
-        from_i = np.concatenate((np.arange(nt + 1), nt + 1 + ix_sec))
+        from_i = np.concatenate((np.arange(nt + 1),
+                                 nt + 1 + ix_sec,
+                                 np.arange(1 + nt + nx,
+                                           1 + nt + nx + nta * nt * 2)))
 
         iox_sec1, iox_sec2 = np.meshgrid(
             from_i, from_i, indexing='ij')
@@ -490,16 +608,16 @@ def calc_alpha_double(
     time_dim = ds.get_time_dim()
 
     if st_var is not None:
-        i_var_fw = ds.i_var_fw(
+        i_var_fw = ds.i_var(
             st_var,
             ast_var,
             st_label=st_label,
             ast_label=ast_label)
-        i_var_bw = ds.i_var_bw(
+        i_var_bw = ds.i_var(
             rst_var,
             rast_var,
-            rst_label=rst_label,
-            rast_label=rast_label)
+            st_label=rst_label,
+            ast_label=rast_label)
 
         A_var = (i_var_fw + i_var_bw) / 2
 
@@ -521,3 +639,112 @@ def calc_alpha_double(
         E = A.mean(dim=time_dim)
 
     return E, E_var
+
+
+def match_sections(ds, matching_sections,
+                   check_pair_in_calibration_section=False,
+                   check_pair_in_calibration_section_arg=None):
+    """
+    Matches location indices of two sections.
+
+    Parameters
+    ----------
+    ds
+    matching_sections : List[Tuple[slice, slice, bool]]
+        Provide a list of tuples. A tuple per matching section. Each tuple
+        has three items. The first two items are the slices of the sections
+        that are matched. The third item is a boolean and is True if the two
+        sections have a reverse direction ("J-configuration").
+    check_pair_in_calibration_section : bool
+        Use the sections check whether both items
+        of the pair are in the calibration section. It produces a warning for
+        each pair of which at least one item is outside of the calibration
+        sections. The sections are set with
+        `check_pair_in_calibration_section_arg`. If `None` the sections
+        are obtained from `ds`.
+    check_pair_in_calibration_section_arg : Dict[str, List[slice]], optional
+        If `None` the sections are obtained from `ds`.
+
+    Returns
+    -------
+    matching_indices : array-like
+        Is an array of size (np, 2), where np is the number of paired
+        locations. The array contains indices to locations along the fiber.
+
+    """
+    import warnings
+
+    def err_msg(s1, s2):
+        return """
+        The current implementation requires that both locations of a matching
+        pair should either be used in a calibration section or outside the
+        calibration sections. x={:.3f}m is not in the calibration section
+        while its matching location at x={:.3f}m is.""".format(s1, s2)
+
+    for hslice, tslice, reverse_flag in matching_sections:
+        hxs = ds.x.sel(x=hslice).size
+        txs = ds.x.sel(x=tslice).size
+
+        assert hxs == txs, 'the two sections do not have matching ' \
+                           'number of items: ' + str(hslice) + 'size: ' + \
+                           str(hxs) + str(tslice) + 'size: ' + str(txs)
+
+    hix = ds.ufunc_per_section(
+        sections={0: [i[0] for i in matching_sections]},
+        x_indices=True,
+        calc_per='all')
+
+    tixl = []
+    for _, tslice, reverse_flag in matching_sections:
+        ixi = ds.ufunc_per_section(
+            sections={0: [tslice]},
+            x_indices=True,
+            calc_per='all')
+
+        if reverse_flag:
+            tixl.append(ixi[::-1])
+        else:
+            tixl.append(ixi)
+
+    tix = np.concatenate(tixl)
+
+    ix_sec = ds.ufunc_per_section(
+        x_indices=True,
+        calc_per='all',
+        sections=check_pair_in_calibration_section_arg)
+
+    if not check_pair_in_calibration_section:
+        return np.stack((hix, tix)).T
+    else:
+        # else perform checks whether both are in valid sections
+        pass
+
+    xv = ds.x.values
+
+    hixl = []
+    tixl = []
+
+    for hii, tii in zip(hix, tix):
+        if hii in ix_sec and tii in ix_sec:
+            hixl.append(hii)
+            tixl.append(tii)
+
+        elif hii not in ix_sec and tii in ix_sec:
+            warnings.warn(err_msg(xv[hii], xv[tii]))
+
+        elif hii in ix_sec and tii not in ix_sec:
+            warnings.warn(err_msg(xv[tii], xv[hii]))
+
+        else:
+            warnings.warn("""x={:.3f}m and x={:.3f}m are both locatated
+            outside the calibration sections""".format(xv[hii], xv[tii]))
+
+    hix_out = np.array(hixl)
+    tix_out = np.array(tixl)
+
+    err = 'Both locations of a matching pair should either be used in a ' \
+          'calibration section or outside the calibration sections.'
+    assert hix_out.size == tix_out.size, err
+    assert hix_out.size > 0, 'no matching sections in calibration'
+
+    return np.stack((hix_out, tix_out)).T
