@@ -95,8 +95,8 @@ def calibration_single_ended_solver(
     # w
     if st_var is not None:
         w = 1 / (
-            ds_sec[st_label] ** 2 * st_var +
-            ds_sec[ast_label] ** 2 * ast_var).values.ravel()
+            ds_sec[st_label] ** -2 * st_var +
+            ds_sec[ast_label] ** -2 * ast_var).values.ravel()
 
     else:
         w = 1.  # unweighted
@@ -151,9 +151,16 @@ def calibration_double_ended_solver(
         calc_cov=True,
         solver='sparse',
         matching_indices=None,
-        timevariant_asym_att_x=None,
+        transient_asym_att_x=None,
         verbose=False):
     """
+    The construction of X differs a bit from what is presented in the
+    article. The choice to divert from the article is made because
+    then remaining modular is easier.
+    Eq34 and Eq43 become:
+    y = [F, B, (B-F)/2], F=[F_0, F_1, .., F_M], B=[B_0, B_1, .., B_M],
+    where F_m and B_m contain the coefficients for all times.
+
     Parameters
     ----------
     ds : DataStore
@@ -197,7 +204,7 @@ def calibration_double_ended_solver(
     matching_indices : array-like
         Is an array of size (np, 2), where np is the number of paired
         locations. This array is produced by `matching_sections()`.
-    timevariant_asym_att_x : iterable, optional
+    transient_asym_att_x : iterable, optional
         Connectors cause assymetrical attenuation. Normal double ended
         calibration assumes symmetrical attenuation. An additional loss
         term is added in the 'shadow' of the forward and backward
@@ -205,15 +212,15 @@ def calibration_double_ended_solver(
         containing the x locations of the connectors along the fiber.
         Each location introduces an additional 2*nt parameters to solve
         for. Requiering either an additional calibration section or
-        matching sections.
+        matching sections. If multiple locations are defined, the losses are
+        added.
     verbose : bool
 
     Returns
     -------
 
     """
-
-    def construct_submatrices(nt, nx, st_label, ds):
+    def construct_submatrices(nt, nx, st_label, ds, transient_asym_att_x, x_sec):
         """Wrapped in a function to reduce memory usage"""
 
         # Z \gamma  # Eq.47
@@ -247,7 +254,58 @@ def calibration_double_ended_solver(
             ([], ([], [])), shape=(nt * nx, 1))
         Zero_d = sp.coo_matrix(
             ([], ([], [])), shape=(nt * nx, nt))
-        return E, Z_d, Z_gamma, Zero_d, Zero_gamma
+
+        if transient_asym_att_x:
+            # unpublished BdT
+
+            TA_fw_list = list()
+            TA_bw_list = list()
+
+            for transient_asym_att_xi in transient_asym_att_x:
+                """For forward direction. """
+                # first index on the right hand side a the difficult splice
+                if transient_asym_att_xi >= x_sec[-1]:
+                    ix_sec_ta_ix0 = nx
+                elif transient_asym_att_xi <= x_sec[0]:
+                    ix_sec_ta_ix0 = 0
+                else:
+                    ix_sec_ta_ix0 = np.flatnonzero(
+                        x_sec >= transient_asym_att_xi)[0]
+
+                # Data is -1 for both forward and backward
+                # I_fw = 1/Tref*gamma - D - E - TA_fw. Eq39
+                data_ta_fw = -np.ones(nt * (nx - ix_sec_ta_ix0), dtype=int)
+                # skip ix_sec_ta_ix0 locations, because they are upstream of
+                # the connector.
+                coord_ta_fw_row = np.arange(
+                    nt * ix_sec_ta_ix0, nt * nx, dtype=int)
+                # nt parameters
+                coord_ta_fw_col = np.tile(
+                    np.arange(nt, dtype=int), nx - ix_sec_ta_ix0)
+                TA_fw_list.append(sp.coo_matrix(  # TA_fw
+                        (data_ta_fw, (coord_ta_fw_row, coord_ta_fw_col)),
+                        shape=(nt * nx, 2 * nt),
+                        copy=False))
+
+                # I_bw = 1/Tref*gamma - D + E - TA_bw. Eq40
+                data_ta_bw = -np.ones(nt * ix_sec_ta_ix0, dtype=int)
+                coord_ta_bw_row = np.arange(nt * ix_sec_ta_ix0, dtype=int)
+                coord_ta_bw_col = np.tile(np.arange(nt, 2 * nt, dtype=int),
+                                          ix_sec_ta_ix0)
+                TA_bw_list.append(sp.coo_matrix(  # TA_bw
+                        (data_ta_bw, (coord_ta_bw_row, coord_ta_bw_col)),
+                        shape=(nt * nx, 2 * nt),
+                        copy=False))
+            Z_TA_fw = sp.hstack(TA_fw_list)
+            Z_TA_bw = sp.hstack(TA_bw_list)
+
+        else:
+            Z_TA_fw = sp.coo_matrix(([], ([], [])), shape=(nt * nx, 0))
+            Z_TA_bw = sp.coo_matrix(([], ([], [])), shape=(nt * nx, 0))
+
+        Z_TA_E = (Z_TA_fw - Z_TA_bw) / 2
+
+        return E, Z_d, Z_gamma, Zero_d, Zero_gamma, Z_TA_fw, Z_TA_bw, Z_TA_E
 
     ix_sec = ds.ufunc_per_section(x_indices=True, calc_per='all')
     ds_sec = ds.isel(x=ix_sec)
@@ -255,10 +313,9 @@ def calibration_double_ended_solver(
     x_sec = ds_sec['x'].values
     nx = x_sec.size
     nt = ds.time.size
-    nta = len(timevariant_asym_att_x) if timevariant_asym_att_x else None
+    nta = len(transient_asym_att_x) if transient_asym_att_x else 0
 
-    # Calculate E for outside of calibration sections and as initial estimate
-    # for the E calibration.
+    # Calculate E as initial estimate for the E calibration.
     E_all, E_all_var = calc_alpha_double(
         ds,
         st_label,
@@ -270,10 +327,12 @@ def calibration_double_ended_solver(
         rst_var,
         rast_var)
 
-    p0_est = np.concatenate((np.asarray([485.] + nt * [1.4]), E_all[ix_sec]))
+    p0_est = np.concatenate((np.asarray([485.] + nt * [1.4]),
+                             E_all[ix_sec], nta * nt * 2 * [0.]))
 
-    E, Z_d, Z_gamma, Zero_d, Zero_gamma = construct_submatrices(
-        nt, nx, st_label, ds)
+    E, Z_d, Z_gamma, Zero_d, Zero_gamma, Z_TA_fw, Z_TA_bw, Z_TA_E = \
+        construct_submatrices(nt, nx, st_label, ds, transient_asym_att_x,
+                              x_sec)
 
     # if matching_indices is not None:
     #     # The matching indices are location indices along the entire fiber.
@@ -312,9 +371,9 @@ def calibration_double_ended_solver(
 
     # Stack all X's
     X = sp.vstack(
-        (sp.hstack((Z_gamma, Z_d, -E)),
-         sp.hstack((Z_gamma, Z_d, E)),
-         sp.hstack((Zero_gamma, Zero_d, E))))
+        (sp.hstack((Z_gamma, Z_d, -E, Z_TA_fw)),
+         sp.hstack((Z_gamma, Z_d, E, Z_TA_bw)),
+         sp.hstack((Zero_gamma, Zero_d, E, Z_TA_E))))
 
     # y  # Eq.41--45
     y_F = np.log(ds_sec[st_label] / ds_sec[ast_label]).values.ravel()
@@ -325,16 +384,16 @@ def calibration_double_ended_solver(
     # w
     if st_var is not None:  # WLS
         w_F = 1 / (
-            ds_sec[st_label] ** 2 * st_var +
-            ds_sec[ast_label] ** 2 * ast_var).values.ravel()
+            ds_sec[st_label] ** -2 * st_var +
+            ds_sec[ast_label] ** -2 * ast_var).values.ravel()
         w_B = 1 / (
-            ds_sec[rst_label] ** 2 * rst_var +
-            ds_sec[rast_label] ** 2 * rast_var).values.ravel()
+            ds_sec[rst_label] ** -2 * rst_var +
+            ds_sec[rast_label] ** -2 * rast_var).values.ravel()
         w_E = 1 / (
-            ds_sec[st_label] ** 2 * st_var / 2 +
-            ds_sec[ast_label] ** 2 * ast_var / 2 +
-            ds_sec[rst_label] ** 2 * rst_var / 2 +
-            ds_sec[rast_label] ** 2 * rast_var / 2).values.ravel()
+            ds_sec[st_label] ** -2 * st_var / 2 +
+            ds_sec[ast_label] ** -2 * ast_var / 2 +
+            ds_sec[rst_label] ** -2 * rst_var / 2 +
+            ds_sec[rast_label] ** -2 * rast_var / 2).values.ravel()
 
     else:  # OLS
         w_F = np.ones(nt * nx)
@@ -371,27 +430,39 @@ def calibration_double_ended_solver(
             w_E=w_E,
             Z_gamma=Z_gamma,
             Z_d=Z_d,
+            Z_TA_fw=Z_TA_fw,
+            Z_TA_bw=Z_TA_bw,
+            Z_TA_E=Z_TA_E,
             E=E,
             Zero_gamma=Zero_gamma,
             Zero_d=Zero_d,
-            p0_est=p0_est)
+            p0_est=p0_est,
+            E_all=E_all,
+            E_all_var=E_all_var)
 
     else:
         raise ValueError("Choose a valid solver")
 
+    # p_sol contains the int diff att of all the locations within the
+    # reference sections. po_sol is its expanded version that contains also
+    # the int diff att for outside the reference sections.
+
     # put E outside of reference section in solution
     # concatenating makes a copy of the data instead of using a pointer
-    po_sol = np.concatenate((p_sol[:nt + 1], E_all))
-    po_sol[ix_sec + 1 + nt] = p_sol[nt + 1:]
+    po_sol = np.concatenate((p_sol[:nt + 1], E_all, p_sol[1 + nt + nx:]))
+    po_sol[1 + nt + ix_sec] = p_sol[1 + nt:1 + nt + nx]
 
-    po_var = np.concatenate((p_var[:nt + 1], E_all_var))
-    po_var[ix_sec + 1 + nt] = p_var[nt + 1:]
+    po_var = np.concatenate((p_var[:nt + 1], E_all_var, p_var[1 + nt + nx:]))
+    po_var[1 + nt + ix_sec] = p_var[1 + nt:1 + nt + nx]
 
     if calc_cov:
-        po_cov = np.zeros((po_sol.size, po_sol.size))
-        po_cov[nt + 1:, nt + 1:] = np.diag(E_all_var)
+        # the COV can be expensive to compute (in the least squares routine)
+        po_cov = np.diag(po_var).copy()
 
-        from_i = np.concatenate((np.arange(nt + 1), nt + 1 + ix_sec))
+        from_i = np.concatenate((np.arange(nt + 1),
+                                 nt + 1 + ix_sec,
+                                 np.arange(1 + nt + nx,
+                                           1 + nt + nx + nta * nt * 2)))
 
         iox_sec1, iox_sec2 = np.meshgrid(
             from_i, from_i, indexing='ij')
@@ -539,16 +610,16 @@ def calc_alpha_double(
     time_dim = ds.get_time_dim()
 
     if st_var is not None:
-        i_var_fw = ds.i_var_fw(
+        i_var_fw = ds.i_var(
             st_var,
             ast_var,
             st_label=st_label,
             ast_label=ast_label)
-        i_var_bw = ds.i_var_bw(
+        i_var_bw = ds.i_var(
             rst_var,
             rast_var,
-            rst_label=rst_label,
-            rast_label=rast_label)
+            st_label=rst_label,
+            ast_label=rast_label)
 
         A_var = (i_var_fw + i_var_bw) / 2
 
