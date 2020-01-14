@@ -120,7 +120,7 @@ solver because it saves us memory.
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x122b55ad0>
+    <matplotlib.collections.QuadMesh at 0x11e0ffbd0>
 
 
 
@@ -197,14 +197,8 @@ confidence interval ‘coordinates’.
     plt.ylabel('$\sigma$ ($^\circ$C)');
 
 
-.. parsed-literal::
 
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/matplotlib/mathtext.py:2468: SyntaxWarning: Exception creating Regex for oneOf, building MatchFirst
-      p.subsuperop    <<= oneOf(["_", "^"])
-
-
-
-.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_17_1.png
+.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_17_0.png
 
 
 .. code:: ipython3
@@ -233,18 +227,18 @@ confidence interval ‘coordinates’.
         userAcquisitionTimeBW  (time) float32 2.0 2.0 2.0 2.0 2.0 2.0
         gamma                  float64 482.6
         alpha                  (x) float64 -0.007156 -0.003301 ... -0.005165
-        d                      (time) float64 1.465 1.465 1.465 1.465 1.465 1.465
-        gamma_var              float64 0.04116
+        d                      (time) float64 1.465 1.465 1.464 1.465 1.465 1.465
+        gamma_var              float64 0.03927
         alpha_var              (x) float64 1.734e-07 1.814e-07 ... 1.835e-07
-        d_var                  (time) float64 5.115e-07 5.115e-07 ... 5.115e-07
-        TMPF                   (x, time) float64 16.79 17.04 16.31 ... 13.52 13.77
-        TMPB                   (x, time) float64 16.8 16.82 16.87 ... 13.77 13.68
+        d_var                  (time) float64 4.854e-07 4.854e-07 ... 4.854e-07
+        TMPF                   (x, time) float64 16.8 17.05 16.32 ... 13.49 13.78
+        TMPB                   (x, time) float64 16.8 16.83 16.88 ... 13.74 13.69
         TMPF_MC_var            (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
         TMPB_MC_var            (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
         TMPW                   (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
         TMPW_MC_var            (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
         p_val                  (params1) float64 482.6 1.465 ... -0.005271 -0.005165
-        p_cov                  (params1, params2) float64 0.04116 ... 1.835e-07
+        p_cov                  (params1, params2) float64 0.03927 ... 1.835e-07
         TMPF_MC                (CI, x, time) float64 dask.array<chunksize=(3, 787, 6), meta=np.ndarray>
         TMPB_MC                (CI, x, time) float64 dask.array<chunksize=(3, 787, 6), meta=np.ndarray>
         TMPW_MC                (CI, x, time) float64 dask.array<chunksize=(3, 787, 6), meta=np.ndarray>
