@@ -1516,7 +1516,8 @@ class DataStore(xr.Dataset):
             ast_var=None,
             rst_var=None,
             rast_var=None,
-            store_d='d',
+            store_df='df',
+            store_db='db',
             store_gamma='gamma',
             store_alpha='alpha',
             store_ta='talpha',
@@ -1536,8 +1537,8 @@ class DataStore(xr.Dataset):
             reduce_memory_usage=False,
             transient_asym_att_x=None,
             fix_gamma=None,
-            fix_alpha=None,
-            matching_sections=None):
+            fix_alpha=None):
+            # matching_sections=None):
         """
 
         Parameters
@@ -1574,11 +1575,12 @@ class DataStore(xr.Dataset):
             The variance of the measurement noise of the anti-Stokes signals
             in the backward
             direction. Required if method is wls.
-        store_d : str
+        store_df, store_db : str
             Label of where to store D. Equals the integrated differential
             attenuation at x=0
             And should be equal to half the total integrated differential
-            attenuation.
+            attenuation plus the integrated differential attenuation of x=0.
+            D is different for the forward channel and the backward channel
         store_gamma : str
             Label of where to store gamma
         store_alpha : str
@@ -1697,6 +1699,21 @@ class DataStore(xr.Dataset):
                     p_val, p_var = out
 
             # adjust split to fix parameters
+            """Wrapped in a function to reduce memory usage.
+            Constructing:
+            Z_gamma (nt * nx, 1). Data: positive 1/temp
+            Z_D (nt * nx, nt). Data: ones
+            E (nt * nx, nx). Data: ones
+            Zero_gamma (nt * nx, 1)
+            zero_d (nt * nx, nt)
+            Z_TA_fw (nt * nx, nta * 2 * nt) minus ones
+            Z_TA_bw (nt * nx, nta * 2 * nt) minus ones
+            Z_TA_E (nt * nx, nta * 2 * nt)
+
+            I_fw = 1/Tref*gamma - D_fw - E - TA_fw
+            I_bw = 1/Tref*gamma - D_bw + E - TA_bw
+            (I_bw - I_fw) / 2 = D_fw/2 - D_bw/2 + E + TA_fw/2 - TA_bw/2 Eq42
+            """
             if fix_alpha and fix_gamma:
                 assert np.size(fix_alpha[0]) == self[x_dim].size, \
                     'define alpha for each location'
@@ -1716,9 +1733,15 @@ class DataStore(xr.Dataset):
                 # Use only the remaining coefficients
                 # Stack all X's
                 X = sp.vstack(
-                    (sp.hstack((split['Z_d'], split['Z_TA_fw'])),
-                     sp.hstack((split['Z_d'], split['Z_TA_bw'])),
-                     sp.hstack((split['Zero_d'], split['Z_TA_E']))))
+                    (sp.hstack((-split['Z_D'],
+                                split['Zero_d'],
+                                split['Z_TA_fw'])),
+                     sp.hstack((split['Zero_d'],
+                                -split['Z_D'],
+                                split['Z_TA_bw'])),
+                     sp.hstack((split['Z_D'] / 2,
+                                -split['Z_D'] / 2,
+                                split['Z_TA_E']))))
 
                 # Move the coefficients times the fixed gamma to the
                 # observations
@@ -1741,8 +1764,8 @@ class DataStore(xr.Dataset):
                 # [C_1, C_2, .., C_nt, TA_fw_a_1, TA_fw_a_2, TA_fw_a_nt,
                 # TA_bw_a_1, TA_bw_a_2, TA_bw_a_nt] Then continues with
                 # TA for connector b.
-                p0_est = np.concatenate((split['p0_est'][1:1 + nt],
-                                         split['p0_est'][1 + nt + nx_sec:]))
+                p0_est = np.concatenate((split['p0_est'][1:1 + 2 * nt],
+                                         split['p0_est'][1 + 2 * nt + nx_sec:]))
 
                 if solver == 'sparse':
                     out = wls_sparse(
@@ -1758,22 +1781,22 @@ class DataStore(xr.Dataset):
 
                 # Added fixed gamma and its variance to the solution
                 p_val = np.concatenate(([fix_gamma[0]],
-                                        out[0][:nt],
+                                        out[0][:2 * nt],
                                         fix_alpha[0],
-                                        out[0][nt:]))
+                                        out[0][2 * nt:]))
                 p_var = np.concatenate(([fix_gamma[1]],
-                                        out[1][:nt],
+                                        out[1][:2 * nt],
                                         fix_alpha[1],
-                                        out[1][nt:]))
+                                        out[1][2 * nt:]))
 
                 if calc_cov:
                     # whether it returns a copy or a view depends on what
                     # version of numpy you are using
                     p_cov = np.diag(p_var).copy()
                     from_i = np.concatenate(
-                        (np.arange(1, nt + 1),
-                         np.arange(1 + nt + nx,
-                                   1 + nt + nx + nta * nt * 2)))
+                        (np.arange(1, 2 * nt + 1),
+                         np.arange(1 + 2 * nt + nx,
+                                   1 + 2 * nt + nx + nta * nt * 2)))
                     iox_sec1, iox_sec2 = np.meshgrid(
                         from_i, from_i, indexing='ij')
                     p_cov[iox_sec1, iox_sec2] = out[2]
@@ -1786,9 +1809,18 @@ class DataStore(xr.Dataset):
                     split['Zero_gamma'])).toarray().flatten()
                 # Use only the remaining coefficients
                 X = sp.vstack(
-                    (sp.hstack((split['Z_d'], -split['E'], split['Z_TA_fw'])),
-                     sp.hstack((split['Z_d'], split['E'], split['Z_TA_bw'])),
-                     sp.hstack((split['Zero_d'], split['E'], split['Z_TA_E']))))
+                    (sp.hstack((-split['Z_D'],
+                                split['Zero_d'],
+                                -split['E'],
+                                split['Z_TA_fw'])),
+                     sp.hstack((split['Zero_d'],
+                                -split['Z_D'],
+                                split['E'],
+                                split['Z_TA_bw'])),
+                     sp.hstack((split['Z_D'] / 2,
+                                -split['Z_D'] / 2,
+                                split['E'],
+                                split['Z_TA_E']))))
                 # Move the coefficients times the fixed gamma to the
                 # observations
                 y = np.concatenate((split['y_F'],
@@ -1810,7 +1842,7 @@ class DataStore(xr.Dataset):
                     out = wls_sparse(
                         X, y, w=w, x0=p0_est,
                         calc_cov=calc_cov,
-                        verbose=False)
+                        verbose=True)
 
                 elif solver == 'stats':
                     out = wls_stats(
@@ -1821,23 +1853,23 @@ class DataStore(xr.Dataset):
                 # Added fixed gamma and its variance to the solution. And
                 # expand to include locations outside reference sections.
                 p_val = np.concatenate(([fix_gamma[0]],
-                                        out[0][:nt],
+                                        out[0][:2 * nt],
                                         split['E_all'],
-                                        out[0][nt + nx_sec:]))
-                p_val[1 + nt + ix_sec] = out[0][nt:nt + nx_sec]
+                                        out[0][2 * nt + nx_sec:]))
+                p_val[1 + 2 * nt + ix_sec] = out[0][2 * nt:2 * nt + nx_sec]
                 p_var = np.concatenate(([fix_gamma[1]],
-                                        out[1][:nt],
+                                        out[1][:2 * nt],
                                         split['E_all_var'],
-                                        out[1][nt + nx_sec:]))
-                p_var[1 + nt + ix_sec] = out[1][nt:nt + nx_sec]
+                                        out[1][2 * nt + nx_sec:]))
+                p_var[1 + 2 * nt + ix_sec] = out[1][2 * nt:2 * nt + nx_sec]
 
                 if calc_cov:
                     p_cov = np.diag(p_var).copy()
                     from_i = np.concatenate(
-                        (np.arange(1, nt + 1),
-                         nt + 1 + ix_sec,
-                         np.arange(1 + nt + nx,
-                                   1 + nt + nx + nta * nt * 2)))
+                        (np.arange(1, 2 * nt + 1),
+                         2 * nt + 1 + ix_sec,
+                         np.arange(1 + 2 * nt + nx,
+                                   1 + 2 * nt + nx + nta * nt * 2)))
 
                     iox_sec1, iox_sec2 = np.meshgrid(
                         from_i, from_i, indexing='ij')
@@ -1858,11 +1890,17 @@ class DataStore(xr.Dataset):
                 # Use only the remaining coefficients
                 # Stack all X's
                 X = sp.vstack(
-                    (sp.hstack((split['Z_gamma'], split['Z_d'],
+                    (sp.hstack((split['Z_gamma'],
+                                -split['Z_D'],
+                                split['Zero_d'],
                                 split['Z_TA_fw'])),
-                     sp.hstack((split['Z_gamma'], split['Z_d'],
+                     sp.hstack((split['Z_gamma'],
+                                split['Zero_d'],
+                                -split['Z_D'],
                                 split['Z_TA_bw'])),
-                     sp.hstack((split['Zero_gamma'], split['Zero_d'],
+                     sp.hstack((split['Zero_gamma'],
+                                split['Z_D'] / 2,
+                                -split['Z_D'] / 2,
                                 split['Z_TA_E']))))
                 # Move the coefficients times the fixed gamma to the
                 # observations
@@ -1882,36 +1920,36 @@ class DataStore(xr.Dataset):
                     w = 1.
 
                 p0_est = np.concatenate(
-                    (split['p0_est'][:1 + nt],
-                     split['p0_est'][1 + nt + nx_sec:]))
+                    (split['p0_est'][:1 + 2 * nt],
+                     split['p0_est'][1 + 2 * nt + nx_sec:]))
 
                 if solver == 'sparse':
                     out = wls_sparse(
                         X, y, w=w, x0=p0_est,
                         calc_cov=calc_cov,
-                        verbose=False)
+                        verbose=True)
 
                 elif solver == 'stats':
                     out = wls_stats(
                         X, y, w=w,
                         calc_cov=calc_cov,
-                        verbose=False)
+                        verbose=True)
 
                 # Added fixed gamma and its variance to the solution
-                p_val = np.concatenate((out[0][:1 + nt],
+                p_val = np.concatenate((out[0][:1 + 2 * nt],
                                         fix_alpha[0],
-                                        out[0][1 + nt:]))
-                p_var = np.concatenate((out[1][:1 + nt],
+                                        out[0][1 + 2 * nt:]))
+                p_var = np.concatenate((out[1][:1 + 2 * nt],
                                         fix_alpha[1],
-                                        out[1][1 + nt:]))
+                                        out[1][1 + 2 * nt:]))
 
                 if calc_cov:
                     p_cov = np.diag(p_var).copy()
 
                     from_i = np.concatenate(
-                        (np.arange(nt + 1),
-                         np.arange(1 + nt + nx,
-                                   1 + nt + nx + nta * nt * 2)))
+                        (np.arange(1 + 2 * nt),
+                         np.arange(1 + 2 * nt + nx,
+                                   1 + 2 * nt + nx + nta * nt * 2)))
 
                     iox_sec1, iox_sec2 = np.meshgrid(
                         from_i, from_i, indexing='ij')
@@ -1931,16 +1969,18 @@ class DataStore(xr.Dataset):
             raise ValueError('Choose a valid method')
 
         gamma = p_val[0]
-        d = p_val[1:nt + 1]
-        alpha = p_val[nt + 1:nt + 1 + nx]
+        d_fw = p_val[1:nt + 1]
+        d_bw = p_val[1 + nt:1 + 2 * nt]
+        alpha = p_val[1 + 2 * nt:1 + 2 * nt + nx]
 
         # store calibration parameters in DataStore
         self[store_gamma] = (tuple(), gamma)
         self[store_alpha] = ((x_dim,), alpha)
-        self[store_d] = ((time_dim,), d)
+        self[store_df] = ((time_dim,), d_fw)
+        self[store_db] = ((time_dim,), d_bw)
 
         if transient_asym_att_x:
-            ta = p_val[nt + 1 + nx:].reshape((nt, 2, nta), order='F')
+            ta = p_val[1 + 2 * nt + nx:].reshape((nt, 2, nta), order='F')
             self[store_ta + '_fw'] = ((time_dim, ta_dim), ta[:, 0, :])
             self[store_ta + '_bw'] = ((time_dim, ta_dim), ta[:, 1, :])
 
@@ -1948,15 +1988,17 @@ class DataStore(xr.Dataset):
         if method == 'wls' or method == 'external':
             # the variances only have ameaning if the observations are weighted
             gammavar = p_var[0]
-            dvar = p_var[1:nt + 1]
-            alphavar = p_var[nt + 1:nt + 1 + nx]
+            dfvar = p_var[1:nt + 1]
+            dbvar = p_var[1 + nt:1 + 2 * nt]
+            alphavar = p_var[2 * nt + 1:2 * nt + 1 + nx]
 
             self[store_gamma + variance_suffix] = (tuple(), gammavar)
             self[store_alpha + variance_suffix] = ((x_dim,), alphavar)
-            self[store_d + variance_suffix] = ((time_dim,), dvar)
+            self[store_df + variance_suffix] = ((time_dim,), dfvar)
+            self[store_db + variance_suffix] = ((time_dim,), dbvar)
 
             if transient_asym_att_x:
-                tavar = p_var[nt + 1 + nx:].reshape((nt, 2, nta), order='F')
+                tavar = p_var[2 * nt + 1 + nx:].reshape((nt, 2, nta), order='F')
                 self[store_ta + '_fw' + variance_suffix] = (
                     (time_dim, ta_dim), tavar[:, 0, :])
                 self[store_ta + '_bw' + variance_suffix] = (
@@ -1972,7 +2014,7 @@ class DataStore(xr.Dataset):
                         ta_arr[self[x_dim].values >= taxi] + tai
 
             tempF_data = gamma / (
-                np.log(self[st_label].data / self[ast_label].data) + d +
+                np.log(self[st_label].data / self[ast_label].data) + d_fw +
                 alpha[:, None] + ta_arr) - 273.15
             self[store_tmpf] = ((x_dim, time_dim), tempF_data)
 
@@ -1985,7 +2027,7 @@ class DataStore(xr.Dataset):
                     ta_arr[self[x_dim].values < taxi] = \
                         ta_arr[self[x_dim].values < taxi] + tai
             tempB_data = gamma / (
-                np.log(self[rst_label].data / self[rast_label].data) + d -
+                np.log(self[rst_label].data / self[rast_label].data) + d_bw -
                 alpha[:, None] + ta_arr) - 273.15
             self[store_tmpb] = ((x_dim, time_dim), tempB_data)
 
@@ -2432,7 +2474,7 @@ class DataStore(xr.Dataset):
                                'intervals'
 
         no, nt = self[st_label].shape
-        npar = 1 + nt + no  # number of parameters
+        npar = 1 + 2 * nt + no  # number of parameters
 
         if store_ta:
             ta_dim = [
@@ -2472,15 +2514,17 @@ class DataStore(xr.Dataset):
 
         if isinstance(p_cov, bool) and not p_cov:
             gamma = p_val[0]
-            d = p_val[1:nt + 1]
-            alpha = p_val[nt + 1:nt + 1 + no]
+            d_fw = p_val[1:nt + 1]
+            d_bw = p_val[1 + nt:2 * nt + 1]
+            alpha = p_val[2 * nt + 1:2 * nt + 1 + no]
 
             self['gamma_MC'] = (tuple(), gamma)
             self['alpha_MC'] = ((x_dim,), alpha)
-            self['d_MC'] = ((time_dim,), d)
+            self['df_MC'] = ((time_dim,), d_fw)
+            self['db_MC'] = ((time_dim,), d_bw)
 
             if store_ta:
-                ta = p_val[nt + 1 + no:].reshape((nt, 2, nta), order='F')
+                ta = p_val[2 * nt + 1 + no:].reshape((nt, 2, nta), order='F')
                 ta_fw = ta[:, 0, :]
                 ta_bw = ta[:, 1, :]
 
@@ -2508,9 +2552,10 @@ class DataStore(xr.Dataset):
 
             ix_sec = self.ufunc_per_section(x_indices=True, calc_per='all')
             nx_sec = ix_sec.size
-            from_i = np.concatenate((np.arange(nt + 1),
-                                     nt + 1 + ix_sec,
-                                     1 + nt + no + np.arange(nt * 2 * nta)))
+            from_i = np.concatenate((np.arange(1 + 2 * nt),
+                                     1 + 2 * nt + ix_sec,
+                                     np.arange(1 + 2 * nt + no,
+                                               1 + 2 * nt + no + nt * 2 * nta)))
             iox_sec1, iox_sec2 = np.meshgrid(
                 from_i, from_i, indexing='ij')
             po_val = p_val[from_i]
@@ -2520,14 +2565,16 @@ class DataStore(xr.Dataset):
                 mean=po_val, cov=po_cov, size=mc_sample_size)
 
             gamma = po_mc[:, 0]
-            d = po_mc[:, 1:nt + 1]
+            d_fw = po_mc[:, 1:nt + 1]
+            d_bw = po_mc[:, 1 + nt:2 * nt + 1]
 
             self['gamma_MC'] = (('MC',), gamma)
-            self['d_MC'] = (('MC', time_dim), d)
+            self['df_MC'] = (('MC', time_dim), d_fw)
+            self['db_MC'] = (('MC', time_dim), d_bw)
 
             # calculate alpha seperately
             alpha = np.zeros((mc_sample_size, no), dtype=float)
-            alpha[:, ix_sec] = po_mc[:, nt + 1:1 + nt + nx_sec]
+            alpha[:, ix_sec] = po_mc[:, 1 + 2 * nt:1 + 2 * nt + nx_sec]
 
             not_ix_sec = np.array([i for i in range(no) if i not in ix_sec])
 
@@ -2572,7 +2619,7 @@ class DataStore(xr.Dataset):
             #     return arr
 
             if store_ta:
-                ta = po_mc[:, nt + 1 + nx_sec:].reshape(
+                ta = po_mc[:, 2 * nt + 1 + nx_sec:].reshape(
                     (mc_sample_size, nt, 2, nta), order='F')
                 ta_fw = ta[:, :, 0, :]
                 ta_bw = ta[:, :, 1, :]
@@ -2639,22 +2686,22 @@ class DataStore(xr.Dataset):
                     if store_ta:
                         self[store_tmpf + '_MC_set'] = self['gamma_MC'] / (
                             np.log(self['r_st'] / self['r_ast']) +
-                            self['d_MC'] + self['alpha_MC'] +
+                            self['df_MC'] + self['alpha_MC'] +
                             self[store_ta + '_fw_MC']) - 273.15
                     else:
                         self[store_tmpf + '_MC_set'] = self['gamma_MC'] / (
                             np.log(self['r_st'] / self['r_ast']) +
-                            self['d_MC'] + self['alpha_MC']) - 273.15
+                            self['df_MC'] + self['alpha_MC']) - 273.15
                 else:
                     if store_ta:
                         self[store_tmpb + '_MC_set'] = self['gamma_MC'] / (
                             np.log(self['r_rst'] / self['r_rast']) +
-                            self['d_MC'] - self['alpha_MC'] +
+                            self['db_MC'] - self['alpha_MC'] +
                             self[store_ta + '_bw_MC']) - 273.15
                     else:
                         self[store_tmpb + '_MC_set'] = self['gamma_MC'] / (
                             np.log(self['r_rst'] / self['r_rast']) +
-                            self['d_MC'] - self['alpha_MC']) - 273.15
+                            self['db_MC'] - self['alpha_MC']) - 273.15
 
                 if var_only_sections:
                     # sets the values outside the reference sections to NaN
@@ -2746,7 +2793,8 @@ class DataStore(xr.Dataset):
         if remove_mc_set_flag:
             remove_MC_set = [
                 'r_st', 'r_ast', 'r_rst', 'r_rast', 'gamma_MC', 'alpha_MC',
-                'd_MC', 'TMPF_MC_set', 'TMPB_MC_set', 'TMPW_MC_set', 'MC']
+                'df_MC', 'db_MC', 'TMPF_MC_set', 'TMPB_MC_set',
+                'TMPW_MC_set', 'MC']
             if store_ta:
                 remove_MC_set.append(store_ta + '_fw_MC')
                 remove_MC_set.append(store_ta + '_bw_MC')
