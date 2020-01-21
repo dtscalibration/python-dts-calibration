@@ -460,7 +460,7 @@ def test_double_ended_ols_wls_estimate_synthetic():
     np.testing.assert_almost_equal(
         ds.gamma.values, gamma, decimal=6)
     np.testing.assert_almost_equal(
-        ds.alpha.values, alpha, decimal=8)
+        ds.alpha.values, alpha, decimal=7)
     np.testing.assert_almost_equal(
         ds.TMPF.values, temp_real - 273.15, decimal=4)
     np.testing.assert_almost_equal(
