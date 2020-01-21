@@ -234,7 +234,7 @@ def calibration_double_ended_solver(
             shape=(nt * nx, 1),
             copy=False)
         # Z D  # Eq.47
-        data_c = -np.ones(nt * nx, dtype=int)
+        data_c = -np.ones(nt * nx, dtype=float)
         coord_c_row = np.arange(nt * nx, dtype=int)
         coord_c_col = np.tile(np.arange(nt, dtype=int), nx)
         Z_d = sp.coo_matrix(
@@ -242,7 +242,7 @@ def calibration_double_ended_solver(
             shape=(nt * nx, nt),
             copy=False)
         # E  # Eq.47
-        data_c = np.ones(nt * nx, dtype=int)
+        data_c = np.ones(nt * nx, dtype=float)
         coord_c_row = np.arange(nt * nx, dtype=int)
         coord_c_col = np.repeat(np.arange(nx, dtype=int), nt)
         E = sp.coo_matrix(
@@ -273,8 +273,8 @@ def calibration_double_ended_solver(
                         x_sec >= transient_asym_att_xi)[0]
 
                 # Data is -1 for both forward and backward
-                # I_fw = 1/Tref*gamma - D - E - TA_fw. Eq39
-                data_ta_fw = -np.ones(nt * (nx - ix_sec_ta_ix0), dtype=int)
+                # I_fw = 1/Tref*gamma - D - E - TA_fw. Eq40
+                data_ta_fw = -np.ones(nt * (nx - ix_sec_ta_ix0), dtype=float)
                 # skip ix_sec_ta_ix0 locations, because they are upstream of
                 # the connector.
                 coord_ta_fw_row = np.arange(
@@ -287,8 +287,8 @@ def calibration_double_ended_solver(
                         shape=(nt * nx, 2 * nt),
                         copy=False))
 
-                # I_bw = 1/Tref*gamma - D + E - TA_bw. Eq40
-                data_ta_bw = -np.ones(nt * ix_sec_ta_ix0, dtype=int)
+                # I_bw = 1/Tref*gamma - D + E - TA_bw. Eq41
+                data_ta_bw = -np.ones(nt * ix_sec_ta_ix0, dtype=float)
                 coord_ta_bw_row = np.arange(nt * ix_sec_ta_ix0, dtype=int)
                 coord_ta_bw_col = np.tile(np.arange(nt, 2 * nt, dtype=int),
                                           ix_sec_ta_ix0)
@@ -303,7 +303,8 @@ def calibration_double_ended_solver(
             Z_TA_fw = sp.coo_matrix(([], ([], [])), shape=(nt * nx, 0))
             Z_TA_bw = sp.coo_matrix(([], ([], [])), shape=(nt * nx, 0))
 
-        Z_TA_E = (Z_TA_fw - Z_TA_bw) / 2
+        # (I_bw - I_fw) / 2 = C_fw/2 - C_bw/2 + E + TA_fw/2 - TA_bw/2 Eq42
+        Z_TA_E = -(Z_TA_fw - Z_TA_bw) / 2
 
         return E, Z_d, Z_gamma, Zero_d, Zero_gamma, Z_TA_fw, Z_TA_bw, Z_TA_E
 
