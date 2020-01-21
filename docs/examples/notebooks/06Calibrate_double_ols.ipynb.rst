@@ -86,11 +86,12 @@ channel should be aligned.
                 The variance of the measurement noise of the anti-Stokes signals
                 in the backward
                 direction. Required if method is wls.
-            store_d : str
+            store_df, store_db : str
                 Label of where to store D. Equals the integrated differential
                 attenuation at x=0
                 And should be equal to half the total integrated differential
-                attenuation.
+                attenuation plus the integrated differential attenuation of x=0.
+                D is different for the forward channel and the backward channel
             store_gamma : str
                 Label of where to store gamma
             store_alpha : str

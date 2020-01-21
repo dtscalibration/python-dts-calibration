@@ -1538,7 +1538,6 @@ class DataStore(xr.Dataset):
             transient_asym_att_x=None,
             fix_gamma=None,
             fix_alpha=None):
-            # matching_sections=None):
         """
 
         Parameters
@@ -1842,7 +1841,7 @@ class DataStore(xr.Dataset):
                     out = wls_sparse(
                         X, y, w=w, x0=p0_est,
                         calc_cov=calc_cov,
-                        verbose=True)
+                        verbose=False)
 
                 elif solver == 'stats':
                     out = wls_stats(
@@ -1927,13 +1926,13 @@ class DataStore(xr.Dataset):
                     out = wls_sparse(
                         X, y, w=w, x0=p0_est,
                         calc_cov=calc_cov,
-                        verbose=True)
+                        verbose=False)
 
                 elif solver == 'stats':
                     out = wls_stats(
                         X, y, w=w,
                         calc_cov=calc_cov,
-                        verbose=True)
+                        verbose=False)
 
                 # Added fixed gamma and its variance to the solution
                 p_val = np.concatenate((out[0][:1 + 2 * nt],

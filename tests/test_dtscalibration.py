@@ -599,9 +599,9 @@ def test_double_ended_ols_wls_fix_gamma_estimate_synthetic():
     np.testing.assert_almost_equal(
         ds.alpha.values, alpha, decimal=7)
     np.testing.assert_almost_equal(
-        ds.TMPF.values, temp_real - 273.15, decimal=5)
+        ds.TMPF.values, temp_real - 273.15, decimal=4)
     np.testing.assert_almost_equal(
-        ds.TMPB.values, temp_real - 273.15, decimal=5)
+        ds.TMPB.values, temp_real - 273.15, decimal=4)
     np.testing.assert_almost_equal(
         ds.TMPW.values, temp_real - 273.15, decimal=4)
 
