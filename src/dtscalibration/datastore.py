@@ -15,12 +15,14 @@ import yaml
 from scipy.optimize import minimize
 from scipy.sparse import linalg as ln
 
+from .calibrate_utils import calc_alpha_double
 from .calibrate_utils import calibration_double_ended_solver
 from .calibrate_utils import calibration_single_ended_solver
 from .calibrate_utils import wls_sparse
 from .calibrate_utils import wls_stats
 from .datastore_utils import check_dims
 from .datastore_utils import check_timestep_allclose
+
 from .io import read_apsensing_files_routine
 from .io import read_sensornet_files_routine_v3
 from .io import read_sensortran_files_routine
@@ -1849,16 +1851,40 @@ class DataStore(xr.Dataset):
                         calc_cov=calc_cov,
                         verbose=False)
 
+                # put E outside of reference section in solution
+                # concatenating makes a copy of the data instead of using a
+                # pointer
+                ds_sub = self[[st_label, ast_label, rst_label, rast_label]]
+                ds_sub['df'] = (('time',), out[0][1:1 + nt])
+                ds_sub['df_var'] = (('time',), out[1][1:1 + nt])
+                ds_sub['db'] = (('time',), out[0][1 + nt:1 + 2 * nt])
+                ds_sub['db_var'] = (('time',), out[1][1 + nt:1 + 2 * nt])
+                E_all_exact, E_all_var_exact = calc_alpha_double(
+                    'exact',
+                    ds_sub,
+                    st_label,
+                    ast_label,
+                    rst_label,
+                    rast_label,
+                    st_var,
+                    ast_var,
+                    rst_var,
+                    rast_var,
+                    'df',
+                    'db',
+                    'df_var',
+                    'db_var')
+
                 # Added fixed gamma and its variance to the solution. And
                 # expand to include locations outside reference sections.
                 p_val = np.concatenate(([fix_gamma[0]],
                                         out[0][:2 * nt],
-                                        split['E_all'],
+                                        E_all_exact,
                                         out[0][2 * nt + nx_sec:]))
                 p_val[1 + 2 * nt + ix_sec] = out[0][2 * nt:2 * nt + nx_sec]
                 p_var = np.concatenate(([fix_gamma[1]],
                                         out[1][:2 * nt],
-                                        split['E_all_var'],
+                                        E_all_var_exact,
                                         out[1][2 * nt + nx_sec:]))
                 p_var[1 + 2 * nt + ix_sec] = out[1][2 * nt:2 * nt + nx_sec]
 
@@ -2578,8 +2604,9 @@ class DataStore(xr.Dataset):
             not_ix_sec = np.array([i for i in range(no) if i not in ix_sec])
 
             if np.any(not_ix_sec):
-                not_alpha_val = p_val[nt + 1 + not_ix_sec]
-                not_alpha_var = p_cov[nt + 1 + not_ix_sec, nt + 1 + not_ix_sec]
+                not_alpha_val = p_val[2 * nt + 1 + not_ix_sec]
+                not_alpha_var = p_cov[2 * nt + 1 + not_ix_sec, 2 * nt + 1 + \
+                                        not_ix_sec]
 
                 not_alpha_mc = np.random.normal(
                     loc=not_alpha_val,
@@ -2589,33 +2616,6 @@ class DataStore(xr.Dataset):
                 alpha[:, not_ix_sec] = not_alpha_mc
 
             self['alpha_MC'] = (('MC', x_dim), alpha)
-
-            # def create_da_ta(no, i_splice, direction='fw', chunks=None):
-            #     """create mask array mc, o, nt"""
-            #
-            #     if direction == 'fw':
-            #         arr = da.concatenate(
-            #             (da.zeros(
-            #                  (mc_sample_size, i_splice, nt),
-            #                  chunks=((chunks[0], i_splice, chunks[2])),
-            #                  dtype=bool),
-            #              da.ones(
-            #                  (mc_sample_size, no-i_splice, nt),
-            #                  chunks=(mc_sample_size, no-i_splice, nt),
-            #                  dtype=bool)),
-            #             axis=1).rechunk(chunks)
-            #     else:
-            #         arr = da.concatenate(
-            #             (da.ones(
-            #                  (mc_sample_size, i_splice, nt),
-            #                  chunks=(mc_sample_size, i_splice, nt),
-            #                  dtype=bool),
-            #              da.zeros(
-            #                  (mc_sample_size, no-i_splice, nt),
-            #                  chunks=((chunks[0], no-i_splice, chunks[2])),
-            #                  dtype=bool)),
-            #             axis=1).rechunk(chunks)
-            #     return arr
 
             if store_ta:
                 ta = po_mc[:, 2 * nt + 1 + nx_sec:].reshape(

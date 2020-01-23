@@ -329,7 +329,8 @@ def calibration_double_ended_solver(
     nta = len(transient_asym_att_x) if transient_asym_att_x else 0
 
     # Calculate E as initial estimate for the E calibration.
-    E_all, E_all_var = calc_alpha_double(
+    E_all_guess, E_all_var_guess = calc_alpha_double(
+        'guess',
         ds,
         st_label,
         ast_label,
@@ -341,7 +342,7 @@ def calibration_double_ended_solver(
         rast_var)
 
     p0_est = np.concatenate((np.asarray([485.] + 2 * nt * [1.4]),
-                             E_all[ix_sec], nta * nt * 2 * [0.]))
+                             E_all_guess[ix_sec], nta * nt * 2 * [0.]))
 
     E, Z_D, Z_gamma, Zero_d, Zero_gamma, Z_TA_fw, Z_TA_bw, Z_TA_E = \
         construct_submatrices(nt, nx, st_label, ds, transient_asym_att_x,
@@ -381,16 +382,35 @@ def calibration_double_ended_solver(
     #     y_mB = (B[hix_sec] + B[tix_sec]).flatten()
 
     # Stack all X's
+    # X = sp.vstack(
+    #     (sp.hstack((Z_gamma, -Z_D, Zero_d, -E, Z_TA_fw)),
+    #      sp.hstack((Z_gamma, Zero_d, -Z_D, E, Z_TA_bw)),
+    #      sp.hstack((Zero_gamma, Z_D / 2, -Z_D / 2, E, Z_TA_E))))
     X = sp.vstack(
         (sp.hstack((Z_gamma, -Z_D, Zero_d, -E, Z_TA_fw)),
          sp.hstack((Z_gamma, Zero_d, -Z_D, E, Z_TA_bw)),
-         sp.hstack((Zero_gamma, Z_D / 2, -Z_D / 2, E, Z_TA_E))))
+         sp.hstack((Zero_gamma, Zero_d, Zero_d, E, Z_TA_E))))
+
 
     # y  # Eq.41--45
-    y_F = np.log(ds_sec[st_label] / ds_sec[ast_label]).values.ravel()
-    y_B = np.log(ds_sec[rst_label] / ds_sec[rast_label]).values.ravel()
+    y_F_ = np.log(ds_sec[st_label] / ds_sec[ast_label])#.values.ravel()
+    y_B_ = np.log(ds_sec[rst_label] / ds_sec[rast_label])#.values.ravel()
 
-    y = np.concatenate((y_F, y_B, (y_B - y_F) / 2))
+    y_F = y_F_.values.ravel()
+    y_B = y_B_.values.ravel()
+
+    y_att_F0 = np.log(ds[st_label] /
+                      ds[ast_label]).isel(x=0)
+    y_att_FL = np.log(ds[st_label] /
+                      ds[ast_label]).isel(x=-1)
+    y_att_B0 = np.log(ds[rst_label] /
+                      ds[rast_label]).isel(x=0)
+    y_att_BL = np.log(ds[rst_label] /
+                      ds[rast_label]).isel(x=-1)
+    y_att = ((y_B_ - y_F_) / 2 +
+             (y_att_F0 + y_att_FL - y_att_B0 - y_att_BL) / 4).values.ravel()
+
+    y = np.concatenate((y_F, y_B, y_att))
 
     # w
     if st_var is not None:  # WLS
@@ -404,7 +424,15 @@ def calibration_double_ended_solver(
             ds_sec[st_label] ** -2 * st_var / 2 +
             ds_sec[ast_label] ** -2 * ast_var / 2 +
             ds_sec[rst_label] ** -2 * rst_var / 2 +
-            ds_sec[rast_label] ** -2 * rast_var / 2).values.ravel()
+            ds_sec[rast_label] ** -2 * rast_var / 2 +
+            ds[st_label].isel(x=0) ** -2 * st_var / 4 +
+            ds[ast_label].isel(x=0) ** -2 * ast_var / 4 +
+            ds[st_label].isel(x=-1) ** -2 * st_var / 4 +
+            ds[ast_label].isel(x=-1) ** -2 * ast_var / 4 +
+            ds[rst_label].isel(x=0) ** -2 * rst_var / 4 +
+            ds[rast_label].isel(x=0) ** -2 * rast_var / 4 +
+            ds[rst_label].isel(x=-1) ** -2 * rst_var / 4 +
+            ds[rast_label].isel(x=-1) ** -2 * rast_var / 4).values.ravel()
 
     else:  # OLS
         w_F = np.ones(nt * nx)
@@ -448,8 +476,8 @@ def calibration_double_ended_solver(
             Zero_gamma=Zero_gamma,
             Zero_d=Zero_d,
             p0_est=p0_est,
-            E_all=E_all,
-            E_all_var=E_all_var)
+            E_all_guess=E_all_guess,
+            E_all_var_guess=E_all_var_guess)
 
     else:
         raise ValueError("Choose a valid solver")
@@ -460,13 +488,33 @@ def calibration_double_ended_solver(
 
     # put E outside of reference section in solution
     # concatenating makes a copy of the data instead of using a pointer
+    ds_sub = ds[[st_label, ast_label, rst_label, rast_label]]
+    ds_sub['df'] = (('time',), p_sol[1:1 + nt])
+    ds_sub['df_var'] = (('time',), p_var[1:1 + nt])
+    ds_sub['db'] = (('time',), p_sol[1 + nt:1 + 2 * nt])
+    ds_sub['db_var'] = (('time',), p_var[1 + nt:1 + 2 * nt])
+    E_all_exact, E_all_var_exact = calc_alpha_double(
+        'exact',
+        ds_sub,
+        st_label,
+        ast_label,
+        rst_label,
+        rast_label,
+        st_var,
+        ast_var,
+        rst_var,
+        rast_var,
+        'df',
+        'db',
+        'df_var',
+        'db_var')
     po_sol = np.concatenate((p_sol[:1 + 2 * nt],
-                             E_all,
+                             E_all_exact,
                              p_sol[1 + 2 * nt + nx:]))
     po_sol[1 + 2 * nt + ix_sec] = p_sol[1 + 2 * nt:1 + 2 * nt + nx]
 
     po_var = np.concatenate((p_var[:1 + 2 * nt],
-                             E_all_var,
+                             E_all_var_exact,
                              p_var[1 + 2 * nt + nx:]))
     po_var[1 + 2 * nt + ix_sec] = p_var[1 + 2 * nt:1 + 2 * nt + nx]
 
@@ -619,6 +667,7 @@ def wls_stats(X, y, w=1., calc_cov=False, verbose=False):
 
 
 def calc_alpha_double(
+        mode,
         ds,
         st_label,
         ast_label,
@@ -627,7 +676,11 @@ def calc_alpha_double(
         st_var=None,
         ast_var=None,
         rst_var=None,
-        rast_var=None):
+        rast_var=None,
+        D_F_label=None,
+        D_B_label=None,
+        D_F_var_label=None,
+        D_B_var_label=None):
     """Eq.50 if weighted least squares"""
     time_dim = ds.get_time_dim()
 
@@ -643,12 +696,20 @@ def calc_alpha_double(
             st_label=rst_label,
             ast_label=rast_label)
 
-        A_var = (i_var_fw + i_var_bw) / 2
-
         i_fw = np.log(ds[st_label] / ds[ast_label])
         i_bw = np.log(ds[rst_label] / ds[rast_label])
 
-        A = (i_bw - i_fw) / 2
+        if mode == 'guess':
+            A_var = (i_var_fw + i_var_bw) / 2
+            A = (i_bw - i_fw) / 2
+
+        elif mode == 'exact':
+            D_F = ds[D_F_label]
+            D_B = ds[D_B_label]
+            D_F_var = ds[D_F_var_label]
+            D_B_var = ds[D_B_var_label]
+            A_var = (i_var_fw + i_var_bw + D_B_var + D_F_var) / 2
+            A = (i_bw - i_fw) / 2 + (D_B - D_F) / 2
 
         E_var = 1 / (1 / A_var).sum(dim=time_dim)
         E = (A / A_var).sum(dim=time_dim) * E_var
@@ -657,7 +718,12 @@ def calc_alpha_double(
         i_fw = np.log(ds[st_label] / ds[ast_label])
         i_bw = np.log(ds[rst_label] / ds[rast_label])
 
-        A = (i_bw - i_fw) / 2
+        if mode == 'guess':
+            A = (i_bw - i_fw) / 2
+        elif mode == 'exact':
+            D_F = ds[D_F_label]
+            D_B = ds[D_B_label]
+            A = (i_bw - i_fw) / 2 - (D_B - D_F) / 2
 
         E_var = A.var(dim=time_dim)
         E = A.mean(dim=time_dim)
