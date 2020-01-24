@@ -502,8 +502,6 @@ def test_double_ended_ols_wls_estimate_synthetic_df_and_db_are_different():
     measurment set. This one has a different D for the forward channel than
     for the backward channel."""
     from dtscalibration import DataStore
-    from dtscalibration.calibrate_utils import calc_alpha_double
-    import matplotlib.pyplot as plt
     import numpy as np
 
     np.random.seed(0)
@@ -532,19 +530,18 @@ def test_double_ended_ols_wls_estimate_synthetic_df_and_db_are_different():
     temp_real_celsius = temp_real_kelvin - 273.15
 
     st = eta_pf[None] * C_p * np.exp(-dalpha_r * x[:, None]) * \
-         np.exp(-dalpha_p * x[:, None]) * np.exp(gamma / temp_real_kelvin) / \
-         (np.exp(gamma / temp_real_kelvin) - 1)
+        np.exp(-dalpha_p * x[:, None]) * np.exp(gamma / temp_real_kelvin) / \
+        (np.exp(gamma / temp_real_kelvin) - 1)
     ast = eta_mf[None] * C_m * np.exp(-dalpha_r * x[:, None]) * \
-          np.exp(-dalpha_m * x[:, None]) / (
-                  np.exp(gamma / temp_real_kelvin) - 1)
+        np.exp(-dalpha_m * x[:, None]) / (np.exp(gamma / temp_real_kelvin) - 1)
     rst = eta_pb[None] * C_p * np.exp(-dalpha_r * (-x[:, None] + cable_len)) * \
-          np.exp(-dalpha_p * (-x[:, None] + cable_len)) * \
-          np.exp(gamma / temp_real_kelvin) / (
-                  np.exp(gamma / temp_real_kelvin) - 1)
+        np.exp(-dalpha_p * (-x[:, None] + cable_len)) * \
+        np.exp(gamma / temp_real_kelvin) / (
+        np.exp(gamma / temp_real_kelvin) - 1)
     rast = eta_mb[None] * C_m * np.exp(
         -dalpha_r * (-x[:, None] + cable_len)) * np.exp(
         -dalpha_m * (-x[:, None] + cable_len)) / \
-           (np.exp(gamma / temp_real_kelvin) - 1)
+        (np.exp(gamma / temp_real_kelvin) - 1)
 
     c_f = np.log(eta_mf * C_m / (eta_pf * C_p))
     c_b = np.log(eta_mb * C_m / (eta_pb * C_p))

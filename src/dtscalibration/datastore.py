@@ -2631,8 +2631,8 @@ class DataStore(xr.Dataset):
 
             if np.any(not_ix_sec):
                 not_alpha_val = p_val[2 * nt + 1 + not_ix_sec]
-                not_alpha_var = p_cov[2 * nt + 1 + not_ix_sec, 2 * nt + 1 + \
-                                        not_ix_sec]
+                not_alpha_var = p_cov[2 * nt + 1 + not_ix_sec,
+                                      2 * nt + 1 + not_ix_sec]
 
                 not_alpha_mc = np.random.normal(
                     loc=not_alpha_val,

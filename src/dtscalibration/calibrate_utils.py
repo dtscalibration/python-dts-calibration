@@ -325,7 +325,7 @@ def calibration_double_ended_solver(
         Z_TA_E = (Z_TA_bw - Z_TA_fw) / 2
 
         return E, Z_D, Z_gamma, Zero_d, Zero_gamma, Z_TA_fw, Z_TA_bw, Z_TA_E,\
-               Zero_E, Z_TA_att, Z_D_att, Zero_gamma_att, Zero_E_att
+            Zero_E, Z_TA_att, Z_D_att, Zero_gamma_att, Zero_E_att
 
     ix_sec = ds.ufunc_per_section(x_indices=True, calc_per='all')
     ds_sec = ds.isel(x=ix_sec)
@@ -396,11 +396,6 @@ def calibration_double_ended_solver(
          sp.hstack((Zero_gamma, Z_D / 2, -Z_D / 2, E, Z_TA_E)),
          sp.hstack((Zero_gamma_att, Z_D_att / 2, -Z_D_att / 2, Zero_E_att,
                     Z_TA_att))))
-    # X = sp.vstack(
-    #     (sp.hstack((Z_gamma, -Z_D, Zero_d, -E, Z_TA_fw)),
-    #      sp.hstack((Z_gamma, Zero_d, -Z_D, E, Z_TA_bw)),
-    #      sp.hstack((Zero_gamma, Zero_d, Zero_d, E, Z_TA_E))))
-
 
     # y  # Eq.41--45
     y_F_ = np.log(ds_sec[st_label] / ds_sec[ast_label])
@@ -416,11 +411,9 @@ def calibration_double_ended_solver(
                       ds[rast_label]).isel(x=0)
     y_att_BL = np.log(ds[rst_label] /
                       ds[rast_label]).isel(x=-1)
-    # y_att = ((y_B_ - y_F_) / 2 +
-    #          (y_att_F0 + y_att_FL - y_att_B0 - y_att_BL) / 4).values.ravel()
+
     y_att1 = ((y_B_ - y_F_) / 2).values.ravel()
-    y_att2 = -((y_att_F0 + y_att_FL - y_att_B0 - y_att_BL) / 4
-              ).values
+    y_att2 = -((y_att_F0 + y_att_FL - y_att_B0 - y_att_BL) / 4).values
 
     y = np.concatenate((y_F, y_B, y_att1, y_att2))
 
