@@ -1726,11 +1726,13 @@ class DataStore(xr.Dataset):
                 X_E = sp.vstack((
                     -split['E'],
                     split['E'],
-                    split['E']))
+                    split['E'],
+                    split['Zero_E_att']))
                 X_gamma = sp.vstack((
                     split['Z_gamma'],
                     split['Z_gamma'],
-                    split['Zero_gamma'])).toarray().flatten()
+                    split['Zero_gamma'],
+                    split['Zero_gamma_att'])).toarray().flatten()
                 # Use only the remaining coefficients
                 # Stack all X's
                 X = sp.vstack(
@@ -1742,20 +1744,27 @@ class DataStore(xr.Dataset):
                                 split['Z_TA_bw'])),
                      sp.hstack((split['Z_D'] / 2,
                                 -split['Z_D'] / 2,
-                                split['Z_TA_E']))))
+                                split['Z_TA_E'])),
+                     sp.hstack((split['Z_D_att'] / 2,
+                                -split['Z_D_att'] / 2,
+                                split['Z_TA_att']))
+                     ))
 
                 # Move the coefficients times the fixed gamma to the
                 # observations
                 y = np.concatenate((split['y_F'],
                                     split['y_B'],
-                                    (split['y_B'] - split['y_F']) / 2))
+                                    split['y_att1'],
+                                    split['y_att2']))
                 y -= X_E.dot(fix_alpha[0])
                 y -= fix_gamma[0] * X_gamma
                 # variances are added. weight is the inverse of the variance
                 # of the observations
                 if method == 'wls':
-                    w_ = np.concatenate((split['w_F'], split['w_B'],
-                                         split['w_E']))
+                    w_ = np.concatenate((split['w_F'],
+                                         split['w_B'],
+                                         split['w_att1'],
+                                         split['w_att2']))
                     w = 1 / (1 / w_ + X_E.dot(fix_alpha[1]) +
                              fix_gamma[1] * X_gamma)
 
@@ -1803,11 +1812,11 @@ class DataStore(xr.Dataset):
                     p_cov[iox_sec1, iox_sec2] = out[2]
 
             elif fix_gamma:
-                # X_gamma
                 X_gamma = sp.vstack((
                     split['Z_gamma'],
                     split['Z_gamma'],
-                    split['Zero_gamma'])).toarray().flatten()
+                    split['Zero_gamma'],
+                    split['Zero_gamma_att'])).toarray().flatten()
                 # Use only the remaining coefficients
                 X = sp.vstack(
                     (sp.hstack((-split['Z_D'],
@@ -1821,18 +1830,26 @@ class DataStore(xr.Dataset):
                      sp.hstack((split['Z_D'] / 2,
                                 -split['Z_D'] / 2,
                                 split['E'],
-                                split['Z_TA_E']))))
+                                split['Z_TA_E'])),
+                     sp.hstack((split['Z_D_att'] / 2,
+                                -split['Z_D_att'] / 2,
+                                split['Zero_E_att'],
+                                split['Z_TA_att']))
+                     ))
                 # Move the coefficients times the fixed gamma to the
                 # observations
                 y = np.concatenate((split['y_F'],
                                     split['y_B'],
-                                    (split['y_B'] - split['y_F']) / 2))
+                                    split['y_att1'],
+                                    split['y_att2']))
                 y -= fix_gamma[0] * X_gamma
                 # variances are added. weight is the inverse of the variance
                 # of the observations
                 if method == 'wls':
-                    w_ = np.concatenate((split['w_F'], split['w_B'],
-                                         split['w_E']))
+                    w_ = np.concatenate((split['w_F'],
+                                         split['w_B'],
+                                         split['w_att1'],
+                                         split['w_att2']))
                     w = 1 / (1 / w_ + fix_gamma[1] * X_gamma)
 
                 else:
@@ -1855,10 +1872,10 @@ class DataStore(xr.Dataset):
                 # concatenating makes a copy of the data instead of using a
                 # pointer
                 ds_sub = self[[st_label, ast_label, rst_label, rast_label]]
-                ds_sub['df'] = (('time',), out[0][1:1 + nt])
-                ds_sub['df_var'] = (('time',), out[1][1:1 + nt])
-                ds_sub['db'] = (('time',), out[0][1 + nt:1 + 2 * nt])
-                ds_sub['db_var'] = (('time',), out[1][1 + nt:1 + 2 * nt])
+                ds_sub['df'] = (('time',), out[0][:nt])
+                ds_sub['df_var'] = (('time',), out[1][:nt])
+                ds_sub['db'] = (('time',), out[0][nt:2 * nt])
+                ds_sub['db_var'] = (('time',), out[1][nt:2 * nt])
                 E_all_exact, E_all_var_exact = calc_alpha_double(
                     'exact',
                     ds_sub,
@@ -1911,7 +1928,9 @@ class DataStore(xr.Dataset):
                 X_E = sp.vstack((
                     -split['E'],
                     split['E'],
-                    split['E']))
+                    split['E'],
+                    split['Zero_E_att']
+                    ))
                 # Use only the remaining coefficients
                 # Stack all X's
                 X = sp.vstack(
@@ -1926,19 +1945,26 @@ class DataStore(xr.Dataset):
                      sp.hstack((split['Zero_gamma'],
                                 split['Z_D'] / 2,
                                 -split['Z_D'] / 2,
-                                split['Z_TA_E']))))
+                                split['Z_TA_E'])),
+                     sp.hstack((split['Zero_gamma_att'],
+                                split['Z_D_att'] / 2,
+                                -split['Z_D_att'] / 2,
+                                split['Z_TA_att']))))
                 # Move the coefficients times the fixed gamma to the
                 # observations
                 y = np.concatenate((split['y_F'],
                                     split['y_B'],
-                                    (split['y_B'] - split['y_F']) / 2))
+                                    split['y_att1'],
+                                    split['y_att2']))
                 y -= X_E.dot(fix_alpha[0])
 
                 # variances are added. weight is the inverse of the variance
                 # of the observations
                 if method == 'wls':
-                    w_ = np.concatenate((split['w_F'], split['w_B'],
-                                         split['w_E']))
+                    w_ = np.concatenate((split['w_F'],
+                                         split['w_B'],
+                                         split['w_att1'],
+                                         split['w_att2']))
                     w = 1 / (1 / w_ + X_E.dot(fix_alpha[1]))
 
                 else:
@@ -2757,7 +2783,11 @@ class DataStore(xr.Dataset):
 
             self[store_tmpw + '_MC_set'] = q  #
 
-            self[store_tmpw] = self[store_tmpw + '_MC_set'].mean(dim='MC')
+            # self[store_tmpw] = self[store_tmpw + '_MC_set'].mean(dim='MC')
+            self[store_tmpw] = \
+                (self[store_tmpf] / self[store_tmpf + '_MC' + store_tempvar] +
+                 self[store_tmpb] / self[store_tmpb + '_MC' + store_tempvar]
+                 ) * tmpw_var
 
             if store_tempvar:
                 if not ci_avg_x_flag and not \

@@ -255,6 +255,7 @@ def calibration_double_ended_solver(
             (data_c, (coord_c_row, coord_c_col)),
             shape=(nt * nx, nt),
             copy=False)
+        Z_D_att = sp.eye(nt, format='coo')
         # E  # Eq.47
         data_c = np.ones(nt * nx, dtype=float)
         coord_c_row = np.arange(nt * nx, dtype=int)
@@ -266,7 +267,9 @@ def calibration_double_ended_solver(
         # Zero  # Eq.45
         Zero_gamma = sp.coo_matrix(([], ([], [])), shape=(nt * nx, 1))
         Zero_d = sp.coo_matrix(([], ([], [])), shape=(nt * nx, nt))
-
+        Zero_E = sp.coo_matrix(([], ([], [])), shape=(nt * nx, nx))
+        Zero_gamma_att = sp.coo_matrix(([], ([], [])), shape=(nt, 1))
+        Zero_E_att = sp.coo_matrix(([], ([], [])), shape=(nt, nx))
         if transient_asym_att_x:
             # unpublished BdT
 
@@ -276,6 +279,7 @@ def calibration_double_ended_solver(
             for transient_asym_att_xi in transient_asym_att_x:
                 """For forward direction. """
                 # first index on the right hand side a the difficult splice
+                # Deal with connector outside of fiber
                 if transient_asym_att_xi >= x_sec[-1]:
                     ix_sec_ta_ix0 = nx
                 elif transient_asym_att_xi <= x_sec[0]:
@@ -315,10 +319,13 @@ def calibration_double_ended_solver(
             Z_TA_fw = sp.coo_matrix(([], ([], [])), shape=(nt * nx, 0))
             Z_TA_bw = sp.coo_matrix(([], ([], [])), shape=(nt * nx, 0))
 
-        # (I_bw - I_fw) / 2 = D_fw/2 - D_bw/2 + E + TA_fw/2 - TA_bw/2 Eq42
-        Z_TA_E = -(Z_TA_fw - Z_TA_bw) / 2
+            Z_TA_att = sp.coo_matrix(([], ([], [])), shape=(nt, 0))
 
-        return E, Z_D, Z_gamma, Zero_d, Zero_gamma, Z_TA_fw, Z_TA_bw, Z_TA_E
+        # (I_bw - I_fw) / 2 = D_fw/2 - D_bw/2 + E + TA_fw/2 - TA_bw/2 Eq42
+        Z_TA_E = (Z_TA_bw - Z_TA_fw) / 2
+
+        return E, Z_D, Z_gamma, Zero_d, Zero_gamma, Z_TA_fw, Z_TA_bw, Z_TA_E,\
+               Zero_E, Z_TA_att, Z_D_att, Zero_gamma_att, Zero_E_att
 
     ix_sec = ds.ufunc_per_section(x_indices=True, calc_per='all')
     ds_sec = ds.isel(x=ix_sec)
@@ -329,6 +336,7 @@ def calibration_double_ended_solver(
     nta = len(transient_asym_att_x) if transient_asym_att_x else 0
 
     # Calculate E as initial estimate for the E calibration.
+    # Does not require ta to be passed on
     E_all_guess, E_all_var_guess = calc_alpha_double(
         'guess',
         ds,
@@ -344,9 +352,9 @@ def calibration_double_ended_solver(
     p0_est = np.concatenate((np.asarray([485.] + 2 * nt * [1.4]),
                              E_all_guess[ix_sec], nta * nt * 2 * [0.]))
 
-    E, Z_D, Z_gamma, Zero_d, Zero_gamma, Z_TA_fw, Z_TA_bw, Z_TA_E = \
-        construct_submatrices(nt, nx, st_label, ds, transient_asym_att_x,
-                              x_sec)
+    E, Z_D, Z_gamma, Zero_d, Zero_gamma, Z_TA_fw, Z_TA_bw, Z_TA_E, Zero_E, \
+        Z_TA_att, Z_D_att, Zero_gamma_att, Zero_E_att = construct_submatrices(
+            nt, nx, st_label, ds, transient_asym_att_x, x_sec)
 
     # if matching_indices is not None:
     #     # The matching indices are location indices along the entire fiber.
@@ -382,20 +390,21 @@ def calibration_double_ended_solver(
     #     y_mB = (B[hix_sec] + B[tix_sec]).flatten()
 
     # Stack all X's
-    # X = sp.vstack(
-    #     (sp.hstack((Z_gamma, -Z_D, Zero_d, -E, Z_TA_fw)),
-    #      sp.hstack((Z_gamma, Zero_d, -Z_D, E, Z_TA_bw)),
-    #      sp.hstack((Zero_gamma, Z_D / 2, -Z_D / 2, E, Z_TA_E))))
     X = sp.vstack(
         (sp.hstack((Z_gamma, -Z_D, Zero_d, -E, Z_TA_fw)),
          sp.hstack((Z_gamma, Zero_d, -Z_D, E, Z_TA_bw)),
-         sp.hstack((Zero_gamma, Zero_d, Zero_d, E, Z_TA_E))))
+         sp.hstack((Zero_gamma, Z_D / 2, -Z_D / 2, E, Z_TA_E)),
+         sp.hstack((Zero_gamma_att, Z_D_att / 2, -Z_D_att / 2, Zero_E_att,
+                    Z_TA_att))))
+    # X = sp.vstack(
+    #     (sp.hstack((Z_gamma, -Z_D, Zero_d, -E, Z_TA_fw)),
+    #      sp.hstack((Z_gamma, Zero_d, -Z_D, E, Z_TA_bw)),
+    #      sp.hstack((Zero_gamma, Zero_d, Zero_d, E, Z_TA_E))))
 
 
     # y  # Eq.41--45
-    y_F_ = np.log(ds_sec[st_label] / ds_sec[ast_label])#.values.ravel()
-    y_B_ = np.log(ds_sec[rst_label] / ds_sec[rast_label])#.values.ravel()
-
+    y_F_ = np.log(ds_sec[st_label] / ds_sec[ast_label])
+    y_B_ = np.log(ds_sec[rst_label] / ds_sec[rast_label])
     y_F = y_F_.values.ravel()
     y_B = y_B_.values.ravel()
 
@@ -407,10 +416,13 @@ def calibration_double_ended_solver(
                       ds[rast_label]).isel(x=0)
     y_att_BL = np.log(ds[rst_label] /
                       ds[rast_label]).isel(x=-1)
-    y_att = ((y_B_ - y_F_) / 2 +
-             (y_att_F0 + y_att_FL - y_att_B0 - y_att_BL) / 4).values.ravel()
+    # y_att = ((y_B_ - y_F_) / 2 +
+    #          (y_att_F0 + y_att_FL - y_att_B0 - y_att_BL) / 4).values.ravel()
+    y_att1 = ((y_B_ - y_F_) / 2).values.ravel()
+    y_att2 = -((y_att_F0 + y_att_FL - y_att_B0 - y_att_BL) / 4
+              ).values
 
-    y = np.concatenate((y_F, y_B, y_att))
+    y = np.concatenate((y_F, y_B, y_att1, y_att2))
 
     # w
     if st_var is not None:  # WLS
@@ -420,26 +432,28 @@ def calibration_double_ended_solver(
         w_B = 1 / (
             ds_sec[rst_label] ** -2 * rst_var +
             ds_sec[rast_label] ** -2 * rast_var).values.ravel()
-        w_E = 1 / (
+        w_att1 = 1 / (
             ds_sec[st_label] ** -2 * st_var / 2 +
             ds_sec[ast_label] ** -2 * ast_var / 2 +
             ds_sec[rst_label] ** -2 * rst_var / 2 +
-            ds_sec[rast_label] ** -2 * rast_var / 2 +
-            ds[st_label].isel(x=0) ** -2 * st_var / 4 +
-            ds[ast_label].isel(x=0) ** -2 * ast_var / 4 +
-            ds[st_label].isel(x=-1) ** -2 * st_var / 4 +
-            ds[ast_label].isel(x=-1) ** -2 * ast_var / 4 +
-            ds[rst_label].isel(x=0) ** -2 * rst_var / 4 +
-            ds[rast_label].isel(x=0) ** -2 * rast_var / 4 +
-            ds[rst_label].isel(x=-1) ** -2 * rst_var / 4 +
-            ds[rast_label].isel(x=-1) ** -2 * rast_var / 4).values.ravel()
+            ds_sec[rast_label] ** -2 * rast_var / 2).values.ravel()
+        w_att2 = 1 / (
+            ds[st_label].isel(x=0) ** -2 * st_var / 2 +
+            ds[ast_label].isel(x=0) ** -2 * ast_var / 2 +
+            ds[rst_label].isel(x=0) ** -2 * rst_var / 2 +
+            ds[rast_label].isel(x=0) ** -2 * rast_var / 2 +
+            ds[st_label].isel(x=-1) ** -2 * st_var / 2 +
+            ds[ast_label].isel(x=-1) ** -2 * ast_var / 2 +
+            ds[rst_label].isel(x=-1) ** -2 * rst_var / 2 +
+            ds[rast_label].isel(x=-1) ** -2 * rast_var / 2).values
 
     else:  # OLS
         w_F = np.ones(nt * nx)
         w_B = np.ones(nt * nx)
-        w_E = np.ones(nt * nx)
+        w_att1 = np.ones(nt * nx)
+        w_att2 = np.ones(nt)
 
-    w = np.concatenate((w_F, w_B, w_E))
+    w = np.concatenate((w_F, w_B, w_att1, w_att2))
 
     if solver == 'sparse':
         if calc_cov:
@@ -464,17 +478,24 @@ def calibration_double_ended_solver(
         return dict(
             y_F=y_F,
             y_B=y_B,
+            y_att1=y_att1,
+            y_att2=y_att2,
             w_F=w_F,
             w_B=w_B,
-            w_E=w_E,
+            w_att1=w_att1,
+            w_att2=w_att2,
             Z_gamma=Z_gamma,
+            Zero_gamma=Zero_gamma,
+            Zero_gamma_att=Zero_gamma_att,
             Z_D=Z_D,
+            Zero_d=Zero_d,
+            Z_D_att=Z_D_att,
+            E=E,
+            Zero_E_att=Zero_E_att,
             Z_TA_fw=Z_TA_fw,
             Z_TA_bw=Z_TA_bw,
             Z_TA_E=Z_TA_E,
-            E=E,
-            Zero_gamma=Zero_gamma,
-            Zero_d=Zero_d,
+            Z_TA_att=Z_TA_att,
             p0_est=p0_est,
             E_all_guess=E_all_guess,
             E_all_var_guess=E_all_var_guess)

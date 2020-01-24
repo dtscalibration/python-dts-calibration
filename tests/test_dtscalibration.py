@@ -494,6 +494,119 @@ def test_double_ended_ols_wls_estimate_synthetic():
         ds.TMPW.values, temp_real - 273.15, decimal=4)
 
 
+def test_double_ended_ols_wls_estimate_synthetic_df_and_db_are_different():
+    """Checks whether the coefficients are correctly defined by creating a
+    synthetic measurement set, and derive the parameters from this set.
+    Without variance.
+    They should be the same as the parameters used to create the synthetic
+    measurment set. This one has a different D for the forward channel than
+    for the backward channel."""
+    from dtscalibration import DataStore
+    from dtscalibration.calibrate_utils import calc_alpha_double
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    np.random.seed(0)
+
+    cable_len = 100.
+    nt = 3
+    time = np.arange(nt)
+    x = np.linspace(0., cable_len, 8)
+    ts_cold = np.ones(nt) * 4. + np.cos(time) * 4
+    ts_warm = np.ones(nt) * 20. + -np.sin(time) * 4
+
+    C_p = 1324  # 1/2 * E0 * v * K_+/lam_+^4
+    eta_pf = np.cos(time) / 10 + 1  # eta_+ (gain factor forward channel)
+    eta_pb = np.sin(time) / 10 + 1  # eta_- (gain factor backward channel)
+    C_m = 5000.
+    eta_mf = np.cos(time + np.pi / 8) / 10 + 1
+    eta_mb = np.sin(time + np.pi / 8) / 10 + 1
+    dalpha_r = 0.005284
+    dalpha_m = 0.004961
+    dalpha_p = 0.005607
+    gamma = 482.6
+
+    temp_real_kelvin = np.zeros((len(x), nt)) + 273.15
+    temp_real_kelvin[x < 0.2 * cable_len] += ts_cold[None]
+    temp_real_kelvin[x > 0.85 * cable_len] += ts_warm[None]
+    temp_real_celsius = temp_real_kelvin - 273.15
+
+    st = eta_pf[None] * C_p * np.exp(-dalpha_r * x[:, None]) * \
+         np.exp(-dalpha_p * x[:, None]) * np.exp(gamma / temp_real_kelvin) / \
+         (np.exp(gamma / temp_real_kelvin) - 1)
+    ast = eta_mf[None] * C_m * np.exp(-dalpha_r * x[:, None]) * \
+          np.exp(-dalpha_m * x[:, None]) / (
+                  np.exp(gamma / temp_real_kelvin) - 1)
+    rst = eta_pb[None] * C_p * np.exp(-dalpha_r * (-x[:, None] + cable_len)) * \
+          np.exp(-dalpha_p * (-x[:, None] + cable_len)) * \
+          np.exp(gamma / temp_real_kelvin) / (
+                  np.exp(gamma / temp_real_kelvin) - 1)
+    rast = eta_mb[None] * C_m * np.exp(
+        -dalpha_r * (-x[:, None] + cable_len)) * np.exp(
+        -dalpha_m * (-x[:, None] + cable_len)) / \
+           (np.exp(gamma / temp_real_kelvin) - 1)
+
+    c_f = np.log(eta_mf * C_m / (eta_pf * C_p))
+    c_b = np.log(eta_mb * C_m / (eta_pb * C_p))
+
+    dalpha = dalpha_p - dalpha_m  # \Delta\alpha
+    alpha_int = cable_len * dalpha
+
+    df = c_f + alpha_int / 2
+    db = c_b + alpha_int / 2
+    i_fw = np.log(st / ast)
+    i_bw = np.log(rst / rast)
+
+    E_real = (i_bw - i_fw) / 2 + (c_b - c_f) / 2
+
+    ds = DataStore({
+        'st':                    (['x', 'time'], st),
+        'ast':                   (['x', 'time'], ast),
+        'rst':                   (['x', 'time'], rst),
+        'rast':                  (['x', 'time'], rast),
+        'userAcquisitionTimeFW': (['time'], np.ones(nt)),
+        'userAcquisitionTimeBW': (['time'], np.ones(nt)),
+        'cold':                  (['time'], ts_cold),
+        'warm':                  (['time'], ts_warm)
+        },
+        coords={
+            'x':    x,
+            'time': time},
+        attrs={
+            'isDoubleEnded': '1'})
+
+    ds.sections = {
+        'cold': [slice(0., 0.09 * cable_len)],
+        'warm': [slice(0.9 * cable_len, cable_len)]}
+
+    real_ans2 = np.concatenate(([gamma], df, db, E_real[:, 0]))
+
+    ds.calibration_double_ended(
+        st_label='st',
+        ast_label='ast',
+        rst_label='rst',
+        rast_label='rast',
+        st_var=1.5,
+        ast_var=1.5,
+        rst_var=1.,
+        rast_var=1.,
+        method='wls',
+        solver='sparse',
+        tmpw_mc_size=1000,
+        fix_gamma=(gamma, 0.),
+        remove_mc_set_flag=True)
+
+    np.testing.assert_allclose(df, ds.df.values)
+    np.testing.assert_allclose(db, ds.db.values)
+    np.testing.assert_allclose(x * (dalpha_p - dalpha_m),
+                               ds.alpha.values - ds.alpha.values[0])
+    np.testing.assert_allclose(real_ans2, ds.p_val.values)
+    np.testing.assert_allclose(temp_real_celsius, ds.TMPF.values, atol=1e-10)
+    np.testing.assert_allclose(temp_real_celsius, ds.TMPB.values, atol=1e-10)
+    np.testing.assert_allclose(temp_real_celsius, ds.TMPW.values, atol=1e-10)
+    pass
+
+
 def test_double_ended_ols_wls_fix_gamma_estimate_synthetic():
     """Checks whether the coefficients are correctly defined by creating a
     synthetic measurement set, and derive the parameters from this set.
