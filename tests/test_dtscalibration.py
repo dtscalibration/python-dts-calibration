@@ -396,7 +396,7 @@ def test_double_ended_ols_wls_estimate_synthetic():
     np.random.seed(0)
 
     cable_len = 100.
-    nt = 500
+    nt = 50
     time = np.arange(nt)
     x = np.linspace(0., cable_len, 100)
     ts_cold = np.ones(nt) * 4.
@@ -483,7 +483,7 @@ def test_double_ended_ols_wls_estimate_synthetic():
                                 tmpw_mc_size=5)
 
     np.testing.assert_almost_equal(
-        ds.gamma.values, gamma, decimal=6)
+        ds.gamma.values, gamma, decimal=5)
     np.testing.assert_almost_equal(
         ds.alpha.values, alpha, decimal=6)
     np.testing.assert_almost_equal(
