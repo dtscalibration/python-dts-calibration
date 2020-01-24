@@ -124,6 +124,6 @@ example).
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x11f0acf90>]
+    [<matplotlib.lines.Line2D at 0x12344cfd0>]
 
 

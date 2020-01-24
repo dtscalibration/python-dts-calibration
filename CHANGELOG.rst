@@ -1,6 +1,14 @@
 
 Changelog
 =========
+0.7.3 (2020-01-24)
+------------------
+* Solved xlim in subplots of plot_residuals_reference_sections funciton
+* Solved YAML depreciation related problems
+* Introduced new approach for double ended calibration, with a different Cfor the forward and backward channel
+* First code added for time variant asymmetric attenuation, such as connectors.
+* First code added for matching sections
+
 0.7.2 (2019-11-22)
 ------------------
 * Set alpha and or gamma to known value, with corresponding variance.
