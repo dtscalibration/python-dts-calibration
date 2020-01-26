@@ -1,6 +1,10 @@
 
 Changelog
 =========
+0.7.4 (2020-01-26)
+------------------
+* Update automated zenodo reference requires to draft a new release
+
 0.7.3 (2020-01-24)
 ------------------
 * Solved xlim in subplots of plot_residuals_reference_sections funciton
