@@ -16,5 +16,5 @@ doi: "10.5281/zenodo.1410097"
 license: "BSD-3-Clause"
 repository-code: "https://github.com/dtscalibration/python-dts-calibration"
 title: "Python distributed temperature sensing calibration"
-version: "v0.7.3"
+version: "v"v0.7.3""
 ...
