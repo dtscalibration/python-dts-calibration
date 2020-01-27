@@ -78,13 +78,13 @@ A Python package to load raw DTS files, perform a calibration, and plot the resu
 Installation
 ============
 
-::
+.. code-block:: bash
 
     pip install dtscalibration
 
 Or the development version directly from GitHub
 
-::
+.. code-block:: bash
 
     pip install https://github.com/dtscalibration/python-dts-calibration/zipball/master --upgrade
 

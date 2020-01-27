@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from datetime import date
 import os
 
 
@@ -32,7 +33,7 @@ if os.getenv('SPELLCHECK'):
 source_suffix = '.rst'
 master_doc = 'index'
 project = 'dtscalibration'
-year = '2018'
+year = str(date.today().year)
 author = 'Bas des Tombe'
 copyright = '{0}, {1}'.format(year, author)
 version = release = '0.7.4'
@@ -40,9 +41,11 @@ version = release = '0.7.4'
 pygments_style = 'trac'
 templates_path = ['.']
 extlinks = {
-    'issue': ('https://github.com/bdestombe/python-dts-calibration/issues/%s', '#'),
-    'pr': ('https://github.com/bdestombe/python-dts-calibration/pull/%s', 'PR #'),
-}
+    'issue': ('https://github.com/dtscalibration/python-dts-calibration/issues'
+              '/%s', '#'),
+    'pr': ('https://github.com/dtscalibration/python-dts-calibration/pull/%s',
+           'PR #'),
+    }
 exclude_patterns = ['_build', '**.ipynb_checkpoints', 'Thumbs.db', '.DS_Store']
 
 html_theme = 'nature'
@@ -52,7 +55,7 @@ html_last_updated_fmt = '%b %d, %Y'
 html_split_index = False
 html_sidebars = {
    '**': ['searchbox.html', 'globaltoc.html', 'sourcelink.html'],
-}
+    }
 html_short_title = '%s-%s' % (project, version)
 
 napoleon_use_ivar = True
