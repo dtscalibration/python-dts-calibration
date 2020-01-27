@@ -5,20 +5,13 @@ Overview
 .. start-badges
 
 .. list-table::
-    :stub-columns: 1
 
     * - Docs
       - |docs|
     * - Tests
-      - | |travis|
-        | |appveyor|
-        | |codecov|
+      - | |travis| |appveyor| |codecov|
     * - Package
-      - | |version|
-        | |wheel|
-        | |supported-versions|
-        | |supported-implementations|
-        | |commits-since|
+      - | |version| |supported-versions| |commits-since|
     * - Citable
       - |zenodo|
     * - Example notebooks
@@ -78,13 +71,13 @@ A Python package to load raw DTS files, perform a calibration, and plot the resu
 Installation
 ============
 
-::
+.. code-block:: zsh
 
     pip install dtscalibration
 
 Or the development version directly from GitHub
 
-::
+.. code-block:: zsh
 
     pip install https://github.com/dtscalibration/python-dts-calibration/zipball/master --upgrade
 
