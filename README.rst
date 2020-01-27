@@ -5,20 +5,13 @@ Overview
 .. start-badges
 
 .. list-table::
-    :stub-columns: 1
 
     * - Docs
       - |docs|
     * - Tests
-      - | |travis|
-        | |appveyor|
-        | |codecov|
+      - | |travis| |appveyor| |codecov|
     * - Package
-      - | |version|
-        | |wheel|
-        | |supported-versions|
-        | |supported-implementations|
-        | |commits-since|
+      - | |version| |supported-versions| |commits-since|
     * - Citable
       - |zenodo|
     * - Example notebooks
