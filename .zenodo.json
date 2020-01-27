@@ -11,8 +11,12 @@
             "orcid": "0000-0003-4487-9822"
         }
     ],
+    "access_right": "open",
     "license": {
         "id": "BSD-3-Clause"
     },
-    "title": "Python distributed temperature sensing calibration"
+    "keywords": ["Distributed temperature sensing", "DTS", "Calibration", "Python"],
+    "upload_type": "software",
+    "title": "Python distributed temperature sensing calibration",
+    "description": "A Python package to load raw Distributed Temperature Sensing (DTS) files, perform a calibration, and plot the result. "
 }

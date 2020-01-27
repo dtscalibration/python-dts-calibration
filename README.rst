@@ -49,10 +49,6 @@ Overview
     :alt: Supported versions
     :target: https://pypi.python.org/pypi/dtscalibration
 
-.. |supported-implementations| image:: https://img.shields.io/pypi/implementation/dtscalibration.svg
-    :alt: Supported implementations
-    :target: https://pypi.python.org/pypi/dtscalibration
-
 .. |zenodo| image:: https://zenodo.org/badge/143077491.svg
    :alt: It would be greatly appreciated if you could cite this package in eg articles presentations
    :target: https://zenodo.org/badge/latestdoi/143077491
@@ -108,4 +104,3 @@ Documentation
 =============
 
 https://python-dts-calibration.readthedocs.io/
-

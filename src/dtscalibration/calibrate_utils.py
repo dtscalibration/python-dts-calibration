@@ -503,10 +503,11 @@ def calibration_double_ended_solver(
     # put E outside of reference section in solution
     # concatenating makes a copy of the data instead of using a pointer
     ds_sub = ds[[st_label, ast_label, rst_label, rast_label]]
-    ds_sub['df'] = (('time',), p_sol[1:1 + nt])
-    ds_sub['df_var'] = (('time',), p_var[1:1 + nt])
-    ds_sub['db'] = (('time',), p_sol[1 + nt:1 + 2 * nt])
-    ds_sub['db_var'] = (('time',), p_var[1 + nt:1 + 2 * nt])
+    time_dim = ds_sub.get_time_dim()
+    ds_sub['df'] = ((time_dim,), p_sol[1:1 + nt])
+    ds_sub['df_var'] = ((time_dim,), p_var[1:1 + nt])
+    ds_sub['db'] = ((time_dim,), p_sol[1 + nt:1 + 2 * nt])
+    ds_sub['db_var'] = ((time_dim,), p_var[1 + nt:1 + 2 * nt])
     E_all_exact, E_all_var_exact = calc_alpha_double(
         'exact',
         ds_sub,
