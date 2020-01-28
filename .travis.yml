@@ -26,8 +26,6 @@ matrix:
         - TOXENV=py38
       services:
         - xvfb
-  allow_failures:  # Statsmodels is not there yet
-    - python: '3.8'
 
 before_install:
   - python --version

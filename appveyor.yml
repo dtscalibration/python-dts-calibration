@@ -32,9 +32,6 @@ environment:
       PYTHON_VERSION: '3.8'
       PYTHON_ARCH: '64'
 
-matrix:
-  allow_failures:
-    - PYTHON_VERSION: '3.8'
 init:
   - ps: echo $env:TOXENV
   - ps: ls C:\Python*
@@ -53,17 +50,6 @@ on_failure:
 artifacts:
   - path: dist\*
 
-###
-#    - TOXENV: 'py37,report'
-#      TOXPYTHON: C:\Python37\python.exe
-#      PYTHON_HOME: C:\Python37
-#      PYTHON_VERSION: '3.7'
-#      PYTHON_ARCH: '32'
-#    - TOXENV: 'py37,report'
-#      TOXPYTHON: C:\Python37-x64\python.exe
-#      PYTHON_HOME: C:\Python37-x64
-#      PYTHON_VERSION: '3.7'
-#      PYTHON_ARCH: '64'
 
 ### To enable remote debugging uncomment this (also, see: http://www.appveyor.com/docs/how-to/rdp-to-build-worker):
 # on_finish:
