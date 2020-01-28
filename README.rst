@@ -5,20 +5,13 @@ Overview
 .. start-badges
 
 .. list-table::
-    :stub-columns: 1
 
     * - Docs
       - |docs|
     * - Tests
-      - | |travis|
-        | |appveyor|
-        | |codecov|
+      - | |travis| |appveyor| |codecov|
     * - Package
-      - | |version|
-        | |wheel|
-        | |supported-versions|
-        | |supported-implementations|
-        | |commits-since|
+      - | |version| |supported-versions| |commits-since|
     * - Citable
       - |zenodo|
     * - Example notebooks
@@ -56,10 +49,6 @@ Overview
     :alt: Supported versions
     :target: https://pypi.python.org/pypi/dtscalibration
 
-.. |supported-implementations| image:: https://img.shields.io/pypi/implementation/dtscalibration.svg
-    :alt: Supported implementations
-    :target: https://pypi.python.org/pypi/dtscalibration
-
 .. |zenodo| image:: https://zenodo.org/badge/143077491.svg
    :alt: It would be greatly appreciated if you could cite this package in eg articles presentations
    :target: https://zenodo.org/badge/latestdoi/143077491
@@ -78,13 +67,13 @@ A Python package to load raw DTS files, perform a calibration, and plot the resu
 Installation
 ============
 
-::
+.. code-block:: zsh
 
     pip install dtscalibration
 
 Or the development version directly from GitHub
 
-::
+.. code-block:: zsh
 
     pip install https://github.com/dtscalibration/python-dts-calibration/zipball/master --upgrade
 
@@ -115,4 +104,3 @@ Documentation
 =============
 
 https://python-dts-calibration.readthedocs.io/
-
