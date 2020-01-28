@@ -1,5 +1,6 @@
 # coding=utf-8
 import matplotlib.pyplot as plt
+import matplotlib.colors as colors
 import numpy as np
 
 
@@ -15,7 +16,8 @@ def plot_residuals_reference_sections(
         fig_kwargs=None,
         method='split',
         time_dim='time',
-        x_dim='x'):
+        x_dim='x',
+        cmap='RdYlBu'):
     """
     Analyze the residuals of the reference sections, between the Stokes
     signal and a best-fit
@@ -45,6 +47,9 @@ def plot_residuals_reference_sections(
         Name of the time dimension to average/take the variance of
     x_dim : str
         Name of the spatial dimension
+    cmap : str
+        Matplotlib colormap to use for the residual plot. By default it will
+        use a diverging colormap.
 
     Returns
     -------
@@ -159,14 +164,24 @@ def plot_residuals_reference_sections(
         x_ax_avg.set_xticklabels([])
 
         # Determine vmin, vmax;
-        vmin, vmax = resid.quantile([.01, .99])
+        vmin, vmax = resid.quantile([.02, .98])
+        print(vmin, vmax)
+
+        # vmin cannot be below 0 for the diverging cmap to work
+        if vmin < 0.:
+            vmin = -vmax
+
+        # Normalize the color scale to have 0 be the center
+        divnorm = colors.DivergingNorm(vmin=vmin,
+                                       vcenter=0,
+                                       vmax=vmax)
 
         # Plot the data
         for ii in range(nsections):
             resid_sections[ii].plot(ax=section_axes[ii],
                                     cbar_ax=cbar_ax,
                                     cbar_kwargs={'extend': 'both'},
-                                    vmin=vmin, vmax=vmax)
+                                    cmap=cmap, norm=divnorm)
             section_axes[ii].set_ylabel('')
 
             resid.sel(x=section_list[ii]).std(dim=time_dim).plot(
@@ -189,7 +204,8 @@ def plot_residuals_reference_sections(
             ticks = section_avg.set_yticks(section_ylims[ii])
             ticks[0].label1.set_verticalalignment('bottom')
             ticks[1].label1.set_verticalalignment('top')
-        section_ax_avg[-1].set_xticks([np.floor(vmin*10)/10, 0, np.ceil(vmax*10)/10])
+            section_avg.set_xticks([np.floor(vmin*10)/10, 0,
+                                    np.ceil(vmax*10)/10])
         section_ax_avg[-1].set_xlabel(units)
 
         for section_ax in section_axes[:-1]:
@@ -300,10 +316,12 @@ def plot_residuals_reference_sections_single(
     cbar_ax = fig.add_subplot(grid[2:, -1], xticklabels=[], yticklabels=[])
     if (np.issubdtype(resid[time_dim].dtype, np.float) or
             np.issubdtype(resid[time_dim].dtype, np.int)):
-        resid.plot.imshow(ax=main_ax, cbar_ax=cbar_ax, cbar_kwargs={'aspect': 10}, robust=robust)
+        resid.plot.imshow(ax=main_ax, cbar_ax=cbar_ax,
+                          cbar_kwargs={'aspect': 10}, robust=robust)
     else:
         resid.plot(
-            ax=main_ax, cbar_ax=cbar_ax, cbar_kwargs={'aspect': 10}, robust=robust)
+            ax=main_ax, cbar_ax=cbar_ax,
+            cbar_kwargs={'aspect': 10}, robust=robust)
     main_ax.set_yticklabels([])
     main_ax.set_ylabel('')
     cbar_ax.set_ylabel(units)
