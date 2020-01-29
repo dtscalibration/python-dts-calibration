@@ -135,6 +135,14 @@ class DataStore(xr.Dataset):
 
             for k, v in self.sections.items():
                 preamble_new += '    {0: <23}'.format(k)
+
+                # Compute statistics reference section timeseries
+                sec_stat = '({0: 6.2f}'.format(float(self[k].mean()))
+                sec_stat += ' +/-{0:5.2f}'.format(float(self[k].std()))
+                sec_stat += u'\N{DEGREE SIGN}C)\t'
+                preamble_new += sec_stat
+
+                # print sections
                 vl = ['{0:.2f}{2} - {1:.2f}{2}'.format(vi.start, vi.stop, unit)
                       for vi in v]
                 preamble_new += ' and '.join(vl) + '\n'
