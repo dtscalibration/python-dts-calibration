@@ -62,7 +62,7 @@ is a duplex measurement.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x1270ba890>
+    <matplotlib.legend.Legend at 0x7f1ad034a150>
 
 
 
@@ -77,7 +77,7 @@ channel 2.
 
 Make sure the two datasets are aligned time-wise and have the same
 amount of measurements in time. Now we can merge the two channels using
-the utilify function *merge_double_ended*
+the utilify function *merge\_double\_ended*
 
 .. code:: ipython3
 
@@ -100,7 +100,7 @@ To perfectly align the two measurements we can use the alignment
 utility. Before we do so, we select only the data of the phyisical cable
 and 10 meters of the internal reference coil.
 
-It turns out we were off by 3 datapoints, so let’s shift it by that.
+It turns out we were off by 3 datapoints, so let's shift it by that.
 
 .. code:: ipython3
 

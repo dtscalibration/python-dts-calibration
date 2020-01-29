@@ -120,7 +120,7 @@ solver because it saves us memory.
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x12c6dfe90>
+    <matplotlib.collections.QuadMesh at 0x7fc729500990>
 
 
 
@@ -148,9 +148,9 @@ are calculated.
 
 The confidence intervals differ per time step. If you would like to
 calculate confidence intervals of all time steps together you have the
-option ``ci_avg_time_flag=True``. ‘We can say with 95% confidence that
+option ``ci_avg_time_flag=True``. 'We can say with 95% confidence that
 the temperature remained between this line and this line during the
-entire measurement period’. This is ideal if you’d like to calculate the
+entire measurement period'. This is ideal if you'd like to calculate the
 background temperature with a confidence interval.
 
 .. code:: ipython3
@@ -189,7 +189,7 @@ background temperature with a confidence interval.
 
 The DataArrays ``TMPF_MC`` and ``TMPB_MC`` and the dimension ``CI`` are
 added. ``MC`` stands for monte carlo and the ``CI`` dimension holds the
-confidence interval ‘coordinates’.
+confidence interval 'coordinates'.
 
 .. code:: ipython3
 
@@ -226,21 +226,21 @@ confidence interval ‘coordinates’.
         userAcquisitionTimeFW  (time) float32 2.0 2.0 2.0 2.0 2.0 2.0
         userAcquisitionTimeBW  (time) float32 2.0 2.0 2.0 2.0 2.0 2.0
         gamma                  float64 482.6
-        alpha                  (x) float64 -0.007156 -0.003301 ... -0.005165
-        df                     (time) float64 1.465 1.466 1.465 1.465 1.465 1.465
-        db                     (time) float64 1.465 1.465 1.464 1.465 1.466 1.465
-        gamma_var              float64 0.03743
-        alpha_var              (x) float64 1.734e-07 1.814e-07 ... 1.835e-07
-        df_var                 (time) float64 4.641e-07 4.641e-07 ... 4.641e-07
-        db_var                 (time) float64 4.634e-07 4.634e-07 ... 4.634e-07
+        alpha                  (x) float64 -0.0009958 0.00286 ... 0.0008902 0.000995
+        df                     (time) float64 1.459 1.459 1.459 1.459 1.459 1.459
+        db                     (time) float64 1.471 1.471 1.47 1.471 1.472 1.471
+        gamma_var              float64 0.03739
+        alpha_var              (x) float64 3.077e-07 3.156e-07 ... 3.177e-07
+        df_var                 (time) float64 8.056e-07 8.056e-07 ... 8.056e-07
+        db_var                 (time) float64 8.052e-07 8.052e-07 ... 8.052e-07
         TMPF                   (x, time) float64 16.79 17.01 16.29 ... 13.57 13.74
-        TMPB                   (x, time) float64 16.81 16.86 16.91 ... 13.68 13.71
+        TMPB                   (x, time) float64 16.81 16.86 16.91 ... 13.67 13.71
         TMPF_MC_var            (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
         TMPB_MC_var            (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
         TMPW                   (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
         TMPW_MC_var            (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
-        p_val                  (params1) float64 482.6 1.465 ... -0.005271 -0.005165
-        p_cov                  (params1, params2) float64 0.03743 ... 1.835e-07
+        p_val                  (params1) float64 482.6 1.459 ... 0.0008902 0.000995
+        p_cov                  (params1, params2) float64 0.03739 ... 3.177e-07
         TMPF_MC                (CI, x, time) float64 dask.array<chunksize=(3, 787, 6), meta=np.ndarray>
         TMPB_MC                (CI, x, time) float64 dask.array<chunksize=(3, 787, 6), meta=np.ndarray>
         TMPW_MC                (CI, x, time) float64 dask.array<chunksize=(3, 787, 6), meta=np.ndarray>
