@@ -398,21 +398,18 @@ def calibration_double_ended_solver(
                     Z_TA_att))))
 
     # y  # Eq.41--45
-    y_F_ = np.log(ds_sec[st_label] / ds_sec[ast_label])
-    y_B_ = np.log(ds_sec[rst_label] / ds_sec[rast_label])
-    y_F = y_F_.values.ravel()
-    y_B = y_B_.values.ravel()
+    y_F = np.log(ds_sec[st_label] / ds_sec[ast_label]).values.ravel()
+    y_B = np.log(ds_sec[rst_label] / ds_sec[rast_label]).values.ravel()
 
-    y_att_F0 = np.log(ds[st_label] /
-                      ds[ast_label]).isel(x=0)
-    y_att_FL = np.log(ds[st_label] /
-                      ds[ast_label]).isel(x=-1)
-    y_att_B0 = np.log(ds[rst_label] /
-                      ds[rast_label]).isel(x=0)
-    y_att_BL = np.log(ds[rst_label] /
-                      ds[rast_label]).isel(x=-1)
-
-    y_att1 = ((y_B_ - y_F_) / 2).values.ravel()
+    y_att_F0 = np.log(ds_sec[st_label] /
+                      ds_sec[ast_label]).isel(x=0)
+    y_att_FL = np.log(ds_sec[st_label] /
+                      ds_sec[ast_label]).isel(x=-1)
+    y_att_B0 = np.log(ds_sec[rst_label] /
+                      ds_sec[rast_label]).isel(x=0)
+    y_att_BL = np.log(ds_sec[rst_label] /
+                      ds_sec[rast_label]).isel(x=-1)
+    y_att1 = (y_B - y_F) / 2
     y_att2 = -((y_att_F0 + y_att_FL - y_att_B0 - y_att_BL) / 4).values
 
     y = np.concatenate((y_F, y_B, y_att1, y_att2))
