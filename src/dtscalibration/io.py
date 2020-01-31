@@ -1376,8 +1376,10 @@ def read_apsensing_files_routine(
         da.from_delayed(x, shape=tuple(), dtype=ts_dtype) for x in ts_lst_dly]
     ts_arr = da.stack(ts_lst).compute()
 
-    data_vars['creationDate'] = (('time',),
-                                 [pd.Timestamp(item[1]) for item in ts_arr])
+    data_vars['creationDate'] = (
+        ('time',),
+        [pd.Timestamp(str(item[1])) for item in ts_arr]
+    )
 
     # construct the coordinate dictionary
     coords = {
