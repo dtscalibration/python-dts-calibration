@@ -700,6 +700,7 @@ def read_sensornet_files_routine_v3(
         timezone_netcdf='UTC',
         timezone_input_files='UTC',
         silent=False,
+        manual_fiber_start=None,
         manual_fiber_end=None):
     """
     Internal routine that reads Sensor files.
@@ -711,6 +712,8 @@ def read_sensornet_files_routine_v3(
     timezone_netcdf
     timezone_input_files
     silent
+    manual_fiber_start : float
+        Only necessary when cable is not represented well. 
     manual_fiber_end : float
         If defined, overwrites the fiber end, read from the first file. It is
         the fiber length between the two connector entering the DTS device.
@@ -815,7 +818,11 @@ def read_sensornet_files_routine_v3(
 
     if double_ended_flag:
         # Get fiber length, and starting point for reverse channel reversal
-        fiber_start = -50
+        if manual_fiber_start:
+            fiber_start = manual_fiber_start
+        else:
+            fiber_start = -50
+            
         if manual_fiber_end:
             fiber_end = manual_fiber_end
         else:

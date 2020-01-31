@@ -135,14 +135,6 @@ class DataStore(xr.Dataset):
 
             for k, v in self.sections.items():
                 preamble_new += '    {0: <23}'.format(k)
-
-                # Compute statistics reference section timeseries
-                sec_stat = '({0:6.2f}'.format(float(self[k].mean()))
-                sec_stat += ' +/-{0:5.2f}'.format(float(self[k].std()))
-                sec_stat += u'\N{DEGREE SIGN}C)\t'
-                preamble_new += sec_stat
-
-                # print sections
                 vl = ['{0:.2f}{2} - {1:.2f}{2}'.format(vi.start, vi.stop, unit)
                       for vi in v]
                 preamble_new += ' and '.join(vl) + '\n'
@@ -3494,6 +3486,8 @@ def read_sensornet_files(
         timezone_netcdf='UTC',
         timezone_input_files='UTC',
         silent=False,
+        manual_fiber_start=None,
+        manual_fiber_end=None,
         **kwargs):
     """Read a folder with measurement files. Each measurement file contains
     values for a single timestep. Remember to check which timezone
@@ -3515,6 +3509,10 @@ def read_sensornet_files(
         file extension of the measurement files
     silent : bool
         If set tot True, some verbose texts are not printed to stdout/screen
+    manual_fiber_start: float, optional
+        If cable is not presented well automatically
+    manual_fiber_end: float, optional
+        If fiber end is not (well) defined by input files. 
     kwargs : dict-like, optional
         keyword-arguments are passed to DataStore initialization
 
@@ -3529,7 +3527,9 @@ def read_sensornet_files(
     datastore : DataStore
         The newly created datastore.
     """
-
+    manual_fiber_start = manual_fiber_start
+    manual_fiber_end = manual_fiber_end
+    
     if filepathlist is None:
         filepathlist = sorted(glob.glob(os.path.join(directory, file_ext)))
 
@@ -3548,7 +3548,9 @@ def read_sensornet_files(
         filepathlist,
         timezone_netcdf=timezone_netcdf,
         timezone_input_files=timezone_input_files,
-        silent=silent)
+        silent=silent,
+        manual_fiber_start=manual_fiber_start,
+        manual_fiber_end=manual_fiber_end)
 
     ds = DataStore(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
     return ds
