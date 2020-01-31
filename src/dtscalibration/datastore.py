@@ -3520,7 +3520,7 @@ def read_sensornet_files(
     manual_fiber_start: float, optional
         If cable is not presented well automatically
     manual_fiber_end: float, optional
-        If fiber end is not (well) defined by input files. 
+        If fiber end is not (well) defined by input files.
     kwargs : dict-like, optional
         keyword-arguments are passed to DataStore initialization
 
@@ -3537,7 +3537,7 @@ def read_sensornet_files(
     """
     manual_fiber_start = manual_fiber_start
     manual_fiber_end = manual_fiber_end
-    
+
     if filepathlist is None:
         filepathlist = sorted(glob.glob(os.path.join(directory, file_ext)))
 
