@@ -3494,6 +3494,8 @@ def read_sensornet_files(
         timezone_netcdf='UTC',
         timezone_input_files='UTC',
         silent=False,
+        manual_fiber_start=None,
+        manual_fiber_end=None,
         **kwargs):
     """Read a folder with measurement files. Each measurement file contains
     values for a single timestep. Remember to check which timezone
@@ -3515,6 +3517,10 @@ def read_sensornet_files(
         file extension of the measurement files
     silent : bool
         If set tot True, some verbose texts are not printed to stdout/screen
+    manual_fiber_start: float, optional
+        If cable is not presented well automatically
+    manual_fiber_end: float, optional
+        If fiber end is not (well) defined by input files.
     kwargs : dict-like, optional
         keyword-arguments are passed to DataStore initialization
 
@@ -3529,6 +3535,8 @@ def read_sensornet_files(
     datastore : DataStore
         The newly created datastore.
     """
+    manual_fiber_start = manual_fiber_start
+    manual_fiber_end = manual_fiber_end
 
     if filepathlist is None:
         filepathlist = sorted(glob.glob(os.path.join(directory, file_ext)))
@@ -3548,7 +3556,9 @@ def read_sensornet_files(
         filepathlist,
         timezone_netcdf=timezone_netcdf,
         timezone_input_files=timezone_input_files,
-        silent=silent)
+        silent=silent,
+        manual_fiber_start=manual_fiber_start,
+        manual_fiber_end=manual_fiber_end)
 
     ds = DataStore(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
     return ds
