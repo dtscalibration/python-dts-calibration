@@ -713,7 +713,7 @@ def read_sensornet_files_routine_v3(
     timezone_input_files
     silent
     manual_fiber_start : float
-        Only necessary when cable is not represented well. 
+        Only necessary when cable is not represented well.
     manual_fiber_end : float
         If defined, overwrites the fiber end, read from the first file. It is
         the fiber length between the two connector entering the DTS device.
@@ -822,7 +822,7 @@ def read_sensornet_files_routine_v3(
             fiber_start = manual_fiber_start
         else:
             fiber_start = -50
-            
+
         if manual_fiber_end:
             fiber_end = manual_fiber_end
         else:
@@ -1229,7 +1229,7 @@ def read_apsensing_files_routine(
     namespace = get_xml_namespace(xml_tree.getroot())
 
     logtree = xml_tree.find(('{0}wellSet/{0}well/{0}wellboreSet/{0}wellbore' +
-                            '/{0}wellLogSet/{0}wellLog').format(namespace))
+                             '/{0}wellLogSet/{0}wellLog').format(namespace))
     logdata_tree = logtree.find('./{0}logData'.format(namespace))
 
     # Amount of datapoints is the size of the logdata tree
