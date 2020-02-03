@@ -850,3 +850,47 @@ def match_sections(ds, matching_sections,
     assert hix_out.size > 0, 'no matching sections in calibration'
 
     return np.stack((hix_out, tix_out)).T
+
+
+def linear_stokes_variance(ds, label, nbin, through_zero=True):
+    """
+    Estimate a linear dependent Stokes variance.
+
+    Parameters
+    ----------
+    ds : DataStore
+    label : str
+        Key under which the Stokes DataArray is stored. E.g., 'ST', 'REV-ST'
+    nbin : int
+        Number of bins to compute the variance for, through which the linear
+        function is fitted. Make sure that that are at least 50 residuals per
+        bin to compute the variance from.
+    through_zero : bool
+        If True, the variance is computed as: VAR(Stokes) = angle * Stokes
+        If False, VAR(Stokes) = angle * Stokes + offset.
+        From what we can tell from our inital trails, is that the offset
+        seems very small, so that True seems a better option.
+    """
+    st_var, resid = ds.variance_stokes(st_label=label)
+
+    ix_sec = ds.ufunc_per_section(x_indices=True, calc_per='all')
+    dst = ds.isel(x=ix_sec)[label].values.ravel()
+    dr = resid.isel(x=ix_sec).values.ravel()
+
+    isort = np.argsort(dst)
+    dsts = dst[isort].reshape((nbin, -1)).mean(axis=1)
+    drs = dr[isort].reshape((nbin, -1)).var(axis=1)
+
+    if through_zero:
+        # VAR(Stokes) = angle * Stokes
+        offset = 0.
+        angle = np.linalg.lstsq(dsts[:, None], drs, rcond=None)[0]
+        var_fun = lambda st: angle * st
+
+    else:
+        # VAR(Stokes) = angle * Stokes + offset
+        angle, offset = np.linalg.lstsq(
+            np.hstack((dsts[:, None], np.ones((nbin, 1)))), drs, rcond=None)[0]
+        var_fun = lambda st: angle * st + offset
+
+    return angle, offset, dsts, drs, var_fun
