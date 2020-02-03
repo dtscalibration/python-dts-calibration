@@ -58,7 +58,7 @@ The example data files are located in
 
 Define in which timezone the measurements are taken. In this case it is
 the timezone of the Silixa Ultima computer was set to
-‘Europe/Amsterdam’. The default timezone of netCDF files is ``UTC``. All
+'Europe/Amsterdam'. The default timezone of netCDF files is ``UTC``. All
 the steps after loading the raw files are performed in this timezone.
 Please see www..com for a full list of supported timezones. We also
 explicitely define the file extension (``.xml``) because the folder is

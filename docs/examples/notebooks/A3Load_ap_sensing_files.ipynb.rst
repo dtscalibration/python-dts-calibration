@@ -2,7 +2,7 @@ A3. Loading AP Sensing files
 ============================
 
 This example loads AP sensing files. Only single-ended files are
-currently supported. Just like with Silixa’s devices, the AP Sensing
+currently supported. Just like with Silixa's devices, the AP Sensing
 data is in .xml files
 
 .. code:: ipython3
