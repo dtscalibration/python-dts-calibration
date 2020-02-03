@@ -120,7 +120,7 @@ solver because it saves us memory.
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x7fc729500990>
+    <matplotlib.collections.QuadMesh at 0x7f2c0a6a5c90>
 
 
 
@@ -226,20 +226,20 @@ confidence interval 'coordinates'.
         userAcquisitionTimeFW  (time) float32 2.0 2.0 2.0 2.0 2.0 2.0
         userAcquisitionTimeBW  (time) float32 2.0 2.0 2.0 2.0 2.0 2.0
         gamma                  float64 482.6
-        alpha                  (x) float64 -0.0009958 0.00286 ... 0.0008902 0.000995
-        df                     (time) float64 1.459 1.459 1.459 1.459 1.459 1.459
-        db                     (time) float64 1.471 1.471 1.47 1.471 1.472 1.471
+        alpha                  (x) float64 -0.00487 -0.001014 ... -0.002879
+        df                     (time) float64 1.463 1.463 1.462 1.463 1.463 1.463
+        db                     (time) float64 1.467 1.468 1.467 1.468 1.468 1.467
         gamma_var              float64 0.03739
         alpha_var              (x) float64 3.077e-07 3.156e-07 ... 3.177e-07
         df_var                 (time) float64 8.056e-07 8.056e-07 ... 8.056e-07
-        db_var                 (time) float64 8.052e-07 8.052e-07 ... 8.052e-07
+        db_var                 (time) float64 8.051e-07 8.051e-07 ... 8.051e-07
         TMPF                   (x, time) float64 16.79 17.01 16.29 ... 13.57 13.74
         TMPB                   (x, time) float64 16.81 16.86 16.91 ... 13.67 13.71
         TMPF_MC_var            (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
         TMPB_MC_var            (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
         TMPW                   (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
         TMPW_MC_var            (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
-        p_val                  (params1) float64 482.6 1.459 ... 0.0008902 0.000995
+        p_val                  (params1) float64 482.6 1.463 ... -0.002984 -0.002879
         p_cov                  (params1, params2) float64 0.03739 ... 3.177e-07
         TMPF_MC                (CI, x, time) float64 dask.array<chunksize=(3, 787, 6), meta=np.ndarray>
         TMPB_MC                (CI, x, time) float64 dask.array<chunksize=(3, 787, 6), meta=np.ndarray>
