@@ -852,7 +852,7 @@ def match_sections(ds, matching_sections,
     return np.stack((hix_out, tix_out)).T
 
 
-def linear_stokes_variance(ds, label, nbin, through_zero=True):
+def linear_stokes_variance(ds, label, nbin, through_zero=True, plot_fit=False):
     """
     Estimate a linear dependent Stokes variance.
 
@@ -870,27 +870,40 @@ def linear_stokes_variance(ds, label, nbin, through_zero=True):
         If False, VAR(Stokes) = angle * Stokes + offset.
         From what we can tell from our inital trails, is that the offset
         seems very small, so that True seems a better option.
+    plot_fit : bool
+        If True plot the variances for each bin and plot the fitted
+        linear function
     """
     st_var, resid = ds.variance_stokes(st_label=label)
 
     ix_sec = ds.ufunc_per_section(x_indices=True, calc_per='all')
-    dst = ds.isel(x=ix_sec)[label].values.ravel()
-    dr = resid.isel(x=ix_sec).values.ravel()
+    st = ds.isel(x=ix_sec)[label].values.ravel()
+    diff_st = resid.isel(x=ix_sec).values.ravel()
 
-    isort = np.argsort(dst)
-    dsts = dst[isort].reshape((nbin, -1)).mean(axis=1)
-    drs = dr[isort].reshape((nbin, -1)).var(axis=1)
+    isort = np.argsort(st)
+    st_sort_mean = st[isort].reshape((nbin, -1)).mean(axis=1)
+    st_sort_var = diff_st[isort].reshape((nbin, -1)).var(axis=1)
 
     if through_zero:
         # VAR(Stokes) = angle * Stokes
         offset = 0.
-        angle = np.linalg.lstsq(dsts[:, None], drs, rcond=None)[0]
-        var_fun = lambda st: angle * st
-
+        angle = np.linalg.lstsq(st_sort_mean[:, None], st_sort_var,
+                                rcond=None)[0]
     else:
         # VAR(Stokes) = angle * Stokes + offset
         angle, offset = np.linalg.lstsq(
-            np.hstack((dsts[:, None], np.ones((nbin, 1)))), drs, rcond=None)[0]
-        var_fun = lambda st: angle * st + offset
+            np.hstack((st_sort_mean[:, None], np.ones((nbin, 1)))), st_sort_var,
+            rcond=None)[0]
 
-    return angle, offset, dsts, drs, var_fun
+    var_fun = lambda stokes: angle * stokes + offset  # noqa: E731
+
+    if plot_fit:
+        plt.scatter(st_sort_mean, st_sort_var, marker='.', c='black')
+        plt.plot([0., st_sort_mean[-1]],
+                 [var_fun(0.), var_fun(st_sort_mean[-1])], c='white', lw=1.3)
+        plt.plot([0., st_sort_mean[-1]],
+                 [var_fun(0.), var_fun(st_sort_mean[-1])], c='black', lw=0.8)
+        plt.xlabel(label + ' intensity')
+        plt.ylabel(label + ' intensity variance')
+
+    return angle, offset, st_sort_mean, st_sort_var, var_fun
