@@ -1697,25 +1697,7 @@ class DataStore(xr.Dataset):
             if method == 'ols':
                 calc_cov = False
             else:
-                # st_var = np.asarray(st_var, dtype=float)
-                # ast_var = np.asarray(ast_var, dtype=float)
-                # rst_var = np.asarray(rst_var, dtype=float)
-                # rast_var = np.asarray(rast_var, dtype=float)
                 calc_cov = True
-
-                # if callable(st_var):
-                #     ix_sec
-                # for i_var, i_label in zip(
-                #     [st_var, ast_var, rst_var, rast_var],
-                #         [st_label, ast_label, rst_label, rast_label]):
-                #
-                #     if callable(i_var):
-                #         ix_sec = self.ufunc_per_section(x_indices=True,
-                #                                         calc_per='all')
-                #         i_var = i_var(self[i_label].isel(x=ix_sec)).values
-                #
-                #     else:
-                #         i_var = np.asarray(i_var, dtype=float)
 
             if fix_alpha or fix_gamma:
                 split = calibration_double_ended_solver(
@@ -2320,28 +2302,7 @@ class DataStore(xr.Dataset):
             else:
                 memchunk = da.ones((mc_sample_size, no, nt),
                                    chunks={0: -1, 1: 'auto', 2: -1}).chunks
-        # if callable(st_var):
-        #     st_var_val = st_var(self[st_label]).data
-        # else:
-        #     st_var_val = np.asarray(st_var)
-        # if callable(ast_var):
-        #     ast_var_val = ast_var(self[ast_label]).data
-        # else:
-        #     ast_var_val = np.asarray(ast_var)
-        #
-        # for k, st_labeli, st_vari in zip(
-        #     ['r_st', 'r_ast'],
-        #     [st_label, ast_label],
-        #         [st_var_val, ast_var_val]):
-        #     loc = da.from_array(self[st_labeli].data, chunks=memchunk[1:])
-        #
-        #     self[k] = (
-        #         ('MC', x_dim, time_dim),
-        #         state.normal(
-        #             loc=loc,  # has chunks=memchunk[1:]
-        #             scale=st_vari ** 0.5,
-        #             size=rsize,
-        #             chunks=memchunk))
+
         # Draw from the normal distributions for the Stokes intensities
         for k, st_labeli, st_vari in zip(
                 ['r_st', 'r_ast'],
