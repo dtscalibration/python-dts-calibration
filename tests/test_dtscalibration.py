@@ -359,9 +359,9 @@ def test_variance_of_stokes_synthetic():
     x = np.linspace(0., 20., nx)
 
     nt = 200
-    beta = np.linspace(3000, 4000, nt)[None]
+    G = np.linspace(3000, 4000, nt)[None]
 
-    y = beta * np.exp(-0.001 * x[:, None])
+    y = G * np.exp(-0.001 * x[:, None])
 
     y += stats.norm.rvs(size=y.size,
                         scale=yvar ** 0.5).reshape(y.shape)
@@ -382,6 +382,60 @@ def test_variance_of_stokes_synthetic():
 
     np.testing.assert_almost_equal(test_ST_var, yvar,
                                    decimal=1)
+
+
+def test_variance_of_stokes_linear_synthetic():
+    """
+    Produces a synthetic Stokes measurement with a known noise distribution.
+    Check if same variance is obtained.
+
+    Returns
+    -------
+
+    """
+    var_slope = 0.01
+
+    nx = 500
+    x = np.linspace(0., 20., nx)
+
+    nt = 200
+    G = np.linspace(500, 4000, nt)[None]
+    c_no_noise = G * np.exp(-0.001 * x[:, None])
+
+    c_lin_var_through_zero = stats.norm.rvs(
+        loc=c_no_noise,
+        # size=y.size,
+        scale=(var_slope * c_no_noise) ** 0.5)
+    ds = DataStore({
+        'ST':                     (['x', 'time'], c_no_noise),
+        'c_lin_var_through_zero': (['x', 'time'], c_lin_var_through_zero),
+        'probe1Temperature':      (['time'], range(nt)),
+        'userAcquisitionTimeFW':  (['time'], np.ones(nt)),
+        },
+        coords={
+            'x':    x,
+            'time': range(nt)},
+        attrs={'isDoubleEnded': '0'})
+
+    sections = {'probe1Temperature': [slice(0., 20.), ]}
+    test_ST_var, _ = ds.variance_stokes(st_label='ST',
+                                        sections=sections)
+
+    # If fit is forced through zero. Only Poisson distributed noise
+    slope, offset, st_sort_mean, st_sort_var, resid, var_fun = \
+        ds.variance_stokes_linear(
+            'c_lin_var_through_zero', nbin=10, through_zero=True,
+            plot_fit=False)
+    np.testing.assert_almost_equal(slope, var_slope, decimal=4)
+
+    # Fit accounts for Poisson noise plus white noise
+    slope, offset, st_sort_mean, st_sort_var, resid, var_fun = \
+        ds.variance_stokes_linear(
+            'c_lin_var_through_zero', nbin=100, through_zero=False)
+    np.testing.assert_almost_equal(slope, var_slope, decimal=3)
+    np.testing.assert_almost_equal(offset, 0., decimal=1)
+
+    pass
 
 
 def test_double_ended_ols_wls_estimate_synthetic():

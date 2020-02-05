@@ -80,7 +80,7 @@ class DataStore(xr.Dataset):
         dtscalibration.open_datastore : Load (calibrated) measurements from
         netCDF-like file
         """
-    __slots__ = ('__name__')
+    # __slots__ = ('__name__')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -802,12 +802,31 @@ class DataStore(xr.Dataset):
                 l.remove(time_dim)  # noqa: E741
                 return l[0]
 
-    def variance_stokes(
+    def variance_stokes(self, *args, **kwargs):
+        """Backwards compatibility
+
+        Use:
+        - `variance_stokes_constant` for small setups with small variations in
+        intensity
+        - `variance_stokes_exponential` for small setups with very few time
+        steps
+        - `variance_stokes_linear` for larger setups with more time steps
+        """
+        return self.variance_stokes_constant(*args, **kwargs)
+
+    def variance_stokes_constant(
             self,
             st_label,
             sections=None,
             reshape_residuals=True):
-        """Calculates the variance between the measurements and a best fit
+        """Use:
+        - `variance_stokes_constant` for small setups with small variations in
+        intensity
+        - `variance_stokes_exponential` for small setups with very few time
+        steps
+        - `variance_stokes_linear` for larger setups with more time steps
+
+        Calculates the variance between the measurements and a best fit
         at each reference section. This fits a function to the nt * nx
         measurements with ns * nt + nx parameters, where nx are the total
         number of obervation locations along all sections. The temperature is
@@ -902,7 +921,14 @@ class DataStore(xr.Dataset):
             use_statsmodels=False,
             suppress_info=True,
             reshape_residuals=True):
-        """Calculates the variance between the measurements and a best fit
+        """Use:
+        - `variance_stokes_constant` for small setups with small variations in
+        intensity
+        - `variance_stokes_exponential` for small setups with very few time
+        steps
+        - `variance_stokes_linear` for larger setups with more time steps
+
+        Calculates the variance between the measurements and a best fit
         exponential at each reference section. This fits a two-parameter
         exponential to the stokes measurements. The temperature is constant
         and there are no splices/sharp bends in each reference section.
@@ -1074,9 +1100,106 @@ class DataStore(xr.Dataset):
 
             return var_I, resid_da
 
+    def variance_stokes_linear(
+            self,
+            st_label,
+            sections=None,
+            nbin=50,
+            through_zero=True,
+            plot_fit=False):
+        """
+        Estimate a Stokes variance that is linear dependent on the intensity.
+
+        Parameters
+        ----------
+        st_label : str
+            Key under which the Stokes DataArray is stored. E.g., 'ST', 'REV-ST'
+        sections : dict, optional
+            Define sections. See documentation
+        nbin : int
+            Number of bins to compute the variance for, through which the linear
+            function is fitted. Make sure that that are at least 50 residuals
+            per
+            bin to compute the variance from.
+        through_zero : bool
+            If True, the variance is computed as: VAR(Stokes) = slope * Stokes
+            If False, VAR(Stokes) = slope * Stokes + offset.
+            From what we can tell from our inital trails, is that the offset
+            seems very small, so that True seems a better option.
+        plot_fit : bool
+            If True plot the variances for each bin and plot the fitted
+            linear function
+        """
+        import matplotlib.pyplot as plt
+
+        if sections:
+            self.sections = sections
+        else:
+            assert self.sections, 'sections are not defined'
+
+        st_var, resid = self.variance_stokes(st_label=st_label)
+
+        ix_sec = self.ufunc_per_section(x_indices=True, calc_per='all')
+        st = self.isel(x=ix_sec)[st_label].values.ravel()
+        diff_st = resid.isel(x=ix_sec).values.ravel()
+
+        # Adjust nbin silently to fit residuals in
+        # rectangular matrix and use numpy for computation
+        nbin_ = nbin
+        while st.size % nbin_:
+            nbin_ -= 1
+
+        if nbin_ != nbin:
+            print('Estimation of linear variance of', st_label,
+                  'Adjusting nbin to:', nbin_)
+            nbin = nbin_
+
+        isort = np.argsort(st)
+        st_sort_mean = st[isort].reshape((nbin, -1)).mean(axis=1)
+        st_sort_var = diff_st[isort].reshape((nbin, -1)).var(axis=1)
+
+        if through_zero:
+            # VAR(Stokes) = slope * Stokes
+            offset = 0.
+            slope = np.linalg.lstsq(st_sort_mean[:, None], st_sort_var,
+                                    rcond=None)[0]
+        else:
+            # VAR(Stokes) = slope * Stokes + offset
+            slope, offset = np.linalg.lstsq(
+                np.hstack((st_sort_mean[:, None], np.ones((nbin, 1)))),
+                st_sort_var,
+                rcond=None)[0]
+
+        def var_fun(stokes):
+            return slope * stokes + offset
+
+        if plot_fit:
+            plt.scatter(st_sort_mean, st_sort_var, marker='.', c='black')
+            plt.plot([0., st_sort_mean[-1]],
+                     [var_fun(0.), var_fun(st_sort_mean[-1])], c='white',
+                     lw=1.3)
+            plt.plot([0., st_sort_mean[-1]],
+                     [var_fun(0.), var_fun(st_sort_mean[-1])], c='black',
+                     lw=0.8)
+            plt.xlabel(st_label + ' intensity')
+            plt.ylabel(st_label + ' intensity variance')
+
+        return slope, offset, st_sort_mean, st_sort_var, resid, var_fun
+
     def i_var(self, st_var, ast_var, st_label='ST', ast_label='AST'):
         st = self[st_label]
         ast = self[ast_label]
+
+        if callable(st_var):
+            st_var = st_var(self[st_label]).values
+        else:
+            st_var = np.asarray(st_var, dtype=float)
+
+        if callable(ast_var):
+            ast_var = ast_var(self[ast_label]).values
+        else:
+            ast_var = np.asarray(ast_var, dtype=float)
+
         return st ** -2 * st_var + ast ** -2 * ast_var
 
     def inverse_variance_weighted_mean(
@@ -1314,8 +1437,16 @@ class DataStore(xr.Dataset):
                 ast_var = None    # ols
                 calc_cov = False
             else:
-                st_var = np.asarray(st_var, dtype=float)
-                ast_var = np.asarray(ast_var, dtype=float)
+                for i_var, i_label in zip(
+                        [st_var, ast_var], [st_label, ast_label]):
+                    if callable(i_var):
+                        ix_sec = self.ufunc_per_section(x_indices=True,
+                                                        calc_per='all')
+                        i_var = i_var(self[i_label].isel(x=ix_sec)).values
+
+                    else:
+                        i_var = np.asarray(i_var, dtype=float)
+
                 calc_cov = True
 
             if fix_gamma and fix_dalpha:
@@ -1567,7 +1698,7 @@ class DataStore(xr.Dataset):
             Label of the reversed Stoke measurement
         rast_label : str
             Label of the reversed anti-Stoke measurement
-        st_var : float, optional
+        st_var : float, array-like, callable, optional
             The variance of the measurement noise of the Stokes signals in
             the forward
             direction Required if method is wls.
@@ -1676,16 +1807,8 @@ class DataStore(xr.Dataset):
 
         if method == 'ols' or method == 'wls':
             if method == 'ols':
-                st_var = None     # ols
-                ast_var = None    # ols
-                rst_var = None     # ols
-                rast_var = None    # ols
                 calc_cov = False
             else:
-                st_var = np.asarray(st_var, dtype=float)
-                ast_var = np.asarray(ast_var, dtype=float)
-                rst_var = np.asarray(rst_var, dtype=float)
-                rast_var = np.asarray(rast_var, dtype=float)
                 calc_cov = True
 
             if fix_alpha or fix_gamma:
@@ -2250,6 +2373,7 @@ class DataStore(xr.Dataset):
 
         assert isinstance(p_cov, (str, np.ndarray, np.generic, bool))
         if isinstance(p_cov, bool) and not p_cov:
+            # OLS
             gamma = p_val[0]
             dalpha = p_val[1]
             c = p_val[2:nt + 2]
@@ -2262,6 +2386,7 @@ class DataStore(xr.Dataset):
                 'Not an implemented option. Check p_cov argument')
 
         else:
+            # WLS
             if isinstance(p_cov, str):
                 p_cov = self[p_cov].data
             assert p_cov.shape == (npar, npar)
@@ -2290,17 +2415,42 @@ class DataStore(xr.Dataset):
                 memchunk = da.ones((mc_sample_size, no, nt),
                                    chunks={0: -1, 1: 'auto', 2: -1}).chunks
 
+        # Draw from the normal distributions for the Stokes intensities
         for k, st_labeli, st_vari in zip(
-            ['r_st', 'r_ast'],
-            [st_label, ast_label],
+                ['r_st', 'r_ast'],
+                [st_label, ast_label],
                 [st_var, ast_var]):
-            loc = da.from_array(self[st_labeli].data, chunks=memchunk[1:])
+
+            # Load the mean as chunked Dask array, otherwise eats memory
+            if type(self[st_labeli].data) == da.core.Array:
+                loc = da.asarray(self[st_labeli].data, chunks=memchunk[1:])
+            else:
+                loc = da.from_array(self[st_labeli].data, chunks=memchunk[1:])
+
+            # Load variance as chunked Dask array, otherwise eats memory
+            if type(st_vari) == da.core.Array:
+                st_vari_da = da.asarray(st_vari, chunks=memchunk[1:])
+
+            elif (callable(st_vari) and
+                    type(self[st_labeli].data) == da.core.Array):
+                st_vari_da = da.asarray(
+                    st_vari(self[st_labeli]).data,
+                    chunks=memchunk[1:])
+
+            elif (callable(st_vari) and
+                    type(self[st_labeli].data) != da.core.Array):
+                st_vari_da = da.from_array(
+                    st_vari(self[st_labeli]).data,
+                    chunks=memchunk[1:])
+
+            else:
+                st_vari_da = da.from_array(st_vari, chunks=memchunk[1:])
 
             self[k] = (
                 ('MC', x_dim, time_dim),
                 state.normal(
                     loc=loc,  # has chunks=memchunk[1:]
-                    scale=st_vari ** 0.5,
+                    scale=st_vari_da ** 0.5,
                     size=rsize,
                     chunks=memchunk))
 
@@ -2571,6 +2721,7 @@ class DataStore(xr.Dataset):
         assert isinstance(p_cov, (str, np.ndarray, np.generic, bool))
 
         if isinstance(p_cov, bool) and not p_cov:
+            # OLS
             gamma = p_val[0]
             d_fw = p_val[1:nt + 1]
             d_bw = p_val[1 + nt:2 * nt + 1]
@@ -2604,6 +2755,7 @@ class DataStore(xr.Dataset):
                 'Not an implemented option. Check p_cov argument')
 
         else:
+            # WLS
             if isinstance(p_cov, str):
                 p_cov = self[p_cov].values
             assert p_cov.shape == (npar, npar)
@@ -2681,20 +2833,42 @@ class DataStore(xr.Dataset):
                 self[store_ta + '_fw_MC'] = (('MC', x_dim, time_dim), ta_fw_arr)
                 self[store_ta + '_bw_MC'] = (('MC', x_dim, time_dim), ta_bw_arr)
 
+        # Draw from the normal distributions for the Stokes intensities
         for k, st_labeli, st_vari in zip(
-            ['r_st', 'r_ast', 'r_rst', 'r_rast'],
-            [st_label, ast_label, rst_label, rast_label],
+                ['r_st', 'r_ast', 'r_rst', 'r_rast'],
+                [st_label, ast_label, rst_label, rast_label],
                 [st_var, ast_var, rst_var, rast_var]):
+
+            # Load the mean as chunked Dask array, otherwise eats memory
             if type(self[st_labeli].data) == da.core.Array:
                 loc = da.asarray(self[st_labeli].data, chunks=memchunk[1:])
             else:
                 loc = da.from_array(self[st_labeli].data, chunks=memchunk[1:])
 
+            # Load variance as chunked Dask array, otherwise eats memory
+            if type(st_vari) == da.core.Array:
+                st_vari_da = da.asarray(st_vari, chunks=memchunk[1:])
+
+            elif (callable(st_vari) and
+                    type(self[st_labeli].data) == da.core.Array):
+                st_vari_da = da.asarray(
+                    st_vari(self[st_labeli]).data,
+                    chunks=memchunk[1:])
+
+            elif (callable(st_vari) and
+                    type(self[st_labeli].data) != da.core.Array):
+                st_vari_da = da.from_array(
+                    st_vari(self[st_labeli]).data,
+                    chunks=memchunk[1:])
+
+            else:
+                st_vari_da = da.from_array(st_vari, chunks=memchunk[1:])
+
             self[k] = (
                 ('MC', x_dim, time_dim),
                 state.normal(
                     loc=loc,  # has chunks=memchunk[1:]
-                    scale=st_vari ** 0.5,
+                    scale=st_vari_da ** 0.5,
                     size=rsize,
                     chunks=memchunk))
 

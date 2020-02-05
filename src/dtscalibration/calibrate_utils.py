@@ -220,7 +220,8 @@ def calibration_double_ended_solver(
     -------
 
     """
-    def construct_submatrices(nt, nx, st_label, ds, transient_asym_att_x, x_sec):
+    def construct_submatrices(nt, nx, st_label, ds, transient_asym_att_x,
+                              x_sec):
         """Wrapped in a function to reduce memory usage.
         Constructing:
         Z_gamma (nt * nx, 1). Data: positive 1/temp
@@ -416,26 +417,44 @@ def calibration_double_ended_solver(
 
     # w
     if st_var is not None:  # WLS
+        if callable(st_var):
+            st_var_sec = st_var(ds_sec[st_label])
+        else:
+            st_var_sec = np.asarray(st_var)
+        if callable(ast_var):
+            ast_var_sec = ast_var(ds_sec[ast_label])
+        else:
+            ast_var_sec = np.asarray(ast_var)
+        if callable(rst_var):
+            rst_var_sec = rst_var(ds_sec[rst_label])
+        else:
+            rst_var_sec = np.asarray(rst_var)
+        if callable(rast_var):
+            rast_var_sec = rast_var(ds_sec[rast_label])
+        else:
+            rast_var_sec = np.asarray(rast_var)
+
         w_F = 1 / (
-            ds_sec[st_label] ** -2 * st_var +
-            ds_sec[ast_label] ** -2 * ast_var).values.ravel()
+            ds_sec[st_label] ** -2 * st_var_sec +
+            ds_sec[ast_label] ** -2 * ast_var_sec).values.ravel()
         w_B = 1 / (
-            ds_sec[rst_label] ** -2 * rst_var +
-            ds_sec[rast_label] ** -2 * rast_var).values.ravel()
+            ds_sec[rst_label] ** -2 * rst_var_sec +
+            ds_sec[rast_label] ** -2 * rast_var_sec).values.ravel()
         w_att1 = 1 / (
-            ds_sec[st_label] ** -2 * st_var / 2 +
-            ds_sec[ast_label] ** -2 * ast_var / 2 +
-            ds_sec[rst_label] ** -2 * rst_var / 2 +
-            ds_sec[rast_label] ** -2 * rast_var / 2).values.ravel()
+            ds_sec[st_label] ** -2 * st_var_sec / 2 +
+            ds_sec[ast_label] ** -2 * ast_var_sec / 2 +
+            ds_sec[rst_label] ** -2 * rst_var_sec / 2 +
+            ds_sec[rast_label] ** -2 * rast_var_sec / 2).values.ravel()
         w_att2 = 1 / (
-            ds[st_label].isel(x=0) ** -2 * st_var / 2 +
-            ds[ast_label].isel(x=0) ** -2 * ast_var / 2 +
-            ds[rst_label].isel(x=0) ** -2 * rst_var / 2 +
-            ds[rast_label].isel(x=0) ** -2 * rast_var / 2 +
-            ds[st_label].isel(x=-1) ** -2 * st_var / 2 +
-            ds[ast_label].isel(x=-1) ** -2 * ast_var / 2 +
-            ds[rst_label].isel(x=-1) ** -2 * rst_var / 2 +
-            ds[rast_label].isel(x=-1) ** -2 * rast_var / 2).values
+            (ds[st_label] ** -2 * st_var_sec / 2).isel(x=0) +
+            (ds[ast_label] ** -2 * ast_var_sec / 2).isel(x=0) +
+            (ds[rst_label] ** -2 * rst_var_sec / 2).isel(x=0) +
+            (ds[rast_label] ** -2 * rast_var_sec / 2).isel(x=0) +
+            (ds[st_label] ** -2 * st_var_sec / 2).isel(x=0) +
+            (ds[ast_label] ** -2 * ast_var_sec / 2).isel(x=0) +
+            (ds[rst_label] ** -2 * rst_var_sec / 2).isel(x=0) +
+            (ds[rast_label] ** -2 * rast_var_sec / 2).isel(x=0)
+            ).values
 
     else:  # OLS
         w_F = np.ones(nt * nx)
@@ -697,14 +716,31 @@ def calc_alpha_double(
     time_dim = ds.get_time_dim()
 
     if st_var is not None:
+        if callable(st_var):
+            st_var_val = st_var(ds[st_label])
+        else:
+            st_var_val = np.asarray(st_var)
+        if callable(ast_var):
+            ast_var_val = ast_var(ds[ast_label])
+        else:
+            ast_var_val = np.asarray(ast_var)
+        if callable(rst_var):
+            rst_var_val = rst_var(ds[rst_label])
+        else:
+            rst_var_val = np.asarray(rst_var)
+        if callable(rast_var):
+            rast_var_val = rast_var(ds[rast_label])
+        else:
+            rast_var_val = np.asarray(rast_var)
+
         i_var_fw = ds.i_var(
-            st_var,
-            ast_var,
+            st_var_val,
+            ast_var_val,
             st_label=st_label,
             ast_label=ast_label)
         i_var_bw = ds.i_var(
-            rst_var,
-            rast_var,
+            rst_var_val,
+            rast_var_val,
             st_label=rst_label,
             ast_label=rast_label)
 
