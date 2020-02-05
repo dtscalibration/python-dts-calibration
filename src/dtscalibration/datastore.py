@@ -1122,8 +1122,8 @@ class DataStore(xr.Dataset):
             per
             bin to compute the variance from.
         through_zero : bool
-            If True, the variance is computed as: VAR(Stokes) = angle * Stokes
-            If False, VAR(Stokes) = angle * Stokes + offset.
+            If True, the variance is computed as: VAR(Stokes) = slope * Stokes
+            If False, VAR(Stokes) = slope * Stokes + offset.
             From what we can tell from our inital trails, is that the offset
             seems very small, so that True seems a better option.
         plot_fit : bool
@@ -1159,18 +1159,19 @@ class DataStore(xr.Dataset):
         st_sort_var = diff_st[isort].reshape((nbin, -1)).var(axis=1)
 
         if through_zero:
-            # VAR(Stokes) = angle * Stokes
+            # VAR(Stokes) = slope * Stokes
             offset = 0.
-            angle = np.linalg.lstsq(st_sort_mean[:, None], st_sort_var,
+            slope = np.linalg.lstsq(st_sort_mean[:, None], st_sort_var,
                                     rcond=None)[0]
         else:
-            # VAR(Stokes) = angle * Stokes + offset
-            angle, offset = np.linalg.lstsq(
+            # VAR(Stokes) = slope * Stokes + offset
+            slope, offset = np.linalg.lstsq(
                 np.hstack((st_sort_mean[:, None], np.ones((nbin, 1)))),
                 st_sort_var,
                 rcond=None)[0]
 
-        var_fun = lambda stokes: angle * stokes + offset  # noqa: E731
+        def var_fun(stokes):
+            return slope * stokes + offset
 
         if plot_fit:
             plt.scatter(st_sort_mean, st_sort_var, marker='.', c='black')
@@ -1183,7 +1184,7 @@ class DataStore(xr.Dataset):
             plt.xlabel(st_label + ' intensity')
             plt.ylabel(st_label + ' intensity variance')
 
-        return angle, offset, st_sort_mean, st_sort_var, resid, var_fun
+        return slope, offset, st_sort_mean, st_sort_var, resid, var_fun
 
     def i_var(self, st_var, ast_var, st_label='ST', ast_label='AST'):
         st = self[st_label]
