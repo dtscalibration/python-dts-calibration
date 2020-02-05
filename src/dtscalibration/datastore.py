@@ -1077,6 +1077,17 @@ class DataStore(xr.Dataset):
     def i_var(self, st_var, ast_var, st_label='ST', ast_label='AST'):
         st = self[st_label]
         ast = self[ast_label]
+
+        if callable(st_var):
+            st_var = st_var(self[st_label]).values
+        else:
+            st_var = np.asarray(st_var, dtype=float)
+
+        if callable(ast_var):
+            ast_var = ast_var(self[ast_label]).values
+        else:
+            ast_var = np.asarray(ast_var, dtype=float)
+
         return st ** -2 * st_var + ast ** -2 * ast_var
 
     def inverse_variance_weighted_mean(
@@ -1314,8 +1325,16 @@ class DataStore(xr.Dataset):
                 ast_var = None    # ols
                 calc_cov = False
             else:
-                st_var = np.asarray(st_var, dtype=float)
-                ast_var = np.asarray(ast_var, dtype=float)
+                for i_var, i_label in zip(
+                        [st_var, ast_var], [st_label, ast_label]):
+                    if callable(i_var):
+                        ix_sec = self.ufunc_per_section(x_indices=True,
+                                                        calc_per='all')
+                        i_var = i_var(self[i_label].isel(x=ix_sec)).values
+
+                    else:
+                        i_var = np.asarray(i_var, dtype=float)
+
                 calc_cov = True
 
             if fix_gamma and fix_dalpha:
@@ -1567,7 +1586,7 @@ class DataStore(xr.Dataset):
             Label of the reversed Stoke measurement
         rast_label : str
             Label of the reversed anti-Stoke measurement
-        st_var : float, optional
+        st_var : float, array-like, callable, optional
             The variance of the measurement noise of the Stokes signals in
             the forward
             direction Required if method is wls.
@@ -1676,17 +1695,27 @@ class DataStore(xr.Dataset):
 
         if method == 'ols' or method == 'wls':
             if method == 'ols':
-                st_var = None     # ols
-                ast_var = None    # ols
-                rst_var = None     # ols
-                rast_var = None    # ols
                 calc_cov = False
             else:
-                st_var = np.asarray(st_var, dtype=float)
-                ast_var = np.asarray(ast_var, dtype=float)
-                rst_var = np.asarray(rst_var, dtype=float)
-                rast_var = np.asarray(rast_var, dtype=float)
+                # st_var = np.asarray(st_var, dtype=float)
+                # ast_var = np.asarray(ast_var, dtype=float)
+                # rst_var = np.asarray(rst_var, dtype=float)
+                # rast_var = np.asarray(rast_var, dtype=float)
                 calc_cov = True
+
+                # if callable(st_var):
+                #     ix_sec
+                # for i_var, i_label in zip(
+                #     [st_var, ast_var, rst_var, rast_var],
+                #         [st_label, ast_label, rst_label, rast_label]):
+                #
+                #     if callable(i_var):
+                #         ix_sec = self.ufunc_per_section(x_indices=True,
+                #                                         calc_per='all')
+                #         i_var = i_var(self[i_label].isel(x=ix_sec)).values
+                #
+                #     else:
+                #         i_var = np.asarray(i_var, dtype=float)
 
             if fix_alpha or fix_gamma:
                 split = calibration_double_ended_solver(
@@ -2250,6 +2279,7 @@ class DataStore(xr.Dataset):
 
         assert isinstance(p_cov, (str, np.ndarray, np.generic, bool))
         if isinstance(p_cov, bool) and not p_cov:
+            # OLS
             gamma = p_val[0]
             dalpha = p_val[1]
             c = p_val[2:nt + 2]
@@ -2262,6 +2292,7 @@ class DataStore(xr.Dataset):
                 'Not an implemented option. Check p_cov argument')
 
         else:
+            # WLS
             if isinstance(p_cov, str):
                 p_cov = self[p_cov].data
             assert p_cov.shape == (npar, npar)
@@ -2289,11 +2320,19 @@ class DataStore(xr.Dataset):
             else:
                 memchunk = da.ones((mc_sample_size, no, nt),
                                    chunks={0: -1, 1: 'auto', 2: -1}).chunks
+        if callable(st_var):
+            st_var_val = st_var(self[st_label]).data
+        else:
+            st_var_val = np.asarray(st_var)
+        if callable(ast_var):
+            ast_var_val = ast_var(self[ast_label]).data
+        else:
+            ast_var_val = np.asarray(ast_var)
 
         for k, st_labeli, st_vari in zip(
             ['r_st', 'r_ast'],
             [st_label, ast_label],
-                [st_var, ast_var]):
+                [st_var_val, ast_var_val]):
             loc = da.from_array(self[st_labeli].data, chunks=memchunk[1:])
 
             self[k] = (
@@ -2571,6 +2610,7 @@ class DataStore(xr.Dataset):
         assert isinstance(p_cov, (str, np.ndarray, np.generic, bool))
 
         if isinstance(p_cov, bool) and not p_cov:
+            # OLS
             gamma = p_val[0]
             d_fw = p_val[1:nt + 1]
             d_bw = p_val[1 + nt:2 * nt + 1]
@@ -2604,6 +2644,7 @@ class DataStore(xr.Dataset):
                 'Not an implemented option. Check p_cov argument')
 
         else:
+            # WLS
             if isinstance(p_cov, str):
                 p_cov = self[p_cov].values
             assert p_cov.shape == (npar, npar)
@@ -2681,20 +2722,59 @@ class DataStore(xr.Dataset):
                 self[store_ta + '_fw_MC'] = (('MC', x_dim, time_dim), ta_fw_arr)
                 self[store_ta + '_bw_MC'] = (('MC', x_dim, time_dim), ta_bw_arr)
 
+        # if callable(st_var):
+        #     st_var_val = st_var(self[st_label]).data
+        # else:
+        #     st_var_val = np.asarray(st_var)
+        # if callable(ast_var):
+        #     ast_var_val = ast_var(self[ast_label]).data
+        # else:
+        #     ast_var_val = np.asarray(ast_var)
+        # if callable(rst_var):
+        #     rst_var_val = rst_var(self[rst_label]).data
+        # else:
+        #     rst_var_val = np.asarray(rst_var)
+        # if callable(rast_var):
+        #     rast_var_val = rast_var(self[rast_label]).data
+        # else:
+        #     rast_var_val = np.asarray(rast_var)
+
+        # Draw from the normal distributions for the Stokes intensities
         for k, st_labeli, st_vari in zip(
-            ['r_st', 'r_ast', 'r_rst', 'r_rast'],
-            [st_label, ast_label, rst_label, rast_label],
+                ['r_st', 'r_ast', 'r_rst', 'r_rast'],
+                [st_label, ast_label, rst_label, rast_label],
                 [st_var, ast_var, rst_var, rast_var]):
+
+            # Load the mean as chunked Dask array, otherwise eats memory
             if type(self[st_labeli].data) == da.core.Array:
                 loc = da.asarray(self[st_labeli].data, chunks=memchunk[1:])
             else:
                 loc = da.from_array(self[st_labeli].data, chunks=memchunk[1:])
 
+            # Load variance as chunked Dask array, otherwise eats memory
+            if type(st_vari) == da.core.Array:
+                st_vari_da = da.asarray(st_vari, chunks=memchunk[1:])
+
+            elif (callable(st_vari) and
+                    type(self[st_labeli].data) == da.core.Array):
+                st_vari_da = da.asarray(
+                    st_vari(self[st_labeli]).data,
+                    chunks=memchunk[1:])
+
+            elif (callable(st_vari) and
+                    type(self[st_labeli].data) != da.core.Array):
+                st_vari_da = da.from_array(
+                    st_vari(self[st_labeli]).data,
+                    chunks=memchunk[1:])
+
+            else:
+                st_vari_da = da.from_array(st_vari, chunks=memchunk[1:])
+
             self[k] = (
                 ('MC', x_dim, time_dim),
                 state.normal(
                     loc=loc,  # has chunks=memchunk[1:]
-                    scale=st_vari ** 0.5,
+                    scale=st_vari_da ** 0.5,
                     size=rsize,
                     chunks=memchunk))
 
