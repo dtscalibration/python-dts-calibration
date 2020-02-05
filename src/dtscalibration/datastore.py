@@ -802,12 +802,31 @@ class DataStore(xr.Dataset):
                 l.remove(time_dim)  # noqa: E741
                 return l[0]
 
-    def variance_stokes(
+    def variance_stokes(self, *args, **kwargs):
+        """Backwards compatibility
+
+        Use:
+        - `variance_stokes_constant` for small setups with small variations in
+        intensity
+        - `variance_stokes_exponential` for small setups with very few time
+        steps
+        - `variance_stokes_linear` for larger setups with more time steps
+        """
+        return self.variance_stokes_constant(*args, **kwargs)
+
+    def variance_stokes_constant(
             self,
             st_label,
             sections=None,
             reshape_residuals=True):
-        """Calculates the variance between the measurements and a best fit
+        """Use:
+        - `variance_stokes_constant` for small setups with small variations in
+        intensity
+        - `variance_stokes_exponential` for small setups with very few time
+        steps
+        - `variance_stokes_linear` for larger setups with more time steps
+
+        Calculates the variance between the measurements and a best fit
         at each reference section. This fits a function to the nt * nx
         measurements with ns * nt + nx parameters, where nx are the total
         number of obervation locations along all sections. The temperature is
@@ -902,7 +921,14 @@ class DataStore(xr.Dataset):
             use_statsmodels=False,
             suppress_info=True,
             reshape_residuals=True):
-        """Calculates the variance between the measurements and a best fit
+        """Use:
+        - `variance_stokes_constant` for small setups with small variations in
+        intensity
+        - `variance_stokes_exponential` for small setups with very few time
+        steps
+        - `variance_stokes_linear` for larger setups with more time steps
+
+        Calculates the variance between the measurements and a best fit
         exponential at each reference section. This fits a two-parameter
         exponential to the stokes measurements. The temperature is constant
         and there are no splices/sharp bends in each reference section.
@@ -1073,6 +1099,91 @@ class DataStore(xr.Dataset):
                 coords=self[st_label].coords)
 
             return var_I, resid_da
+
+    def variance_stokes_linear(
+            self,
+            st_label,
+            sections=None,
+            nbin=50,
+            through_zero=True,
+            plot_fit=False):
+        """
+        Estimate a Stokes variance that is linear dependent on the intensity.
+
+        Parameters
+        ----------
+        st_label : str
+            Key under which the Stokes DataArray is stored. E.g., 'ST', 'REV-ST'
+        sections : dict, optional
+            Define sections. See documentation
+        nbin : int
+            Number of bins to compute the variance for, through which the linear
+            function is fitted. Make sure that that are at least 50 residuals
+            per
+            bin to compute the variance from.
+        through_zero : bool
+            If True, the variance is computed as: VAR(Stokes) = angle * Stokes
+            If False, VAR(Stokes) = angle * Stokes + offset.
+            From what we can tell from our inital trails, is that the offset
+            seems very small, so that True seems a better option.
+        plot_fit : bool
+            If True plot the variances for each bin and plot the fitted
+            linear function
+        """
+        import matplotlib.pyplot as plt
+
+        if sections:
+            self.sections = sections
+        else:
+            assert self.sections, 'sections are not defined'
+
+        st_var, resid = self.variance_stokes(st_label=st_label)
+
+        ix_sec = self.ufunc_per_section(x_indices=True, calc_per='all')
+        st = self.isel(x=ix_sec)[st_label].values.ravel()
+        diff_st = resid.isel(x=ix_sec).values.ravel()
+
+        # Adjust nbin silently to fit residuals in
+        # rectangular matrix and use numpy for computation
+        nbin_ = nbin
+        while st.size % nbin_:
+            nbin_ -= 1
+
+        if nbin_ != nbin:
+            print('Estimation of linear variance of', st_label,
+                  'Adjusting nbin to:', nbin_)
+            nbin = nbin_
+
+        isort = np.argsort(st)
+        st_sort_mean = st[isort].reshape((nbin, -1)).mean(axis=1)
+        st_sort_var = diff_st[isort].reshape((nbin, -1)).var(axis=1)
+
+        if through_zero:
+            # VAR(Stokes) = angle * Stokes
+            offset = 0.
+            angle = np.linalg.lstsq(st_sort_mean[:, None], st_sort_var,
+                                    rcond=None)[0]
+        else:
+            # VAR(Stokes) = angle * Stokes + offset
+            angle, offset = np.linalg.lstsq(
+                np.hstack((st_sort_mean[:, None], np.ones((nbin, 1)))),
+                st_sort_var,
+                rcond=None)[0]
+
+        var_fun = lambda stokes: angle * stokes + offset  # noqa: E731
+
+        if plot_fit:
+            plt.scatter(st_sort_mean, st_sort_var, marker='.', c='black')
+            plt.plot([0., st_sort_mean[-1]],
+                     [var_fun(0.), var_fun(st_sort_mean[-1])], c='white',
+                     lw=1.3)
+            plt.plot([0., st_sort_mean[-1]],
+                     [var_fun(0.), var_fun(st_sort_mean[-1])], c='black',
+                     lw=0.8)
+            plt.xlabel(st_label + ' intensity')
+            plt.ylabel(st_label + ' intensity variance')
+
+        return angle, offset, st_sort_mean, st_sort_var, resid, var_fun
 
     def i_var(self, st_var, ast_var, st_label='ST', ast_label='AST'):
         st = self[st_label]

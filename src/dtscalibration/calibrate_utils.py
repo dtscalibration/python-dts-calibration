@@ -1,5 +1,4 @@
 # coding=utf-8
-import matplotlib.pyplot as plt
 import numpy as np
 import scipy.sparse as sp
 from scipy.sparse import linalg as ln
@@ -887,71 +886,3 @@ def match_sections(ds, matching_sections,
     assert hix_out.size > 0, 'no matching sections in calibration'
 
     return np.stack((hix_out, tix_out)).T
-
-
-def linear_stokes_variance(ds, label, nbin, through_zero=True, plot_fit=False):
-    """
-    Estimate a linear dependent Stokes variance.
-
-    Parameters
-    ----------
-    ds : DataStore
-    label : str
-        Key under which the Stokes DataArray is stored. E.g., 'ST', 'REV-ST'
-    nbin : int
-        Number of bins to compute the variance for, through which the linear
-        function is fitted. Make sure that that are at least 50 residuals per
-        bin to compute the variance from.
-    through_zero : bool
-        If True, the variance is computed as: VAR(Stokes) = angle * Stokes
-        If False, VAR(Stokes) = angle * Stokes + offset.
-        From what we can tell from our inital trails, is that the offset
-        seems very small, so that True seems a better option.
-    plot_fit : bool
-        If True plot the variances for each bin and plot the fitted
-        linear function
-    """
-    st_var, resid = ds.variance_stokes(st_label=label)
-
-    ix_sec = ds.ufunc_per_section(x_indices=True, calc_per='all')
-    st = ds.isel(x=ix_sec)[label].values.ravel()
-    diff_st = resid.isel(x=ix_sec).values.ravel()
-
-    # Adjust nbin silently to fit residuals in
-    # rectangular matrix and use numpy for computation
-    nbin_ = nbin
-    while st.size % nbin_:
-        nbin_ -= 1
-
-    if nbin_ != nbin:
-        print('Estimation of linear variance of', label,
-              'Adjusting nbin to:', nbin_)
-        nbin = nbin_
-
-    isort = np.argsort(st)
-    st_sort_mean = st[isort].reshape((nbin, -1)).mean(axis=1)
-    st_sort_var = diff_st[isort].reshape((nbin, -1)).var(axis=1)
-
-    if through_zero:
-        # VAR(Stokes) = angle * Stokes
-        offset = 0.
-        angle = np.linalg.lstsq(st_sort_mean[:, None], st_sort_var,
-                                rcond=None)[0]
-    else:
-        # VAR(Stokes) = angle * Stokes + offset
-        angle, offset = np.linalg.lstsq(
-            np.hstack((st_sort_mean[:, None], np.ones((nbin, 1)))), st_sort_var,
-            rcond=None)[0]
-
-    var_fun = lambda stokes: angle * stokes + offset  # noqa: E731
-
-    if plot_fit:
-        plt.scatter(st_sort_mean, st_sort_var, marker='.', c='black')
-        plt.plot([0., st_sort_mean[-1]],
-                 [var_fun(0.), var_fun(st_sort_mean[-1])], c='white', lw=1.3)
-        plt.plot([0., st_sort_mean[-1]],
-                 [var_fun(0.), var_fun(st_sort_mean[-1])], c='black', lw=0.8)
-        plt.xlabel(label + ' intensity')
-        plt.ylabel(label + ' intensity variance')
-
-    return angle, offset, st_sort_mean, st_sort_var, var_fun

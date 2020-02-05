@@ -384,6 +384,60 @@ def test_variance_of_stokes_synthetic():
                                    decimal=1)
 
 
+def test_variance_of_stokes_linear_synthetic():
+    """
+    Produces a synthetic Stokes measurement with a known noise distribution.
+    Check if same variance is obtained.
+
+    Returns
+    -------
+
+    """
+    var_angle = 0.01
+
+    nx = 500
+    x = np.linspace(0., 20., nx)
+
+    nt = 200
+    beta = np.linspace(500, 4000, nt)[None]
+    c_no_noise = beta * np.exp(-0.001 * x[:, None])
+
+    c_lin_var_through_zero = stats.norm.rvs(
+        loc=c_no_noise,
+        # size=y.size,
+        scale=(var_angle * c_no_noise) ** 0.5)
+    ds = DataStore({
+        'ST':                     (['x', 'time'], c_no_noise),
+        'c_lin_var_through_zero': (['x', 'time'], c_lin_var_through_zero),
+        'probe1Temperature':      (['time'], range(nt)),
+        'userAcquisitionTimeFW':  (['time'], np.ones(nt)),
+        },
+        coords={
+            'x':    x,
+            'time': range(nt)},
+        attrs={'isDoubleEnded': '0'})
+
+    sections = {'probe1Temperature': [slice(0., 20.), ]}
+    test_ST_var, _ = ds.variance_stokes(st_label='ST',
+                                        sections=sections)
+
+    # If fit is forced through zero. Only Poisson distributed noise
+    angle, offset, st_sort_mean, st_sort_var, resid, var_fun = \
+        ds.variance_stokes_linear(
+            'c_lin_var_through_zero', nbin=10, through_zero=True,
+            plot_fit=False)
+    np.testing.assert_almost_equal(angle, var_angle, decimal=4)
+
+    # Fit accounts for Poisson noise plus white noise
+    angle, offset, st_sort_mean, st_sort_var, resid, var_fun = \
+        ds.variance_stokes_linear(
+            'c_lin_var_through_zero', nbin=100, through_zero=False)
+    np.testing.assert_almost_equal(angle, var_angle, decimal=3)
+    np.testing.assert_almost_equal(offset, 0., decimal=1)
+
+    pass
+
+
 def test_double_ended_ols_wls_estimate_synthetic():
     """Checks whether the coefficients are correctly defined by creating a
     synthetic measurement set, and derive the parameters from this set.
