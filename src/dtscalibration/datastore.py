@@ -80,7 +80,8 @@ class DataStore(xr.Dataset):
         dtscalibration.open_datastore : Load (calibrated) measurements from
         netCDF-like file
         """
-    # __slots__ = ('__name__')
+    __slots__ = ('sections', 'is_double_ended', 'chfw', 'chbw',
+                 'channel_configuration', 'timeseries_keys')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1291,10 +1292,6 @@ class DataStore(xr.Dataset):
         -------
 
         """
-        # dim_x = 'x'
-        # dim_time = 'hours'
-        # tmp_label = 'TMPW'
-        # ci_label = 'TMPW_MC'
         if sections is None:
             sections = self.sections
 
