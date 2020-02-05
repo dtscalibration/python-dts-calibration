@@ -80,7 +80,7 @@ class DataStore(xr.Dataset):
         dtscalibration.open_datastore : Load (calibrated) measurements from
         netCDF-like file
         """
-    __slots__ = ('__name__')
+    # __slots__ = ('__name__')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
