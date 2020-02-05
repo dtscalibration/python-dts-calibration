@@ -2320,26 +2320,64 @@ class DataStore(xr.Dataset):
             else:
                 memchunk = da.ones((mc_sample_size, no, nt),
                                    chunks={0: -1, 1: 'auto', 2: -1}).chunks
-        if callable(st_var):
-            st_var_val = st_var(self[st_label]).data
-        else:
-            st_var_val = np.asarray(st_var)
-        if callable(ast_var):
-            ast_var_val = ast_var(self[ast_label]).data
-        else:
-            ast_var_val = np.asarray(ast_var)
-
+        # if callable(st_var):
+        #     st_var_val = st_var(self[st_label]).data
+        # else:
+        #     st_var_val = np.asarray(st_var)
+        # if callable(ast_var):
+        #     ast_var_val = ast_var(self[ast_label]).data
+        # else:
+        #     ast_var_val = np.asarray(ast_var)
+        #
+        # for k, st_labeli, st_vari in zip(
+        #     ['r_st', 'r_ast'],
+        #     [st_label, ast_label],
+        #         [st_var_val, ast_var_val]):
+        #     loc = da.from_array(self[st_labeli].data, chunks=memchunk[1:])
+        #
+        #     self[k] = (
+        #         ('MC', x_dim, time_dim),
+        #         state.normal(
+        #             loc=loc,  # has chunks=memchunk[1:]
+        #             scale=st_vari ** 0.5,
+        #             size=rsize,
+        #             chunks=memchunk))
+        # Draw from the normal distributions for the Stokes intensities
         for k, st_labeli, st_vari in zip(
-            ['r_st', 'r_ast'],
-            [st_label, ast_label],
-                [st_var_val, ast_var_val]):
-            loc = da.from_array(self[st_labeli].data, chunks=memchunk[1:])
+                ['r_st', 'r_ast'],
+                [st_label, ast_label],
+                [st_var, ast_var]):
+
+            # Load the mean as chunked Dask array, otherwise eats memory
+            if type(self[st_labeli].data) == da.core.Array:
+                loc = da.asarray(self[st_labeli].data, chunks=memchunk[1:])
+            else:
+                loc = da.from_array(self[st_labeli].data, chunks=memchunk[1:])
+
+            # Load variance as chunked Dask array, otherwise eats memory
+            if type(st_vari) == da.core.Array:
+                st_vari_da = da.asarray(st_vari, chunks=memchunk[1:])
+
+            elif (callable(st_vari) and
+                    type(self[st_labeli].data) == da.core.Array):
+                st_vari_da = da.asarray(
+                    st_vari(self[st_labeli]).data,
+                    chunks=memchunk[1:])
+
+            elif (callable(st_vari) and
+                    type(self[st_labeli].data) != da.core.Array):
+                st_vari_da = da.from_array(
+                    st_vari(self[st_labeli]).data,
+                    chunks=memchunk[1:])
+
+            else:
+                st_vari_da = da.from_array(st_vari, chunks=memchunk[1:])
 
             self[k] = (
                 ('MC', x_dim, time_dim),
                 state.normal(
                     loc=loc,  # has chunks=memchunk[1:]
-                    scale=st_vari ** 0.5,
+                    scale=st_vari_da ** 0.5,
                     size=rsize,
                     chunks=memchunk))
 
@@ -2721,23 +2759,6 @@ class DataStore(xr.Dataset):
 
                 self[store_ta + '_fw_MC'] = (('MC', x_dim, time_dim), ta_fw_arr)
                 self[store_ta + '_bw_MC'] = (('MC', x_dim, time_dim), ta_bw_arr)
-
-        # if callable(st_var):
-        #     st_var_val = st_var(self[st_label]).data
-        # else:
-        #     st_var_val = np.asarray(st_var)
-        # if callable(ast_var):
-        #     ast_var_val = ast_var(self[ast_label]).data
-        # else:
-        #     ast_var_val = np.asarray(ast_var)
-        # if callable(rst_var):
-        #     rst_var_val = rst_var(self[rst_label]).data
-        # else:
-        #     rst_var_val = np.asarray(rst_var)
-        # if callable(rast_var):
-        #     rast_var_val = rast_var(self[rast_label]).data
-        # else:
-        #     rast_var_val = np.asarray(rast_var)
 
         # Draw from the normal distributions for the Stokes intensities
         for k, st_labeli, st_vari in zip(
