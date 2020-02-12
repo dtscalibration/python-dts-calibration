@@ -18,6 +18,7 @@ from scipy.sparse import linalg as ln
 from .calibrate_utils import calc_alpha_double
 from .calibrate_utils import calibration_double_ended_solver
 from .calibrate_utils import calibration_single_ended_solver
+from .calibrate_utils import match_sections
 from .calibrate_utils import wls_sparse
 from .calibrate_utils import wls_stats
 from .datastore_utils import check_dims
@@ -80,8 +81,6 @@ class DataStore(xr.Dataset):
         dtscalibration.open_datastore : Load (calibrated) measurements from
         netCDF-like file
         """
-    __slots__ = ('sections', 'is_double_ended', 'chfw', 'chbw',
-                 'channel_configuration', 'timeseries_keys')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1674,7 +1673,8 @@ class DataStore(xr.Dataset):
             reduce_memory_usage=False,
             transient_asym_att_x=None,
             fix_gamma=None,
-            fix_alpha=None):
+            fix_alpha=None,
+            matching_sections=None):
         """
 
         Parameters
@@ -1790,10 +1790,10 @@ class DataStore(xr.Dataset):
         check_dims(self, [st_label, ast_label, rst_label, rast_label],
                    correct_dims=(x_dim, time_dim))
 
-        # if matching_sections:
-        #     matching_indices = match_sections(self, matching_sections)
-        # else:
-        #     matching_indices = None
+        if matching_sections:
+            matching_indices = match_sections(self, matching_sections)
+        else:
+            matching_indices = None
 
         if transient_asym_att_x:
             ta_dim = 'trans_att'
@@ -1813,13 +1813,15 @@ class DataStore(xr.Dataset):
                     self, st_label, ast_label, rst_label, rast_label,
                     st_var, ast_var, rst_var, rast_var,
                     calc_cov=calc_cov, solver='external_split',
-                    transient_asym_att_x=transient_asym_att_x)
+                    transient_asym_att_x=transient_asym_att_x,
+                    matching_indices=matching_indices,)
             else:
                 out = calibration_double_ended_solver(
                     self, st_label, ast_label, rst_label, rast_label,
                     st_var, ast_var, rst_var, rast_var,
                     calc_cov=calc_cov, solver=solver,
-                    transient_asym_att_x=transient_asym_att_x)
+                    transient_asym_att_x=transient_asym_att_x,
+                    matching_indices=matching_indices,)
 
                 if calc_cov:
                     p_val, p_var, p_cov = out
@@ -1847,19 +1849,20 @@ class DataStore(xr.Dataset):
                     'define alpha for each location'
                 assert np.size(fix_alpha[1]) == self[x_dim].size, \
                     'define var alpha for each location'
+                m = 'The integrated differential attenuation is zero at the ' \
+                    'first index of the reference sections.'
+                assert np.abs(fix_alpha[0][ix_sec[0]]) < 1e-8, m
                 # The array with the integrated differential att is termed E
 
                 # X_gamma
                 X_E = sp.vstack((
                     -split['E'],
                     split['E'],
-                    split['E'],
-                    split['Zero_E_att']))
+                    split['E']))
                 X_gamma = sp.vstack((
                     split['Z_gamma'],
                     split['Z_gamma'],
-                    split['Zero_gamma'],
-                    split['Zero_gamma_att'])).toarray().flatten()
+                    split['Zero_gamma'])).toarray().flatten()
                 # Use only the remaining coefficients
                 # Stack all X's
                 X = sp.vstack(
@@ -1871,28 +1874,22 @@ class DataStore(xr.Dataset):
                                 split['Z_TA_bw'])),
                      sp.hstack((split['Z_D'] / 2,
                                 -split['Z_D'] / 2,
-                                split['Z_TA_E'])),
-                     sp.hstack((split['Z_D_att'] / 2,
-                                -split['Z_D_att'] / 2,
-                                split['Z_TA_att']))
-                     ))
+                                split['Z_TA_E']))))
 
                 # Move the coefficients times the fixed gamma to the
                 # observations
                 y = np.concatenate((split['y_F'],
                                     split['y_B'],
-                                    split['y_att1'],
-                                    split['y_att2']))
-                y -= X_E.dot(fix_alpha[0])
+                                    split['y_att1']))
+                y -= X_E.dot(fix_alpha[0][ix_sec[1:]])
                 y -= fix_gamma[0] * X_gamma
                 # variances are added. weight is the inverse of the variance
                 # of the observations
                 if method == 'wls':
                     w_ = np.concatenate((split['w_F'],
                                          split['w_B'],
-                                         split['w_att1'],
-                                         split['w_att2']))
-                    w = 1 / (1 / w_ + X_E.dot(fix_alpha[1]) +
+                                         split['w_att1']))
+                    w = 1 / (1 / w_ + X_E.dot(fix_alpha[1][ix_sec[1:]]) +
                              fix_gamma[1] * X_gamma)
 
                 else:
@@ -1901,8 +1898,9 @@ class DataStore(xr.Dataset):
                 # [C_1, C_2, .., C_nt, TA_fw_a_1, TA_fw_a_2, TA_fw_a_nt,
                 # TA_bw_a_1, TA_bw_a_2, TA_bw_a_nt] Then continues with
                 # TA for connector b.
-                p0_est = np.concatenate((split['p0_est'][1:1 + 2 * nt],
-                                         split['p0_est'][1 + 2 * nt + nx_sec:]))
+                p0_est = np.concatenate((
+                    split['p0_est'][1:1 + 2 * nt],
+                    split['p0_est'][1 + 2 * nt + nx_sec - 1:]))
 
                 if solver == 'sparse':
                     out = wls_sparse(
@@ -1942,8 +1940,7 @@ class DataStore(xr.Dataset):
                 X_gamma = sp.vstack((
                     split['Z_gamma'],
                     split['Z_gamma'],
-                    split['Zero_gamma'],
-                    split['Zero_gamma_att'])).toarray().flatten()
+                    split['Zero_gamma'])).toarray().flatten()
                 # Use only the remaining coefficients
                 X = sp.vstack(
                     (sp.hstack((-split['Z_D'],
@@ -1957,26 +1954,19 @@ class DataStore(xr.Dataset):
                      sp.hstack((split['Z_D'] / 2,
                                 -split['Z_D'] / 2,
                                 split['E'],
-                                split['Z_TA_E'])),
-                     sp.hstack((split['Z_D_att'] / 2,
-                                -split['Z_D_att'] / 2,
-                                split['Zero_E_att'],
-                                split['Z_TA_att']))
-                     ))
+                                split['Z_TA_E']))))
                 # Move the coefficients times the fixed gamma to the
                 # observations
                 y = np.concatenate((split['y_F'],
                                     split['y_B'],
-                                    split['y_att1'],
-                                    split['y_att2']))
+                                    split['y_att1']))
                 y -= fix_gamma[0] * X_gamma
                 # variances are added. weight is the inverse of the variance
                 # of the observations
                 if method == 'wls':
                     w_ = np.concatenate((split['w_F'],
                                          split['w_B'],
-                                         split['w_att1'],
-                                         split['w_att2']))
+                                         split['w_att1']))
                     w = 1 / (1 / w_ + fix_gamma[1] * X_gamma)
 
                 else:
@@ -2017,26 +2007,30 @@ class DataStore(xr.Dataset):
                     'df',
                     'db',
                     'df_var',
-                    'db_var')
+                    'db_var',
+                    ix_alpha_is_zero=ix_sec[0])
 
                 # Added fixed gamma and its variance to the solution. And
                 # expand to include locations outside reference sections.
                 p_val = np.concatenate(([fix_gamma[0]],
                                         out[0][:2 * nt],
                                         E_all_exact,
-                                        out[0][2 * nt + nx_sec:]))
-                p_val[1 + 2 * nt + ix_sec] = out[0][2 * nt:2 * nt + nx_sec]
+                                        out[0][2 * nt + nx_sec - 1:]))
+                p_val[1 + 2 * nt + ix_sec[1:]] = out[0][
+                                                 2 * nt:2 * nt + nx_sec - 1]
+                p_val[1 + 2 * nt + ix_sec[0]] = 0.
                 p_var = np.concatenate(([fix_gamma[1]],
                                         out[1][:2 * nt],
                                         E_all_var_exact,
-                                        out[1][2 * nt + nx_sec:]))
-                p_var[1 + 2 * nt + ix_sec] = out[1][2 * nt:2 * nt + nx_sec]
+                                        out[1][2 * nt + nx_sec - 1:]))
+                p_var[1 + 2 * nt + ix_sec[1:]] = out[1][
+                                                 2 * nt:2 * nt + nx_sec - 1]
 
                 if calc_cov:
                     p_cov = np.diag(p_var).copy()
                     from_i = np.concatenate(
                         (np.arange(1, 2 * nt + 1),
-                         2 * nt + 1 + ix_sec,
+                         2 * nt + 1 + ix_sec[1:],
                          np.arange(1 + 2 * nt + nx,
                                    1 + 2 * nt + nx + nta * nt * 2)))
 
@@ -2049,15 +2043,16 @@ class DataStore(xr.Dataset):
                     'define alpha for each location'
                 assert np.size(fix_alpha[1]) == self[x_dim].size, \
                     'define var alpha for each location'
+                m = 'The integrated differential attenuation is zero at the ' \
+                    'first index of the reference sections.'
+                assert np.abs(fix_alpha[0][ix_sec[0]]) < 1e-8, m
                 # The array with the integrated differential att is termed E
 
                 # X_gamma
                 X_E = sp.vstack((
                     -split['E'],
                     split['E'],
-                    split['E'],
-                    split['Zero_E_att']
-                    ))
+                    split['E']))
                 # Use only the remaining coefficients
                 # Stack all X's
                 X = sp.vstack(
@@ -2072,34 +2067,28 @@ class DataStore(xr.Dataset):
                      sp.hstack((split['Zero_gamma'],
                                 split['Z_D'] / 2,
                                 -split['Z_D'] / 2,
-                                split['Z_TA_E'])),
-                     sp.hstack((split['Zero_gamma_att'],
-                                split['Z_D_att'] / 2,
-                                -split['Z_D_att'] / 2,
-                                split['Z_TA_att']))))
+                                split['Z_TA_E']))))
                 # Move the coefficients times the fixed gamma to the
                 # observations
                 y = np.concatenate((split['y_F'],
                                     split['y_B'],
-                                    split['y_att1'],
-                                    split['y_att2']))
-                y -= X_E.dot(fix_alpha[0])
+                                    split['y_att1']))
+                y -= X_E.dot(fix_alpha[0][ix_sec[1:]])
 
                 # variances are added. weight is the inverse of the variance
                 # of the observations
                 if method == 'wls':
                     w_ = np.concatenate((split['w_F'],
                                          split['w_B'],
-                                         split['w_att1'],
-                                         split['w_att2']))
-                    w = 1 / (1 / w_ + X_E.dot(fix_alpha[1]))
+                                         split['w_att1']))
+                    w = 1 / (1 / w_ + X_E.dot(fix_alpha[1][ix_sec[1:]]))
 
                 else:
                     w = 1.
 
                 p0_est = np.concatenate(
                     (split['p0_est'][:1 + 2 * nt],
-                     split['p0_est'][1 + 2 * nt + nx_sec:]))
+                     split['p0_est'][1 + 2 * nt + nx_sec - 1:]))
 
                 if solver == 'sparse':
                     out = wls_sparse(

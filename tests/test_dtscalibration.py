@@ -35,6 +35,26 @@ else:
     data_dir_double_ended2 = os.path.join('..', '..', 'tests', 'data', 'double_ended2')
 
 
+def assert_almost_equal_verbose(actual, desired, verbose=False, **kwargs):
+    """Print the actual precision decimals"""
+    err = np.abs(actual - desired).max()
+    dec = -np.ceil(np.log10(err))
+
+    if not (np.isfinite(dec)):
+        dec = 18.
+
+    if verbose:
+        print(dec)
+
+    m = "\n>>>>>The actual precision is: " + str(dec)
+
+    # assert int(dec) == kwargs['decimal'], \
+    #     'The actual precision is different: ' + str(dec)
+
+    np.testing.assert_almost_equal(actual, desired, err_msg=m, **kwargs)
+    pass
+
+
 def test_main():
     assert main([]) == 0
 
@@ -144,6 +164,9 @@ def test_double_ended_variance_estimate_synthetic():
                                 method='wls',
                                 solver='sparse')
 
+    assert_almost_equal_verbose(ds.TMPF.mean(), 12., decimal=2)
+    assert_almost_equal_verbose(ds.TMPB.mean(), 12., decimal=3)
+
     ds.conf_int_double_ended(
         p_val='p_val',
         p_cov='p_cov',
@@ -189,12 +212,12 @@ def test_double_ended_variance_estimate_synthetic():
     for (_, v1), (_, v2) in zip(stdsf1.items(), stdsf2.items()):
         for v1i, v2i in zip(v1, v2):
             print('Real VAR: ', v1i ** 2, 'Estimated VAR: ', float(v2i))
-            np.testing.assert_almost_equal(v1i ** 2, v2i, decimal=2)
+            assert_almost_equal_verbose(v1i ** 2, v2i, decimal=2)
 
     for (_, v1), (_, v2) in zip(stdsb1.items(), stdsb2.items()):
         for v1i, v2i in zip(v1, v2):
             print('Real VAR: ', v1i ** 2, 'Estimated VAR: ', float(v2i))
-            np.testing.assert_almost_equal(v1i ** 2, v2i, decimal=2)
+            assert_almost_equal_verbose(v1i ** 2, v2i, decimal=2)
 
     pass
 
@@ -312,7 +335,7 @@ def test_single_ended_variance_estimate_synthetic():
     for (_, v1), (_, v2) in zip(stdsf1.items(), stdsf2.items()):
         for v1i, v2i in zip(v1, v2):
             print('Real VAR: ', v1i ** 2, 'Estimated VAR: ', float(v2i))
-            np.testing.assert_almost_equal(v1i ** 2, v2i, decimal=2)
+            assert_almost_equal_verbose(v1i ** 2, v2i, decimal=2)
 
     pass
 
@@ -320,6 +343,8 @@ def test_single_ended_variance_estimate_synthetic():
 @pytest.mark.skip(reason="Not enough measurements in time. Use exponential "
                          "instead.")
 def test_variance_of_stokes():
+    np.random.seed(0)
+
     correct_var = 9.045
     filepath = data_dir_double_ended2
     ds = read_silixa_files(
@@ -333,13 +358,13 @@ def test_variance_of_stokes():
 
     I_var, _ = ds.variance_stokes(st_label='ST',
                                   sections=sections)
-    np.testing.assert_almost_equal(I_var, correct_var, decimal=1)
+    assert_almost_equal_verbose(I_var, correct_var, decimal=1)
 
     ds_dask = ds.chunk(chunks={})
     I_var, _ = ds_dask.variance_stokes(
         st_label='ST',
         sections=sections)
-    np.testing.assert_almost_equal(I_var, correct_var, decimal=1)
+    assert_almost_equal_verbose(I_var, correct_var, decimal=1)
 
     pass
 
@@ -353,6 +378,8 @@ def test_variance_of_stokes_synthetic():
     -------
 
     """
+    np.random.seed(0)
+
     yvar = 5.
 
     nx = 500
@@ -380,7 +407,7 @@ def test_variance_of_stokes_synthetic():
     test_ST_var, _ = ds.variance_stokes(st_label='ST',
                                         sections=sections)
 
-    np.testing.assert_almost_equal(test_ST_var, yvar,
+    assert_almost_equal_verbose(test_ST_var, yvar,
                                    decimal=1)
 
 
@@ -393,6 +420,8 @@ def test_variance_of_stokes_linear_synthetic():
     -------
 
     """
+    np.random.seed(0)
+
     var_slope = 0.01
 
     nx = 500
@@ -426,14 +455,14 @@ def test_variance_of_stokes_linear_synthetic():
         ds.variance_stokes_linear(
             'c_lin_var_through_zero', nbin=10, through_zero=True,
             plot_fit=False)
-    np.testing.assert_almost_equal(slope, var_slope, decimal=4)
+    assert_almost_equal_verbose(slope, var_slope, decimal=3)
 
     # Fit accounts for Poisson noise plus white noise
     slope, offset, st_sort_mean, st_sort_var, resid, var_fun = \
         ds.variance_stokes_linear(
             'c_lin_var_through_zero', nbin=100, through_zero=False)
-    np.testing.assert_almost_equal(slope, var_slope, decimal=3)
-    np.testing.assert_almost_equal(offset, 0., decimal=1)
+    assert_almost_equal_verbose(slope, var_slope, decimal=3)
+    assert_almost_equal_verbose(offset, 0., decimal=0)
 
     pass
 
@@ -468,19 +497,17 @@ def test_double_ended_ols_wls_estimate_synthetic():
     temp_real[cold_mask] *= ts_cold + 273.15
     temp_real[warm_mask] *= ts_warm + 273.15
 
-    st = C_p * np.exp(-dalpha_r * x[:, None]) * \
-        np.exp(-dalpha_p * x[:, None]) * np.exp(gamma / temp_real) / \
-        (np.exp(-gamma / temp_real) - 1)
-    ast = C_m * np.exp(-dalpha_r * x[:, None]) * \
-        np.exp(-dalpha_m * x[:, None]) / (np.exp(-gamma / temp_real) - 1)
-    rst = C_p * np.exp(-dalpha_r * (-x[:, None] + cable_len)) * \
-        np.exp(-dalpha_p * (-x[:, None] + cable_len)) * \
-        np.exp(gamma / temp_real) / (np.exp(-gamma / temp_real) - 1)
-    rast = C_m * np.exp(-dalpha_r * (-x[:, None] + cable_len)) * np.exp(
-        -dalpha_m * (-x[:, None] + cable_len)) / \
-        (np.exp(-gamma / temp_real) - 1)
+    st = C_p * np.exp(-(dalpha_r + dalpha_p) * x[:, None]) * \
+        np.exp(gamma / temp_real) / (np.exp(gamma / temp_real) - 1)
+    ast = C_m * np.exp(-(dalpha_r + dalpha_m) * x[:, None]) / \
+        (np.exp(gamma / temp_real) - 1)
+    rst = C_p * np.exp(-(dalpha_r + dalpha_p) * (-x[:, None] + cable_len)) * \
+        np.exp(gamma / temp_real) / (np.exp(gamma / temp_real) - 1)
+    rast = C_m * np.exp(-(dalpha_r + dalpha_m) * (-x[:, None] + cable_len)) / \
+        (np.exp(gamma / temp_real) - 1)
 
     alpha = np.mean(np.log(rst / rast) - np.log(st / ast), axis=1) / 2
+    alpha -= alpha[0]  # the first x-index is where to start counting
 
     ds = DataStore({
         'st':                    (['x', 'time'], st),
@@ -499,8 +526,8 @@ def test_double_ended_ols_wls_estimate_synthetic():
             'isDoubleEnded': '1'})
 
     sections = {
-        'cold': [slice(0., 0.5 * cable_len)],
-        'warm': [slice(0.5 * cable_len, cable_len)]}
+        'cold': [slice(0., 0.4 * cable_len)],
+        'warm': [slice(0.65 * cable_len, cable_len)]}
 
     # OLS
     ds.calibration_double_ended(sections=sections,
@@ -511,16 +538,16 @@ def test_double_ended_ols_wls_estimate_synthetic():
                                 method='ols',
                                 solver='sparse')
 
-    np.testing.assert_almost_equal(
-        ds.gamma.values, gamma, decimal=6)
-    np.testing.assert_almost_equal(
-        ds.alpha.values, alpha, decimal=7)
-    np.testing.assert_almost_equal(
-        ds.TMPF.values, temp_real - 273.15, decimal=4)
-    np.testing.assert_almost_equal(
-        ds.TMPB.values, temp_real - 273.15, decimal=4)
-    np.testing.assert_almost_equal(
-        ds.TMPW.values, temp_real - 273.15, decimal=4)
+    assert_almost_equal_verbose(
+        ds.gamma.values, gamma, decimal=11)
+    assert_almost_equal_verbose(
+        ds.alpha.values, alpha, decimal=13)
+    assert_almost_equal_verbose(
+        ds.TMPF.values, temp_real - 273.15, decimal=11)
+    assert_almost_equal_verbose(
+        ds.TMPB.values, temp_real - 273.15, decimal=11)
+    assert_almost_equal_verbose(
+        ds.TMPW.values, temp_real - 273.15, decimal=12)
 
     # WLS
     ds.calibration_double_ended(sections=sections,
@@ -536,16 +563,16 @@ def test_double_ended_ols_wls_estimate_synthetic():
                                 solver='sparse',
                                 tmpw_mc_size=5)
 
-    np.testing.assert_almost_equal(
-        ds.gamma.values, gamma, decimal=5)
-    np.testing.assert_almost_equal(
-        ds.alpha.values, alpha, decimal=6)
-    np.testing.assert_almost_equal(
-        ds.TMPF.values, temp_real - 273.15, decimal=4)
-    np.testing.assert_almost_equal(
-        ds.TMPB.values, temp_real - 273.15, decimal=4)
-    np.testing.assert_almost_equal(
-        ds.TMPW.values, temp_real - 273.15, decimal=4)
+    assert_almost_equal_verbose(
+        ds.gamma.values, gamma, decimal=10)
+    assert_almost_equal_verbose(
+        ds.alpha.values, alpha, decimal=9)
+    assert_almost_equal_verbose(
+        ds.TMPF.values, temp_real - 273.15, decimal=7)
+    assert_almost_equal_verbose(
+        ds.TMPB.values, temp_real - 273.15, decimal=7)
+    assert_almost_equal_verbose(
+        ds.TMPW.values, temp_real - 273.15, decimal=7)
 
 
 def test_double_ended_ols_wls_estimate_synthetic_df_and_db_are_different():
@@ -603,12 +630,12 @@ def test_double_ended_ols_wls_estimate_synthetic_df_and_db_are_different():
     dalpha = dalpha_p - dalpha_m  # \Delta\alpha
     alpha_int = cable_len * dalpha
 
-    df = c_f + alpha_int / 2
-    db = c_b + alpha_int / 2
+    df = c_f  # reference section starts at first x-index
+    db = c_b + alpha_int
     i_fw = np.log(st / ast)
     i_bw = np.log(rst / rast)
 
-    E_real = (i_bw - i_fw) / 2 + (c_b - c_f) / 2
+    E_real = (i_bw - i_fw) / 2 + (db - df) / 2
 
     ds = DataStore({
         'st':                    (['x', 'time'], st),
@@ -647,14 +674,15 @@ def test_double_ended_ols_wls_estimate_synthetic_df_and_db_are_different():
         fix_gamma=(gamma, 0.),
         remove_mc_set_flag=True)
 
-    np.testing.assert_allclose(df, ds.df.values)
-    np.testing.assert_allclose(db, ds.db.values)
-    np.testing.assert_allclose(x * (dalpha_p - dalpha_m),
-                               ds.alpha.values - ds.alpha.values[0])
-    np.testing.assert_allclose(real_ans2, ds.p_val.values)
-    np.testing.assert_allclose(temp_real_celsius, ds.TMPF.values, atol=1e-10)
-    np.testing.assert_allclose(temp_real_celsius, ds.TMPB.values, atol=1e-10)
-    np.testing.assert_allclose(temp_real_celsius, ds.TMPW.values, atol=1e-10)
+    assert_almost_equal_verbose(df, ds.df.values, decimal=14)
+    assert_almost_equal_verbose(db, ds.db.values, decimal=13)
+    assert_almost_equal_verbose(x * (dalpha_p - dalpha_m),
+                                ds.alpha.values - ds.alpha.values[0],
+                                decimal=13)
+    assert np.all(np.abs(real_ans2 - ds.p_val.values) < 1e-10)
+    assert_almost_equal_verbose(temp_real_celsius, ds.TMPF.values, decimal=10)
+    assert_almost_equal_verbose(temp_real_celsius, ds.TMPB.values, decimal=10)
+    assert_almost_equal_verbose(temp_real_celsius, ds.TMPW.values, decimal=10)
     pass
 
 
@@ -688,19 +716,22 @@ def test_double_ended_ols_wls_fix_gamma_estimate_synthetic():
     temp_real[cold_mask] *= ts_cold + 273.15
     temp_real[warm_mask] *= ts_warm + 273.15
 
-    st = C_p * np.exp(-dalpha_r * x[:, None]) * \
-        np.exp(-dalpha_p * x[:, None]) * np.exp(gamma / temp_real) / \
-        (np.exp(-gamma / temp_real) - 1)
-    ast = C_m * np.exp(-dalpha_r * x[:, None]) * \
-        np.exp(-dalpha_m * x[:, None]) / (np.exp(-gamma / temp_real) - 1)
-    rst = C_p * np.exp(-dalpha_r * (-x[:, None] + cable_len)) * \
-        np.exp(-dalpha_p * (-x[:, None] + cable_len)) * \
-        np.exp(gamma / temp_real) / (np.exp(-gamma / temp_real) - 1)
-    rast = C_m * np.exp(-dalpha_r * (-x[:, None] + cable_len)) * np.exp(
-        -dalpha_m * (-x[:, None] + cable_len)) / \
-        (np.exp(-gamma / temp_real) - 1)
+    st = C_p * np.exp(-(dalpha_r + dalpha_p) * x[:, None]) * \
+         np.exp(gamma / temp_real) / (np.exp(gamma / temp_real) - 1)
+    ast = C_m * np.exp(-(dalpha_r + dalpha_m) * x[:, None]) / \
+          (np.exp(gamma / temp_real) - 1)
+    rst = C_p * np.exp(-(dalpha_r + dalpha_p) * (-x[:, None] + cable_len)) * \
+          np.exp(gamma / temp_real) / (np.exp(gamma / temp_real) - 1)
+    rast = C_m * np.exp(-(dalpha_r + dalpha_m) * (-x[:, None] + cable_len)) / \
+           (np.exp(gamma / temp_real) - 1)
 
     alpha = np.mean(np.log(rst / rast) - np.log(st / ast), axis=1) / 2
+    alpha -= alpha[0]  # the first x-index is where to start counting
+    dalpha = dalpha_p - dalpha_m
+    alpha2 = x * dalpha
+
+    # to ensure the st, rst, ast, rast were correctly defined.
+    np.testing.assert_allclose(alpha2, alpha, atol=1e-15, rtol=0)
 
     ds = DataStore({
         'st':                    (['x', 'time'], st),
@@ -719,8 +750,8 @@ def test_double_ended_ols_wls_fix_gamma_estimate_synthetic():
             'isDoubleEnded': '1'})
 
     sections = {
-        'cold': [slice(0., 0.5 * cable_len)],
-        'warm': [slice(0.5 * cable_len, cable_len)]}
+        'cold': [slice(0., 0.35 * cable_len)],
+        'warm': [slice(0.67 * cable_len, cable_len)]}
 
     # OLS
     ds.calibration_double_ended(sections=sections,
@@ -732,16 +763,16 @@ def test_double_ended_ols_wls_fix_gamma_estimate_synthetic():
                                 solver='sparse',
                                 fix_gamma=(gamma, 0.))
 
-    np.testing.assert_almost_equal(
-        ds.gamma.values, gamma, decimal=6)
-    np.testing.assert_almost_equal(
-        ds.alpha.values, alpha, decimal=8)
-    np.testing.assert_almost_equal(
-        ds.TMPF.values, temp_real - 273.15, decimal=4)
-    np.testing.assert_almost_equal(
-        ds.TMPB.values, temp_real - 273.15, decimal=4)
-    np.testing.assert_almost_equal(
-        ds.TMPW.values, temp_real - 273.15, decimal=4)
+    assert_almost_equal_verbose(
+        ds.gamma.values, gamma, decimal=18)
+    assert_almost_equal_verbose(
+        ds.alpha.values, alpha, decimal=11)
+    assert_almost_equal_verbose(
+        ds.TMPF.values, temp_real - 273.15, decimal=9)
+    assert_almost_equal_verbose(
+        ds.TMPB.values, temp_real - 273.15, decimal=9)
+    assert_almost_equal_verbose(
+        ds.TMPW.values, temp_real - 273.15, decimal=9)
 
     # WLS
     ds.calibration_double_ended(sections=sections,
@@ -758,16 +789,16 @@ def test_double_ended_ols_wls_fix_gamma_estimate_synthetic():
                                 tmpw_mc_size=5,
                                 fix_gamma=(gamma, 0.))
 
-    np.testing.assert_almost_equal(
-        ds.gamma.values, gamma, decimal=6)
-    np.testing.assert_almost_equal(
-        ds.alpha.values, alpha, decimal=7)
-    np.testing.assert_almost_equal(
-        ds.TMPF.values, temp_real - 273.15, decimal=4)
-    np.testing.assert_almost_equal(
-        ds.TMPB.values, temp_real - 273.15, decimal=4)
-    np.testing.assert_almost_equal(
-        ds.TMPW.values, temp_real - 273.15, decimal=4)
+    assert_almost_equal_verbose(
+        ds.gamma.values, gamma, decimal=18)
+    assert_almost_equal_verbose(
+        ds.alpha.values, alpha, decimal=10)
+    assert_almost_equal_verbose(
+        ds.TMPF.values, temp_real - 273.15, decimal=8)
+    assert_almost_equal_verbose(
+        ds.TMPB.values, temp_real - 273.15, decimal=8)
+    assert_almost_equal_verbose(
+        ds.TMPW.values, temp_real - 273.15, decimal=8)
 
     pass
 
@@ -802,19 +833,17 @@ def test_double_ended_ols_wls_fix_alpha_estimate_synthetic():
     temp_real[cold_mask] *= ts_cold + 273.15
     temp_real[warm_mask] *= ts_warm + 273.15
 
-    st = C_p * np.exp(-dalpha_r * x[:, None]) * \
-        np.exp(-dalpha_p * x[:, None]) * np.exp(gamma / temp_real) / \
-        (np.exp(-gamma / temp_real) - 1)
-    ast = C_m * np.exp(-dalpha_r * x[:, None]) * \
-        np.exp(-dalpha_m * x[:, None]) / (np.exp(-gamma / temp_real) - 1)
-    rst = C_p * np.exp(-dalpha_r * (-x[:, None] + cable_len)) * \
-        np.exp(-dalpha_p * (-x[:, None] + cable_len)) * \
-        np.exp(gamma / temp_real) / (np.exp(-gamma / temp_real) - 1)
-    rast = C_m * np.exp(-dalpha_r * (-x[:, None] + cable_len)) * np.exp(
-        -dalpha_m * (-x[:, None] + cable_len)) / \
-        (np.exp(-gamma / temp_real) - 1)
+    st = C_p * np.exp(-(dalpha_r + dalpha_p) * x[:, None]) * \
+        np.exp(gamma / temp_real) / (np.exp(gamma / temp_real) - 1)
+    ast = C_m * np.exp(-(dalpha_r + dalpha_m) * x[:, None]) / \
+        (np.exp(gamma / temp_real) - 1)
+    rst = C_p * np.exp(-(dalpha_r + dalpha_p) * (-x[:, None] + cable_len)) * \
+        np.exp(gamma / temp_real) / (np.exp(gamma / temp_real) - 1)
+    rast = C_m * np.exp(-(dalpha_r + dalpha_m) * (-x[:, None] + cable_len)) / \
+        (np.exp(gamma / temp_real) - 1)
 
     alpha = np.mean(np.log(rst / rast) - np.log(st / ast), axis=1) / 2
+    alpha -= alpha[0]  # the first x-index is where to start counting
 
     ds = DataStore({
         'st':                    (['x', 'time'], st),
@@ -833,8 +862,8 @@ def test_double_ended_ols_wls_fix_alpha_estimate_synthetic():
             'isDoubleEnded': '1'})
 
     sections = {
-        'cold': [slice(0., 0.5 * cable_len)],
-        'warm': [slice(0.5 * cable_len, cable_len)]}
+        'cold': [slice(0., 0.4 * cable_len)],
+        'warm': [slice(0.78 * cable_len, cable_len)]}
 
     # OLS
     ds.calibration_double_ended(sections=sections,
@@ -846,16 +875,16 @@ def test_double_ended_ols_wls_fix_alpha_estimate_synthetic():
                                 solver='sparse',
                                 fix_alpha=(alpha, np.zeros_like(alpha)))
 
-    np.testing.assert_almost_equal(
-        ds.gamma.values, gamma, decimal=6)
-    np.testing.assert_almost_equal(
-        ds.alpha.values, alpha, decimal=8)
-    np.testing.assert_almost_equal(
-        ds.TMPF.values, temp_real - 273.15, decimal=4)
-    np.testing.assert_almost_equal(
-        ds.TMPB.values, temp_real - 273.15, decimal=4)
-    np.testing.assert_almost_equal(
-        ds.TMPW.values, temp_real - 273.15, decimal=4)
+    assert_almost_equal_verbose(
+        ds.gamma.values, gamma, decimal=9)
+    assert_almost_equal_verbose(
+        ds.alpha.values, alpha, decimal=18)
+    assert_almost_equal_verbose(
+        ds.TMPF.values, temp_real - 273.15, decimal=9)
+    assert_almost_equal_verbose(
+        ds.TMPB.values, temp_real - 273.15, decimal=9)
+    assert_almost_equal_verbose(
+        ds.TMPW.values, temp_real - 273.15, decimal=11)
 
     # WLS
     ds.calibration_double_ended(sections=sections,
@@ -872,16 +901,16 @@ def test_double_ended_ols_wls_fix_alpha_estimate_synthetic():
                                 tmpw_mc_size=5,
                                 fix_alpha=(alpha, np.zeros_like(alpha)))
 
-    np.testing.assert_almost_equal(
-        ds.gamma.values, gamma, decimal=6)
-    np.testing.assert_almost_equal(
-        ds.alpha.values, alpha, decimal=7)
-    np.testing.assert_almost_equal(
-        ds.TMPF.values, temp_real - 273.15, decimal=5)
-    np.testing.assert_almost_equal(
-        ds.TMPB.values, temp_real - 273.15, decimal=5)
-    np.testing.assert_almost_equal(
-        ds.TMPW.values, temp_real - 273.15, decimal=4)
+    assert_almost_equal_verbose(
+        ds.gamma.values, gamma, decimal=8)
+    assert_almost_equal_verbose(
+        ds.alpha.values, alpha, decimal=18)
+    assert_almost_equal_verbose(
+        ds.TMPF.values, temp_real - 273.15, decimal=7)
+    assert_almost_equal_verbose(
+        ds.TMPB.values, temp_real - 273.15, decimal=7)
+    assert_almost_equal_verbose(
+        ds.TMPW.values, temp_real - 273.15, decimal=7)
 
     pass
 
@@ -916,19 +945,17 @@ def test_double_ended_ols_wls_fix_alpha_fix_gamma_estimate_synthetic():
     temp_real[cold_mask] *= ts_cold + 273.15
     temp_real[warm_mask] *= ts_warm + 273.15
 
-    st = C_p * np.exp(-dalpha_r * x[:, None]) * \
-        np.exp(-dalpha_p * x[:, None]) * np.exp(gamma / temp_real) / \
-        (np.exp(-gamma / temp_real) - 1)
-    ast = C_m * np.exp(-dalpha_r * x[:, None]) * \
-        np.exp(-dalpha_m * x[:, None]) / (np.exp(-gamma / temp_real) - 1)
-    rst = C_p * np.exp(-dalpha_r * (-x[:, None] + cable_len)) * \
-        np.exp(-dalpha_p * (-x[:, None] + cable_len)) * \
-        np.exp(gamma / temp_real) / (np.exp(-gamma / temp_real) - 1)
-    rast = C_m * np.exp(-dalpha_r * (-x[:, None] + cable_len)) * np.exp(
-        -dalpha_m * (-x[:, None] + cable_len)) / \
-        (np.exp(-gamma / temp_real) - 1)
+    st = C_p * np.exp(-(dalpha_r + dalpha_p) * x[:, None]) * \
+        np.exp(gamma / temp_real) / (np.exp(gamma / temp_real) - 1)
+    ast = C_m * np.exp(-(dalpha_r + dalpha_m) * x[:, None]) / \
+        (np.exp(gamma / temp_real) - 1)
+    rst = C_p * np.exp(-(dalpha_r + dalpha_p) * (-x[:, None] + cable_len)) * \
+        np.exp(gamma / temp_real) / (np.exp(gamma / temp_real) - 1)
+    rast = C_m * np.exp(-(dalpha_r + dalpha_m) * (-x[:, None] + cable_len)) / \
+        (np.exp(gamma / temp_real) - 1)
 
     alpha = np.mean(np.log(rst / rast) - np.log(st / ast), axis=1) / 2
+    alpha -= alpha[0]  # the first x-index is where to start counting
 
     ds = DataStore({
         'st':                    (['x', 'time'], st),
@@ -961,16 +988,16 @@ def test_double_ended_ols_wls_fix_alpha_fix_gamma_estimate_synthetic():
                                 fix_gamma=(gamma, 0.),
                                 fix_alpha=(alpha, np.zeros_like(alpha)))
 
-    np.testing.assert_almost_equal(
-        ds.gamma.values, gamma, decimal=6)
-    np.testing.assert_almost_equal(
-        ds.alpha.values, alpha, decimal=8)
-    np.testing.assert_almost_equal(
-        ds.TMPF.values, temp_real - 273.15, decimal=4)
-    np.testing.assert_almost_equal(
-        ds.TMPB.values, temp_real - 273.15, decimal=4)
-    np.testing.assert_almost_equal(
-        ds.TMPW.values, temp_real - 273.15, decimal=4)
+    assert_almost_equal_verbose(
+        ds.gamma.values, gamma, decimal=18)
+    assert_almost_equal_verbose(
+        ds.alpha.values, alpha, decimal=18)
+    assert_almost_equal_verbose(
+        ds.TMPF.values, temp_real - 273.15, decimal=11)
+    assert_almost_equal_verbose(
+        ds.TMPB.values, temp_real - 273.15, decimal=11)
+    assert_almost_equal_verbose(
+        ds.TMPW.values, temp_real - 273.15, decimal=11)
 
     # WLS
     ds.calibration_double_ended(sections=sections,
@@ -988,16 +1015,16 @@ def test_double_ended_ols_wls_fix_alpha_fix_gamma_estimate_synthetic():
                                 fix_gamma=(gamma, 0.),
                                 fix_alpha=(alpha, np.zeros_like(alpha)))
 
-    np.testing.assert_almost_equal(
-        ds.gamma.values, gamma, decimal=6)
-    np.testing.assert_almost_equal(
-        ds.alpha.values, alpha, decimal=7)
-    np.testing.assert_almost_equal(
-        ds.TMPF.values, temp_real - 273.15, decimal=5)
-    np.testing.assert_almost_equal(
-        ds.TMPB.values, temp_real - 273.15, decimal=5)
-    np.testing.assert_almost_equal(
-        ds.TMPW.values, temp_real - 273.15, decimal=4)
+    assert_almost_equal_verbose(
+        ds.gamma.values, gamma, decimal=18)
+    assert_almost_equal_verbose(
+        ds.alpha.values, alpha, decimal=18)
+    assert_almost_equal_verbose(
+        ds.TMPF.values, temp_real - 273.15, decimal=12)
+    assert_almost_equal_verbose(
+        ds.TMPB.values, temp_real - 273.15, decimal=12)
+    assert_almost_equal_verbose(
+        ds.TMPW.values, temp_real - 273.15, decimal=12)
 
     pass
 
@@ -1031,15 +1058,14 @@ def test_double_ended_exponential_variance_estimate_synthetic():
     temp_real[cold_mask] *= ts_cold + 273.15
     temp_real[warm_mask] *= ts_warm + 273.15
 
-    st = C_p * np.exp(-dalpha_r * x[:, None]) * np.exp(-dalpha_p * x[:, None]) * np.exp(
-        -gamma / temp_real) / (1 - np.exp(-gamma / temp_real))
-    ast = C_m * np.exp(-dalpha_r * x[:, None]) * np.exp(-dalpha_m * x[:, None]) / (
-        1 - np.exp(-gamma / temp_real))
-    rst = C_p * np.exp(-dalpha_r * (-x[:, None] + 100)) * np.exp(
-        -dalpha_p * (-x[:, None] + 100)) * np.exp(-gamma / temp_real) / (
-              1 - np.exp(-gamma / temp_real))
-    rast = C_m * np.exp(-dalpha_r * (-x[:, None] + 100)) * np.exp(
-        -dalpha_m * (-x[:, None] + 100)) / (1 - np.exp(-gamma / temp_real))
+    st = C_p * np.exp(-(dalpha_r + dalpha_p) * x[:, None]) * \
+        np.exp(gamma / temp_real) / (np.exp(gamma / temp_real) - 1)
+    ast = C_m * np.exp(-(dalpha_r + dalpha_m) * x[:, None]) / \
+        (np.exp(gamma / temp_real) - 1)
+    rst = C_p * np.exp(-(dalpha_r + dalpha_p) * (-x[:, None] + cable_len)) * \
+        np.exp(gamma / temp_real) / (np.exp(gamma / temp_real) - 1)
+    rast = C_m * np.exp(-(dalpha_r + dalpha_m) * (-x[:, None] + cable_len)) / \
+        (np.exp(gamma / temp_real) - 1)
 
     st_m = st + stats.norm.rvs(size=st.shape, scale=stokes_m_var ** 0.5)
     ast_m = ast + stats.norm.rvs(size=ast.shape, scale=1.1 * stokes_m_var ** 0.5)
@@ -1152,12 +1178,12 @@ def test_double_ended_exponential_variance_estimate_synthetic():
     for (_, v1), (_, v2) in zip(stdsf1.items(), stdsf2.items()):
         for v1i, v2i in zip(v1, v2):
             print('Real VAR: ', v1i ** 2, 'Estimated VAR: ', v2i)
-            np.testing.assert_almost_equal(v1i ** 2, v2i, decimal=2)
+            assert_almost_equal_verbose(v1i ** 2, v2i, decimal=2)
 
     for (_, v1), (_, v2) in zip(stdsb1.items(), stdsb2.items()):
         for v1i, v2i in zip(v1, v2):
             print('Real VAR: ', v1i ** 2, 'Estimated VAR: ', v2i)
-            np.testing.assert_almost_equal(v1i ** 2, v2i, decimal=2)
+            assert_almost_equal_verbose(v1i ** 2, v2i, decimal=2)
 
     pass
 
@@ -1228,11 +1254,11 @@ def test_single_ended_ols_wls_estimate_synthetic():
                                 method='ols',
                                 solver='sparse')
 
-    np.testing.assert_almost_equal(
+    assert_almost_equal_verbose(
         ds.gamma.values, gamma, decimal=6)
-    np.testing.assert_almost_equal(
+    assert_almost_equal_verbose(
         ds.dalpha.values, dalpha_p - dalpha_m, decimal=8)
-    np.testing.assert_almost_equal(
+    assert_almost_equal_verbose(
         ds.TMPF.values, temp_real - 273.15, decimal=4)
 
     # WLS
@@ -1244,11 +1270,11 @@ def test_single_ended_ols_wls_estimate_synthetic():
                                 method='wls',
                                 solver='sparse')
 
-    np.testing.assert_almost_equal(
+    assert_almost_equal_verbose(
         ds.gamma.values, gamma, decimal=6)
-    np.testing.assert_almost_equal(
+    assert_almost_equal_verbose(
         ds.dalpha.values, dalpha_p - dalpha_m, decimal=8)
-    np.testing.assert_almost_equal(
+    assert_almost_equal_verbose(
         ds.TMPF.values, temp_real - 273.15, decimal=4)
 
     pass
@@ -1321,12 +1347,12 @@ def test_single_ended_ols_wls_fix_dalpha_synthetic():
                                 solver='sparse',
                                 fix_dalpha=(dalpha_p - dalpha_m, 0.))
 
-    np.testing.assert_almost_equal(
-        ds.gamma.values, gamma, decimal=6)
-    np.testing.assert_almost_equal(
-        ds.dalpha.values, dalpha_p - dalpha_m, decimal=8)
-    np.testing.assert_almost_equal(
-        ds.TMPF.values, temp_real - 273.15, decimal=4)
+    assert_almost_equal_verbose(
+        ds.gamma.values, gamma, decimal=11)
+    assert_almost_equal_verbose(
+        ds.dalpha.values, dalpha_p - dalpha_m, decimal=18)
+    assert_almost_equal_verbose(
+        ds.TMPF.values, temp_real - 273.15, decimal=12)
 
     # WLS
     ds.calibration_single_ended(sections=sections,
@@ -1338,12 +1364,12 @@ def test_single_ended_ols_wls_fix_dalpha_synthetic():
                                 solver='sparse',
                                 fix_dalpha=(dalpha_p - dalpha_m, 0.))
 
-    np.testing.assert_almost_equal(
-        ds.gamma.values, gamma, decimal=6)
-    np.testing.assert_almost_equal(
-        ds.dalpha.values, dalpha_p - dalpha_m, decimal=8)
-    np.testing.assert_almost_equal(
-        ds.TMPF.values, temp_real - 273.15, decimal=4)
+    assert_almost_equal_verbose(
+        ds.gamma.values, gamma, decimal=12)
+    assert_almost_equal_verbose(
+        ds.dalpha.values, dalpha_p - dalpha_m, decimal=18)
+    assert_almost_equal_verbose(
+        ds.TMPF.values, temp_real - 273.15, decimal=12)
 
     pass
 
@@ -1415,11 +1441,11 @@ def test_single_ended_ols_wls_fix_gamma_synthetic():
                                 solver='sparse',
                                 fix_gamma=(gamma, 0.))
 
-    np.testing.assert_almost_equal(
-        ds.gamma.values, gamma, decimal=6)
-    np.testing.assert_almost_equal(
+    assert_almost_equal_verbose(
+        ds.gamma.values, gamma, decimal=18)
+    assert_almost_equal_verbose(
         ds.dalpha.values, dalpha_p - dalpha_m, decimal=8)
-    np.testing.assert_almost_equal(
+    assert_almost_equal_verbose(
         ds.TMPF.values, temp_real - 273.15, decimal=4)
 
     # WLS
@@ -1432,11 +1458,11 @@ def test_single_ended_ols_wls_fix_gamma_synthetic():
                                 solver='sparse',
                                 fix_gamma=(gamma, 0.))
 
-    np.testing.assert_almost_equal(
-        ds.gamma.values, gamma, decimal=6)
-    np.testing.assert_almost_equal(
+    assert_almost_equal_verbose(
+        ds.gamma.values, gamma, decimal=18)
+    assert_almost_equal_verbose(
         ds.dalpha.values, dalpha_p - dalpha_m, decimal=8)
-    np.testing.assert_almost_equal(
+    assert_almost_equal_verbose(
         ds.TMPF.values, temp_real - 273.15, decimal=4)
 
     pass
@@ -1510,12 +1536,12 @@ def test_single_ended_ols_wls_fix_gamma_fix_dalpha_synthetic():
                                 fix_gamma=(gamma, 0.),
                                 fix_dalpha=(dalpha_p - dalpha_m, 0.))
 
-    np.testing.assert_almost_equal(
-        ds.gamma.values, gamma, decimal=6)
-    np.testing.assert_almost_equal(
-        ds.dalpha.values, dalpha_p - dalpha_m, decimal=8)
-    np.testing.assert_almost_equal(
-        ds.TMPF.values, temp_real - 273.15, decimal=4)
+    assert_almost_equal_verbose(
+        ds.gamma.values, gamma, decimal=18)
+    assert_almost_equal_verbose(
+        ds.dalpha.values, dalpha_p - dalpha_m, decimal=18)
+    assert_almost_equal_verbose(
+        ds.TMPF.values, temp_real - 273.15, decimal=11)
 
     # WLS
     ds.calibration_single_ended(sections=sections,
@@ -1528,12 +1554,12 @@ def test_single_ended_ols_wls_fix_gamma_fix_dalpha_synthetic():
                                 fix_gamma=(gamma, 0.),
                                 fix_dalpha=(dalpha_p - dalpha_m, 0.))
 
-    np.testing.assert_almost_equal(
-        ds.gamma.values, gamma, decimal=6)
-    np.testing.assert_almost_equal(
-        ds.dalpha.values, dalpha_p - dalpha_m, decimal=8)
-    np.testing.assert_almost_equal(
-        ds.TMPF.values, temp_real - 273.15, decimal=4)
+    assert_almost_equal_verbose(
+        ds.gamma.values, gamma, decimal=18)
+    assert_almost_equal_verbose(
+        ds.dalpha.values, dalpha_p - dalpha_m, decimal=18)
+    assert_almost_equal_verbose(
+        ds.TMPF.values, temp_real - 273.15, decimal=12)
 
     pass
 
@@ -1657,7 +1683,7 @@ def test_single_ended_exponential_variance_estimate_synthetic():
         for v1i, v2i in zip(v1, v2):
             v2i_c = float(v2i)
             print('Real VAR: ', v1i, 'Estimated VAR: ', v2i_c)
-            np.testing.assert_almost_equal(v1i, v2i_c, decimal=1)
+            assert_almost_equal_verbose(v1i, v2i_c, decimal=1)
 
     pass
     print('hoi')
@@ -1677,13 +1703,13 @@ def test_exponential_variance_of_stokes():
 
     I_var, _ = ds.variance_stokes_exponential(
         st_label='ST', sections=sections)
-    np.testing.assert_almost_equal(I_var, correct_var, decimal=1)
+    assert_almost_equal_verbose(I_var, correct_var, decimal=5)
 
     ds_dask = ds.chunk(chunks={})
     I_var, _ = ds_dask.variance_stokes_exponential(
         st_label='ST',
         sections=sections)
-    np.testing.assert_almost_equal(I_var, correct_var, decimal=1)
+    assert_almost_equal_verbose(I_var, correct_var, decimal=5)
 
     pass
 
@@ -1724,7 +1750,7 @@ def test_exponential_variance_of_stokes_synthetic():
     test_ST_var, _ = ds.variance_stokes_exponential(
         st_label='ST', sections=sections)
 
-    np.testing.assert_almost_equal(test_ST_var, yvar,
+    assert_almost_equal_verbose(test_ST_var, yvar,
                                    decimal=1)
 
 
