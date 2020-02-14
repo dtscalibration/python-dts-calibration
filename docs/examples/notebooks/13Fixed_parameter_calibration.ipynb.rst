@@ -42,6 +42,12 @@ single-ended measurement with OLS
     Reading the data from disk
 
 
+.. parsed-literal::
+
+    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
+      super().__init_subclass__(*args, **kwargs)
+
+
 From the previous calibration we know that the :math:`\gamma` parameter
 value was 481.9 and the :math:`\alpha` value was -2.014e-05. We define
 these, along with their variance. In this case we do not know what the
@@ -65,11 +71,11 @@ between the parameters are not taken into account in the uncertainty.
 
 .. parsed-literal::
 
-    /home/bart/git/python-dts-calibration/.tox/docs/lib/python3.7/site-packages/dask/array/core.py:1333: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/dask/array/core.py:1333: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
       FutureWarning,
 
 
-Let's see if fixing the parameters worked:
+Let’s see if fixing the parameters worked:
 
 .. code:: ipython3
 
@@ -83,7 +89,7 @@ Let's see if fixing the parameters worked:
     dalpha used in calibration: -2.014e-05
 
 
-Let's plot the calibrated temperature. You'll see that this gives the
+Let’s plot the calibrated temperature. You’ll see that this gives the
 same result as in notebook 05.
 
 .. code:: ipython3
@@ -98,4 +104,5 @@ same result as in notebook 05.
 
 
 .. image:: 13Fixed_parameter_calibration.ipynb_files/13Fixed_parameter_calibration.ipynb_7_0.png
+
 

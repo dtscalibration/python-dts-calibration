@@ -17,6 +17,13 @@ measurements. Do this before the calibration steps.
     import matplotlib.pyplot as plt
     %matplotlib inline
 
+
+.. parsed-literal::
+
+    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
+      super().__init_subclass__(*args, **kwargs)
+
+
 .. code:: ipython3
 
     suggest_cable_shift_double_ended?
@@ -41,7 +48,7 @@ measurements. Do this before the calibration steps.
 
 
 Because our loaded files were already nicely aligned, we are purposely
-offsetting the forward and backward channel by 3 \`spacial indices'.
+offsetting the forward and backward channel by 3 \`spacial indices’.
 
 .. code:: ipython3
 
@@ -67,9 +74,9 @@ and is dropped
 
 .. parsed-literal::
 
-    /home/bart/git/python-dts-calibration/src/dtscalibration/datastore_utils.py:306: RuntimeWarning: invalid value encountered in log
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/src/dtscalibration/datastore_utils.py:306: RuntimeWarning: invalid value encountered in log
       i_f = np.log(st / ast)
-    /home/bart/git/python-dts-calibration/src/dtscalibration/datastore_utils.py:307: RuntimeWarning: invalid value encountered in log
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/src/dtscalibration/datastore_utils.py:307: RuntimeWarning: invalid value encountered in log
       i_b = np.log(rst / rast)
 
 
@@ -113,4 +120,4 @@ which suggestion to follow. Usually the two suggested shift are close
         units:             m
 
 
-Note that our fiber has become shorter by 2\*3 spatial indices
+Note that our fiber has become shorter by 2*3 spatial indices

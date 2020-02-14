@@ -16,6 +16,13 @@ DTS measurement (required for calibration)
     
     from dtscalibration import read_silixa_files
 
+
+.. parsed-literal::
+
+    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
+      super().__init_subclass__(*args, **kwargs)
+
+
 Step 1: load the measurement files
 ----------------------------------
 

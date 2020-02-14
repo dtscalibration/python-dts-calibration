@@ -22,6 +22,13 @@ routine from ``dtscalibration``. - Silixa ->
     
     from dtscalibration import read_silixa_files
 
+
+.. parsed-literal::
+
+    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
+      super().__init_subclass__(*args, **kwargs)
+
+
 The example data files are located in
 ``./python-dts-calibration/tests/data``.
 
@@ -58,7 +65,7 @@ The example data files are located in
 
 Define in which timezone the measurements are taken. In this case it is
 the timezone of the Silixa Ultima computer was set to
-'Europe/Amsterdam'. The default timezone of netCDF files is ``UTC``. All
+‘Europe/Amsterdam’. The default timezone of netCDF files is ``UTC``. All
 the steps after loading the raw files are performed in this timezone.
 Please see www..com for a full list of supported timezones. We also
 explicitely define the file extension (``.xml``) because the folder is
