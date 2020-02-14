@@ -16,6 +16,13 @@ to be merged into a single datastore and aligned.
     import matplotlib.pyplot as plt
     %matplotlib inline
 
+
+.. parsed-literal::
+
+    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
+      super().__init_subclass__(*args, **kwargs)
+
+
 We load in both channels into seperate datastores
 
 .. code:: ipython3
@@ -62,7 +69,7 @@ is a duplex measurement.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x7fcad064ee90>
+    <matplotlib.legend.Legend at 0x126a40d90>
 
 
 
@@ -77,7 +84,7 @@ channel 2.
 
 Make sure the two datasets are aligned time-wise and have the same
 amount of measurements in time. Now we can merge the two channels using
-the utilify function *merge\_double\_ended*
+the utilify function *merge_double_ended*
 
 .. code:: ipython3
 
@@ -100,7 +107,7 @@ To perfectly align the two measurements we can use the alignment
 utility. Before we do so, we select only the data of the phyisical cable
 and 10 meters of the internal reference coil.
 
-It turns out we were off by 3 datapoints, so let's shift it by that.
+It turns out we were off by 3 datapoints, so let’s shift it by that.
 
 .. code:: ipython3
 

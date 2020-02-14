@@ -15,6 +15,13 @@ Examples of how to do some of the more commonly used functions:
     
     from dtscalibration import read_silixa_files
 
+
+.. parsed-literal::
+
+    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
+      super().__init_subclass__(*args, **kwargs)
+
+
 First we load the raw measurements into a ``DataStore`` object, as we
 learned from the previous notebook.
 
@@ -90,7 +97,7 @@ dimension. ``dim`` can be any dimension (e.g., ``time``, ``x``). The
 returned ``DataStore`` does not contain that dimension anymore.
 
 Normally, you would like to keep the attributes (the informative texts
-from the loaded files), so set ``keep_attrs`` to ``True``. They don't
+from the loaded files), so set ``keep_attrs`` to ``True``. They don’t
 take any space compared to your Stokes data, so keep them.
 
 Note that also the sections are stored as attribute. If you delete the

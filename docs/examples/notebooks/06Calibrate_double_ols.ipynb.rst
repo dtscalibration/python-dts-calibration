@@ -18,6 +18,13 @@ channel should be aligned.
     import matplotlib.pyplot as plt
     %matplotlib inline
 
+
+.. parsed-literal::
+
+    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
+      super().__init_subclass__(*args, **kwargs)
+
+
 .. code:: ipython3
 
     filepath = os.path.join('..', '..', 'tests', 'data', 'double_ended2')
@@ -70,7 +77,7 @@ channel should be aligned.
                 Label of the reversed Stoke measurement
             rast_label : str
                 Label of the reversed anti-Stoke measurement
-            st_var : float, optional
+            st_var : float, array-like, callable, optional
                 The variance of the measurement noise of the Stokes signals in
                 the forward
                 direction Required if method is wls.

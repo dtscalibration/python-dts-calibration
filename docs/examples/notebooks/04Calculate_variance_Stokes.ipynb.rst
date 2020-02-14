@@ -16,6 +16,13 @@ estimate the variance of the noise to: - Perform a weighted calibration
     
     %matplotlib inline
 
+
+.. parsed-literal::
+
+    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
+      super().__init_subclass__(*args, **kwargs)
+
+
 .. code:: ipython3
 
     filepath = os.path.join('..', '..', 'tests', 'data', 'double_ended2')
@@ -56,40 +63,14 @@ method.
 
 .. parsed-literal::
 
-    Calculates the variance between the measurements and a best fit
-            at each reference section. This fits a function to the nt * nx
-            measurements with ns * nt + nx parameters, where nx are the total
-            number of obervation locations along all sections. The temperature is
-            constant along the reference sections, so the expression of the
-            Stokes power can be split in a time series per reference section and
-            a constant per observation location.
+    Backwards compatibility
     
-            Assumptions: 1) the temperature is the same along a reference
-            section.
-    
-            Idea from discussion at page 127 in Richter, P. H. (1995). Estimating
-            errors in least-squares fitting.
-    
-            Parameters
-            ----------
-            reshape_residuals
-            st_label : str
-                label of the Stokes, anti-Stokes measurement.
-                E.g., ST, AST, REV-ST, REV-AST
-            sections : dict, optional
-                Define sections. See documentation
-    
-            Returns
-            -------
-            I_var : float
-                Variance of the residuals between measured and best fit
-            resid : array_like
-                Residuals between measured and best fit
-    
-            Notes
-            -----
-            Because there are a large number of unknowns, spend time on
-            calculating an initial estimate. Can be turned off by setting to False.
+            Use:
+            - `variance_stokes_constant` for small setups with small variations in
+            intensity
+            - `variance_stokes_exponential` for small setups with very few time
+            steps
+            - `variance_stokes_linear` for larger setups with more time steps
             
 
 
@@ -122,13 +103,13 @@ method.
 
 .. parsed-literal::
 
-    /home/bart/git/python-dts-calibration/src/dtscalibration/plot.py:317: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/src/dtscalibration/plot.py:317: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
       if (np.issubdtype(resid[time_dim].dtype, np.float) or
-    /home/bart/git/python-dts-calibration/src/dtscalibration/plot.py:318: FutureWarning: Conversion of the second argument of issubdtype from `int` to `np.signedinteger` is deprecated. In future, it will be treated as `np.int64 == np.dtype(int).type`.
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/src/dtscalibration/plot.py:318: FutureWarning: Conversion of the second argument of issubdtype from `int` to `np.signedinteger` is deprecated. In future, it will be treated as `np.int64 == np.dtype(int).type`.
       np.issubdtype(resid[time_dim].dtype, np.int)):
-    /home/bart/git/python-dts-calibration/.tox/docs/lib/python3.7/site-packages/numpy/lib/nanfunctions.py:1667: RuntimeWarning: Degrees of freedom <= 0 for slice.
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/numpy/lib/nanfunctions.py:1667: RuntimeWarning: Degrees of freedom <= 0 for slice.
       keepdims=keepdims)
-    /home/bart/git/python-dts-calibration/.tox/docs/lib/python3.7/site-packages/xarray/core/nanops.py:140: RuntimeWarning: Mean of empty slice
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/xarray/core/nanops.py:142: RuntimeWarning: Mean of empty slice
       return np.nanmean(a, axis=axis, dtype=dtype)
 
 

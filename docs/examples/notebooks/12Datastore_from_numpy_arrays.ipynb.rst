@@ -15,6 +15,13 @@ library in your current routine.
     
     from dtscalibration import DataStore, read_silixa_files
 
+
+.. parsed-literal::
+
+    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
+      super().__init_subclass__(*args, **kwargs)
+
+
 For a ``DataStore`` object, a few things are needed:
 
 -  timestamps
@@ -25,7 +32,7 @@ For a ``DataStore`` object, a few things are needed:
 
 -  x (length along fiber)
 
-Let's grab the data from an existing silixa dataset:
+Let’s grab the data from an existing silixa dataset:
 
 .. code:: ipython3
 
@@ -35,9 +42,9 @@ Let's grab the data from an existing silixa dataset:
                                   silent=True)
 
 We will get all the numpy arrays from this ``DataStore`` to create a new
-one from 'scratch'.
+one from ‘scratch’.
 
-Let's start with the most basic data:
+Let’s start with the most basic data:
 
 .. code:: ipython3
 
@@ -85,7 +92,7 @@ For calibration, a few more paramaters are needed:
 
 -  a double ended flag
 
-We'll put these into the custom ``DataStore``:
+We’ll put these into the custom ``DataStore``:
 
 .. code:: ipython3
 
@@ -116,7 +123,7 @@ example).
 
 .. parsed-literal::
 
-    /home/bart/git/python-dts-calibration/.tox/docs/lib/python3.7/site-packages/dask/array/core.py:1333: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/dask/array/core.py:1333: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
       FutureWarning,
 
 
@@ -124,6 +131,6 @@ example).
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x7f445629ddd0>]
+    [<matplotlib.lines.Line2D at 0x12b5ded90>]
 
 
