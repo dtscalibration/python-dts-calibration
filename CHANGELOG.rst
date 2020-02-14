@@ -1,6 +1,17 @@
 
 Changelog
 =========
+0.8.0 (2020-02-14)
+------------------
+* Valentine edition
+* Added example for fixing parameters
+* Bug fixed in routine for reading Sensornet files (Bor van der Scheer)
+* Official support for Python 3.8
+* When the datastore is printed to the screen, the mean and std of thereference temperature is plotted
+* Integrated differential attenuation is reformulated. Starts integrating atthe first reference section location.
+* Estimation of the variance of the Stokes that is linear dependent on theintensity (Poisson)
+* Removed `__slots__` attribute
+
 0.7.4 (2020-01-26)
 ------------------
 * Update automated zenodo reference requires to draft a new release
