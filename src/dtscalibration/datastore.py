@@ -2909,12 +2909,8 @@ class DataStore(xr.Dataset):
                 avg_axis = self[label + '_MC_set'].get_axis_num(avg_dims)
 
                 if store_tempvar and not del_label:
-                    if ci_avg_time_flag or ci_avg_x_flag:
-                        # subtract the mean temperature
-                        q = self[label + '_MC_set'] - self[label]
-
-                    else:
-                        q = self[label + '_MC_set']
+                    # subtract the mean temperature
+                    q = self[label + '_MC_set'] - self[label]
 
                     self[label + '_MC' + store_tempvar] = q.var(
                         dim=avg_dims, ddof=1)
