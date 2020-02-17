@@ -1107,7 +1107,13 @@ class DataStore(xr.Dataset):
             nbin=50,
             through_zero=True,
             plot_fit=False):
-        """
+        """Use:
+        - `variance_stokes_constant` for small setups with small variations in
+        intensity
+        - `variance_stokes_exponential` for small setups with very few time
+        steps
+        - `variance_stokes_linear` for larger setups with more time steps
+
         Estimate a Stokes variance that is linear dependent on the intensity.
 
         Parameters
