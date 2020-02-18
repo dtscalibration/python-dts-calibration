@@ -636,7 +636,7 @@ def test_double_ended_ols_wls_estimate_synthetic():
     assert_almost_equal_verbose(
         ds.gamma.values, gamma, decimal=10)
     assert_almost_equal_verbose(
-        ds.alpha.values, alpha, decimal=9)
+        ds.alpha.values, alpha, decimal=8)
     assert_almost_equal_verbose(
         ds.TMPF.values, temp_real - 273.15, decimal=7)
     assert_almost_equal_verbose(
