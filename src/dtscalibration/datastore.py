@@ -1717,7 +1717,7 @@ class DataStore(xr.Dataset):
             The variance of the measurement noise of the anti-Stokes signals
             in the backward
             direction. Required if method is wls.
-        store_df, store_db : str
+        (ds.TMPW_MC_var**0.5).mean().compute()store_df, store_db : str
             Label of where to store D. Equals the integrated differential
             attenuation at x=0
             And should be equal to half the total integrated differential
@@ -1863,12 +1863,10 @@ class DataStore(xr.Dataset):
                 # X_gamma
                 X_E = sp.vstack((
                     -split['E'],
-                    split['E'],
                     split['E']))
                 X_gamma = sp.vstack((
                     split['Z_gamma'],
-                    split['Z_gamma'],
-                    split['Zero_gamma'])).toarray().flatten()
+                    split['Z_gamma'])).toarray().flatten()
                 # Use only the remaining coefficients
                 # Stack all X's
                 X = sp.vstack(
@@ -1877,24 +1875,19 @@ class DataStore(xr.Dataset):
                                 split['Z_TA_fw'])),
                      sp.hstack((split['Zero_d'],
                                 -split['Z_D'],
-                                split['Z_TA_bw'])),
-                     sp.hstack((split['Z_D'] / 2,
-                                -split['Z_D'] / 2,
-                                split['Z_TA_E']))))
+                                split['Z_TA_bw']))))
 
                 # Move the coefficients times the fixed gamma to the
                 # observations
                 y = np.concatenate((split['y_F'],
-                                    split['y_B'],
-                                    split['y_att1']))
+                                    split['y_B']))
                 y -= X_E.dot(fix_alpha[0][ix_sec[1:]])
                 y -= fix_gamma[0] * X_gamma
                 # variances are added. weight is the inverse of the variance
                 # of the observations
                 if method == 'wls':
                     w_ = np.concatenate((split['w_F'],
-                                         split['w_B'],
-                                         split['w_att1']))
+                                         split['w_B']))
                     w = 1 / (1 / w_ + X_E.dot(fix_alpha[1][ix_sec[1:]]) +
                              fix_gamma[1] * X_gamma)
 
@@ -1945,8 +1938,7 @@ class DataStore(xr.Dataset):
             elif fix_gamma:
                 X_gamma = sp.vstack((
                     split['Z_gamma'],
-                    split['Z_gamma'],
-                    split['Zero_gamma'])).toarray().flatten()
+                    split['Z_gamma'])).toarray().flatten()
                 # Use only the remaining coefficients
                 X = sp.vstack(
                     (sp.hstack((-split['Z_D'],
@@ -1956,23 +1948,17 @@ class DataStore(xr.Dataset):
                      sp.hstack((split['Zero_d'],
                                 -split['Z_D'],
                                 split['E'],
-                                split['Z_TA_bw'])),
-                     sp.hstack((split['Z_D'] / 2,
-                                -split['Z_D'] / 2,
-                                split['E'],
-                                split['Z_TA_E']))))
+                                split['Z_TA_bw']))))
                 # Move the coefficients times the fixed gamma to the
                 # observations
                 y = np.concatenate((split['y_F'],
-                                    split['y_B'],
-                                    split['y_att1']))
+                                    split['y_B']))
                 y -= fix_gamma[0] * X_gamma
                 # variances are added. weight is the inverse of the variance
                 # of the observations
                 if method == 'wls':
                     w_ = np.concatenate((split['w_F'],
-                                         split['w_B'],
-                                         split['w_att1']))
+                                         split['w_B']))
                     w = 1 / (1 / w_ + fix_gamma[1] * X_gamma)
 
                 else:
@@ -2057,7 +2043,6 @@ class DataStore(xr.Dataset):
                 # X_gamma
                 X_E = sp.vstack((
                     -split['E'],
-                    split['E'],
                     split['E']))
                 # Use only the remaining coefficients
                 # Stack all X's
@@ -2069,24 +2054,18 @@ class DataStore(xr.Dataset):
                      sp.hstack((split['Z_gamma'],
                                 split['Zero_d'],
                                 -split['Z_D'],
-                                split['Z_TA_bw'])),
-                     sp.hstack((split['Zero_gamma'],
-                                split['Z_D'] / 2,
-                                -split['Z_D'] / 2,
-                                split['Z_TA_E']))))
+                                split['Z_TA_bw']))))
                 # Move the coefficients times the fixed gamma to the
                 # observations
                 y = np.concatenate((split['y_F'],
-                                    split['y_B'],
-                                    split['y_att1']))
+                                    split['y_B']))
                 y -= X_E.dot(fix_alpha[0][ix_sec[1:]])
 
                 # variances are added. weight is the inverse of the variance
                 # of the observations
                 if method == 'wls':
                     w_ = np.concatenate((split['w_F'],
-                                         split['w_B'],
-                                         split['w_att1']))
+                                         split['w_B']))
                     w = 1 / (1 / w_ + X_E.dot(fix_alpha[1][ix_sec[1:]]))
 
                 else:
@@ -2713,7 +2692,7 @@ class DataStore(xr.Dataset):
         assert isinstance(p_cov, (str, np.ndarray, np.generic, bool))
 
         if isinstance(p_cov, bool) and not p_cov:
-            # OLS
+            # Exclude parameter uncertainty if p_cov == False
             gamma = p_val[0]
             d_fw = p_val[1:nt + 1]
             d_bw = p_val[1 + nt:2 * nt + 1]

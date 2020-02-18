@@ -850,10 +850,10 @@ def test_double_ended_ols_wls_fix_gamma_estimate_synthetic():
                                 ast_label='ast',
                                 rst_label='rst',
                                 rast_label='rast',
-                                st_var=1e-7,
-                                ast_var=1e-7,
-                                rst_var=1e-7,
-                                rast_var=1e-7,
+                                st_var=1e-12,
+                                ast_var=1e-12,
+                                rst_var=1e-12,
+                                rast_var=1e-12,
                                 method='wls',
                                 solver='sparse',
                                 tmpw_mc_size=5,
@@ -862,13 +862,13 @@ def test_double_ended_ols_wls_fix_gamma_estimate_synthetic():
     assert_almost_equal_verbose(
         ds.gamma.values, gamma, decimal=18)
     assert_almost_equal_verbose(
-        ds.alpha.values, alpha, decimal=10)
+        ds.alpha.values, alpha, decimal=9)
     assert_almost_equal_verbose(
-        ds.TMPF.values, temp_real - 273.15, decimal=8)
+        ds.TMPF.values, temp_real - 273.15, decimal=6)
     assert_almost_equal_verbose(
-        ds.TMPB.values, temp_real - 273.15, decimal=8)
+        ds.TMPB.values, temp_real - 273.15, decimal=6)
     assert_almost_equal_verbose(
-        ds.TMPW.values, temp_real - 273.15, decimal=8)
+        ds.TMPW.values, temp_real - 273.15, decimal=6)
 
     pass
 
@@ -954,7 +954,7 @@ def test_double_ended_ols_wls_fix_alpha_estimate_synthetic():
     assert_almost_equal_verbose(
         ds.TMPB.values, temp_real - 273.15, decimal=8)  # 9 on 64-bit
     assert_almost_equal_verbose(
-        ds.TMPW.values, temp_real - 273.15, decimal=10)  # 11 on 64-bit
+        ds.TMPW.values, temp_real - 273.15, decimal=7)  # 11 on 64-bit
 
     # WLS
     ds.calibration_double_ended(sections=sections,
@@ -1402,7 +1402,7 @@ def test_estimate_variance_of_temperature_estimate():
 
     # Validate on sections that were not used for calibration.
     assert_almost_equal_verbose(actual[16:32].mean(), desire[16:32].mean(),
-                                decimal=4)
+                                decimal=3)
     assert_almost_equal_verbose(actual[48:].mean(), desire[48:].mean(),
                                 decimal=3)
 

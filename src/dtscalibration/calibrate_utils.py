@@ -247,7 +247,9 @@ def calibration_double_ended_solver(
     p0_est = np.concatenate((np.asarray([485.] + 2 * nt * [1.4]),
                              E_all_guess[ix_sec[1:]], nta * nt * 2 * [0.]))
 
-    E, Z_D, Z_gamma, Zero_d, Zero_gamma, Z_TA_fw, Z_TA_bw, Z_TA_E, Zero_E, = \
+    # E, Z_D, Z_gamma, Zero_d, Zero_gamma, Z_TA_fw, Z_TA_bw, Z_TA_E, Zero_E, = \
+    #     construct_submatrices(nt, nx, st_label, ds, transient_asym_att_x, x_se
+    E, Z_D, Z_gamma, Zero_d, Z_TA_fw, Z_TA_bw, = \
         construct_submatrices(nt, nx, st_label, ds, transient_asym_att_x, x_sec)
 
     # if matching_indices is not None:
@@ -284,17 +286,21 @@ def calibration_double_ended_solver(
     #     y_mB = (B[hix_sec] + B[tix_sec]).flatten()
 
     # Stack all X's
+    # X = sp.vstack(
+    #     (sp.hstack((Z_gamma, -Z_D, Zero_d, -E, Z_TA_fw)),
+    #      sp.hstack((Z_gamma, Zero_d, -Z_D, E, Z_TA_bw)),
+    #      sp.hstack((Zero_gamma, Z_D / 2, -Z_D / 2, E, Z_TA_E))))
     X = sp.vstack(
         (sp.hstack((Z_gamma, -Z_D, Zero_d, -E, Z_TA_fw)),
-         sp.hstack((Z_gamma, Zero_d, -Z_D, E, Z_TA_bw)),
-         sp.hstack((Zero_gamma, Z_D / 2, -Z_D / 2, E, Z_TA_E))))
+         sp.hstack((Z_gamma, Zero_d, -Z_D, E, Z_TA_bw))))
 
     # y  # Eq.41--45
     y_F = np.log(ds_sec[st_label] / ds_sec[ast_label]).values.ravel()
     y_B = np.log(ds_sec[rst_label] / ds_sec[rast_label]).values.ravel()
-    y_att1 = (y_B - y_F) / 2
+    # y_att1 = (y_B - y_F) / 2
 
-    y = np.concatenate((y_F, y_B, y_att1))
+    # y = np.concatenate((y_F, y_B, y_att1))
+    y = np.concatenate((y_F, y_B))
 
     # w
     if st_var is not None:  # WLS
@@ -321,18 +327,19 @@ def calibration_double_ended_solver(
         w_B = 1 / (
             ds_sec[rst_label] ** -2 * rst_var_sec +
             ds_sec[rast_label] ** -2 * rast_var_sec).values.ravel()
-        w_att1 = 1 / (
-            ds_sec[st_label] ** -2 * st_var_sec / 2 +
-            ds_sec[ast_label] ** -2 * ast_var_sec / 2 +
-            ds_sec[rst_label] ** -2 * rst_var_sec / 2 +
-            ds_sec[rast_label] ** -2 * rast_var_sec / 2).values.ravel()
+        # w_att1 = 1 / (
+        #     ds_sec[st_label] ** -2 * st_var_sec / 2 +
+        #     ds_sec[ast_label] ** -2 * ast_var_sec / 2 +
+        #     ds_sec[rst_label] ** -2 * rst_var_sec / 2 +
+        #     ds_sec[rast_label] ** -2 * rast_var_sec / 2).values.ravel()
 
     else:  # OLS
         w_F = np.ones(nt * nx)
         w_B = np.ones(nt * nx)
-        w_att1 = np.ones(nt * nx)
+        # w_att1 = np.ones(nt * nx)
 
-    w = np.concatenate((w_F, w_B, w_att1))
+    # w = np.concatenate((w_F, w_B, w_att1))
+    w = np.concatenate((w_F, w_B))
 
     if solver == 'sparse':
         if calc_cov:
@@ -357,18 +364,14 @@ def calibration_double_ended_solver(
         return dict(
             y_F=y_F,
             y_B=y_B,
-            y_att1=y_att1,
             w_F=w_F,
             w_B=w_B,
-            w_att1=w_att1,
             Z_gamma=Z_gamma,
-            Zero_gamma=Zero_gamma,
             Z_D=Z_D,
             Zero_d=Zero_d,
             E=E,
             Z_TA_fw=Z_TA_fw,
             Z_TA_bw=Z_TA_bw,
-            Z_TA_E=Z_TA_E,
             p0_est=p0_est,
             E_all_guess=E_all_guess,
             E_all_var_guess=E_all_var_guess)
@@ -445,11 +448,9 @@ def construct_submatrices(nt, nx, st_label, ds, transient_asym_att_x, x_sec):
     zero_d (nt * nx, nt)
     Z_TA_fw (nt * nx, nta * 2 * nt) minus ones
     Z_TA_bw (nt * nx, nta * 2 * nt) minus ones
-    Z_TA_E (nt * nx, nta * 2 * nt)
 
     I_fw = 1/Tref*gamma - D_fw - E - TA_fw
     I_bw = 1/Tref*gamma - D_bw + E - TA_bw
-    (I_bw - I_fw) / 2 = D_fw/2 - D_bw/2 + E + TA_fw/2 - TA_bw/2 Eq42
     """
 
     # Z \gamma  # Eq.47
@@ -462,6 +463,7 @@ def construct_submatrices(nt, nx, st_label, ds, transient_asym_att_x, x_sec):
         (data_gamma, (coord_gamma_row, coord_gamma_col)),
         shape=(nt * nx, 1),
         copy=False)
+
     # Z D  # Eq.47
     data_c = np.ones(nt * nx, dtype=float)
     coord_c_row = np.arange(nt * nx, dtype=int)
@@ -480,9 +482,8 @@ def construct_submatrices(nt, nx, st_label, ds, transient_asym_att_x, x_sec):
         shape=(nt * nx, (nx - 1)),
         copy=False)
     # Zero  # Eq.45
-    Zero_gamma = sp.coo_matrix(([], ([], [])), shape=(nt * nx, 1))
     Zero_d = sp.coo_matrix(([], ([], [])), shape=(nt * nx, nt))
-    Zero_E = sp.coo_matrix(([], ([], [])), shape=(nt * nx, (nx - 1)))
+    # Zero_E = sp.coo_matrix(([], ([], [])), shape=(nt * nx, (nx - 1)))
     if transient_asym_att_x:
         # unpublished BdT
 
@@ -532,10 +533,7 @@ def construct_submatrices(nt, nx, st_label, ds, transient_asym_att_x, x_sec):
         Z_TA_fw = sp.coo_matrix(([], ([], [])), shape=(nt * nx, 0))
         Z_TA_bw = sp.coo_matrix(([], ([], [])), shape=(nt * nx, 0))
 
-    # (I_bw - I_fw) / 2 = D_fw/2 - D_bw/2 + E + TA_fw/2 - TA_bw/2 Eq42
-    Z_TA_E = (Z_TA_bw - Z_TA_fw) / 2
-
-    return E, Z_D, Z_gamma, Zero_d, Zero_gamma, Z_TA_fw, Z_TA_bw, Z_TA_E, Zero_E
+    return E, Z_D, Z_gamma, Zero_d, Z_TA_fw, Z_TA_bw
 
 
 def wls_sparse(X, y, w=1., calc_cov=False, verbose=False, **kwargs):
