@@ -638,11 +638,11 @@ def test_double_ended_ols_wls_estimate_synthetic():
     assert_almost_equal_verbose(
         ds.alpha.values, alpha, decimal=8)
     assert_almost_equal_verbose(
-        ds.TMPF.values, temp_real - 273.15, decimal=7)
+        ds.TMPF.values, temp_real - 273.15, decimal=6)
     assert_almost_equal_verbose(
-        ds.TMPB.values, temp_real - 273.15, decimal=7)
+        ds.TMPB.values, temp_real - 273.15, decimal=6)
     assert_almost_equal_verbose(
-        ds.TMPW.values, temp_real - 273.15, decimal=7)
+        ds.TMPW.values, temp_real - 273.15, decimal=6)
 
 
 def test_double_ended_ols_wls_estimate_synthetic_df_and_db_are_different():
