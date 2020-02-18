@@ -613,11 +613,11 @@ def test_double_ended_ols_wls_estimate_synthetic():
     assert_almost_equal_verbose(
         ds.alpha.values, alpha, decimal=12)  # 13 in 64-bit
     assert_almost_equal_verbose(
-        ds.TMPF.values, temp_real - 273.15, decimal=11)
+        ds.TMPF.values, temp_real - 273.15, decimal=10)
     assert_almost_equal_verbose(
-        ds.TMPB.values, temp_real - 273.15, decimal=11)
+        ds.TMPB.values, temp_real - 273.15, decimal=10)
     assert_almost_equal_verbose(
-        ds.TMPW.values, temp_real - 273.15, decimal=12)
+        ds.TMPW.values, temp_real - 273.15, decimal=11)
 
     # WLS
     ds.calibration_double_ended(sections=sections,
@@ -1063,11 +1063,11 @@ def test_double_ended_ols_wls_fix_alpha_fix_gamma_estimate_synthetic():
     assert_almost_equal_verbose(
         ds.alpha.values, alpha, decimal=18)
     assert_almost_equal_verbose(
-        ds.TMPF.values, temp_real - 273.15, decimal=10)
+        ds.TMPF.values, temp_real - 273.15, decimal=9)
     assert_almost_equal_verbose(
-        ds.TMPB.values, temp_real - 273.15, decimal=10)
+        ds.TMPB.values, temp_real - 273.15, decimal=9)
     assert_almost_equal_verbose(
-        ds.TMPW.values, temp_real - 273.15, decimal=10)
+        ds.TMPW.values, temp_real - 273.15, decimal=9)
 
     # WLS
     ds.calibration_double_ended(sections=sections,
@@ -1790,7 +1790,7 @@ def test_single_ended_ols_wls_fix_gamma_fix_dalpha_synthetic():
     assert_almost_equal_verbose(
         ds.dalpha.values, dalpha_p - dalpha_m, decimal=18)
     assert_almost_equal_verbose(
-        ds.TMPF.values, temp_real - 273.15, decimal=12)
+        ds.TMPF.values, temp_real - 273.15, decimal=11)
 
     pass
 
