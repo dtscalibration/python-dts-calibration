@@ -17,7 +17,7 @@ def plot_residuals_reference_sections(
         method='split',
         time_dim='time',
         x_dim='x',
-        cmap='RdBu'):
+        cmap='RdBu_r'):
     """
     Analyze the residuals of the reference sections, between the Stokes
     signal and a best-fit
