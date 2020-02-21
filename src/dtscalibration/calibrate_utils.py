@@ -55,21 +55,23 @@ def calibration_single_ended_solver(
     -------
 
     """
+    # get ix_sec argsort so the sections are in order of increasing x
     ix_sec = ds.ufunc_per_section(x_indices=True, calc_per='all')
-    ds_sec = ds.isel(x=ix_sec)
+    ix_sec_argsort = ix_sec.argsort()
+    ds_sec = ds.isel(x=ix_sec[ix_sec_argsort])
 
     x_sec = ds_sec['x'].values
     nx = x_sec.size
     nt = ds.time.size
     nta = len(transient_att_x) if transient_att_x else 0
 
-    p0_est = np.asarray([485., 0.1] + nt * [1.4] + nta * nt * [0.0])
+    p0_est = np.asarray([485., 0.1] + nt * [1.4] + nta * nt * [0.05])
 
     # X \gamma  # Eq.34
     cal_ref = ds.ufunc_per_section(
         label=st_label, ref_temp_broadcasted=True, calc_per='all')
-
-    data_gamma = 1 / (cal_ref.ravel() + 273.15)  # gamma
+    cal_ref = cal_ref[ix_sec_argsort]  # sort by increasing x
+    data_gamma = 1 / (cal_ref.T.ravel() + 273.15)  # gamma
     coord_gamma_row = np.arange(nt * nx, dtype=int)
     coord_gamma_col = np.zeros(nt * nx, dtype=int)
     X_gamma = sp.coo_matrix(
@@ -78,7 +80,7 @@ def calibration_single_ended_solver(
         copy=False)
 
     # X \Delta\alpha  # Eq.34
-    data_dalpha = np.repeat(-x_sec, nt)  # dalpha
+    data_dalpha = np.tile(-x_sec, nt)  # dalpha
     coord_dalpha_row = np.arange(nt * nx, dtype=int)
     coord_dalpha_col = np.zeros(nt * nx, dtype=int)
     X_dalpha = sp.coo_matrix(
@@ -89,7 +91,8 @@ def calibration_single_ended_solver(
     # X C  # Eq.34
     data_c = -np.ones(nt * nx, dtype=int)
     coord_c_row = np.arange(nt * nx, dtype=int)
-    coord_c_col = np.tile(np.arange(nt, dtype=int), nx)
+    coord_c_col = np.repeat(np.arange(nt, dtype=int), nx)
+
     X_c = sp.coo_matrix(
         (data_c, (coord_c_row, coord_c_col)),
         shape=(nt * nx, nt),
@@ -109,18 +112,20 @@ def calibration_single_ended_solver(
             else:
                 ix_sec_ta_ix0 = np.flatnonzero(
                     x_sec >= transient_att_xi)[0]
-            
+
             # Data is -1
             # I = 1/Tref*gamma - C - da - TA
             data_ta = -np.ones(nt * (nx - ix_sec_ta_ix0), dtype=float)
 
             # skip ix_sec_ta_ix0 locations, because they are upstream of
             # the connector.
-            coord_ta_row = np.arange(
-                nt * ix_sec_ta_ix0, nt * nx, dtype=int)
+            coord_ta_row = (
+                np.tile(np.arange(ix_sec_ta_ix0, nx), nt) +
+                np.repeat(np.arange(nx * nt, step=nx), nx - ix_sec_ta_ix0)
+            )
 
             # nt parameters
-            coord_ta_col = np.tile(
+            coord_ta_col = np.repeat(
                 np.arange(nt, dtype=int), nx - ix_sec_ta_ix0)
 
             TA_list.append(sp.coo_matrix(
@@ -136,8 +141,8 @@ def calibration_single_ended_solver(
     # Stack all X's
     X = sp.hstack((X_gamma, X_dalpha, X_c, X_TA))
 
-    # y
-    y = np.log(ds_sec[st_label] / ds_sec[ast_label]).values.ravel()
+    # y, transpose the values to arrange them correctly
+    y = np.log(ds_sec[st_label] / ds_sec[ast_label]).values.T.ravel()
 
     # w
     if st_var is not None:
@@ -153,7 +158,6 @@ def calibration_single_ended_solver(
             p_sol, p_var, p_cov = wls_sparse(
                 X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=verbose)
         else:
-            print(X.shape, y.shape, p0_est.shape)
             p_sol, p_var = wls_sparse(
                 X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=verbose)
 
@@ -175,6 +179,7 @@ def calibration_single_ended_solver(
             X_gamma=X_gamma,
             X_dalpha=X_dalpha,
             X_c=X_c,
+            X_TA=X_TA,
             p0_est=p0_est)
 
     else:

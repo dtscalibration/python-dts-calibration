@@ -1478,7 +1478,7 @@ class DataStore(xr.Dataset):
                     fix_gamma[0] * split['X_gamma'].toarray().flatten() - \
                     fix_dalpha[0] * split['X_dalpha'].toarray().flatten()
                 # Use only the remaining coefficients
-                X = split['X_c']
+                X = sp.hstack((split['X_c'], split['X_TA']))
                 # variances are added. weight is the inverse of the variance
                 # of the observations
                 if method == 'wls':
@@ -1524,7 +1524,7 @@ class DataStore(xr.Dataset):
                 y = split['y'] - \
                     fix_gamma[0] * split['X_gamma'].toarray().flatten()
                 # Use only the remaining coefficients
-                X = sp.hstack((split['X_dalpha'], split['X_c']))
+                X = sp.hstack((split['X_dalpha'], split['X_c'], split['X_TA']))
                 # variances are added. weight is the inverse of the variance
                 # of the observations
                 if method == 'wls':
@@ -1566,7 +1566,7 @@ class DataStore(xr.Dataset):
                 y = split['y'] - \
                     fix_dalpha[0] * split['X_dalpha'].toarray().flatten()
                 # Use only the remaining coefficients
-                X = sp.hstack((split['X_gamma'], split['X_c']))
+                X = sp.hstack((split['X_gamma'], split['X_c'], split['X_TA']))
                 # variances are added. weight is the inverse of the variance
                 # of the observations
                 if method == 'wls':
