@@ -11,6 +11,7 @@ def calibration_single_ended_solver(
         st_var=None,
         ast_var=None,
         calc_cov=True,
+        transient_att_x=None,
         solver='sparse',
         verbose=False):
     """
@@ -34,6 +35,13 @@ def calibration_single_ended_solver(
     calc_cov : bool
         whether to calculate the covariance matrix. Required for calculation
         of confidence boundaries. But uses a lot of memory.
+    transient_att_x : iterable, optional
+        Splices can cause jumps in differential attenuation. Normal single
+        ended calibration assumes these are not present. An additional loss term
+        is added in the 'shadow' of the splice. Each location introduces an
+        additional nt parameters to solve for. Requiring either an additional
+        calibration section or matching sections. If multiple locations are
+        defined, the losses are added.
     solver : {'sparse', 'stats', 'external', 'external_split'}
         Always use sparse to save memory. The statsmodel can be used to validate
         sparse solver. `external` returns the matrices that would enter the
@@ -52,9 +60,10 @@ def calibration_single_ended_solver(
 
     x_sec = ds_sec['x'].values
     nx = x_sec.size
-
     nt = ds.time.size
-    p0_est = np.asarray([485., 0.1] + nt * [1.4])
+    nta = len(transient_att_x) if transient_att_x else 0
+
+    p0_est = np.asarray([485., 0.1] + nt * [1.4] + nta * nt * [0.0])
 
     # X \gamma  # Eq.34
     cal_ref = ds.ufunc_per_section(
@@ -86,8 +95,46 @@ def calibration_single_ended_solver(
         shape=(nt * nx, nt),
         copy=False)
 
+    # X ta #not documented
+    if transient_att_x:
+        TA_list = list()
+
+        for transient_att_xi in transient_att_x:
+            # first index on the right hand side a the difficult splice
+            # Deal with connector outside of fiber
+            if transient_att_xi >= x_sec[-1]:
+                ix_sec_ta_ix0 = nx
+            elif transient_att_xi <= x_sec[0]:
+                ix_sec_ta_ix0 = 0
+            else:
+                ix_sec_ta_ix0 = np.flatnonzero(
+                    x_sec >= transient_att_xi)[0]
+            
+            # Data is -1
+            # I = 1/Tref*gamma - C - da - TA
+            data_ta = -np.ones(nt * (nx - ix_sec_ta_ix0), dtype=float)
+
+            # skip ix_sec_ta_ix0 locations, because they are upstream of
+            # the connector.
+            coord_ta_row = np.arange(
+                nt * ix_sec_ta_ix0, nt * nx, dtype=int)
+
+            # nt parameters
+            coord_ta_col = np.tile(
+                np.arange(nt, dtype=int), nx - ix_sec_ta_ix0)
+
+            TA_list.append(sp.coo_matrix(
+                (data_ta, (coord_ta_row, coord_ta_col)),
+                shape=(nt * nx, nt),
+                copy=False))
+
+        X_TA = sp.hstack(TA_list)
+
+    else:
+        X_TA = sp.coo_matrix(([], ([], [])), shape=(nt * nx, 0))
+
     # Stack all X's
-    X = sp.hstack((X_gamma, X_dalpha, X_c))
+    X = sp.hstack((X_gamma, X_dalpha, X_c, X_TA))
 
     # y
     y = np.log(ds_sec[st_label] / ds_sec[ast_label]).values.ravel()
@@ -106,6 +153,7 @@ def calibration_single_ended_solver(
             p_sol, p_var, p_cov = wls_sparse(
                 X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=verbose)
         else:
+            print(X.shape, y.shape, p0_est.shape)
             p_sol, p_var = wls_sparse(
                 X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=verbose)
 
