@@ -17,7 +17,7 @@ def plot_residuals_reference_sections(
         method='split',
         time_dim='time',
         x_dim='x',
-        cmap='RdYlBu'):
+        cmap='RdBu_r'):
     """
     Analyze the residuals of the reference sections, between the Stokes
     signal and a best-fit
@@ -165,11 +165,9 @@ def plot_residuals_reference_sections(
 
         # Determine vmin, vmax;
         vmin, vmax = resid.quantile([.02, .98])
-        print(vmin, vmax)
-
-        # vmin cannot be below 0 for the diverging cmap to work
-        if vmin < 0.:
-            vmin = -vmax
+        maxv = np.max(np.abs([vmin, vmax]))
+        vmin = -maxv
+        vmax = maxv
 
         # Normalize the color scale to have 0 be the center
         divnorm = colors.DivergingNorm(vmin=vmin,

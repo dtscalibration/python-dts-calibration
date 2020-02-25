@@ -17,6 +17,6 @@
     },
     "keywords": ["Distributed temperature sensing", "DTS", "Calibration", "Python"],
     "upload_type": "software",
-    "title": "Python distributed temperature sensing calibration",
+    "title": "Dtscalibration Python package for calibrating distributed temperature sensing measurements",
     "description": "A Python package to load raw Distributed Temperature Sensing (DTS) files, perform a calibration, and plot the result. "
 }
