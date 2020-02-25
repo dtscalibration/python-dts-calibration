@@ -3173,8 +3173,10 @@ class DataStore(xr.Dataset):
 
         # defining it as func ensures it also works for calc_per==section
         if x_indices:
-            def func(x):
+            def func2(x):
                 return np.sort(func(x))
+        else:
+            func2 = func
 
         assert calc_per in ['all', 'section', 'stretch']
 
@@ -3198,8 +3200,8 @@ class DataStore(xr.Dataset):
                     assert not temp_err
                     assert not ref_temp_broadcasted
                     # so it is slicable with x-indices
-                    self['_x_indices'] = self[x_dim].astype(int) * 0 + np.arange(
-                        self[x_dim].size)
+                    self['_x_indices'] = self[x_dim].astype(int) * 0 + \
+                                         np.arange(self[x_dim].size)
                     arg1 = self['_x_indices'].sel(x=stretch).data
                     del self['_x_indices']
 
@@ -3234,14 +3236,14 @@ class DataStore(xr.Dataset):
                     out[k].append(arg1)
 
             if calc_per == 'stretch':
-                out[k] = [func(argi, **func_kwargs) for argi in out[k]]
+                out[k] = [func2(argi, **func_kwargs) for argi in out[k]]
 
             elif calc_per == 'section':
-                out[k] = func(concat(out[k]), **func_kwargs)
+                out[k] = func2(concat(out[k]), **func_kwargs)
 
         if calc_per == 'all':
             out = {k: concat(section) for k, section in out.items()}
-            out = func(concat(list(out.values()), axis=0), **func_kwargs)
+            out = func2(concat(list(out.values()), axis=0), **func_kwargs)
 
             if (hasattr(out, 'chunks') and len(out.chunks) > 0 and
                     x_dim in self[label].dims):
