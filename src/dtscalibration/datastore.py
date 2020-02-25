@@ -3171,6 +3171,11 @@ class DataStore(xr.Dataset):
         else:
             assert callable(func)
 
+        # defining it as func ensures it also works for calc_per==section
+        if x_indices:
+            def func(x):
+                return np.sort(func(x))
+
         assert calc_per in ['all', 'section', 'stretch']
 
         x_dim = self.get_x_dim(data_var_key=label)
