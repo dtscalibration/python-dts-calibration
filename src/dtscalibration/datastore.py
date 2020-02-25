@@ -1180,6 +1180,7 @@ class DataStore(xr.Dataset):
             return slope * stokes + offset
 
         if plot_fit:
+            plt.figure()
             plt.scatter(st_sort_mean, st_sort_var, marker='.', c='black')
             plt.plot([0., st_sort_mean[-1]],
                      [var_fun(0.), var_fun(st_sort_mean[-1])], c='white',
