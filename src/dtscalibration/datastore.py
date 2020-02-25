@@ -244,6 +244,13 @@ class DataStore(xr.Dataset):
                 sections_fix_slice_fixed[k] = [
                     slice(float(vi.start), float(vi.stop)) for vi in v]
 
+            # Prevent overlapping slices
+            ix_sec = self.ufunc_per_section(
+                sections=sections_fix_slice_fixed,
+                x_indices=True, calc_per='all')
+            assert np.unique(ix_sec).size == ix_sec.size, \
+                "The sections are overlapping"
+
         self.attrs['_sections'] = yaml.dump(sections_fix_slice_fixed)
         pass
 
@@ -3051,7 +3058,7 @@ class DataStore(xr.Dataset):
             temperature.
         x_indices : bool
             To retreive an integer array with the indices of the
-            x-coordinates in the section/stretch
+            x-coordinates in the section/stretch. The indices are sorted.
         ref_temp_broadcasted : bool
         calc_per : {'all', 'section', 'stretch'}
         func_kwargs : dict
