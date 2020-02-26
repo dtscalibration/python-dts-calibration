@@ -225,7 +225,7 @@ def calibration_double_ended_solver(
     ix_alpha_is_zero = ix_sec[0]  # per definition of E
 
     x_sec = ds_sec['x'].values
-    nx = x_sec.size
+    nx_sec = x_sec.size
     nt = ds.time.size
     nta = len(transient_asym_att_x) if transient_asym_att_x else 0
 
@@ -244,59 +244,12 @@ def calibration_double_ended_solver(
         rast_var,
         ix_alpha_is_zero=ix_alpha_is_zero)
 
-    p0_est = np.concatenate((np.asarray([485.] + 2 * nt * [1.4]),
-                             E_all_guess[ix_sec[1:]], nta * nt * 2 * [0.]))
-
-    # E, Z_D, Z_gamma, Zero_d, Zero_gamma, Z_TA_fw, Z_TA_bw, Z_TA_E, Zero_E, = \
-    #     construct_submatrices(nt, nx, st_label, ds, transient_asym_att_x, x_se
     E, Z_D, Z_gamma, Zero_d, Z_TA_fw, Z_TA_bw, = \
-        construct_submatrices(nt, nx, st_label, ds, transient_asym_att_x, x_sec)
-
-    # if matching_indices is not None:
-    #     # The matching indices are location indices along the entire fiber.
-    #     # This calibration routine deals only with measurements along the
-    #     # reference sections. The coefficient matrix X is build around
-    #     # ds_sec = ds.isel(x=ix_sec). X needs to become larger.
-    #     # Therefore, the matching indices are first gathered for the reference
-    #     # sections, after which those for outside the reference sections.
-    #     # Double-ended setups mostly benefit from matching sections if there is
-    #     # asymetrical attenuation, e.g., due to connectors.
-    #
-    #     # select the indices in refence sections
-    #     hix = np.array(list(filter(
-    #         lambda x: x in ix_sec, matching_indices[:, 0])))
-    #     tix = np.array(list(filter(
-    #         lambda x: x in ix_sec, matching_indices[:, 1])))
-    #
-    #     npair = hix.size
-    #
-    #     assert hix.size == tix.size, 'Both locations of a matching pair ' \
-    #                                  'should either be used in a calibration ' \
-    #                                  'section or outside the calibration ' \
-    #                                  'sections'
-    #     assert hix.size > 0, 'no matching sections in calibration'
-    #
-    #     # Convert to indices along reference sections. To index ds_sec.
-    #     ixglob_to_ix_sec = lambda x: np.where(ix_sec == x)[0]
-    #
-    #     hix_sec = np.concatenate([ixglob_to_ix_sec(x) for x in hix])
-    #     tix_sec = np.concatenate([ixglob_to_ix_sec(x) for x in tix])
-    #
-    #     y_mF = (F[hix_sec] + F[tix_sec]).flatten()
-    #     y_mB = (B[hix_sec] + B[tix_sec]).flatten()
-
-    # Stack all X's
-    X = sp.vstack(
-        (sp.hstack((Z_gamma, -Z_D, Zero_d, -E, Z_TA_fw)),
-         sp.hstack((Z_gamma, Zero_d, -Z_D, E, Z_TA_bw))))
+        construct_submatrices(nt, nx_sec, st_label, ds, transient_asym_att_x, x_sec)
 
     # y  # Eq.41--45
     y_F = np.log(ds_sec[st_label] / ds_sec[ast_label]).values.ravel()
     y_B = np.log(ds_sec[rst_label] / ds_sec[rast_label]).values.ravel()
-    # y_att1 = (y_B - y_F) / 2
-
-    # y = np.concatenate((y_F, y_B, y_att1))
-    y = np.concatenate((y_F, y_B))
 
     # w
     if st_var is not None:  # WLS
@@ -325,12 +278,109 @@ def calibration_double_ended_solver(
             ds_sec[rast_label] ** -2 * rast_var_sec).values.ravel()
 
     else:  # OLS
-        w_F = np.ones(nt * nx)
-        w_B = np.ones(nt * nx)
-        # w_att1 = np.ones(nt * nx)
+        w_F = np.ones(nt * nx_sec)
+        w_B = np.ones(nt * nx_sec)
 
-    # w = np.concatenate((w_F, w_B, w_att1))
-    w = np.concatenate((w_F, w_B))
+    if not matching_indices:
+        p0_est = np.concatenate((np.asarray([485.] + 2 * nt * [1.4]),
+                                 E_all_guess[ix_sec[1:]], nta * nt * 2 * [0.]))
+
+        # Stack all X's
+        X = sp.vstack(
+            (sp.hstack((Z_gamma, -Z_D, Zero_d, -E, Z_TA_fw)),
+             sp.hstack((Z_gamma, Zero_d, -Z_D, E, Z_TA_bw))))
+
+        y = np.concatenate((y_F, y_B))
+        w = np.concatenate((w_F, w_B))
+
+    else:
+        E_match_F, E_match_B, E_match_no_cal, Z_TA_eq1, Z_TA_eq2, \
+            Z_TA_eq3, d_no_cal, ix_from_cal_match_to_glob, ix_match_not_cal, \
+                Zero_eq12_gamma, Zero_eq3_gamma, Zero_d_eq12 = \
+                    construct_submatrices_matching_sections(
+                        ds.x.values, ix_sec, matching_indices[0],
+                        matching_indices[1], nt, transient_asym_att_x)
+
+        p0_est = np.concatenate((np.asarray([485.] + 2 * nt * [1.4]),
+                                 E_all_guess[ix_from_cal_match_to_glob],
+                                 nta * nt * 2 * [0.]))
+        # Stack all X's
+        X = sp.vstack(
+            (sp.hstack((Z_gamma, -Z_D, Zero_d, -E, Z_TA_fw)),
+             sp.hstack((Z_gamma, Zero_d, -Z_D, E, Z_TA_bw)),
+             sp.hstack((Zero_eq12_gamma, Zero_d_eq12, Zero_d_eq12,
+                        E_match_F, Z_TA_eq1)),
+             sp.hstack((Zero_eq12_gamma, Zero_d_eq12, Zero_d_eq12,
+                        E_match_B, Z_TA_eq2)),
+             sp.hstack((Zero_eq3_gamma, d_no_cal,
+                        E_match_F, Z_TA_eq1))))
+
+        y_F = np.log(ds_sec[st_label] / ds_sec[ast_label]).values.ravel()
+        y_B = np.log(ds_sec[rst_label] / ds_sec[rast_label]).values.ravel()
+
+        ds_hix = ds.isel(x=matching_indices[0])
+        ds_tix = ds.isel(x=matching_indices[1])
+        y_eq1 = (np.log(ds_hix[st_label] / ds_hix[ast_label]) -
+                 np.log(ds_tix[st_label] / ds_tix[ast_label])).values.ravel()
+        y_eq2 = (np.log(ds_hix[rst_label] / ds_hix[rast_label]) -
+                 np.log(ds_tix[rst_label] / ds_tix[rast_label])).values.ravel()
+
+        ds_mnc = ds.isel(x=ix_match_not_cal)
+        y_eq3 = (np.log(ds_mnc[rst_label] / ds_mnc[rast_label]) -
+                 np.log(ds_mnc[st_label] / ds_mnc[ast_label])).values.ravel()
+
+        y = np.concatenate((y_F, y_B, y_eq1, y_eq2, y_eq3))
+
+        if callable(st_var):
+            st_var_hix = st_var(ds_hix[st_label])
+            st_var_tix = st_var(ds_tix[st_label])
+            st_var_mnc = st_var(ds_hix[st_label])
+        else:
+            st_var_hix = np.asarray(st_var)
+            st_var_tix = np.asarray(st_var)
+            st_var_mnc = np.asarray(st_var)
+        if callable(ast_var):
+            ast_var_hix = ast_var(ds_hix[ast_label])
+            ast_var_tix = ast_var(ds_tix[ast_label])
+            ast_var_mnc = ast_var(ds_hix[ast_label])
+        else:
+            ast_var_hix = np.asarray(ast_var)
+            ast_var_tix = np.asarray(ast_var)
+            ast_var_mnc = np.asarray(ast_var)
+        if callable(rst_var):
+            rst_var_hix = rst_var(ds_hix[rst_label])
+            rst_var_tix = rst_var(ds_tix[rst_label])
+            rst_var_mnc = rst_var(ds_hix[rst_label])
+        else:
+            rst_var_hix = np.asarray(rst_var)
+            rst_var_tix = np.asarray(rst_var)
+            rst_var_mnc = np.asarray(rst_var)
+        if callable(rast_var):
+            rast_var_hix = rast_var(ds_hix[rast_label])
+            rast_var_tix = rast_var(ds_tix[rast_label])
+            rast_var_mnc = rast_var(ds_hix[rast_label])
+        else:
+            rast_var_hix = np.asarray(rast_var)
+            rast_var_tix = np.asarray(rast_var)
+            rast_var_mnc = np.asarray(rast_var)
+
+        w_eq1 = 1 / (
+            ds_hix[st_label] ** -2 * st_var_hix +
+            ds_hix[ast_label] ** -2 * ast_var_hix +
+            ds_tix[st_label] ** -2 * st_var_tix +
+            ds_tix[ast_label] ** -2 * ast_var_tix).values.ravel()
+        w_eq2 = 1 / (
+            ds_hix[rst_label] ** -2 * rst_var_hix +
+            ds_hix[rast_label] ** -2 * rast_var_hix +
+            ds_tix[rst_label] ** -2 * rst_var_tix +
+            ds_tix[rast_label] ** -2 * rast_var_tix).values.ravel()
+        w_eq3 = 1 / (
+            ds_mnc[st_label] ** -2 * st_var_mnc +
+            ds_mnc[ast_label] ** -2 * ast_var_mnc +
+            ds_mnc[rst_label] ** -2 * rst_var_mnc +
+            ds_mnc[rast_label] ** -2 * rast_var_mnc).values.ravel()
+
+        w = np.concatenate((w_F, w_B, w_eq1, w_eq2, w_eq3))
 
     if solver == 'sparse':
         if calc_cov:
@@ -374,6 +424,27 @@ def calibration_double_ended_solver(
     # reference sections. po_sol is its expanded version that contains also
     # the int diff att for outside the reference sections.
 
+    # calculate talpha_fw and bw for attenuation
+    if transient_asym_att_x:
+        if matching_indices:
+            ta = p_sol[2 * nt + ix_from_cal_match_to_glob.size:
+                 ].reshape((nt, 2, nta), order='F')
+            ta_var = p_var[2 * nt + ix_from_cal_match_to_glob.size:
+                 ].reshape((nt, 2, nta), order='F')
+
+        else:
+            ta = p_sol[2 * nt + nx_sec:].reshape((nt, 2, nta), order='F')
+            ta_var = p_var[2 * nt + nx_sec:].reshape((nt, 2, nta), order='F')
+        talpha_fw = ta[:, 0, :]
+        talpha_bw = ta[:, 1, :]
+        talpha_fw_var = ta[:, 0, :]
+        talpha_bw_var = ta[:, 1, :]
+    else:
+        talpha_fw = None
+        talpha_bw = None
+        talpha_fw_var = None
+        talpha_bw_var = None
+
     # put E outside of reference section in solution
     # concatenating makes a copy of the data instead of using a pointer
     ds_sub = ds[[st_label, ast_label, rst_label, rast_label]]
@@ -397,27 +468,65 @@ def calibration_double_ended_solver(
         'db',
         'df_var',
         'db_var',
-        ix_alpha_is_zero=ix_alpha_is_zero)
-    po_sol = np.concatenate((p_sol[:1 + 2 * nt],
-                             E_all_exact,
-                             p_sol[1 + 2 * nt + nx:]))
-    po_sol[1 + 2 * nt + ix_sec[1:]] = p_sol[1 + 2 * nt:2 * nt + nx]
+        ix_alpha_is_zero=ix_alpha_is_zero,
+        transient_asym_att_x=transient_asym_att_x,
+        talpha_fw=talpha_fw,
+        talpha_bw=talpha_bw,
+        talpha_fw_var=talpha_fw_var,
+        talpha_bw_var=talpha_bw_var)
+
+    if matching_indices:
+        p_sol_size = 1 + 2 * nt + ix_from_cal_match_to_glob.size + 2 * nt * nta
+    else:
+        p_sol_size = 1 + 2 * nt + (nx_sec - 1) + 2 * nt * nta
+    assert p_sol.size == p_sol_size
+    assert p_var.size == p_sol_size
+
+    if matching_indices:
+        po_sol = np.concatenate((
+            p_sol[:1 + 2 * nt],
+            E_all_exact,
+            p_sol[2 * nt + ix_from_cal_match_to_glob.size:]))
+        po_sol[1 + 2 * nt + ix_from_cal_match_to_glob] = \
+            p_sol[1 + 2 * nt:1 + 2 * nt + ix_from_cal_match_to_glob.size]
+    else:
+        po_sol = np.concatenate((p_sol[:1 + 2 * nt],
+                                 E_all_exact,
+                                 p_sol[2 * nt + nx_sec:]))
+        po_sol[1 + 2 * nt + ix_sec[1:]] = p_sol[1 + 2 * nt:2 * nt + nx_sec]
+
     po_sol[1 + 2 * nt + ix_sec[0]] = 0.  # per definition
 
-    po_var = np.concatenate((p_var[:1 + 2 * nt],
-                             E_all_var_exact,
-                             p_var[1 + 2 * nt + nx:]))
-    po_var[1 + 2 * nt + ix_sec[1:]] = p_var[1 + 2 * nt:2 * nt + nx]
+    if matching_indices:
+        po_var = np.concatenate((
+            p_var[:1 + 2 * nt],
+            E_all_var_exact,
+            p_var[2 * nt + ix_from_cal_match_to_glob.size:]))
+        po_var[1 + 2 * nt + ix_from_cal_match_to_glob] = \
+            p_var[1 + 2 * nt:1 + 2 * nt + ix_from_cal_match_to_glob.size]
+    else:
+        po_var = np.concatenate((p_var[:1 + 2 * nt],
+                                 E_all_var_exact,
+                                 p_var[2 * nt + nx_sec:]))
+        po_var[1 + 2 * nt + ix_sec[1:]] = p_var[1 + 2 * nt:2 * nt + nx_sec]
     po_var[1 + 2 * nt + ix_sec[0]] = 0.  # per definition
 
     if calc_cov:
         # the COV can be expensive to compute (in the least squares routine)
         po_cov = np.diag(po_var).copy()
 
-        from_i = np.concatenate((np.arange(1 + 2 * nt),
-                                 1 + 2 * nt + ix_sec[1:],
-                                 np.arange(1 + 2 * nt + nx,
-                                           1 + 2 * nt + nx + nta * nt * 2)))
+        if matching_indices:
+            from_i = np.concatenate((
+                np.arange(1 + 2 * nt),
+                1 + 2 * nt + ix_from_cal_match_to_glob,
+                np.arange(1 + 2 * nt + ix_from_cal_match_to_glob.size,
+                          1 + 2 * nt + ix_from_cal_match_to_glob.size +
+                          nta * nt * 2)))
+        else:
+            from_i = np.concatenate((np.arange(1 + 2 * nt),
+                                     1 + 2 * nt + ix_sec[1:],
+                                     np.arange(1 + 2 * nt + nx_sec,
+                                               1 + 2 * nt + nx_sec + nta * nt * 2)))
 
         iox_sec1, iox_sec2 = np.meshgrid(from_i, from_i, indexing='ij')
         po_cov[iox_sec1, iox_sec2] = p_cov
@@ -429,7 +538,7 @@ def calibration_double_ended_solver(
 
 
 def construct_submatrices_matching_sections(
-    x, ix_sec, hix, tix, nt, transient_asym_att_x):
+      x, ix_sec, hix, tix, nt, transient_asym_att_x):
     """
     For all matching indices, where subscript 1 refers to the indices in
     `hix` and subscript 2 refers to the indices in `tix`.
@@ -457,8 +566,8 @@ def construct_submatrices_matching_sections(
     Parameters
     ----------
     x : array-like of float
-        coordinates along the fiber, needed to create the matrices for
-        transient attenuation.
+      coordinates along the fiber, needed to create the matrices for
+      transient attenuation.
     ix_sec : array-like of int
     hix : array-like of int
     tix : array-like of int
@@ -477,7 +586,6 @@ def construct_submatrices_matching_sections(
 
     # number of locations of interest, width of the section of interest.
     nx_cal_match = ix_cal_match.size
-    x_cal_match = x[ix_cal_match]
     x_hix = x[hix]
     x_tix = x[tix]
     npair = len(hix)
@@ -496,6 +604,7 @@ def construct_submatrices_matching_sections(
                            ix != ix_sec2[0]])
     # contains the global coordinate indices of the E
     ix_from_cal_match_to_glob = ix_cal_match[ix_E0_mask]
+    # Zero_eq12_gamma, Zero_eq3_gamma, Zero_d_eq12
 
     # E in EQ1
     data = np.ones(nt * npair, dtype=float)
@@ -508,6 +617,12 @@ def construct_submatrices_matching_sections(
           np.concatenate((col1, col2)))),
         shape=(nt * npair, nx_cal_match),
         copy=False).tocsr(copy=False)[:, ix_E0_mask].tocoo()
+    Zero_eq12_gamma = sp.coo_matrix(
+        ([], ([], [])),
+        shape=(nt * npair, 1))
+    Zero_d_eq12 = sp.coo_matrix(
+        ([], ([], [])),
+        shape=(nt * npair, 2 * nt))
 
     # E in EQ2
     data = np.ones(nt * npair, dtype=float)
@@ -543,6 +658,9 @@ def construct_submatrices_matching_sections(
           np.concatenate((colf, colb)))),
         shape=(nt * nx_nm, nt),
         copy=False).tocsr(copy=False)[:, ix_E0_mask].tocoo()
+    Zero_eq3_gamma = sp.coo_matrix(
+        ([], ([], [])),
+        shape=(nt * nx_nm, 1))
 
     # TA
     if transient_asym_att_x:
@@ -634,7 +752,8 @@ def construct_submatrices_matching_sections(
         Z_TA_eq3 = sp.coo_matrix(([], ([], [])), shape=(nt * nx_nm, 0))
 
     return (E_match_F, E_match_B, E_match_no_cal, Z_TA_eq1, Z_TA_eq2,
-            Z_TA_eq3, d_no_cal, ix_from_cal_match_to_glob, ix_match_not_cal)
+            Z_TA_eq3, d_no_cal, ix_from_cal_match_to_glob, ix_match_not_cal,
+            Zero_eq12_gamma, Zero_eq3_gamma, Zero_d_eq12)
 
 
 def construct_submatrices(nt, nx, st_label, ds, transient_asym_att_x, x_sec):
@@ -883,7 +1002,12 @@ def calc_alpha_double(
         D_B_label=None,
         D_F_var_label=None,
         D_B_var_label=None,
-        ix_alpha_is_zero=-1):
+        ix_alpha_is_zero=-1,
+        transient_asym_att_x=None,
+        talpha_fw=None,
+        talpha_bw=None,
+        talpha_fw_var=None,
+        talpha_bw_var=None):
     """Eq.50 if weighted least squares"""
     assert ix_alpha_is_zero >= 0, 'Define ix_alpha_is_zero' + \
                                   str(ix_alpha_is_zero)
@@ -931,8 +1055,37 @@ def calc_alpha_double(
             D_B = ds[D_B_label]
             D_F_var = ds[D_F_var_label]
             D_B_var = ds[D_B_var_label]
-            A_var = (i_var_fw + i_var_bw + D_B_var + D_F_var) / 2
-            A = (i_bw - i_fw) / 2 + (D_B - D_F) / 2
+
+            if transient_asym_att_x:
+                # Can be improved by including covariances. That reduces the
+                # uncert.
+
+                ta_arr_fw = np.zeros((ds.x.size, ds[time_dim].size))
+                ta_arr_fw_var = np.zeros((ds.x.size, ds[time_dim].size))
+                for tai, taxi, tai_var in zip(talpha_fw.T, transient_asym_att_x,
+                                              talpha_fw_var.T):
+                    ta_arr_fw[ds.x.values >= taxi] = \
+                        ta_arr_fw[ds.x.values >= taxi] + tai
+                    ta_arr_fw_var[ds.x.values >= taxi] = \
+                        ta_arr_fw_var[ds.x.values >= taxi] + tai_var
+
+                ta_arr_bw = np.zeros((ds.x.size, ds[time_dim].size))
+                ta_arr_bw_var = np.zeros((ds.x.size, ds[time_dim].size))
+                for tai, taxi, tai_var in zip(talpha_bw.T, transient_asym_att_x,
+                                              talpha_bw_var.T):
+                    ta_arr_bw[ds.x.values < taxi] = \
+                        ta_arr_bw[ds.x.values < taxi] + tai
+                    ta_arr_bw_var[ds.x.values < taxi] = \
+                        ta_arr_bw_var[ds.x.values < taxi] + tai_var
+
+                A_var = (i_var_fw + i_var_bw + D_B_var + D_F_var +
+                         ta_arr_fw_var + ta_arr_bw_var) / 2
+                A = (i_bw - i_fw) / 2 + (D_B - D_F) / 2 + (ta_arr_bw -
+                                                           ta_arr_fw) / 2
+
+            else:
+                A_var = (i_var_fw + i_var_bw + D_B_var + D_F_var) / 2
+                A = (i_bw - i_fw) / 2 + (D_B - D_F) / 2
 
         E_var = 1 / (1 / A_var).sum(dim=time_dim)
         E = (A / A_var).sum(dim=time_dim) * E_var
@@ -961,7 +1114,7 @@ def calc_alpha_double(
     return E, E_var
 
 
-def match_sections2(ds, matching_sections):
+def match_sections(ds, matching_sections):
     """
     Matches location indices of two sections.
 

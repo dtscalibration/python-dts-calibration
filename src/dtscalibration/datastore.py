@@ -241,8 +241,13 @@ class DataStore(xr.Dataset):
                         f'Better define the {k} section. You tried {vi}, ' \
                         'which is out of reach'
 
-                sections_fix_slice_fixed[k] = [
+                # sorted stretches
+                stretch_unsort = [
                     slice(float(vi.start), float(vi.stop)) for vi in v]
+                stretch_start = [i.start for i in stretch_unsort]
+                stretch_i_sorted = np.argsort(stretch_start)
+                sections_fix_slice_fixed[k] = [stretch_unsort[i] for i in
+                                               stretch_i_sorted]
 
             # Prevent overlapping slices
             ix_sec = self.ufunc_per_section(
@@ -1755,7 +1760,7 @@ class DataStore(xr.Dataset):
             Either use the homemade weighted sparse solver or the weighted
             dense matrix solver of
             statsmodels
-        transient_asym_att_x : iterable, optional
+        transient_asym_att_x : iterable of float, optional
             Connectors cause assymetrical attenuation. Normal double ended
             calibration assumes symmetrical attenuation. An additional loss
             term is added in the 'shadow' of the forward and backward
@@ -2127,6 +2132,13 @@ class DataStore(xr.Dataset):
 
         else:
             raise ValueError('Choose a valid method')
+
+        npar = 1 + 2 * nt + nx + 2 * nt * nta
+        assert p_val.size == npar
+        assert p_var.size == npar
+        if calc_cov:
+            assert p_cov.shape == (npar, npar)
+
 
         gamma = p_val[0]
         d_fw = p_val[1:nt + 1]
@@ -3172,13 +3184,6 @@ class DataStore(xr.Dataset):
         else:
             assert callable(func)
 
-        # defining it as func ensures it also works for calc_per==section
-        if x_indices:
-            def func2(x):
-                return np.sort(func(x))
-        else:
-            func2 = func
-
         assert calc_per in ['all', 'section', 'stretch']
 
         x_dim = self.get_x_dim(data_var_key=label)
@@ -3202,7 +3207,7 @@ class DataStore(xr.Dataset):
                     assert not ref_temp_broadcasted
                     # so it is slicable with x-indices
                     self['_x_indices'] = self[x_dim].astype(int) * 0 + \
-                                         np.arange(self[x_dim].size)
+                        np.arange(self[x_dim].size)
                     arg1 = self['_x_indices'].sel(x=stretch).data
                     del self['_x_indices']
 
@@ -3237,14 +3242,23 @@ class DataStore(xr.Dataset):
                     out[k].append(arg1)
 
             if calc_per == 'stretch':
-                out[k] = [func2(argi, **func_kwargs) for argi in out[k]]
+                out[k] = [func(argi, **func_kwargs) for argi in out[k]]
 
             elif calc_per == 'section':
-                out[k] = func2(concat(out[k]), **func_kwargs)
+                # flatten the out_dict to sort them
+                start = [i.start for i in section]
+                i_sorted = np.argsort(start)
+                out_flat_sort = [out[k][i] for i in i_sorted]
+                out[k] = func(concat(out_flat_sort), **func_kwargs)
 
         if calc_per == 'all':
-            out = {k: concat(section) for k, section in out.items()}
-            out = func2(concat(list(out.values()), axis=0), **func_kwargs)
+            # flatten the out_dict to sort them
+            start = [item.start for sublist in sections.values()
+                     for item in sublist]
+            i_sorted = np.argsort(start)
+            out_flat = [item for sublist in out.values() for item in sublist]
+            out_flat_sort = [out_flat[i] for i in i_sorted]
+            out = func(concat(out_flat_sort, axis=0), **func_kwargs)
 
             if (hasattr(out, 'chunks') and len(out.chunks) > 0 and
                     x_dim in self[label].dims):
