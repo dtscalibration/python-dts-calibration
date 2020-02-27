@@ -1669,8 +1669,9 @@ class DataStore(xr.Dataset):
                         ta_arr[self[x_dim].values >= taxi] + tai
 
             tempF_data = gamma / (
-                np.log(self[st_label].data / self[ast_label].data) + c +
-                self[x_dim].data[:, None] * dalpha + ta_arr) - 273.15
+                (np.log(self[st_label].data) - np.log(self[ast_label].data)
+                 + (c + ta_arr)) + (self[x_dim].data[:, None] * dalpha)
+                ) - 273.15
             self[store_tmpf] = ((x_dim, time_dim), tempF_data)
 
         if store_p_val and (method == 'wls' or method == 'external'):
@@ -3092,7 +3093,7 @@ class DataStore(xr.Dataset):
             temperature.
         x_indices : bool
             To retreive an integer array with the indices of the
-            x-coordinates in the section/stretch
+            x-coordinates in the section/stretch. The indices are sorted.
         ref_temp_broadcasted : bool
         calc_per : {'all', 'section', 'stretch'}
         func_kwargs : dict
@@ -3227,8 +3228,8 @@ class DataStore(xr.Dataset):
                     assert not temp_err
                     assert not ref_temp_broadcasted
                     # so it is slicable with x-indices
-                    self['_x_indices'] = self[x_dim].astype(int) * 0 + np.arange(
-                        self[x_dim].size)
+                    self['_x_indices'] = self[x_dim].astype(int) * 0 + \
+                        np.arange(self[x_dim].size)
                     arg1 = self['_x_indices'].sel(x=stretch).data
                     del self['_x_indices']
 
@@ -3266,11 +3267,20 @@ class DataStore(xr.Dataset):
                 out[k] = [func(argi, **func_kwargs) for argi in out[k]]
 
             elif calc_per == 'section':
-                out[k] = func(concat(out[k]), **func_kwargs)
+                # flatten the out_dict to sort them
+                start = [i.start for i in section]
+                i_sorted = np.argsort(start)
+                out_flat_sort = [out[k][i] for i in i_sorted]
+                out[k] = func(concat(out_flat_sort), **func_kwargs)
 
         if calc_per == 'all':
-            out = {k: concat(section) for k, section in out.items()}
-            out = func(concat(list(out.values()), axis=0), **func_kwargs)
+            # flatten the out_dict to sort them
+            start = [item.start for sublist in sections.values()
+                     for item in sublist]
+            i_sorted = np.argsort(start)
+            out_flat = [item for sublist in out.values() for item in sublist]
+            out_flat_sort = [out_flat[i] for i in i_sorted]
+            out = func(concat(out_flat_sort, axis=0), **func_kwargs)
 
             if (hasattr(out, 'chunks') and len(out.chunks) > 0 and
                     x_dim in self[label].dims):

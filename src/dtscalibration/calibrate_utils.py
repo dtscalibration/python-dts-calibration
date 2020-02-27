@@ -57,20 +57,19 @@ def calibration_single_ended_solver(
     """
     # get ix_sec argsort so the sections are in order of increasing x
     ix_sec = ds.ufunc_per_section(x_indices=True, calc_per='all')
-    ix_sec_argsort = ix_sec.argsort()
-    ds_sec = ds.isel(x=ix_sec[ix_sec_argsort])
+    ds_sec = ds.isel(x=ix_sec)
 
     x_sec = ds_sec['x'].values
     nx = x_sec.size
     nt = ds.time.size
     nta = len(transient_att_x) if transient_att_x else 0
 
-    p0_est = np.asarray([485., 0.1] + nt * [1.4] + nta * nt * [0.05])
+    p0_est = np.asarray([485., 0.1] + nt * [1.4] + nta * nt * [0.])
 
     # X \gamma  # Eq.34
     cal_ref = ds.ufunc_per_section(
         label=st_label, ref_temp_broadcasted=True, calc_per='all')
-    cal_ref = cal_ref[ix_sec_argsort]  # sort by increasing x
+    cal_ref = cal_ref  # sort by increasing x
     data_gamma = 1 / (cal_ref.T.ravel() + 273.15)  # gamma
     coord_gamma_row = np.arange(nt * nx, dtype=int)
     coord_gamma_col = np.zeros(nt * nx, dtype=int)
@@ -625,8 +624,8 @@ def wls_sparse(X, y, w=1., calc_cov=False, verbose=False, **kwargs):
     # precision up to 10th decimal. So that the temperature is approximately
     # estimated with 8 decimal precision.
     # noinspection PyTypeChecker
-    out_sol = ln.lsqr(wX, wy, show=verbose, calc_var=True,
-                      atol=1.0e-10, btol=1.0e-10, **kwargs)
+    out_sol = ln.lsqr(wX, wy, show=True, calc_var=True,
+                      atol=1.0e-16, btol=1.0e-16, **kwargs)
 
     p_sol = out_sol[0]
 

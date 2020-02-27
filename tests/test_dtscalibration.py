@@ -1596,11 +1596,11 @@ def test_single_ended_ols_wls_fix_dalpha_synthetic():
                                 fix_dalpha=(dalpha_p - dalpha_m, 0.))
 
     assert_almost_equal_verbose(
-        ds.gamma.values, gamma, decimal=9)
+        ds.gamma.values, gamma, decimal=12)
     assert_almost_equal_verbose(
-        ds.dalpha.values, dalpha_p - dalpha_m, decimal=12)
+        ds.dalpha.values, dalpha_p - dalpha_m, decimal=14)
     assert_almost_equal_verbose(
-        ds.TMPF.values, temp_real - 273.15, decimal=6)
+        ds.TMPF.values, temp_real - 273.15, decimal=10)
 
     pass
 
@@ -1675,9 +1675,9 @@ def test_single_ended_ols_wls_fix_gamma_synthetic():
     assert_almost_equal_verbose(
         ds.gamma.values, gamma, decimal=18)
     assert_almost_equal_verbose(
-        ds.dalpha.values, dalpha_p - dalpha_m, decimal=8)
+        ds.dalpha.values, dalpha_p - dalpha_m, decimal=10)
     assert_almost_equal_verbose(
-        ds.TMPF.values, temp_real - 273.15, decimal=4)
+        ds.TMPF.values, temp_real - 273.15, decimal=8)
 
     # WLS
     ds.calibration_single_ended(sections=sections,
@@ -1692,9 +1692,9 @@ def test_single_ended_ols_wls_fix_gamma_synthetic():
     assert_almost_equal_verbose(
         ds.gamma.values, gamma, decimal=18)
     assert_almost_equal_verbose(
-        ds.dalpha.values, dalpha_p - dalpha_m, decimal=8)
+        ds.dalpha.values, dalpha_p - dalpha_m, decimal=10)
     assert_almost_equal_verbose(
-        ds.TMPF.values, temp_real - 273.15, decimal=4)
+        ds.TMPF.values, temp_real - 273.15, decimal=8)
 
     pass
 
@@ -1772,7 +1772,7 @@ def test_single_ended_ols_wls_fix_gamma_fix_dalpha_synthetic():
     assert_almost_equal_verbose(
         ds.dalpha.values, dalpha_p - dalpha_m, decimal=18)
     assert_almost_equal_verbose(
-        ds.TMPF.values, temp_real - 273.15, decimal=6)  # 11 on 64-bit
+        ds.TMPF.values, temp_real - 273.15, decimal=8)  # 11 on 64-bit
 
     # WLS
     ds.calibration_single_ended(sections=sections,
@@ -1790,7 +1790,7 @@ def test_single_ended_ols_wls_fix_gamma_fix_dalpha_synthetic():
     assert_almost_equal_verbose(
         ds.dalpha.values, dalpha_p - dalpha_m, decimal=18)
     assert_almost_equal_verbose(
-        ds.TMPF.values, temp_real - 273.15, decimal=6)
+        ds.TMPF.values, temp_real - 273.15, decimal=8)
 
     pass
 
@@ -1873,13 +1873,13 @@ def test_single_ended_ols_trans_att_synthetic():
         solver='sparse')
 
     assert_almost_equal_verbose(
-        ds_test.gamma.values, gamma, decimal=5)
+        ds_test.gamma.values, gamma, decimal=8)
     assert_almost_equal_verbose(
-        ds_test.TMPF.values, temp_real - 273.15, decimal=4)
+        ds_test.TMPF.values, temp_real - 273.15, decimal=8)
     assert_almost_equal_verbose(
-        ds_test.isel(trans_att=0).talpha, -np.log(tr_att), decimal=3)
+        ds_test.isel(trans_att=0).talpha, -np.log(tr_att), decimal=8)
     assert_almost_equal_verbose(
-        ds_test.isel(trans_att=1).talpha, -np.log(tr_att2), decimal=3)
+        ds_test.isel(trans_att=1).talpha, -np.log(tr_att2), decimal=8)
 
     ds_test = ds.copy(deep=True)
 
@@ -1895,13 +1895,13 @@ def test_single_ended_ols_trans_att_synthetic():
         solver='sparse')
 
     assert_almost_equal_verbose(
-        ds_test.gamma.values, gamma, decimal=4)
+        ds_test.gamma.values, gamma, decimal=8)
     assert_almost_equal_verbose(
-        ds_test.TMPF.values, temp_real - 273.15, decimal=3)
+        ds_test.TMPF.values, temp_real - 273.15, decimal=8)
     assert_almost_equal_verbose(
-        ds_test.isel(trans_att=0).talpha, -np.log(tr_att), decimal=3)
+        ds_test.isel(trans_att=0).talpha, -np.log(tr_att), decimal=8)
     assert_almost_equal_verbose(
-        ds_test.isel(trans_att=1).talpha, -np.log(tr_att2), decimal=3)
+        ds_test.isel(trans_att=1).talpha, -np.log(tr_att2), decimal=8)
 
     ds_test = ds.copy(deep=True)
 
@@ -1918,13 +1918,13 @@ def test_single_ended_ols_trans_att_synthetic():
         solver='sparse')
 
     assert_almost_equal_verbose(
-        ds_test.gamma.values, gamma, decimal=8)
+        ds_test.gamma.values, gamma, decimal=10)
     assert_almost_equal_verbose(
-        ds_test.TMPF.values, temp_real - 273.15, decimal=3)
+        ds_test.TMPF.values, temp_real - 273.15, decimal=8)
     assert_almost_equal_verbose(
-        ds_test.isel(trans_att=0).talpha, -np.log(tr_att), decimal=3)
+        ds_test.isel(trans_att=0).talpha, -np.log(tr_att), decimal=8)
     assert_almost_equal_verbose(
-        ds_test.isel(trans_att=1).talpha, -np.log(tr_att2), decimal=3)
+        ds_test.isel(trans_att=1).talpha, -np.log(tr_att2), decimal=8)
 
     ds_test = ds.copy(deep=True)
 
@@ -1941,13 +1941,13 @@ def test_single_ended_ols_trans_att_synthetic():
         solver='sparse')
 
     assert_almost_equal_verbose(
-        ds_test.gamma.values, gamma, decimal=4)
+        ds_test.gamma.values, gamma, decimal=8)
     assert_almost_equal_verbose(
-        ds_test.TMPF.values, temp_real - 273.15, decimal=3)
+        ds_test.TMPF.values, temp_real - 273.15, decimal=8)
     assert_almost_equal_verbose(
-        ds_test.isel(trans_att=0).talpha, -np.log(tr_att), decimal=3)
+        ds_test.isel(trans_att=0).talpha, -np.log(tr_att), decimal=8)
     assert_almost_equal_verbose(
-        ds_test.isel(trans_att=1).talpha, -np.log(tr_att2), decimal=3)
+        ds_test.isel(trans_att=1).talpha, -np.log(tr_att2), decimal=8)
 
 
 def test_single_ended_exponential_variance_estimate_synthetic():
