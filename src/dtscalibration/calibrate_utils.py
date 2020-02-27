@@ -674,7 +674,7 @@ def construct_submatrices_matching_sections(
         copy=False).tocsr(copy=False)[:, ix_E0_mask].tocoo()
 
     # E in EQ3
-    nx_nm = ix_match_not_cal_sec2.sizee
+    nx_nm = ix_match_not_cal_sec2.size
     data = np.ones(nt * nx_nm, dtype=float)
     row = np.arange(nt * nx_nm, dtype=int)
     col = np.repeat(ix_match_not_cal_sec2, nt)
