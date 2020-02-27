@@ -2133,12 +2133,12 @@ class DataStore(xr.Dataset):
         else:
             raise ValueError('Choose a valid method')
 
+        # all below require the following solution sizes
         npar = 1 + 2 * nt + nx + 2 * nt * nta
         assert p_val.size == npar
         assert p_var.size == npar
         if calc_cov:
             assert p_cov.shape == (npar, npar)
-
 
         gamma = p_val[0]
         d_fw = p_val[1:nt + 1]
