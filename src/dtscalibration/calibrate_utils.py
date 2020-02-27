@@ -674,7 +674,7 @@ def construct_submatrices_matching_sections(
         copy=False).tocsr(copy=False)[:, ix_E0_mask].tocoo()
 
     # E in EQ3
-    nx_nm = ix_match_not_cal_sec2.size
+    nx_nm = ix_match_not_cal_sec2.sizee
     data = np.ones(nt * nx_nm, dtype=float)
     row = np.arange(nt * nx_nm, dtype=int)
     col = np.repeat(ix_match_not_cal_sec2, nt)
@@ -717,22 +717,6 @@ def construct_submatrices_matching_sections(
             else:
                 ix_ta_ix0 = np.flatnonzero(
                     x >= transient_asym_att_xi)[0]
-
-            # if transient_asym_att_xi >= x_hix[-1]:
-            #     ix_hix_ta_ix0 = npair
-            # elif transient_asym_att_xi <= x_hix[0]:
-            #     ix_hix_ta_ix0 = 0
-            # else:
-            #     ix_hix_ta_ix0 = np.flatnonzero(
-            #         x_hix >= transient_asym_att_xi)[0]
-            #
-            # if transient_asym_att_xi >= x_tix[-1]:
-            #     ix_tix_ta_ix0 = npair
-            # elif transient_asym_att_xi <= x_tix[0]:
-            #     ix_tix_ta_ix0 = 0
-            # else:
-            #     ix_tix_ta_ix0 = np.flatnonzero(
-            #         x_tix >= transient_asym_att_xi)[0]
 
             # TAF1 and TAF2 in EQ1
             data_taf = np.repeat(
