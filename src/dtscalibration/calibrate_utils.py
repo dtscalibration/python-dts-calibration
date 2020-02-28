@@ -64,6 +64,7 @@ def calibration_single_ended_solver(
     ds_sec = ds.isel(x=ix_sec)
 
     x_sec = ds_sec['x'].values
+    x_all = ds['x'].values
     nx = x_sec.size
     nt = ds.time.size
     nta = len(transient_att_x) if transient_att_x else 0
@@ -169,8 +170,8 @@ def calibration_single_ended_solver(
             for ii, row in enumerate(matching_indices):
                 for jj, transient_att_xi in enumerate(transient_att_x):
                     transient_m_data[ii, jj] = np.logical_and(
-                        transient_att_xi > row[0],
-                        transient_att_xi < row[1]
+                        transient_att_xi > x_all[row[0]],
+                        transient_att_xi < x_all[row[1]]
                     ).astype(int)
 
             data_mt = np.tile(transient_m_data, (nt, 1)).flatten('F')
@@ -265,6 +266,7 @@ def calibration_single_ended_solver(
             X_gamma=X_gamma,
             X_dalpha=X_dalpha,
             X_c=X_c,
+            X_m=X_m,
             X_TA=X_TA,
             p0_est=p0_est)
 
@@ -712,7 +714,7 @@ def wls_sparse(X, y, w=1., calc_cov=False, verbose=False, **kwargs):
     # estimated with 8 decimal precision.
     # noinspection PyTypeChecker
     out_sol = ln.lsqr(wX, wy, show=verbose, calc_var=True,
-                      atol=1.0e-14, btol=1.0e-14, **kwargs)
+                      atol=1.0e-16, btol=1.0e-16, **kwargs)
 
     p_sol = out_sol[0]
 

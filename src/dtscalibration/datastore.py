@@ -1493,18 +1493,29 @@ class DataStore(xr.Dataset):
                 # Move the coefficients times the fixed gamma to the
                 # observations
                 y = split['y'] - \
-                    fix_gamma[0] * split['X_gamma'].toarray().flatten() - \
-                    fix_dalpha[0] * split['X_dalpha'].toarray().flatten()
+                    np.hstack((
+                        fix_gamma[0] * split['X_gamma'].toarray().flatten() +
+                        fix_dalpha[0] * split['X_dalpha'].toarray().flatten(),
+                        (fix_dalpha[0] * split['X_m'].tocsr()[:, 1].
+                         tocoo().toarray().flatten())
+                        ))
                 # Use only the remaining coefficients
-                X = sp.hstack((split['X_c'], split['X_TA']))
+                X = sp.vstack((
+                        sp.hstack((split['X_c'], split['X_TA'])),
+                        split['X_m'].tocsr()[:, 2:].tocoo()
+                        ))
                 # variances are added. weight is the inverse of the variance
                 # of the observations
                 if method == 'wls':
-                    w = 1 / (1 / split['w'] +
-                             fix_gamma[1] *
-                             split['X_gamma'].toarray().flatten() +
-                             fix_dalpha[1] *
-                             split['X_dalpha'].toarray().flatten())
+                    w = 1 / (
+                        1 / split['w'] + np.hstack((
+                            fix_gamma[1] *
+                            split['X_gamma'].toarray().flatten() +
+                            fix_dalpha[1] *
+                            split['X_dalpha'].toarray().flatten(),
+                            (fix_dalpha[1] * split['X_m'].tocsr()[:, 1].
+                             tocoo().toarray().flatten())
+                        )))
                 else:
                     w = 1.
 
@@ -1541,15 +1552,24 @@ class DataStore(xr.Dataset):
                 # Move the coefficients times the fixed gamma to the
                 # observations
                 y = split['y'] - \
-                    fix_gamma[0] * split['X_gamma'].toarray().flatten()
+                    np.hstack((
+                        fix_gamma[0] * split['X_gamma'].toarray().flatten(),
+                        np.zeros(split['X_m'].shape[0])))
+
                 # Use only the remaining coefficients
-                X = sp.hstack((split['X_dalpha'], split['X_c'], split['X_TA']))
+                X = sp.vstack((
+                    sp.hstack((split['X_dalpha'], split['X_c'],
+                               split['X_TA'])),
+                    split['X_m'].tocsr()[:, 1:].tocoo()))
+
                 # variances are added. weight is the inverse of the variance
                 # of the observations
                 if method == 'wls':
                     w = 1 / (1 / split['w'] +
-                             fix_gamma[1] *
-                             split['X_gamma'].toarray().flatten())
+                             np.hstack((
+                                fix_gamma[1] *
+                                split['X_gamma'].toarray().flatten(),
+                                np.zeros(split['X_m'].shape[0]))))
                 else:
                     w = 1.
                 p0_est = split['p0_est'][1:]
@@ -1584,15 +1604,28 @@ class DataStore(xr.Dataset):
                 # Move the coefficients times the fixed dalpha to the
                 # observations
                 y = split['y'] - \
-                    fix_dalpha[0] * split['X_dalpha'].toarray().flatten()
+                    np.hstack((
+                        fix_dalpha[0] * split['X_dalpha'].toarray().flatten(),
+                        (fix_dalpha[0] * split['X_m'].tocsr()[:, 1].
+                         tocoo().toarray().flatten())
+                        ))
                 # Use only the remaining coefficients
-                X = sp.hstack((split['X_gamma'], split['X_c'], split['X_TA']))
+                remaining_idx = np.delete(np.arange(split['X_m'].shape[1]), 1)
+                X = sp.vstack((
+                        sp.hstack((split['X_gamma'], split['X_c'],
+                                   split['X_TA'])),
+                        split['X_m'].tocsr()[:, remaining_idx].tocoo(),
+                        ))
                 # variances are added. weight is the inverse of the variance
                 # of the observations
                 if method == 'wls':
-                    w = 1 / (1 / split['w'] +
-                             fix_dalpha[1] *
-                             split['X_dalpha'].toarray().flatten())
+                    w = 1 / (
+                        1 / split['w'] + np.hstack((
+                            fix_dalpha[1] *
+                            split['X_dalpha'].toarray().flatten(),
+                            (fix_dalpha[1] * split['X_m'].tocsr()[:, 1].
+                             tocoo().toarray().flatten())
+                        )))
                 else:
                     w = 1.
 
