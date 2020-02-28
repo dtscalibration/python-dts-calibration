@@ -241,8 +241,20 @@ class DataStore(xr.Dataset):
                         f'Better define the {k} section. You tried {vi}, ' \
                         'which is out of reach'
 
-                sections_fix_slice_fixed[k] = [
+                # sorted stretches
+                stretch_unsort = [
                     slice(float(vi.start), float(vi.stop)) for vi in v]
+                stretch_start = [i.start for i in stretch_unsort]
+                stretch_i_sorted = np.argsort(stretch_start)
+                sections_fix_slice_fixed[k] = [stretch_unsort[i] for i in
+                                               stretch_i_sorted]
+
+            # Prevent overlapping slices
+            ix_sec = self.ufunc_per_section(
+                sections=sections_fix_slice_fixed,
+                x_indices=True, calc_per='all')
+            assert np.unique(ix_sec).size == ix_sec.size, \
+                "The sections are overlapping"
 
         self.attrs['_sections'] = yaml.dump(sections_fix_slice_fixed)
         pass
@@ -1837,7 +1849,7 @@ class DataStore(xr.Dataset):
             Either use the homemade weighted sparse solver or the weighted
             dense matrix solver of
             statsmodels
-        transient_asym_att_x : iterable, optional
+        transient_asym_att_x : iterable of float, optional
             Connectors cause assymetrical attenuation. Normal double ended
             calibration assumes symmetrical attenuation. An additional loss
             term is added in the 'shadow' of the forward and backward
@@ -2209,6 +2221,13 @@ class DataStore(xr.Dataset):
 
         else:
             raise ValueError('Choose a valid method')
+
+        # all below require the following solution sizes
+        npar = 1 + 2 * nt + nx + 2 * nt * nta
+        assert p_val.size == npar
+        assert p_var.size == npar
+        if calc_cov:
+            assert p_cov.shape == (npar, npar)
 
         gamma = p_val[0]
         d_fw = p_val[1:nt + 1]
