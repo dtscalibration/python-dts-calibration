@@ -1353,6 +1353,7 @@ class DataStore(xr.Dataset):
             store_gamma='gamma',
             store_dalpha='dalpha',
             store_alpha='alpha',
+            store_ta='talpha',
             store_tmpf='TMPF',
             store_p_cov='p_cov',
             store_p_val='p_val',
@@ -1362,6 +1363,8 @@ class DataStore(xr.Dataset):
             p_val=None,
             p_var=None,
             p_cov=None,
+            matching_sections=None,
+            transient_att_x=None,
             fix_gamma=None,
             fix_dalpha=None):
         """
@@ -1398,6 +1401,8 @@ class DataStore(xr.Dataset):
             Label of where to store alpha; The integrated differential
             attenuation.
             alpha(x=0) = 0
+        store_ta : str
+            Label of where to store transient alpha's
         store_tmpf : str
             Label of where to store the calibrated temperature of the forward
             direction
@@ -1411,6 +1416,18 @@ class DataStore(xr.Dataset):
             Either use the homemade weighted sparse solver or the weighted
             dense matrix solver of
             statsmodels
+        matching_sections : List[Tuple[slice, slice, bool]]
+            Provide a list of tuples. A tuple per matching section. Each tuple
+            has three items. The first two items are the slices of the sections
+            that are matched. The third item is a boolean and is True if the two
+            sections have a reverse direction ("J-configuration").
+        transient_att_x : iterable, optional
+            Splices can cause jumps in differential attenuation. Normal single
+            ended calibration assumes these are not present. An additional loss
+            term is added in the 'shadow' of the splice. Each location
+            introduces an additional nt parameters to solve for. Requiring
+            either an additional calibration section or matching sections.
+            If multiple locations are defined, the losses are added.
         fix_gamma : tuple
             A tuple containing two floats. The first float is the value of
             gamma, and the second item is the variance of the estimate of gamma.
@@ -1436,8 +1453,22 @@ class DataStore(xr.Dataset):
         x_dim = self.get_x_dim()
         time_dim = self.get_time_dim()
         nt = self[time_dim].size
+        nx = self[x_dim].size
+        nta = len(transient_att_x) if transient_att_x else 0
 
         check_dims(self, [st_label, ast_label], correct_dims=(x_dim, time_dim))
+
+        if matching_sections:
+            matching_indices = match_sections(self, matching_sections)
+        else:
+            matching_indices = None
+
+        if transient_att_x:
+            ta_dim = 'trans_att'
+            err = 'This ds has been calibrated before. Remove trans_att.. ' \
+                  'coordinates'
+            assert ta_dim not in self.coords, err
+            self.coords[ta_dim] = transient_att_x
 
         assert not np.any(
             self[st_label] <= 0.), \
@@ -1467,23 +1498,36 @@ class DataStore(xr.Dataset):
             if fix_gamma and fix_dalpha:
                 split = calibration_single_ended_solver(
                     self, st_label, ast_label, st_var, ast_var,
-                    calc_cov=calc_cov, solver='external_split')
+                    calc_cov=calc_cov, solver='external_split',
+                    matching_indices=matching_indices,
+                    transient_att_x=transient_att_x)
 
                 # Move the coefficients times the fixed gamma to the
                 # observations
                 y = split['y'] - \
-                    fix_gamma[0] * split['X_gamma'].toarray().flatten() - \
-                    fix_dalpha[0] * split['X_dalpha'].toarray().flatten()
+                    np.hstack((
+                        fix_gamma[0] * split['X_gamma'].toarray().flatten() +
+                        fix_dalpha[0] * split['X_dalpha'].toarray().flatten(),
+                        (fix_dalpha[0] * split['X_m'].tocsr()[:, 1].
+                         tocoo().toarray().flatten())
+                        ))
                 # Use only the remaining coefficients
-                X = split['X_c']
+                X = sp.vstack((
+                        sp.hstack((split['X_c'], split['X_TA'])),
+                        split['X_m'].tocsr()[:, 2:].tocoo()
+                        ))
                 # variances are added. weight is the inverse of the variance
                 # of the observations
                 if method == 'wls':
-                    w = 1 / (1 / split['w'] +
-                             fix_gamma[1] *
-                             split['X_gamma'].toarray().flatten() +
-                             fix_dalpha[1] *
-                             split['X_dalpha'].toarray().flatten())
+                    w = 1 / (
+                        1 / split['w'] + np.hstack((
+                            fix_gamma[1] *
+                            split['X_gamma'].toarray().flatten() +
+                            fix_dalpha[1] *
+                            split['X_dalpha'].toarray().flatten(),
+                            (fix_dalpha[1] * split['X_m'].tocsr()[:, 1].
+                             tocoo().toarray().flatten())
+                        )))
                 else:
                     w = 1.
 
@@ -1513,20 +1557,31 @@ class DataStore(xr.Dataset):
             elif fix_gamma:
                 split = calibration_single_ended_solver(
                     self, st_label, ast_label, st_var, ast_var,
-                    calc_cov=calc_cov, solver='external_split')
+                    calc_cov=calc_cov, solver='external_split',
+                    matching_indices=matching_indices,
+                    transient_att_x=transient_att_x)
 
                 # Move the coefficients times the fixed gamma to the
                 # observations
                 y = split['y'] - \
-                    fix_gamma[0] * split['X_gamma'].toarray().flatten()
+                    np.hstack((
+                        fix_gamma[0] * split['X_gamma'].toarray().flatten(),
+                        np.zeros(split['X_m'].shape[0])))
+
                 # Use only the remaining coefficients
-                X = sp.hstack((split['X_dalpha'], split['X_c']))
+                X = sp.vstack((
+                    sp.hstack((split['X_dalpha'], split['X_c'],
+                               split['X_TA'])),
+                    split['X_m'].tocsr()[:, 1:].tocoo()))
+
                 # variances are added. weight is the inverse of the variance
                 # of the observations
                 if method == 'wls':
                     w = 1 / (1 / split['w'] +
-                             fix_gamma[1] *
-                             split['X_gamma'].toarray().flatten())
+                             np.hstack((
+                                fix_gamma[1] *
+                                split['X_gamma'].toarray().flatten(),
+                                np.zeros(split['X_m'].shape[0]))))
                 else:
                     w = 1.
                 p0_est = split['p0_est'][1:]
@@ -1554,20 +1609,35 @@ class DataStore(xr.Dataset):
             elif fix_dalpha:
                 split = calibration_single_ended_solver(
                     self, st_label, ast_label, st_var, ast_var,
-                    calc_cov=calc_cov, solver='external_split')
+                    calc_cov=calc_cov, solver='external_split',
+                    matching_indices=matching_indices,
+                    transient_att_x=transient_att_x)
 
                 # Move the coefficients times the fixed dalpha to the
                 # observations
                 y = split['y'] - \
-                    fix_dalpha[0] * split['X_dalpha'].toarray().flatten()
+                    np.hstack((
+                        fix_dalpha[0] * split['X_dalpha'].toarray().flatten(),
+                        (fix_dalpha[0] * split['X_m'].tocsr()[:, 1].
+                         tocoo().toarray().flatten())
+                        ))
                 # Use only the remaining coefficients
-                X = sp.hstack((split['X_gamma'], split['X_c']))
+                remaining_idx = np.delete(np.arange(split['X_m'].shape[1]), 1)
+                X = sp.vstack((
+                        sp.hstack((split['X_gamma'], split['X_c'],
+                                   split['X_TA'])),
+                        split['X_m'].tocsr()[:, remaining_idx].tocoo(),
+                        ))
                 # variances are added. weight is the inverse of the variance
                 # of the observations
                 if method == 'wls':
-                    w = 1 / (1 / split['w'] +
-                             fix_dalpha[1] *
-                             split['X_dalpha'].toarray().flatten())
+                    w = 1 / (
+                        1 / split['w'] + np.hstack((
+                            fix_dalpha[1] *
+                            split['X_dalpha'].toarray().flatten(),
+                            (fix_dalpha[1] * split['X_m'].tocsr()[:, 1].
+                             tocoo().toarray().flatten())
+                        )))
                 else:
                     w = 1.
 
@@ -1600,7 +1670,9 @@ class DataStore(xr.Dataset):
             else:
                 out = calibration_single_ended_solver(
                     self, st_label, ast_label, st_var, ast_var,
-                    calc_cov=calc_cov, solver=solver)
+                    calc_cov=calc_cov, solver=solver,
+                    matching_indices=matching_indices,
+                    transient_att_x=transient_att_x)
 
                 if calc_cov:
                     p_val, p_var, p_cov = out
@@ -1623,6 +1695,10 @@ class DataStore(xr.Dataset):
         dalpha = p_val[1]
         c = p_val[2:nt + 2]
 
+        if transient_att_x:
+            ta = p_val[nt + 2:].reshape((nt, nta), order='F')
+            self[store_ta] = ((time_dim, ta_dim), ta[:, :])
+
         self[store_gamma] = (tuple(), gamma)
         self[store_dalpha] = (tuple(), dalpha)
         self[store_alpha] = ((x_dim,), dalpha * self[x_dim].data)
@@ -1638,11 +1714,24 @@ class DataStore(xr.Dataset):
             self[store_dalpha + variance_suffix] = (tuple(), dalphavar)
             self[store_c + variance_suffix] = ((time_dim,), cvar)
 
+            if transient_att_x:
+                tavar = p_var[nt + 2:].reshape((nt, nta), order='F')
+                self[store_ta + variance_suffix] = (
+                    (time_dim, ta_dim), tavar[:, :])
+
         # deal with FW
         if store_tmpf:
-            tempF_data = gamma / \
-                         (np.log(self[st_label].data / self[ast_label].data)
-                          + c + self[x_dim].data[:, None] * dalpha) - 273.15
+            ta_arr = np.zeros((nx, nt))
+            if transient_att_x:
+                for tai, taxi in zip(self[store_ta].values.T,
+                                     self.coords[ta_dim].values):
+                    ta_arr[self[x_dim].values >= taxi] = \
+                        ta_arr[self[x_dim].values >= taxi] + tai
+
+            tempF_data = gamma / (
+                (np.log(self[st_label].data) - np.log(self[ast_label].data)
+                 + (c + ta_arr)) + (self[x_dim].data[:, None] * dalpha)
+                ) - 273.15
             self[store_tmpf] = ((x_dim, time_dim), tempF_data)
 
         if store_p_val and (method == 'wls' or method == 'external'):
