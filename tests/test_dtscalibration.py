@@ -945,9 +945,9 @@ def test_double_ended_one_matching_section_and_one_asym_att():
                             slice(x[4 * nx_per_sec], x[5 * nx_per_sec - 1]),
                             True)])
 
-    assert_almost_equal_verbose(temp_real_celsius, ds.TMPF.values, decimal=8)
-    assert_almost_equal_verbose(temp_real_celsius, ds.TMPB.values, decimal=8)
-    assert_almost_equal_verbose(temp_real_celsius, ds.TMPW.values, decimal=8)
+    assert_almost_equal_verbose(temp_real_celsius, ds.TMPF.values, decimal=7)
+    assert_almost_equal_verbose(temp_real_celsius, ds.TMPB.values, decimal=7)
+    assert_almost_equal_verbose(temp_real_celsius, ds.TMPW.values, decimal=7)
 
 
 def test_double_ended_two_matching_sections_and_two_asym_atts():
