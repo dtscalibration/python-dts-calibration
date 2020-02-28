@@ -1351,6 +1351,7 @@ class DataStore(xr.Dataset):
             p_val=None,
             p_var=None,
             p_cov=None,
+            matching_sections=None,
             transient_att_x=None,
             fix_gamma=None,
             fix_dalpha=None):
@@ -1403,6 +1404,11 @@ class DataStore(xr.Dataset):
             Either use the homemade weighted sparse solver or the weighted
             dense matrix solver of
             statsmodels
+        matching_sections : List[Tuple[slice, slice, bool]]
+            Provide a list of tuples. A tuple per matching section. Each tuple
+            has three items. The first two items are the slices of the sections
+            that are matched. The third item is a boolean and is True if the two
+            sections have a reverse direction ("J-configuration").
         transient_att_x : iterable, optional
             Splices can cause jumps in differential attenuation. Normal single
             ended calibration assumes these are not present. An additional loss
@@ -1440,6 +1446,11 @@ class DataStore(xr.Dataset):
 
         check_dims(self, [st_label, ast_label], correct_dims=(x_dim, time_dim))
 
+        if matching_sections:
+            matching_indices = match_sections(self, matching_sections)
+        else:
+            matching_indices = None
+
         if transient_att_x:
             ta_dim = 'trans_att'
             err = 'This ds has been calibrated before. Remove trans_att.. ' \
@@ -1476,6 +1487,7 @@ class DataStore(xr.Dataset):
                 split = calibration_single_ended_solver(
                     self, st_label, ast_label, st_var, ast_var,
                     calc_cov=calc_cov, solver='external_split',
+                    matching_indices=matching_indices,
                     transient_att_x=transient_att_x)
 
                 # Move the coefficients times the fixed gamma to the
@@ -1523,6 +1535,7 @@ class DataStore(xr.Dataset):
                 split = calibration_single_ended_solver(
                     self, st_label, ast_label, st_var, ast_var,
                     calc_cov=calc_cov, solver='external_split',
+                    matching_indices=matching_indices,
                     transient_att_x=transient_att_x)
 
                 # Move the coefficients times the fixed gamma to the
@@ -1565,6 +1578,7 @@ class DataStore(xr.Dataset):
                 split = calibration_single_ended_solver(
                     self, st_label, ast_label, st_var, ast_var,
                     calc_cov=calc_cov, solver='external_split',
+                    matching_indices=matching_indices,
                     transient_att_x=transient_att_x)
 
                 # Move the coefficients times the fixed dalpha to the
@@ -1612,6 +1626,7 @@ class DataStore(xr.Dataset):
                 out = calibration_single_ended_solver(
                     self, st_label, ast_label, st_var, ast_var,
                     calc_cov=calc_cov, solver=solver,
+                    matching_indices=matching_indices,
                     transient_att_x=transient_att_x)
 
                 if calc_cov:

@@ -11,8 +11,9 @@ def calibration_single_ended_solver(
         st_var=None,
         ast_var=None,
         calc_cov=True,
-        transient_att_x=None,
         solver='sparse',
+        matching_indices=None,
+        transient_att_x=None,
         verbose=False):
     """
     Parameters
@@ -35,6 +36,15 @@ def calibration_single_ended_solver(
     calc_cov : bool
         whether to calculate the covariance matrix. Required for calculation
         of confidence boundaries. But uses a lot of memory.
+    solver : {'sparse', 'stats', 'external', 'external_split'}
+        Always use sparse to save memory. The statsmodel can be used to validate
+        sparse solver. `external` returns the matrices that would enter the
+        matrix solver (Eq.37). `external_split` returns a dictionary with
+        matrix X split in the coefficients per parameter. The use case for
+        the latter is when certain parameters are fixed/combined.
+    matching_indices : array-like
+        Is an array of size (np, 2), where np is the number of paired
+        locations. This array is produced by `matching_sections()`.
     transient_att_x : iterable, optional
         Splices can cause jumps in differential attenuation. Normal single
         ended calibration assumes these are not present. An additional loss term
@@ -42,12 +52,6 @@ def calibration_single_ended_solver(
         additional nt parameters to solve for. Requiring either an additional
         calibration section or matching sections. If multiple locations are
         defined, the losses are added.
-    solver : {'sparse', 'stats', 'external', 'external_split'}
-        Always use sparse to save memory. The statsmodel can be used to validate
-        sparse solver. `external` returns the matrices that would enter the
-        matrix solver (Eq.37). `external_split` returns a dictionary with
-        matrix X split in the coefficients per parameter. The use case for
-        the latter is when certain parameters are fixed/combined.
 
     verbose : bool
 
@@ -63,6 +67,11 @@ def calibration_single_ended_solver(
     nx = x_sec.size
     nt = ds.time.size
     nta = len(transient_att_x) if transient_att_x else 0
+    nm = matching_indices.shape[0] if np.any(matching_indices) else 0
+
+    if np.any(matching_indices):
+        ds_ms0 = ds.isel(x=matching_indices[:, 0])
+        ds_ms1 = ds.isel(x=matching_indices[:, 1])
 
     p0_est = np.asarray([485., 0.1] + nt * [1.4] + nta * nt * [0.])
 
@@ -137,11 +146,80 @@ def calibration_single_ended_solver(
     else:
         X_TA = sp.coo_matrix(([], ([], [])), shape=(nt * nx, 0))
 
+    if np.any(matching_indices):
+        # first make matrix without the TA part (only diff in attentuation)
+        data_ma = np.tile(
+            ds_ms1['x'].values -
+            ds_ms0['x'].values,
+            nt
+        )
+
+        coord_ma_row = np.arange(nm * nt)
+
+        coord_ma_col = np.ones(nt * nm)
+
+        X_ma = sp.coo_matrix(
+            (data_ma, (coord_ma_row, coord_ma_col)),
+            shape=(nm * nt, 2 + nt),
+            copy=False)
+
+        # make TA matrix
+        if transient_att_x:
+            transient_m_data = np.zeros((nm, nta))
+            for ii, row in enumerate(matching_indices):
+                for jj, transient_att_xi in enumerate(transient_att_x):
+                    transient_m_data[ii, jj] = np.logical_and(
+                        transient_att_xi > row[0],
+                        transient_att_xi < row[1]
+                    ).astype(int)
+
+            data_mt = np.tile(transient_m_data, (nt, 1)).flatten('F')
+
+            coord_mt_row = (
+                np.tile(np.arange(nm * nt), nta)
+            )
+
+            coord_mt_col = (
+                np.tile(np.repeat(np.arange(nt), nm), nta)
+                + np.repeat(np.arange(nta*nt, step=nt), nt * nm)
+            )
+
+            X_mt = sp.coo_matrix(
+                (data_mt, (coord_mt_row, coord_mt_col)),
+                shape=(nm * nt, nta * nt),
+                copy=False)
+
+        else:
+            X_mt = sp.coo_matrix(
+                ([], ([], [])),
+                shape=(nm * nt, 0),
+                copy=False)
+
+        # merge the two
+        X_m = sp.hstack((X_ma, X_mt))
+
+    else:
+        X_m = sp.coo_matrix(([], ([], [])), shape=(0, 2 + nt + nta * nt))
+
     # Stack all X's
-    X = sp.hstack((X_gamma, X_dalpha, X_c, X_TA))
+    X = sp.vstack((
+        sp.hstack((X_gamma, X_dalpha, X_c, X_TA)),
+        X_m
+    ))
 
     # y, transpose the values to arrange them correctly
     y = np.log(ds_sec[st_label] / ds_sec[ast_label]).values.T.ravel()
+
+    if np.any(matching_indices):
+        # y_m = I_1 - I_2
+        y_m = (
+            np.log(
+                ds_ms0[st_label].values / ds_ms0[ast_label].values)
+            - np.log(
+                ds_ms1[st_label].values / ds_ms1[ast_label].values)
+        ).T.ravel()
+
+        y = np.hstack((y, y_m))
 
     # w
     if st_var is not None:
@@ -149,6 +227,15 @@ def calibration_single_ended_solver(
             ds_sec[st_label] ** -2 * st_var +
             ds_sec[ast_label] ** -2 * ast_var).values.ravel()
 
+        if np.any(matching_indices):
+            w_ms = 1 / (
+                (ds_ms0[st_label].values ** -2 * st_var) +
+                (ds_ms0[ast_label].values ** -2 * ast_var) +
+                (ds_ms1[st_label].values ** -2 * st_var) +
+                (ds_ms1[ast_label].values ** -2 * ast_var)
+            ).ravel()
+
+            w = np.hstack((w, w_ms))
     else:
         w = 1.  # unweighted
 
@@ -624,8 +711,8 @@ def wls_sparse(X, y, w=1., calc_cov=False, verbose=False, **kwargs):
     # precision up to 10th decimal. So that the temperature is approximately
     # estimated with 8 decimal precision.
     # noinspection PyTypeChecker
-    out_sol = ln.lsqr(wX, wy, show=True, calc_var=True,
-                      atol=1.0e-16, btol=1.0e-16, **kwargs)
+    out_sol = ln.lsqr(wX, wy, show=verbose, calc_var=True,
+                      atol=1.0e-14, btol=1.0e-14, **kwargs)
 
     p_sol = out_sol[0]
 
@@ -813,12 +900,9 @@ def calc_alpha_double(
     return E, E_var
 
 
-def match_sections(ds, matching_sections,
-                   check_pair_in_calibration_section=False,
-                   check_pair_in_calibration_section_arg=None):
+def match_sections(ds, matching_sections):
     """
     Matches location indices of two sections.
-
     Parameters
     ----------
     ds
@@ -826,33 +910,13 @@ def match_sections(ds, matching_sections,
         Provide a list of tuples. A tuple per matching section. Each tuple
         has three items. The first two items are the slices of the sections
         that are matched. The third item is a boolean and is True if the two
-        sections have a reverse direction ("J-configuration").
-    check_pair_in_calibration_section : bool
-        Use the sections check whether both items
-        of the pair are in the calibration section. It produces a warning for
-        each pair of which at least one item is outside of the calibration
-        sections. The sections are set with
-        `check_pair_in_calibration_section_arg`. If `None` the sections
-        are obtained from `ds`.
-    check_pair_in_calibration_section_arg : Dict[str, List[slice]], optional
-        If `None` the sections are obtained from `ds`.
-
+        sections have a reverse direction ("J-configuration"), most common.
     Returns
     -------
     matching_indices : array-like
         Is an array of size (np, 2), where np is the number of paired
         locations. The array contains indices to locations along the fiber.
-
     """
-    import warnings
-
-    def err_msg(s1, s2):
-        return """
-        The current implementation requires that both locations of a matching
-        pair should either be used in a calibration section or outside the
-        calibration sections. x={:.3f}m is not in the calibration section
-        while its matching location at x={:.3f}m is.""".format(s1, s2)
-
     for hslice, tslice, reverse_flag in matching_sections:
         hxs = ds.x.sel(x=hslice).size
         txs = ds.x.sel(x=tslice).size
@@ -880,43 +944,4 @@ def match_sections(ds, matching_sections,
 
     tix = np.concatenate(tixl)
 
-    ix_sec = ds.ufunc_per_section(
-        x_indices=True,
-        calc_per='all',
-        sections=check_pair_in_calibration_section_arg)
-
-    if not check_pair_in_calibration_section:
-        return np.stack((hix, tix)).T
-    else:
-        # else perform checks whether both are in valid sections
-        pass
-
-    xv = ds.x.values
-
-    hixl = []
-    tixl = []
-
-    for hii, tii in zip(hix, tix):
-        if hii in ix_sec and tii in ix_sec:
-            hixl.append(hii)
-            tixl.append(tii)
-
-        elif hii not in ix_sec and tii in ix_sec:
-            warnings.warn(err_msg(xv[hii], xv[tii]))
-
-        elif hii in ix_sec and tii not in ix_sec:
-            warnings.warn(err_msg(xv[tii], xv[hii]))
-
-        else:
-            warnings.warn("""x={:.3f}m and x={:.3f}m are both locatated
-            outside the calibration sections""".format(xv[hii], xv[tii]))
-
-    hix_out = np.array(hixl)
-    tix_out = np.array(tixl)
-
-    err = 'Both locations of a matching pair should either be used in a ' \
-          'calibration section or outside the calibration sections.'
-    assert hix_out.size == tix_out.size, err
-    assert hix_out.size > 0, 'no matching sections in calibration'
-
-    return np.stack((hix_out, tix_out)).T
+    return np.stack((hix, tix)).T
