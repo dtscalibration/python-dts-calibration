@@ -994,23 +994,23 @@ def test_double_ended_two_matching_sections_and_two_asym_atts():
     temp_real_celsius = temp_real_kelvin - 273.15
 
     st = eta_pf[None] * C_p * np.exp(-dalpha_r * x[:, None]) * \
-         np.exp(-dalpha_p * x[:, None]) * np.exp(gamma / temp_real_kelvin) / \
-         (np.exp(gamma / temp_real_kelvin) - 1)
+        np.exp(-dalpha_p * x[:, None]) * np.exp(gamma / temp_real_kelvin) / \
+        (np.exp(gamma / temp_real_kelvin) - 1)
     st[3 * nx_per_sec:] *= talph_fw
     st[6 * nx_per_sec:] *= talph_fw
     ast = eta_mf[None] * C_m * np.exp(-dalpha_r * x[:, None]) * \
-          np.exp(-dalpha_m * x[:, None]) / (
-              np.exp(gamma / temp_real_kelvin) - 1)
+        np.exp(-dalpha_m * x[:, None]) / (
+        np.exp(gamma / temp_real_kelvin) - 1)
     rst = eta_pb[None] * C_p * np.exp(-dalpha_r * (-x[:, None] + cable_len)) * \
-          np.exp(-dalpha_p * (-x[:, None] + cable_len)) * \
-          np.exp(gamma / temp_real_kelvin) / (
-              np.exp(gamma / temp_real_kelvin) - 1)
+        np.exp(-dalpha_p * (-x[:, None] + cable_len)) * \
+        np.exp(gamma / temp_real_kelvin) / (
+        np.exp(gamma / temp_real_kelvin) - 1)
     rst[:3 * nx_per_sec] *= talph_bw
     rst[:6 * nx_per_sec] *= talph_bw
     rast = eta_mb[None] * C_m * np.exp(
         -dalpha_r * (-x[:, None] + cable_len)) * np.exp(
         -dalpha_m * (-x[:, None] + cable_len)) / \
-           (np.exp(gamma / temp_real_kelvin) - 1)
+        (np.exp(gamma / temp_real_kelvin) - 1)
 
     ds = DataStore({
         'TMPR':                  (['x', 'time'], temp_real_celsius),
