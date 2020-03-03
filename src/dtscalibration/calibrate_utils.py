@@ -12,6 +12,8 @@ def calibration_single_ended_solver(
         ast_var=None,
         calc_cov=True,
         solver='sparse',
+        matching_indices=None,
+        transient_att_x=None,
         verbose=False):
     """
     Parameters
@@ -40,6 +42,16 @@ def calibration_single_ended_solver(
         matrix solver (Eq.37). `external_split` returns a dictionary with
         matrix X split in the coefficients per parameter. The use case for
         the latter is when certain parameters are fixed/combined.
+    matching_indices : array-like
+        Is an array of size (np, 2), where np is the number of paired
+        locations. This array is produced by `matching_sections()`.
+    transient_att_x : iterable, optional
+        Splices can cause jumps in differential attenuation. Normal single
+        ended calibration assumes these are not present. An additional loss term
+        is added in the 'shadow' of the splice. Each location introduces an
+        additional nt parameters to solve for. Requiring either an additional
+        calibration section or matching sections. If multiple locations are
+        defined, the losses are added.
 
     verbose : bool
 
@@ -47,20 +59,28 @@ def calibration_single_ended_solver(
     -------
 
     """
+    # get ix_sec argsort so the sections are in order of increasing x
     ix_sec = ds.ufunc_per_section(x_indices=True, calc_per='all')
     ds_sec = ds.isel(x=ix_sec)
 
     x_sec = ds_sec['x'].values
+    x_all = ds['x'].values
     nx = x_sec.size
-
     nt = ds.time.size
-    p0_est = np.asarray([485., 0.1] + nt * [1.4])
+    nta = len(transient_att_x) if transient_att_x else 0
+    nm = matching_indices.shape[0] if np.any(matching_indices) else 0
+
+    if np.any(matching_indices):
+        ds_ms0 = ds.isel(x=matching_indices[:, 0])
+        ds_ms1 = ds.isel(x=matching_indices[:, 1])
+
+    p0_est = np.asarray([485., 0.1] + nt * [1.4] + nta * nt * [0.])
 
     # X \gamma  # Eq.34
     cal_ref = ds.ufunc_per_section(
         label=st_label, ref_temp_broadcasted=True, calc_per='all')
-
-    data_gamma = 1 / (cal_ref.ravel() + 273.15)  # gamma
+    cal_ref = cal_ref  # sort by increasing x
+    data_gamma = 1 / (cal_ref.T.ravel() + 273.15)  # gamma
     coord_gamma_row = np.arange(nt * nx, dtype=int)
     coord_gamma_col = np.zeros(nt * nx, dtype=int)
     X_gamma = sp.coo_matrix(
@@ -69,7 +89,7 @@ def calibration_single_ended_solver(
         copy=False)
 
     # X \Delta\alpha  # Eq.34
-    data_dalpha = np.repeat(-x_sec, nt)  # dalpha
+    data_dalpha = np.tile(-x_sec, nt)  # dalpha
     coord_dalpha_row = np.arange(nt * nx, dtype=int)
     coord_dalpha_col = np.zeros(nt * nx, dtype=int)
     X_dalpha = sp.coo_matrix(
@@ -80,17 +100,127 @@ def calibration_single_ended_solver(
     # X C  # Eq.34
     data_c = -np.ones(nt * nx, dtype=int)
     coord_c_row = np.arange(nt * nx, dtype=int)
-    coord_c_col = np.tile(np.arange(nt, dtype=int), nx)
+    coord_c_col = np.repeat(np.arange(nt, dtype=int), nx)
+
     X_c = sp.coo_matrix(
         (data_c, (coord_c_row, coord_c_col)),
         shape=(nt * nx, nt),
         copy=False)
 
-    # Stack all X's
-    X = sp.hstack((X_gamma, X_dalpha, X_c))
+    # X ta #not documented
+    if transient_att_x:
+        TA_list = list()
 
-    # y
-    y = np.log(ds_sec[st_label] / ds_sec[ast_label]).values.ravel()
+        for transient_att_xi in transient_att_x:
+            # first index on the right hand side a the difficult splice
+            # Deal with connector outside of fiber
+            if transient_att_xi >= x_sec[-1]:
+                ix_sec_ta_ix0 = nx
+            elif transient_att_xi <= x_sec[0]:
+                ix_sec_ta_ix0 = 0
+            else:
+                ix_sec_ta_ix0 = np.flatnonzero(
+                    x_sec >= transient_att_xi)[0]
+
+            # Data is -1
+            # I = 1/Tref*gamma - C - da - TA
+            data_ta = -np.ones(nt * (nx - ix_sec_ta_ix0), dtype=float)
+
+            # skip ix_sec_ta_ix0 locations, because they are upstream of
+            # the connector.
+            coord_ta_row = (
+                np.tile(np.arange(ix_sec_ta_ix0, nx), nt) +
+                np.repeat(np.arange(nx * nt, step=nx), nx - ix_sec_ta_ix0)
+            )
+
+            # nt parameters
+            coord_ta_col = np.repeat(
+                np.arange(nt, dtype=int), nx - ix_sec_ta_ix0)
+
+            TA_list.append(sp.coo_matrix(
+                (data_ta, (coord_ta_row, coord_ta_col)),
+                shape=(nt * nx, nt),
+                copy=False))
+
+        X_TA = sp.hstack(TA_list)
+
+    else:
+        X_TA = sp.coo_matrix(([], ([], [])), shape=(nt * nx, 0))
+
+    if np.any(matching_indices):
+        # first make matrix without the TA part (only diff in attentuation)
+        data_ma = np.tile(
+            ds_ms1['x'].values -
+            ds_ms0['x'].values,
+            nt
+        )
+
+        coord_ma_row = np.arange(nm * nt)
+
+        coord_ma_col = np.ones(nt * nm)
+
+        X_ma = sp.coo_matrix(
+            (data_ma, (coord_ma_row, coord_ma_col)),
+            shape=(nm * nt, 2 + nt),
+            copy=False)
+
+        # make TA matrix
+        if transient_att_x:
+            transient_m_data = np.zeros((nm, nta))
+            for ii, row in enumerate(matching_indices):
+                for jj, transient_att_xi in enumerate(transient_att_x):
+                    transient_m_data[ii, jj] = np.logical_and(
+                        transient_att_xi > x_all[row[0]],
+                        transient_att_xi < x_all[row[1]]
+                    ).astype(int)
+
+            data_mt = np.tile(transient_m_data, (nt, 1)).flatten('F')
+
+            coord_mt_row = (
+                np.tile(np.arange(nm * nt), nta)
+            )
+
+            coord_mt_col = (
+                np.tile(np.repeat(np.arange(nt), nm), nta)
+                + np.repeat(np.arange(nta*nt, step=nt), nt * nm)
+            )
+
+            X_mt = sp.coo_matrix(
+                (data_mt, (coord_mt_row, coord_mt_col)),
+                shape=(nm * nt, nta * nt),
+                copy=False)
+
+        else:
+            X_mt = sp.coo_matrix(
+                ([], ([], [])),
+                shape=(nm * nt, 0),
+                copy=False)
+
+        # merge the two
+        X_m = sp.hstack((X_ma, X_mt))
+
+    else:
+        X_m = sp.coo_matrix(([], ([], [])), shape=(0, 2 + nt + nta * nt))
+
+    # Stack all X's
+    X = sp.vstack((
+        sp.hstack((X_gamma, X_dalpha, X_c, X_TA)),
+        X_m
+    ))
+
+    # y, transpose the values to arrange them correctly
+    y = np.log(ds_sec[st_label] / ds_sec[ast_label]).values.T.ravel()
+
+    if np.any(matching_indices):
+        # y_m = I_1 - I_2
+        y_m = (
+            np.log(
+                ds_ms0[st_label].values / ds_ms0[ast_label].values)
+            - np.log(
+                ds_ms1[st_label].values / ds_ms1[ast_label].values)
+        ).T.ravel()
+
+        y = np.hstack((y, y_m))
 
     # w
     if st_var is not None:
@@ -98,6 +228,15 @@ def calibration_single_ended_solver(
             ds_sec[st_label] ** -2 * st_var +
             ds_sec[ast_label] ** -2 * ast_var).values.ravel()
 
+        if np.any(matching_indices):
+            w_ms = 1 / (
+                (ds_ms0[st_label].values ** -2 * st_var) +
+                (ds_ms0[ast_label].values ** -2 * ast_var) +
+                (ds_ms1[st_label].values ** -2 * st_var) +
+                (ds_ms1[ast_label].values ** -2 * ast_var)
+            ).ravel()
+
+            w = np.hstack((w, w_ms))
     else:
         w = 1.  # unweighted
 
@@ -127,6 +266,8 @@ def calibration_single_ended_solver(
             X_gamma=X_gamma,
             X_dalpha=X_dalpha,
             X_c=X_c,
+            X_m=X_m,
+            X_TA=X_TA,
             p0_est=p0_est)
 
     else:
@@ -931,7 +1072,7 @@ def wls_sparse(X, y, w=1., calc_cov=False, verbose=False, **kwargs):
     # estimated with 8 decimal precision.
     # noinspection PyTypeChecker
     out_sol = ln.lsqr(wX, wy, show=verbose, calc_var=True,
-                      atol=1.0e-10, btol=1.0e-10, **kwargs)
+                      atol=1.0e-16, btol=1.0e-16, **kwargs)
 
     p_sol = out_sol[0]
 
@@ -1156,7 +1297,6 @@ def calc_alpha_double(
 def match_sections(ds, matching_sections):
     """
     Matches location indices of two sections.
-
     Parameters
     ----------
     ds
@@ -1171,7 +1311,6 @@ def match_sections(ds, matching_sections):
     matching_indices : array-like
         Is an array of size (np, 2), where np is the number of paired
         locations. The array contains indices to locations along the fiber.
-
     """
     for hslice, tslice, reverse_flag in matching_sections:
         hxs = ds.x.sel(x=hslice).size
