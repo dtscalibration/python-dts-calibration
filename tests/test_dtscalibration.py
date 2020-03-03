@@ -1902,9 +1902,9 @@ def test_single_ended_ols_wls_fix_dalpha_synthetic():
     assert_almost_equal_verbose(
         ds.gamma.values, gamma, decimal=12)
     assert_almost_equal_verbose(
-        ds.dalpha.values, dalpha_p - dalpha_m, decimal=18)
+        ds.dalpha.values, dalpha_p - dalpha_m, decimal=14)
     assert_almost_equal_verbose(
-        ds.TMPF.values, temp_real - 273.15, decimal=12)
+        ds.TMPF.values, temp_real - 273.15, decimal=10)
 
     pass
 
@@ -1979,9 +1979,9 @@ def test_single_ended_ols_wls_fix_gamma_synthetic():
     assert_almost_equal_verbose(
         ds.gamma.values, gamma, decimal=18)
     assert_almost_equal_verbose(
-        ds.dalpha.values, dalpha_p - dalpha_m, decimal=8)
+        ds.dalpha.values, dalpha_p - dalpha_m, decimal=10)
     assert_almost_equal_verbose(
-        ds.TMPF.values, temp_real - 273.15, decimal=4)
+        ds.TMPF.values, temp_real - 273.15, decimal=8)
 
     # WLS
     ds.calibration_single_ended(sections=sections,
@@ -1996,9 +1996,9 @@ def test_single_ended_ols_wls_fix_gamma_synthetic():
     assert_almost_equal_verbose(
         ds.gamma.values, gamma, decimal=18)
     assert_almost_equal_verbose(
-        ds.dalpha.values, dalpha_p - dalpha_m, decimal=8)
+        ds.dalpha.values, dalpha_p - dalpha_m, decimal=10)
     assert_almost_equal_verbose(
-        ds.TMPF.values, temp_real - 273.15, decimal=4)
+        ds.TMPF.values, temp_real - 273.15, decimal=8)
 
     pass
 
@@ -2076,7 +2076,7 @@ def test_single_ended_ols_wls_fix_gamma_fix_dalpha_synthetic():
     assert_almost_equal_verbose(
         ds.dalpha.values, dalpha_p - dalpha_m, decimal=18)
     assert_almost_equal_verbose(
-        ds.TMPF.values, temp_real - 273.15, decimal=10)  # 11 on 64-bit
+        ds.TMPF.values, temp_real - 273.15, decimal=8)  # 11 on 64-bit
 
     # WLS
     ds.calibration_single_ended(sections=sections,
@@ -2094,9 +2094,353 @@ def test_single_ended_ols_wls_fix_gamma_fix_dalpha_synthetic():
     assert_almost_equal_verbose(
         ds.dalpha.values, dalpha_p - dalpha_m, decimal=18)
     assert_almost_equal_verbose(
-        ds.TMPF.values, temp_real - 273.15, decimal=11)
+        ds.TMPF.values, temp_real - 273.15, decimal=8)
 
     pass
+
+
+def test_single_ended_trans_att_synthetic():
+    """Checks whether the transient attenuation routines perform as intended,
+    and calibrate to the correct temperature"""
+    from dtscalibration import DataStore
+    import numpy as np
+
+    np.random.seed(0)
+
+    cable_len = 100.
+    nt = 50
+    nx = 200
+    time = np.arange(nt)
+    x = np.linspace(0., cable_len, nx)
+    ts_cold = np.ones(nt) * 4.
+    ts_warm = np.ones(nt) * 20.
+    ts_ambient = np.ones(nt) * 12
+    ts_valid = np.ones(nt) * 16
+
+    C_p = 15246
+    C_m = 2400.
+    dalpha_r = 0.0005284
+    dalpha_m = 0.0004961
+    dalpha_p = 0.0005607
+    gamma = 482.6
+    cold_mask1 = np.logical_and(x > 0.125 * cable_len, x < 0.25 * cable_len)
+    cold_mask2 = np.logical_and(x > 0.625 * cable_len, x < 0.75 * cable_len)
+    warm_mask1 = np.logical_and(x > 0.75 * cable_len, x < 0.875 * cable_len)
+    warm_mask2 = np.logical_and(x > 0.25 * cable_len, x < 0.375 * cable_len)
+    valid_mask = np.logical_and(x > 0.40 * cable_len, x < 0.50 * cable_len)
+    temp_real = np.ones((len(x), nt))*12 + 273.15
+    temp_real[cold_mask1 + cold_mask2] = ts_cold + 273.15
+    temp_real[warm_mask1 + warm_mask2] = ts_warm + 273.15
+    temp_real[valid_mask] = ts_valid + 273.15
+
+    st = C_p * np.exp(-dalpha_r * x[:, None]) * \
+        np.exp(-dalpha_p * x[:, None]) * \
+        np.exp(gamma / temp_real) / (np.exp(gamma / temp_real) - 1)
+    ast = C_m * np.exp(-dalpha_r * x[:, None]) * \
+        np.exp(-dalpha_m * x[:, None]) / (np.exp(gamma / temp_real) - 1)
+
+    # Add attenuation
+    tr_att = np.random.rand(nt) * .2 + 0.8
+    st[int(x.size*0.4):] *= tr_att
+    tr_att2 = np.random.rand(nt) * .2 + 0.8
+    st[int(x.size*0.6):] *= tr_att2
+
+    ds = DataStore({
+        'st':    (['x', 'time'], st),
+        'ast':   (['x', 'time'], ast),
+        'userAcquisitionTimeFW': (['time'], np.ones(nt)),
+        'cold':  (['time'], ts_cold),
+        'warm':  (['time'], ts_warm),
+        'ambient': (['time'], ts_ambient),
+        },
+        coords={
+            'x':    x,
+            'time': time},
+        attrs={
+            'isDoubleEnded': '0'})
+
+    sections = {
+        'ambient': [slice(.52 * cable_len, .58 * cable_len)],
+        'cold': [slice(0.125 * cable_len, 0.25 * cable_len),
+                 slice(0.65 * cable_len, 0.70 * cable_len)],
+        'warm': [slice(0.25 * cable_len, 0.375 * cable_len)]}
+
+    ds_test = ds.copy(deep=True)
+
+    # OLS
+    ds_test.calibration_single_ended(
+        sections=sections,
+        st_label='st',
+        ast_label='ast',
+        method='ols',
+        transient_att_x=[40, 60],
+        solver='sparse')
+
+    assert_almost_equal_verbose(
+        ds_test.gamma.values, gamma, decimal=8)
+    assert_almost_equal_verbose(
+        ds_test.TMPF.values, temp_real - 273.15, decimal=8)
+    assert_almost_equal_verbose(
+        ds_test.isel(trans_att=0).talpha, -np.log(tr_att), decimal=8)
+    assert_almost_equal_verbose(
+        ds_test.isel(trans_att=1).talpha, -np.log(tr_att2), decimal=8)
+
+    ds_test = ds.copy(deep=True)
+
+    # WLS
+    ds_test.calibration_single_ended(
+        sections=sections,
+        st_label='st',
+        ast_label='ast',
+        st_var=1.0,
+        ast_var=1.0,
+        method='wls',
+        transient_att_x=[40, 60],
+        solver='sparse')
+
+    assert_almost_equal_verbose(
+        ds_test.gamma.values, gamma, decimal=8)
+    assert_almost_equal_verbose(
+        ds_test.TMPF.values, temp_real - 273.15, decimal=8)
+    assert_almost_equal_verbose(
+        ds_test.isel(trans_att=0).talpha, -np.log(tr_att), decimal=8)
+    assert_almost_equal_verbose(
+        ds_test.isel(trans_att=1).talpha, -np.log(tr_att2), decimal=8)
+
+    ds_test = ds.copy(deep=True)
+
+    # Test fixing gamma + transient att.
+    ds_test.calibration_single_ended(
+        sections=sections,
+        st_label='st',
+        ast_label='ast',
+        st_var=1.0,
+        ast_var=1.0,
+        method='wls',
+        fix_gamma=(482.6, 0),
+        transient_att_x=[40, 60],
+        solver='sparse')
+
+    assert_almost_equal_verbose(
+        ds_test.gamma.values, gamma, decimal=10)
+    assert_almost_equal_verbose(
+        ds_test.TMPF.values, temp_real - 273.15, decimal=8)
+    assert_almost_equal_verbose(
+        ds_test.isel(trans_att=0).talpha, -np.log(tr_att), decimal=8)
+    assert_almost_equal_verbose(
+        ds_test.isel(trans_att=1).talpha, -np.log(tr_att2), decimal=8)
+
+    ds_test = ds.copy(deep=True)
+
+    # Test fixing alpha + transient att.
+    ds_test.calibration_single_ended(
+        sections=sections,
+        st_label='st',
+        ast_label='ast',
+        st_var=1.0,
+        ast_var=1.0,
+        method='wls',
+        fix_dalpha=(6.46e-05, 0),
+        transient_att_x=[40, 60],
+        solver='sparse')
+
+    assert_almost_equal_verbose(
+        ds_test.gamma.values, gamma, decimal=8)
+    assert_almost_equal_verbose(
+        ds_test.TMPF.values, temp_real - 273.15, decimal=8)
+    assert_almost_equal_verbose(
+        ds_test.isel(trans_att=0).talpha, -np.log(tr_att), decimal=8)
+    assert_almost_equal_verbose(
+        ds_test.isel(trans_att=1).talpha, -np.log(tr_att2), decimal=8)
+
+
+def test_single_ended_matching_sections_synthetic():
+    """Checks whether the matching sections routines perform as intended,
+    and calibrate to the correct temperature"""
+    from dtscalibration import DataStore
+    import numpy as np
+
+    np.random.seed(0)
+
+    cable_len = 100.
+    nt = 50
+    nx = 200
+    time = np.arange(nt)
+    x = np.linspace(0., cable_len, nx)
+    ts_cold = np.ones(nt) * 4.
+    ts_warm = np.ones(nt) * 20.
+    ts_ambient = np.ones(nt) * 12
+    ts_valid = np.ones(nt) * 16
+
+    C_p = 15246
+    C_m = 2400.
+    dalpha_r = 0.0005284
+    dalpha_m = 0.0004961
+    dalpha_p = 0.0005607
+    gamma = 482.6
+    cold_mask1 = np.logical_and(x > 0.125 * cable_len, x < 0.25 * cable_len)
+    cold_mask2 = np.logical_and(x > 0.625 * cable_len, x < 0.75 * cable_len)
+    warm_mask1 = np.logical_and(x > 0.75 * cable_len, x < 0.875 * cable_len)
+    warm_mask2 = np.logical_and(x > 0.25 * cable_len, x < 0.375 * cable_len)
+    valid_mask = np.logical_and(x > 0.40 * cable_len, x < 0.50 * cable_len)
+    temp_real = np.ones((len(x), nt))*12 + 273.15
+    temp_real[cold_mask1 + cold_mask2] = ts_cold + 273.15
+    temp_real[warm_mask1 + warm_mask2] = ts_warm + 273.15
+    temp_real[valid_mask] = ts_valid + 273.15
+
+    st = C_p * np.exp(-dalpha_r * x[:, None]) * \
+        np.exp(-dalpha_p * x[:, None]) * \
+        np.exp(gamma / temp_real) / (np.exp(gamma / temp_real) - 1)
+    ast = C_m * np.exp(-dalpha_r * x[:, None]) * \
+        np.exp(-dalpha_m * x[:, None]) / (np.exp(gamma / temp_real) - 1)
+
+    # Add attenuation
+    tr_att = np.random.rand(nt) * .2 + 0.8
+    st[int(x.size*0.4):] *= tr_att
+    tr_att2 = np.random.rand(nt) * .2 + 0.8
+    st[int(x.size*0.6):] *= tr_att2
+
+    ds = DataStore({
+        'st':    (['x', 'time'], st),
+        'ast':   (['x', 'time'], ast),
+        'userAcquisitionTimeFW': (['time'], np.ones(nt)),
+        'cold':  (['time'], ts_cold),
+        'warm':  (['time'], ts_warm),
+        'ambient': (['time'], ts_ambient),
+        },
+        coords={
+            'x':    x,
+            'time': time},
+        attrs={
+            'isDoubleEnded': '0'})
+
+    sections = {
+        'cold': [slice(0.13 * cable_len, 0.24 * cable_len)],
+        'warm': [slice(0.26 * cable_len, 0.365 * cable_len)]}
+
+    matching_sections = [(slice(.01 * cable_len, .09 * cable_len),
+                          slice(.51 * cable_len, .59 * cable_len),
+                          True),
+                         (slice(.01 * cable_len, .09 * cable_len),
+                          slice(.91 * cable_len, .99 * cable_len),
+                          True)]
+
+    ds_test = ds.copy(deep=True)
+
+    # OLS
+    ds_test.calibration_single_ended(
+        sections=sections,
+        st_label='st',
+        ast_label='ast',
+        method='ols',
+        matching_sections=matching_sections,
+        transient_att_x=[40, 60],
+        solver='sparse')
+
+    assert_almost_equal_verbose(
+        ds_test.gamma.values, gamma, decimal=8)
+    assert_almost_equal_verbose(
+        ds_test.TMPF.values, temp_real - 273.15, decimal=8)
+    assert_almost_equal_verbose(
+        ds_test.isel(trans_att=0).talpha, -np.log(tr_att), decimal=8)
+    assert_almost_equal_verbose(
+        ds_test.isel(trans_att=1).talpha, -np.log(tr_att2), decimal=8)
+
+    ds_test = ds.copy(deep=True)
+
+    # WLS
+    ds_test.calibration_single_ended(
+        sections=sections,
+        st_label='st',
+        ast_label='ast',
+        st_var=1.0,
+        ast_var=1.0,
+        method='wls',
+        matching_sections=matching_sections,
+        transient_att_x=[40, 60],
+        solver='sparse')
+
+    assert_almost_equal_verbose(
+        ds_test.gamma.values, gamma, decimal=8)
+    assert_almost_equal_verbose(
+        ds_test.TMPF.values, temp_real - 273.15, decimal=8)
+    assert_almost_equal_verbose(
+        ds_test.isel(trans_att=0).talpha, -np.log(tr_att), decimal=8)
+    assert_almost_equal_verbose(
+        ds_test.isel(trans_att=1).talpha, -np.log(tr_att2), decimal=8)
+
+    ds_test = ds.copy(deep=True)
+
+    # Test fixing gamma + transient att.
+    ds_test.calibration_single_ended(
+        sections=sections,
+        st_label='st',
+        ast_label='ast',
+        st_var=1.0,
+        ast_var=1.0,
+        method='wls',
+        fix_gamma=(482.6, 0),
+        matching_sections=matching_sections,
+        transient_att_x=[40, 60],
+        solver='sparse')
+
+    assert_almost_equal_verbose(
+        ds_test.gamma.values, gamma, decimal=10)
+    assert_almost_equal_verbose(
+        ds_test.TMPF.values, temp_real - 273.15, decimal=8)
+    assert_almost_equal_verbose(
+        ds_test.isel(trans_att=0).talpha, -np.log(tr_att), decimal=8)
+    assert_almost_equal_verbose(
+        ds_test.isel(trans_att=1).talpha, -np.log(tr_att2), decimal=8)
+
+    ds_test = ds.copy(deep=True)
+
+    # Test fixing dalpha + transient att.
+    ds_test.calibration_single_ended(
+        sections=sections,
+        st_label='st',
+        ast_label='ast',
+        st_var=1.0,
+        ast_var=1.0,
+        method='wls',
+        fix_dalpha=(6.46e-05, 0),
+        matching_sections=matching_sections,
+        transient_att_x=[40, 60],
+        solver='sparse')
+
+    assert_almost_equal_verbose(
+        ds_test.gamma.values, gamma, decimal=10)
+    assert_almost_equal_verbose(
+        ds_test.TMPF.values, temp_real - 273.15, decimal=8)
+    assert_almost_equal_verbose(
+        ds_test.isel(trans_att=0).talpha, -np.log(tr_att), decimal=8)
+    assert_almost_equal_verbose(
+        ds_test.isel(trans_att=1).talpha, -np.log(tr_att2), decimal=8)
+
+    ds_test = ds.copy(deep=True)
+
+    # Test fixing gamma & dalpha + transient att.
+    ds_test.calibration_single_ended(
+        sections=sections,
+        st_label='st',
+        ast_label='ast',
+        st_var=1.0,
+        ast_var=1.0,
+        method='wls',
+        fix_gamma=(482.6, 0),
+        fix_dalpha=(6.46e-05, 0),
+        matching_sections=matching_sections,
+        transient_att_x=[40, 60],
+        solver='sparse')
+
+    assert_almost_equal_verbose(
+        ds_test.gamma.values, gamma, decimal=10)
+    assert_almost_equal_verbose(
+        ds_test.TMPF.values, temp_real - 273.15, decimal=8)
+    assert_almost_equal_verbose(
+        ds_test.isel(trans_att=0).talpha, -np.log(tr_att), decimal=8)
+    assert_almost_equal_verbose(
+        ds_test.isel(trans_att=1).talpha, -np.log(tr_att2), decimal=8)
 
 
 def test_single_ended_exponential_variance_estimate_synthetic():
