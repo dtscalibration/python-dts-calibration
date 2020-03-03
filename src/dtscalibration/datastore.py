@@ -785,6 +785,13 @@ class DataStore(xr.Dataset):
             # there is no time dimension
             return None
 
+    def get_section_indices(self, sec, data_var_key=None):
+        """Returns the x-indices of the section"""
+
+        xdim = self.get_x_dim(data_var_key=data_var_key)
+        xis = self[xdim].astype(int) * 0 + np.arange(self[xdim].size, dtype=int)
+        return xis.sel(x=sec).values
+
     def get_x_dim(self, data_var_key=None):
         """
         Find relevant x dimension. by educative guessing
@@ -1873,6 +1880,9 @@ class DataStore(xr.Dataset):
                 assert np.abs(fix_alpha[0][ix_sec[0]]) < 1e-8, m
                 # The array with the integrated differential att is termed E
 
+                if matching_sections:
+                    raise NotImplementedError
+
                 # X_gamma
                 X_E = sp.vstack((
                     -split['E'],
@@ -1949,34 +1959,95 @@ class DataStore(xr.Dataset):
                     p_cov[iox_sec1, iox_sec2] = out[2]
 
             elif fix_gamma:
-                X_gamma = sp.vstack((
-                    split['Z_gamma'],
-                    split['Z_gamma'])).toarray().flatten()
-                # Use only the remaining coefficients
-                X = sp.vstack(
-                    (sp.hstack((-split['Z_D'],
-                                split['Zero_d'],
-                                -split['E'],
-                                split['Z_TA_fw'])),
-                     sp.hstack((split['Zero_d'],
-                                -split['Z_D'],
-                                split['E'],
-                                split['Z_TA_bw']))))
-                # Move the coefficients times the fixed gamma to the
-                # observations
-                y = np.concatenate((split['y_F'],
-                                    split['y_B']))
-                y -= fix_gamma[0] * X_gamma
-                # variances are added. weight is the inverse of the variance
-                # of the observations
-                if method == 'wls':
-                    w_ = np.concatenate((split['w_F'],
-                                         split['w_B']))
-                    w = 1 / (1 / w_ + fix_gamma[1] * X_gamma)
+                if matching_sections:
+                    # n_E_in_cal = split['ix_from_cal_match_to_glob'].size
+                    p0_est = split['p0_est'][1:]
+                    X_E1 = sp.csr_matrix(
+                        ([], ([], [])),
+                        shape=(nt * nx_sec, self.x.size))
+                    from_i = ix_sec[1:]
+                    X_E1[:, from_i] = split['E']
+                    X_E2 = X_E1[:, split['ix_from_cal_match_to_glob']]
+                    # X_E = sp.vstack((
+                    #     -X_E2,
+                    #     X_E2,
+                    #     split['E_match_F'],
+                    #     split['E_match_B'],
+                    #     split['E_match_no_cal']))
+                    X = sp.vstack(
+                        (sp.hstack((-split['Z_D'],
+                                    split['Zero_d'],
+                                    -X_E2,
+                                    split['Z_TA_fw'])),
+                         sp.hstack((split['Zero_d'],
+                                    -split['Z_D'],
+                                    X_E2,
+                                    split['Z_TA_bw'])),
+                         sp.hstack((split['Zero_d_eq12'],
+                                    split['E_match_F'],
+                                    split['Z_TA_eq1'])),
+                         sp.hstack((split['Zero_d_eq12'],
+                                    split['E_match_B'],
+                                    split['Z_TA_eq2'])),
+                         sp.hstack((split['d_no_cal'],
+                                    split['E_match_no_cal'],
+                                    split['Z_TA_eq3']))))
+                    X_gamma = sp.vstack((
+                        split['Z_gamma'],
+                        split['Z_gamma'],
+                        split['Zero_eq12_gamma'],
+                        split['Zero_eq12_gamma'],
+                        split['Zero_eq3_gamma'])).toarray().flatten()
+
+                    y = np.concatenate((split['y_F'],
+                                        split['y_B'],
+                                        split['y_eq1'],
+                                        split['y_eq2'],
+                                        split['y_eq3']))
+                    y -= fix_gamma[0] * X_gamma
+
+                    # variances are added. weight is the inverse of the variance
+                    # of the observations
+                    if method == 'wls':
+                        w_ = np.concatenate((split['w_F'],
+                                             split['w_B'],
+                                             split['w_eq1'],
+                                             split['w_eq2'],
+                                             split['w_eq3']))
+                        w = 1 / (1 / w_ + fix_gamma[1] * X_gamma)
+
+                    else:
+                        w = 1.
 
                 else:
-                    w = 1.
-                p0_est = split['p0_est'][1:]
+                    X_gamma = sp.vstack((
+                        split['Z_gamma'],
+                        split['Z_gamma'])).toarray().flatten()
+                    # Use only the remaining coefficients
+                    X = sp.vstack(
+                        (sp.hstack((-split['Z_D'],
+                                    split['Zero_d'],
+                                    -split['E'],
+                                    split['Z_TA_fw'])),
+                         sp.hstack((split['Zero_d'],
+                                    -split['Z_D'],
+                                    split['E'],
+                                    split['Z_TA_bw']))))
+                    # Move the coefficients times the fixed gamma to the
+                    # observations
+                    y = np.concatenate((split['y_F'],
+                                        split['y_B']))
+                    y -= fix_gamma[0] * X_gamma
+                    # variances are added. weight is the inverse of the variance
+                    # of the observations
+                    if method == 'wls':
+                        w_ = np.concatenate((split['w_F'],
+                                             split['w_B']))
+                        w = 1 / (1 / w_ + fix_gamma[1] * X_gamma)
+
+                    else:
+                        w = 1.
+                    p0_est = split['p0_est'][1:]
 
                 if solver == 'sparse':
                     out = wls_sparse(
@@ -1998,6 +2069,32 @@ class DataStore(xr.Dataset):
                 ds_sub['df_var'] = (('time',), out[1][:nt])
                 ds_sub['db'] = (('time',), out[0][nt:2 * nt])
                 ds_sub['db_var'] = (('time',), out[1][nt:2 * nt])
+
+                if transient_asym_att_x:
+                    if np.any(matching_indices):
+                        n_E_in_cal = split['ix_from_cal_match_to_glob'].size
+                        ta = out[0][2 * nt + n_E_in_cal:
+                             ].reshape((nt, 2, nta), order='F')
+                        ta_var = out[1][
+                                 2 * nt + n_E_in_cal:
+                                 ].reshape((nt, 2, nta), order='F')
+
+                    else:
+                        ta = out[0][2 * nt + nx_sec - 1:].reshape(
+                            (nt, 2, nta), order='F')
+                        ta_var = out[1][2 * nt + nx_sec - 1:].reshape(
+                            (nt, 2, nta), order='F')
+
+                    talpha_fw = ta[:, 0, :]
+                    talpha_bw = ta[:, 1, :]
+                    talpha_fw_var = ta_var[:, 0, :]
+                    talpha_bw_var = ta_var[:, 1, :]
+                else:
+                    talpha_fw = None
+                    talpha_bw = None
+                    talpha_fw_var = None
+                    talpha_bw_var = None
+
                 E_all_exact, E_all_var_exact = calc_alpha_double(
                     'exact',
                     ds_sub,
@@ -2013,31 +2110,63 @@ class DataStore(xr.Dataset):
                     'db',
                     'df_var',
                     'db_var',
-                    ix_alpha_is_zero=ix_sec[0])
+                    ix_alpha_is_zero=ix_sec[0],
+                    transient_asym_att_x=transient_asym_att_x,
+                    talpha_fw=talpha_fw,
+                    talpha_bw=talpha_bw,
+                    talpha_fw_var=talpha_fw_var,
+                    talpha_bw_var=talpha_bw_var)
 
-                # Added fixed gamma and its variance to the solution. And
-                # expand to include locations outside reference sections.
-                p_val = np.concatenate(([fix_gamma[0]],
-                                        out[0][:2 * nt],
-                                        E_all_exact,
-                                        out[0][2 * nt + nx_sec - 1:]))
-                p_val[1 + 2 * nt + ix_sec[1:]] = out[0][
-                                                 2 * nt:2 * nt + nx_sec - 1]
-                p_val[1 + 2 * nt + ix_sec[0]] = 0.
-                p_var = np.concatenate(([fix_gamma[1]],
-                                        out[1][:2 * nt],
-                                        E_all_var_exact,
-                                        out[1][2 * nt + nx_sec - 1:]))
-                p_var[1 + 2 * nt + ix_sec[1:]] = out[1][
-                                                 2 * nt:2 * nt + nx_sec - 1]
+                if not matching_sections:
+                    # Added fixed gamma and its variance to the solution. And
+                    # expand to include locations outside reference sections.
+                    p_val = np.concatenate(([fix_gamma[0]],
+                                            out[0][:2 * nt],
+                                            E_all_exact,
+                                            out[0][2 * nt + nx_sec - 1:]))
+                    p_val[1 + 2 * nt + ix_sec[1:]] = out[0][
+                                                     2 * nt:2 * nt + nx_sec - 1]
+                    p_val[1 + 2 * nt + ix_sec[0]] = 0.
+                    p_var = np.concatenate(([fix_gamma[1]],
+                                            out[1][:2 * nt],
+                                            E_all_var_exact,
+                                            out[1][2 * nt + nx_sec - 1:]))
+                    p_var[1 + 2 * nt + ix_sec[1:]] = out[1][
+                                                     2 * nt:2 * nt + nx_sec - 1]
+                else:
+                    n_E_in_cal = split['ix_from_cal_match_to_glob'].size
+
+                    # Added fixed gamma and its variance to the solution. And
+                    # expand to include locations outside reference sections.
+                    p_val = np.concatenate(([fix_gamma[0]],
+                                            out[0][:2 * nt],
+                                            E_all_exact,
+                                            out[0][2 * nt + n_E_in_cal:]))
+                    p_val[1 + 2 * nt + split['ix_from_cal_match_to_glob']] = \
+                        out[0][2 * nt:2 * nt + n_E_in_cal]
+                    p_val[1 + 2 * nt + ix_sec[0]] = 0.
+                    p_var = np.concatenate(([fix_gamma[1]],
+                                            out[1][:2 * nt],
+                                            E_all_var_exact,
+                                            out[1][2 * nt + n_E_in_cal:]))
+                    p_var[1 + 2 * nt + split['ix_from_cal_match_to_glob']] = \
+                        out[1][2 * nt:2 * nt + n_E_in_cal]
 
                 if calc_cov:
                     p_cov = np.diag(p_var).copy()
-                    from_i = np.concatenate(
-                        (np.arange(1, 2 * nt + 1),
-                         2 * nt + 1 + ix_sec[1:],
-                         np.arange(1 + 2 * nt + nx,
-                                   1 + 2 * nt + nx + nta * nt * 2)))
+
+                    if not matching_sections:
+                        from_i = np.concatenate(
+                            (np.arange(1, 2 * nt + 1),
+                             2 * nt + 1 + ix_sec[1:],
+                             np.arange(1 + 2 * nt + nx,
+                                       1 + 2 * nt + nx + nta * nt * 2)))
+                    else:
+                        from_i = np.concatenate(
+                            (np.arange(1, 2 * nt + 1),
+                             2 * nt + 1 + split['ix_from_cal_match_to_glob'],
+                             np.arange(1 + 2 * nt + nx,
+                                       1 + 2 * nt + nx + nta * nt * 2)))
 
                     iox_sec1, iox_sec2 = np.meshgrid(
                         from_i, from_i, indexing='ij')
@@ -2050,43 +2179,103 @@ class DataStore(xr.Dataset):
                     'define var alpha for each location'
                 m = 'The integrated differential attenuation is zero at the ' \
                     'first index of the reference sections.'
-                assert np.abs(fix_alpha[0][ix_sec[0]]) < 1e-8, m
+                assert np.abs(fix_alpha[0][ix_sec[0]]) < 1e-6, m
                 # The array with the integrated differential att is termed E
 
-                # X_gamma
-                X_E = sp.vstack((
-                    -split['E'],
-                    split['E']))
-                # Use only the remaining coefficients
-                # Stack all X's
-                X = sp.vstack(
-                    (sp.hstack((split['Z_gamma'],
-                                -split['Z_D'],
-                                split['Zero_d'],
-                                split['Z_TA_fw'])),
-                     sp.hstack((split['Z_gamma'],
-                                split['Zero_d'],
-                                -split['Z_D'],
-                                split['Z_TA_bw']))))
-                # Move the coefficients times the fixed gamma to the
-                # observations
-                y = np.concatenate((split['y_F'],
-                                    split['y_B']))
-                y -= X_E.dot(fix_alpha[0][ix_sec[1:]])
+                if not matching_sections:
+                    # X_gamma
+                    X_E = sp.vstack((
+                        -split['E'],
+                        split['E']))
+                    # Use only the remaining coefficients
+                    # Stack all X's
+                    X = sp.vstack(
+                        (sp.hstack((split['Z_gamma'],
+                                    -split['Z_D'],
+                                    split['Zero_d'],
+                                    split['Z_TA_fw'])),
+                         sp.hstack((split['Z_gamma'],
+                                    split['Zero_d'],
+                                    -split['Z_D'],
+                                    split['Z_TA_bw']))))
+                    # Move the coefficients times the fixed gamma to the
+                    # observations
+                    y = np.concatenate((split['y_F'],
+                                        split['y_B']))
+                    y -= X_E.dot(fix_alpha[0][ix_sec[1:]])
 
-                # variances are added. weight is the inverse of the variance
-                # of the observations
-                if method == 'wls':
-                    w_ = np.concatenate((split['w_F'],
-                                         split['w_B']))
-                    w = 1 / (1 / w_ + X_E.dot(fix_alpha[1][ix_sec[1:]]))
+                    # variances are added. weight is the inverse of the variance
+                    # of the observations
+                    if method == 'wls':
+                        w_ = np.concatenate((split['w_F'],
+                                             split['w_B']))
+                        w = 1 / (1 / w_ + X_E.dot(fix_alpha[1][ix_sec[1:]]))
+
+                    else:
+                        w = 1.
+
+                    p0_est = np.concatenate(
+                        (split['p0_est'][:1 + 2 * nt],
+                         split['p0_est'][1 + 2 * nt + nx_sec - 1:]))
 
                 else:
-                    w = 1.
+                    n_E_in_cal = split['ix_from_cal_match_to_glob'].size
+                    p0_est = np.concatenate((
+                        split['p0_est'][:1 + 2 * nt],
+                        split['p0_est'][1 + 2 * nt + n_E_in_cal:]))
+                    X_E1 = sp.csr_matrix(
+                        ([], ([], [])),
+                        shape=(nt * nx_sec, self.x.size))
+                    from_i = ix_sec[1:]
+                    X_E1[:, from_i] = split['E']
+                    X_E2 = X_E1[:, split['ix_from_cal_match_to_glob']]
+                    X_E = sp.vstack((
+                        -X_E2,
+                        X_E2,
+                        split['E_match_F'],
+                        split['E_match_B'],
+                        split['E_match_no_cal']))
 
-                p0_est = np.concatenate(
-                    (split['p0_est'][:1 + 2 * nt],
-                     split['p0_est'][1 + 2 * nt + nx_sec - 1:]))
+                    X = sp.vstack(
+                        (sp.hstack((split['Z_gamma'],
+                                    -split['Z_D'],
+                                    split['Zero_d'],
+                                    split['Z_TA_fw'])),
+                         sp.hstack((split['Z_gamma'],
+                                    split['Zero_d'],
+                                    -split['Z_D'],
+                                    split['Z_TA_bw'])),
+                         sp.hstack((split['Zero_eq12_gamma'],
+                                    split['Zero_d_eq12'],
+                                    split['Z_TA_eq1'])),
+                         sp.hstack((split['Zero_eq12_gamma'],
+                                    split['Zero_d_eq12'],
+                                    split['Z_TA_eq2'])),
+                         sp.hstack((split['Zero_eq3_gamma'],
+                                    split['d_no_cal'],
+                                    split['Z_TA_eq3']))))
+
+                    y = np.concatenate((split['y_F'],
+                                        split['y_B'],
+                                        split['y_eq1'],
+                                        split['y_eq2'],
+                                        split['y_eq3']))
+                    y -= X_E.dot(
+                        fix_alpha[0][split['ix_from_cal_match_to_glob']])
+
+                    # variances are added. weight is the inverse of the variance
+                    # of the observations
+                    if method == 'wls':
+                        w_ = np.concatenate((split['w_F'],
+                                             split['w_B'],
+                                             split['w_eq1'],
+                                             split['w_eq2'],
+                                             split['w_eq3']))
+                        w = 1 / (1 / w_ + X_E.dot(
+                            fix_alpha[1][split['ix_from_cal_match_to_glob']]))
+
+                    else:
+                        w = 1.
 
                 if solver == 'sparse':
                     out = wls_sparse(
@@ -2170,6 +2359,7 @@ class DataStore(xr.Dataset):
             self[store_db + variance_suffix] = ((time_dim,), dbvar)
 
             if transient_asym_att_x:
+                # neglecting the covariances. Better include them
                 tavar = p_var[2 * nt + 1 + nx:].reshape((nt, 2, nta), order='F')
                 self[store_ta + '_fw' + variance_suffix] = (
                     (time_dim, ta_dim), tavar[:, 0, :])
