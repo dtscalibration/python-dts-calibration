@@ -2074,7 +2074,7 @@ class DataStore(xr.Dataset):
                     if np.any(matching_indices):
                         n_E_in_cal = split['ix_from_cal_match_to_glob'].size
                         ta = out[0][2 * nt + n_E_in_cal:
-                            ].reshape((nt, 2, nta), order='F')
+                                    ].reshape((nt, 2, nta), order='F')
                         ta_var = out[1][
                                  2 * nt + n_E_in_cal:
                                  ].reshape((nt, 2, nta), order='F')
