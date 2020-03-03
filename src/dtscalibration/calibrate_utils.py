@@ -562,7 +562,7 @@ def calibration_double_ended_solver(
         return X, y, w, p0_est
 
     elif solver == 'external_split':
-        return dict(
+        out = dict(
             y_F=y_F,
             y_B=y_B,
             w_F=w_F,
@@ -576,6 +576,27 @@ def calibration_double_ended_solver(
             p0_est=p0_est,
             E_all_guess=E_all_guess,
             E_all_var_guess=E_all_var_guess)
+
+        if np.any(matching_indices):
+            out.update(
+                ix_from_cal_match_to_glob=ix_from_cal_match_to_glob,
+                E_match_F=E_match_F,
+                E_match_B=E_match_B,
+                E_match_no_cal=E_match_no_cal,
+                Zero_eq12_gamma=Zero_eq12_gamma,
+                Zero_eq3_gamma=Zero_eq3_gamma,
+                Zero_d_eq12=Zero_d_eq12,
+                d_no_cal=d_no_cal,
+                Z_TA_eq1=Z_TA_eq1,
+                Z_TA_eq2=Z_TA_eq2,
+                Z_TA_eq3=Z_TA_eq3,
+                y_eq1=y_eq1,
+                y_eq2=y_eq2,
+                y_eq3=y_eq3,
+                w_eq1=w_eq1,
+                w_eq2=w_eq2,
+                w_eq3=w_eq3)
+        return out
 
     else:
         raise ValueError("Choose a valid solver")
