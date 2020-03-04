@@ -1789,7 +1789,8 @@ class DataStore(xr.Dataset):
             transient_asym_att_x=None,
             fix_gamma=None,
             fix_alpha=None,
-            matching_sections=None):
+            matching_sections=None,
+            matching_indices=None):
         """
 
         Parameters
@@ -1882,6 +1883,10 @@ class DataStore(xr.Dataset):
             has three items. The first two items are the slices of the sections
             that are matched. The third item is a boolean and is True if the two
             sections have a reverse direction ("J-configuration").
+        matching_indices : array
+            Provide an array of x-indices of size (npair, 2), where each pair
+            has the same temperature. Used to improve the estimate of the
+            integrated differential attenuation.
 
 
         Returns
@@ -1905,7 +1910,13 @@ class DataStore(xr.Dataset):
         check_dims(self, [st_label, ast_label, rst_label, rast_label],
                    correct_dims=(x_dim, time_dim))
 
+        if np.any(matching_indices):
+            assert not matching_sections, \
+                'Either define `matching_sections` or `matching_indices`'
+
         if matching_sections:
+            assert not matching_indices, \
+                'Either define `matching_sections` or `matching_indices'
             matching_indices = match_sections(self, matching_sections)
         else:
             matching_indices = None
@@ -1969,7 +1980,7 @@ class DataStore(xr.Dataset):
                 assert np.abs(fix_alpha[0][ix_sec[0]]) < 1e-8, m
                 # The array with the integrated differential att is termed E
 
-                if matching_sections:
+                if np.any(matching_indices):
                     raise NotImplementedError
 
                 # X_gamma
@@ -2048,7 +2059,7 @@ class DataStore(xr.Dataset):
                     p_cov[iox_sec1, iox_sec2] = out[2]
 
             elif fix_gamma:
-                if matching_sections:
+                if np.any(matching_indices):
                     # n_E_in_cal = split['ix_from_cal_match_to_glob'].size
                     p0_est = split['p0_est'][1:]
                     X_E1 = sp.csr_matrix(
@@ -2057,12 +2068,6 @@ class DataStore(xr.Dataset):
                     from_i = ix_sec[1:]
                     X_E1[:, from_i] = split['E']
                     X_E2 = X_E1[:, split['ix_from_cal_match_to_glob']]
-                    # X_E = sp.vstack((
-                    #     -X_E2,
-                    #     X_E2,
-                    #     split['E_match_F'],
-                    #     split['E_match_B'],
-                    #     split['E_match_no_cal']))
                     X = sp.vstack(
                         (sp.hstack((-split['Z_D'],
                                     split['Zero_d'],
@@ -2206,7 +2211,7 @@ class DataStore(xr.Dataset):
                     talpha_fw_var=talpha_fw_var,
                     talpha_bw_var=talpha_bw_var)
 
-                if not matching_sections:
+                if not np.any(matching_indices):
                     # Added fixed gamma and its variance to the solution. And
                     # expand to include locations outside reference sections.
                     p_val = np.concatenate(([fix_gamma[0]],
@@ -2244,7 +2249,7 @@ class DataStore(xr.Dataset):
                 if calc_cov:
                     p_cov = np.diag(p_var).copy()
 
-                    if not matching_sections:
+                    if not np.any(matching_indices):
                         from_i = np.concatenate(
                             (np.arange(1, 2 * nt + 1),
                              2 * nt + 1 + ix_sec[1:],
@@ -2271,7 +2276,7 @@ class DataStore(xr.Dataset):
                 assert np.abs(fix_alpha[0][ix_sec[0]]) < 1e-6, m
                 # The array with the integrated differential att is termed E
 
-                if not matching_sections:
+                if not np.any(matching_indices):
                     # X_gamma
                     X_E = sp.vstack((
                         -split['E'],
@@ -2315,8 +2320,7 @@ class DataStore(xr.Dataset):
                     X_E1 = sp.csr_matrix(
                         ([], ([], [])),
                         shape=(nt * nx_sec, self.x.size))
-                    from_i = ix_sec[1:]
-                    X_E1[:, from_i] = split['E']
+                    X_E1[:, ix_sec[1:]] = split['E']
                     X_E2 = X_E1[:, split['ix_from_cal_match_to_glob']]
                     X_E = sp.vstack((
                         -X_E2,

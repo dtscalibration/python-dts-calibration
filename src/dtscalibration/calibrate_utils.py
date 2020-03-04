@@ -1035,8 +1035,15 @@ def construct_submatrices(nt, nx, st_label, ds, transient_asym_att_x, x_sec):
     return E, Z_D, Z_gamma, Zero_d, Z_TA_fw, Z_TA_bw
 
 
-def wls_sparse(X, y, w=1., calc_cov=False, verbose=False, **kwargs):
+def wls_sparse(X, y, w=1., calc_cov=False, verbose=False, x0=None,
+               **solver_kwargs):
     """
+    If some initial estimate x0 is known and if damp == 0, one could proceed as follows:
+    - Compute a residual vector r0 = b - A*x0.
+    - Use LSQR to solve the system A*dx = r0.
+    - Add the correction dx to obtain a final solution x = x0 + dx.
+    from: https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.
+      linalg.lsqr.html
 
     Parameters
     ----------
@@ -1053,6 +1060,20 @@ def wls_sparse(X, y, w=1., calc_cov=False, verbose=False, **kwargs):
     """
     # The var returned by ln.lsqr is normalized by the variance of the error. To
     # obtain the correct variance, it needs to be scaled by the variance of the error.
+    if x0 is not None:
+        assert not np.any(np.isnan(x0)), 'Nan in p0 initial estimate'
+    else:
+        raise NotImplementedError
+
+    assert not np.any(np.isnan(w)), 'Nan in weights'
+    assert not np.any(np.isnan(y)), 'Nan in observations'
+
+    # precision up to 10th decimal. So that the temperature is approximately
+    # estimated with 8 decimal precision.
+    if 'atol' not in solver_kwargs:
+        solver_kwargs['atol'] = 1e-16
+    if 'btol' not in solver_kwargs:
+        solver_kwargs['btol'] = 1e-16
 
     if w is None:  # gracefully default to unweighted
         w = 1.
@@ -1068,13 +1089,20 @@ def wls_sparse(X, y, w=1., calc_cov=False, verbose=False, **kwargs):
     else:
         wX = X.multiply(w_std)
 
-    # precision up to 10th decimal. So that the temperature is approximately
-    # estimated with 8 decimal precision.
-    # noinspection PyTypeChecker
-    out_sol = ln.lsqr(wX, wy, show=verbose, calc_var=True,
-                      atol=1.0e-16, btol=1.0e-16, **kwargs)
+    if x0 is None:
+        # noinspection PyTypeChecker
+        out_sol = ln.lsqr(wX, wy, show=verbose, calc_var=True,
+                          **solver_kwargs)
+        p_sol = out_sol[0]
 
-    p_sol = out_sol[0]
+    else:
+        wr0 = wy - wX.dot(x0)
+
+        # noinspection PyTypeChecker
+        out_sol = ln.lsqr(wX, wr0, show=verbose, calc_var=True,
+                          **solver_kwargs)
+
+        p_sol = x0 + out_sol[0]
 
     # The residual degree of freedom, defined as the number of observations
     # minus the rank of the regressor matrix.
@@ -1088,11 +1116,9 @@ def wls_sparse(X, y, w=1., calc_cov=False, verbose=False, **kwargs):
     err_var = np.dot(wresid, wresid) / degrees_of_freedom_err
 
     if calc_cov:
-        # assert np.any()
         arg = wX.T.dot(wX)
 
         if sp.issparse(arg):
-            # arg is square of size double: 1 + nt + no; single: 2 : nt
             # arg_inv = np.linalg.inv(arg.toarray())
             arg_inv = np.linalg.lstsq(
                 arg.todense(), np.eye(npar), rcond=None)[0]
@@ -1100,21 +1126,6 @@ def wls_sparse(X, y, w=1., calc_cov=False, verbose=False, **kwargs):
             # arg_inv = np.linalg.inv(arg)
             arg_inv = np.linalg.lstsq(
                 arg, np.eye(npar), rcond=None)[0]
-
-        # for tall systems pinv (approximate) is recommended above inv
-        # https://vene.ro/blog/inverses-pseudoinverses-numerical-issues-spee
-        # d-symmetry.html
-        # but better to solve with eye
-        # p_cov = np.array(np.linalg.pinv(arg) * err_var)
-        # arg_inv = np.linalg.pinv(arg)
-        # else:
-        #     try:
-        #         arg_inv = np.linalg.lstsq(arg, np.eye(nobs), rcond=None)[0]
-        #
-        #     except MemoryError:
-        #         print('Try calc_cov = False and p_cov = np.diag(p_var); '
-        #               'And neglect the covariances.')
-        #         arg_inv = np.linalg.lstsq(arg, np.eye(nobs), rcond=None)[0]
 
         p_cov = np.array(arg_inv * err_var)
         p_var = np.diagonal(p_cov)
