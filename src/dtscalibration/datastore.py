@@ -1918,8 +1918,6 @@ class DataStore(xr.Dataset):
             assert not matching_indices, \
                 'Either define `matching_sections` or `matching_indices'
             matching_indices = match_sections(self, matching_sections)
-        else:
-            matching_indices = None
 
         if transient_asym_att_x:
             ta_dim = 'trans_att'

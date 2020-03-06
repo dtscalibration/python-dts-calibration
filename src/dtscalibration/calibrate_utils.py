@@ -384,6 +384,14 @@ def calibration_double_ended_solver(
         rst_var,
         rast_var,
         ix_alpha_is_zero=ix_alpha_is_zero)
+    df_est, db_est = calc_df_db_double_est(
+        ds,
+        st_label,
+        ast_label,
+        rst_label,
+        rast_label,
+        ix_alpha_is_zero,
+        485.)
 
     E, Z_D, Z_gamma, Zero_d, Z_TA_fw, Z_TA_bw, = \
         construct_submatrices(nt, nx_sec, st_label, ds, transient_asym_att_x, x_sec)
@@ -423,7 +431,7 @@ def calibration_double_ended_solver(
         w_B = np.ones(nt * nx_sec)
 
     if not np.any(matching_indices):
-        p0_est = np.concatenate((np.asarray([485.] + 2 * nt * [1.4]),
+        p0_est = np.concatenate(([485.], df_est, db_est,
                                  E_all_guess[ix_sec[1:]], nta * nt * 2 * [0.]))
 
         # Stack all X's
@@ -494,7 +502,7 @@ def calibration_double_ended_solver(
         if callable(st_var):
             st_var_hix = st_var(ds_hix[st_label])
             st_var_tix = st_var(ds_tix[st_label])
-            st_var_mnc = st_var(ds_hix[st_label])
+            st_var_mnc = st_var(ds_mnc[st_label])
         else:
             st_var_hix = np.asarray(st_var)
             st_var_tix = np.asarray(st_var)
@@ -502,7 +510,7 @@ def calibration_double_ended_solver(
         if callable(ast_var):
             ast_var_hix = ast_var(ds_hix[ast_label])
             ast_var_tix = ast_var(ds_tix[ast_label])
-            ast_var_mnc = ast_var(ds_hix[ast_label])
+            ast_var_mnc = ast_var(ds_mnc[ast_label])
         else:
             ast_var_hix = np.asarray(ast_var)
             ast_var_tix = np.asarray(ast_var)
@@ -510,7 +518,7 @@ def calibration_double_ended_solver(
         if callable(rst_var):
             rst_var_hix = rst_var(ds_hix[rst_label])
             rst_var_tix = rst_var(ds_tix[rst_label])
-            rst_var_mnc = rst_var(ds_hix[rst_label])
+            rst_var_mnc = rst_var(ds_mnc[rst_label])
         else:
             rst_var_hix = np.asarray(rst_var)
             rst_var_tix = np.asarray(rst_var)
@@ -518,7 +526,7 @@ def calibration_double_ended_solver(
         if callable(rast_var):
             rast_var_hix = rast_var(ds_hix[rast_label])
             rast_var_tix = rast_var(ds_tix[rast_label])
-            rast_var_mnc = rast_var(ds_hix[rast_label])
+            rast_var_mnc = rast_var(ds_mnc[rast_label])
         else:
             rast_var_hix = np.asarray(rast_var)
             rast_var_tix = np.asarray(rast_var)
@@ -543,24 +551,11 @@ def calibration_double_ended_solver(
         w = np.concatenate((w_F, w_B, w_eq1, w_eq2, w_eq3))
 
     if solver == 'sparse':
-        if calc_cov:
-            p_sol, p_var, p_cov = wls_sparse(
-                X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=verbose)
-        else:
-            p_sol, p_var = wls_sparse(
-                X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=verbose)
-
+        solver_fun = wls_sparse
     elif solver == 'stats':
-        if calc_cov:
-            p_sol, p_var, p_cov = wls_stats(
-                X, y, w=w, calc_cov=calc_cov, verbose=verbose)
-        else:
-            p_sol, p_var = wls_stats(
-                X, y, w=w, calc_cov=calc_cov, verbose=verbose)
-
+        solver_fun = wls_stats
     elif solver == 'external':
         return X, y, w, p0_est
-
     elif solver == 'external_split':
         out = dict(
             y_F=y_F,
@@ -597,9 +592,21 @@ def calibration_double_ended_solver(
                 w_eq2=w_eq2,
                 w_eq3=w_eq3)
         return out
-
     else:
         raise ValueError("Choose a valid solver")
+
+    out = solver_fun(X, y, w=w, x0=p0_est, calc_cov=calc_cov,
+                     verbose=verbose, return_werr=verbose)
+    if calc_cov and verbose:
+        p_sol, p_var, p_cov, werr = out
+    elif not calc_cov and verbose:
+        p_sol, p_var, werr = out
+    elif calc_cov and not verbose:
+        p_sol, p_var, p_cov = out
+    elif not calc_cov and not verbose:
+        p_sol, p_var = out
+
+
 
     # p_sol contains the int diff att of all the locations within the
     # reference sections. po_sol is its expanded version that contains also
@@ -750,6 +757,8 @@ def construct_submatrices_matching_sections(
     For matching indices (`hix` and `tix`) that are outside of the reference
     sections an additional equation is needed for `E` per time step.
     (B3 - F3) / 2 = E3 + (df-db) / 2 + (TAF3 - TAB3) / 2  # EQ3
+    where subscript 3 refers an a hix or a tix that is not in a reference
+    section.
 
     Note that E[ix_sec[0]] = 0, and not included in the parameters. Dealt
     with by first assuming it is a parameter, then remove it from coefficent
@@ -1036,7 +1045,7 @@ def construct_submatrices(nt, nx, st_label, ds, transient_asym_att_x, x_sec):
 
 
 def wls_sparse(X, y, w=1., calc_cov=False, verbose=False, x0=None,
-               **solver_kwargs):
+               return_werr=False, **solver_kwargs):
     """
     If some initial estimate x0 is known and if damp == 0, one could proceed as follows:
     - Compute a residual vector r0 = b - A*x0.
@@ -1108,11 +1117,8 @@ def wls_sparse(X, y, w=1., calc_cov=False, verbose=False, x0=None,
     # minus the rank of the regressor matrix.
     nobs = len(y)
     npar = X.shape[1]  # ==rank
-
     degrees_of_freedom_err = nobs - npar
-    # wresid = np.exp(wy) - np.exp(wX.dot(p_sol))  # this option is better.
-    # difference is small
-    wresid = wy - wX.dot(p_sol)  # this option is done by statsmodel
+    wresid = wy - wX.dot(p_sol)
     err_var = np.dot(wresid, wresid) / degrees_of_freedom_err
 
     if calc_cov:
@@ -1130,13 +1136,23 @@ def wls_sparse(X, y, w=1., calc_cov=False, verbose=False, x0=None,
         p_cov = np.array(arg_inv * err_var)
         p_var = np.diagonal(p_cov)
 
-        assert np.all(p_var >= 0), 'Unable to invert the matrix' + str(p_var)
+        if np.any(p_var < 0):
+            m = 'Unable to invert the matrix. The following parameters are ' \
+                'difficult to determine:' + str(np.where(p_var < 0))
+            assert np.all(p_var >= 0), m
 
-        return p_sol, p_var, p_cov
+        if return_werr:
+            return p_sol, p_var, p_cov, return_werr
+        else:
+            return p_sol, p_var, p_cov
 
     else:
         p_var = out_sol[-1] * err_var  # normalized covariance
-        return p_sol, p_var
+
+        if return_werr:
+            return p_sol, p_var, return_werr
+        else:
+            return p_sol, p_var
 
 
 def wls_stats(X, y, w=1., calc_cov=False, verbose=False):
@@ -1303,6 +1319,24 @@ def calc_alpha_double(
     #     'Something went wrong in the estimation of d_f and d_b: ' + str(E)
 
     return E, E_var
+
+
+def calc_df_db_double_est(ds, st_label, ast_label, rst_label, rast_label,
+                          ix_alpha_is_zero, gamma_est):
+    Ifwx0 = np.log(ds[st_label].isel(x=ix_alpha_is_zero) /
+                   ds[ast_label].isel(x=ix_alpha_is_zero)).values
+    Ibwx0 = np.log(ds[rst_label].isel(x=ix_alpha_is_zero) /
+                   ds[rast_label].isel(x=ix_alpha_is_zero)).values
+    ref_temps_refs = ds.ufunc_per_section(
+        label=st_label,
+        ref_temp_broadcasted=True,
+        calc_per='all')
+    ix_sec = ds.ufunc_per_section(x_indices=True, calc_per='all')
+    ref_temps_x0 = ref_temps_refs[ix_sec == ix_alpha_is_zero].flatten(
+        ).compute() + 273.15
+    df_est = gamma_est / ref_temps_x0 - Ifwx0
+    db_est = gamma_est / ref_temps_x0 - Ibwx0
+    return df_est, db_est
 
 
 def match_sections(ds, matching_sections):
