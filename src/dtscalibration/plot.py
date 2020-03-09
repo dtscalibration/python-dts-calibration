@@ -670,3 +670,65 @@ def plot_sigma_report(
     ax2.set_ylabel(r'Temperature [$^\circ$C]')
 
     plt.tight_layout()
+
+
+def plot_location_residuals_double_ended(ds, werr, hix, tix, ix_sec,
+                                         ix_match_not_cal, nt):
+    from xarray import Dataset
+    nx_sec = ix_sec.size
+    npair = hix.size
+    nx_match_not_cal = ix_match_not_cal.size
+    data_vars = {}
+    s = slice(None, nx_sec * nt)
+    arr = np.zeros((ds.x.size, nt), dtype=float)
+    arr[ix_sec] = werr[s].reshape((nx_sec, nt))  # at ix_sec
+    data_vars['werr_F'] = (('x', 'time'), arr)
+    s = slice(nx_sec * nt, 2 * nx_sec * nt)
+    arr = np.zeros((ds.x.size, nt), dtype=float)
+    arr[ix_sec] = werr[s].reshape((nx_sec, nt))  # at ix_sec
+    data_vars['werr_B'] = (('x', 'time'), arr)
+    if np.any(hix):
+        s = slice(2 * nx_sec * nt, 2 * nx_sec * nt + npair * nt)
+        arr = np.zeros((ds.x.size, nt), dtype=float)
+        arr[hix] = werr[s].reshape((npair, nt))  # at
+        arr[tix] = werr[s].reshape((npair, nt))  # at # ix_sec
+        data_vars['werr_eq1'] = (('x', 'time'), arr)
+
+        s = slice(2 * nx_sec * nt + npair * nt,
+                  2 * nx_sec * nt + 2 * npair * nt)
+        arr = np.zeros((ds.x.size, nt), dtype=float)
+        arr[hix] = werr[s].reshape((npair, nt))  # at
+        arr[tix] = werr[s].reshape((npair, nt))  # at # ix_sec
+        data_vars['werr_eq2'] = (('x', 'time'), arr)
+
+        s = slice(2 * nx_sec * nt + 2 * npair * nt,
+                  2 * nx_sec * nt + 2 * npair * nt + nx_match_not_cal * nt)
+        arr = np.zeros((ds.x.size, nt), dtype=float)
+        arr[ix_match_not_cal] = werr[s].reshape(
+            (nx_match_not_cal, nt))  # at ix_sec
+        data_vars['werr_eq3'] = (('x', 'time'), arr)
+
+    dv = Dataset(data_vars=data_vars, coords=dict(x=ds.x, time=ds.time))
+    if np.any(hix):
+        dv['werr_tot'] = (dv['werr_F'] ** 2 +
+                          dv['werr_B'] ** 2 +
+                          dv['werr_eq1'] ** 2 +
+                          dv['werr_eq2'] ** 2 +
+                          dv['werr_eq3'] ** 2)
+    else:
+        dv['werr_tot'] = (dv['werr_F'] ** 2 + dv['werr_B'] ** 2)
+
+    fig, axs = plt.subplots(
+        len(dv.data_vars), 1, figsize=(12, 12),
+        gridspec_kw=dict(hspace=0.02),
+        sharex=True,
+        sharey=True)
+    vmin, vmax = np.percentile(werr, [5, 95])
+
+    for (k, v), ax in zip(dv.data_vars.items(), axs):
+        v.plot(ax=ax, vmin=vmin, vmax=vmax)
+
+    plt.figure()
+    dv['werr_tot'].sum(dim='time').plot()
+    plt.show()
+    return dv

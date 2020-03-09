@@ -485,8 +485,10 @@ def calibration_double_ended_solver(
         y_F = np.log(ds_sec[st_label] / ds_sec[ast_label]).values.ravel()
         y_B = np.log(ds_sec[rst_label] / ds_sec[rast_label]).values.ravel()
 
-        ds_hix = ds.isel(x=matching_indices[:, 0])
-        ds_tix = ds.isel(x=matching_indices[:, 1])
+        hix = matching_indices[:, 0]
+        tix = matching_indices[:, 1]
+        ds_hix = ds.isel(x=hix)
+        ds_tix = ds.isel(x=tix)
         y_eq1 = (np.log(ds_hix[st_label] / ds_hix[ast_label]).values.ravel() -
                  np.log(ds_tix[st_label] / ds_tix[ast_label]).values.ravel())
         y_eq2 = (np.log(ds_hix[rst_label] / ds_hix[rast_label]).values.ravel() -
@@ -606,7 +608,11 @@ def calibration_double_ended_solver(
     elif not calc_cov and not verbose:
         p_sol, p_var = out
 
-
+    # if verbose:
+    #     from dtscalibration.plot import plot_location_residuals_double_ended
+    #
+    #     dv = plot_location_residuals_double_ended(ds, werr, hix, tix, ix_sec,
+    #                                               ix_match_not_cal, nt)
 
     # p_sol contains the int diff att of all the locations within the
     # reference sections. po_sol is its expanded version that contains also
@@ -1142,7 +1148,7 @@ def wls_sparse(X, y, w=1., calc_cov=False, verbose=False, x0=None,
             assert np.all(p_var >= 0), m
 
         if return_werr:
-            return p_sol, p_var, p_cov, return_werr
+            return p_sol, p_var, p_cov, wresid
         else:
             return p_sol, p_var, p_cov
 
@@ -1150,12 +1156,13 @@ def wls_sparse(X, y, w=1., calc_cov=False, verbose=False, x0=None,
         p_var = out_sol[-1] * err_var  # normalized covariance
 
         if return_werr:
-            return p_sol, p_var, return_werr
+            return p_sol, p_var, wresid
         else:
             return p_sol, p_var
 
 
-def wls_stats(X, y, w=1., calc_cov=False, verbose=False):
+def wls_stats(X, y, w=1., calc_cov=False, x0=None, return_werr=False,
+              verbose=False):
     """
 
     Parameters
@@ -1178,20 +1185,35 @@ def wls_stats(X, y, w=1., calc_cov=False, verbose=False):
     if sp.issparse(X):
         X = X.toarray()
 
+    if x0 is not None:
+        # Initial values not supported by statsmodels
+        pass
+
     mod_wls = sm.WLS(y, X, weights=w)
     res_wls = mod_wls.fit()
+    p_sol = res_wls.params
 
     if verbose:
         print(res_wls.summary())
 
-    p_sol = res_wls.params
     p_cov = res_wls.cov_params()
     p_var = res_wls.bse**2
 
+    if return_werr:
+        wy = np.sqrt(w) * y
+        wX = np.sqrt(w) * X
+        werr = wy - wX.dot(p_sol)
+
     if calc_cov:
-        return p_sol, p_var, p_cov
+        if return_werr:
+            return p_sol, p_var, p_cov, werr
+        else:
+            return p_sol, p_var, p_cov
     else:
-        return p_sol, p_var
+        if return_werr:
+            return p_sol, p_var, werr
+        else:
+            return p_sol, p_var
 
 
 def calc_alpha_double(

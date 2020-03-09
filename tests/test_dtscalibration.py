@@ -1530,6 +1530,134 @@ def test_double_ended_fix_alpha_matching_sections_and_one_asym_att():
     pass
 
 
+def test_double_ended_fix_alpha_gamma_matching_sections_and_one_asym_att():
+    from dtscalibration import DataStore
+    import numpy as np
+
+    np.random.seed(0)
+
+    cable_len = 100.
+    nt = 3
+    time = np.arange(nt)
+    nx_per_sec = 2
+    nx = nx_per_sec * 8
+    x = np.linspace(0., cable_len, nx)
+    ts_cold = 4. + np.cos(time) * 4
+    ts_warm = 20. + -np.sin(time) * 4
+    ts_ground = 6.
+
+    C_p = 1324  # 1/2 * E0 * v * K_+/lam_+^4
+    eta_pf = np.cos(time) / 10 + 1  # eta_+ (gain factor forward channel)
+    eta_pb = np.sin(time) / 10 + 1  # eta_- (gain factor backward channel)
+    C_m = 5000.
+    eta_mf = np.cos(time + np.pi / 8) / 10 + 1
+    eta_mb = np.sin(time + np.pi / 8) / 10 + 1
+    dalpha_r = 0.005284
+    dalpha_m = 0.004961
+    dalpha_p = 0.005607
+    gamma = 482.6
+    talph_fw = 0.9
+    talph_bw = 0.8
+
+    temp_real_kelvin = np.zeros((len(x), nt)) + 273.15
+    temp_real_kelvin[:nx_per_sec] += ts_cold[None]
+    temp_real_kelvin[nx_per_sec:2 * nx_per_sec] += ts_warm[None]
+    temp_real_kelvin[-nx_per_sec:] += ts_cold[None]
+    temp_real_kelvin[-2 * nx_per_sec:-nx_per_sec] += ts_warm[None]
+    temp_real_kelvin[2 * nx_per_sec:-2 * nx_per_sec] += ts_ground
+    temp_real_celsius = temp_real_kelvin - 273.15
+
+    st = eta_pf[None] * C_p * np.exp(-dalpha_r * x[:, None]) * \
+        np.exp(-dalpha_p * x[:, None]) * np.exp(gamma / temp_real_kelvin) / \
+        (np.exp(gamma / temp_real_kelvin) - 1)
+    st[4 * nx_per_sec:] *= talph_fw
+    ast = eta_mf[None] * C_m * np.exp(-dalpha_r * x[:, None]) * \
+        np.exp(-dalpha_m * x[:, None]) / (
+        np.exp(gamma / temp_real_kelvin) - 1)
+    rst = eta_pb[None] * C_p * np.exp(-dalpha_r * (-x[:, None] + cable_len)) * \
+        np.exp(-dalpha_p * (-x[:, None] + cable_len)) * \
+        np.exp(gamma / temp_real_kelvin) / (
+        np.exp(gamma / temp_real_kelvin) - 1)
+    rst[:4 * nx_per_sec] *= talph_bw
+    rast = eta_mb[None] * C_m * np.exp(
+        -dalpha_r * (-x[:, None] + cable_len)) * np.exp(
+        -dalpha_m * (-x[:, None] + cable_len)) / \
+        (np.exp(gamma / temp_real_kelvin) - 1)
+
+    ds = DataStore({
+        'TMPR':                  (['x', 'time'], temp_real_celsius),
+        'st':                    (['x', 'time'], st),
+        'ast':                   (['x', 'time'], ast),
+        'rst':                   (['x', 'time'], rst),
+        'rast':                  (['x', 'time'], rast),
+        'userAcquisitionTimeFW': (['time'], np.ones(nt)),
+        'userAcquisitionTimeBW': (['time'], np.ones(nt)),
+        'cold':                  (['time'], ts_cold),
+        'warm':                  (['time'], ts_warm)
+        },
+        coords={
+            'x':    x,
+            'time': time},
+        attrs={
+            'isDoubleEnded': '1'})
+
+    ds.sections = {
+        'cold': [slice(0., x[nx_per_sec - 1])],
+        'warm': [slice(x[nx_per_sec], x[2 * nx_per_sec - 1])]}
+
+    ds.calibration_double_ended(
+        st_label='st',
+        ast_label='ast',
+        rst_label='rst',
+        rast_label='rast',
+        st_var=1.5,
+        ast_var=1.5,
+        rst_var=1.,
+        rast_var=1.,
+        method='wls',
+        solver='sparse',
+        tmpw_mc_size=3,
+        remove_mc_set_flag=True,
+        transient_asym_att_x=[50.],
+        matching_sections=[(slice(x[3 * nx_per_sec], x[4 * nx_per_sec - 1]),
+                            slice(x[4 * nx_per_sec], x[5 * nx_per_sec - 1]),
+                            True)])
+
+    # remove TA vars
+    k = ['talpha_fw', 'talpha_bw', 'talpha_fw_var', 'talpha_bw_var',
+         'trans_att']
+    for ki in k:
+        del ds[ki]
+
+    alpha_adj = ds.alpha.values.copy()
+    alpha_var_adj = ds.alpha_var.values.copy()
+
+    ds.calibration_double_ended(
+        st_label='st',
+        ast_label='ast',
+        rst_label='rst',
+        rast_label='rast',
+        st_var=1.5,
+        ast_var=1.5,
+        rst_var=1.,
+        rast_var=1.,
+        method='wls',
+        solver='sparse',
+        tmpw_mc_size=3,
+        remove_mc_set_flag=True,
+        fix_alpha=(alpha_adj, alpha_var_adj),
+        fix_gamma=(gamma, 0.),
+        transient_asym_att_x=[50.],
+        matching_sections=[(slice(x[3 * nx_per_sec], x[4 * nx_per_sec - 1]),
+                            slice(x[4 * nx_per_sec], x[5 * nx_per_sec - 1]),
+                            True)])
+
+    assert_almost_equal_verbose(temp_real_celsius, ds.TMPF.values, decimal=7)
+    assert_almost_equal_verbose(temp_real_celsius, ds.TMPB.values, decimal=7)
+    assert_almost_equal_verbose(temp_real_celsius, ds.TMPW.values, decimal=7)
+    pass
+
+
 def test_double_ended_fix_gamma_matching_sections_and_one_asym_att():
     from dtscalibration import DataStore
     import numpy as np
@@ -2858,8 +2986,10 @@ def test_calibrate_wls_procedures():
 
     # now with weights
     dec = 8
-    ps_sol, ps_var, ps_cov = wls_stats(X, y_meas, w=beta_w, calc_cov=True)
-    p_sol, p_var, p_cov = wls_sparse(X, y_meas, w=beta_w, calc_cov=True, x0=beta_0)
+    ps_sol, ps_var, ps_cov = wls_stats(X, y_meas, w=beta_w, calc_cov=True,
+                                       x0=beta_0)
+    p_sol, p_var, p_cov = wls_sparse(X, y_meas, w=beta_w, calc_cov=True,
+                                     x0=beta_0)
 
     np.testing.assert_array_almost_equal(p_sol, ps_sol, decimal=dec)
     np.testing.assert_array_almost_equal(p_var, ps_var, decimal=dec)
