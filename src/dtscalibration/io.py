@@ -700,8 +700,8 @@ def read_sensornet_files_routine_v3(
         timezone_netcdf='UTC',
         timezone_input_files='UTC',
         silent=False,
-        manual_fiber_start=None,
-        manual_fiber_end=None):
+        add_internal_fiber_length=50.,
+        fiber_length=None):
     """
     Internal routine that reads Sensor files.
     Use dtscalibration.read_sensornet_files function instead.
@@ -712,11 +712,13 @@ def read_sensornet_files_routine_v3(
     timezone_netcdf
     timezone_input_files
     silent
-    manual_fiber_start : float
-        Only necessary when cable is not represented well.
-    manual_fiber_end : float
-        If defined, overwrites the fiber end, read from the first file. It is
-        the fiber length between the two connector entering the DTS device.
+    add_internal_fiber_length : float
+        Set to zero if only the measurements of the fiber connected to the DTS
+        system of interest. Set to 50 if you also want to keep the internal
+        reference section.
+    fiber_length : float
+        It is the fiber length between the two connector entering the DTS
+        device.
 
     Returns
     -------
@@ -740,6 +742,14 @@ def read_sensornet_files_routine_v3(
         attrs['isDoubleEnded'] = '1'
 
     double_ended_flag = bool(int(attrs['isDoubleEnded']))
+    if double_ended_flag:
+        identity = attrs['Software version number:'].split()
+        if 'Halo' in identity:
+            flip_reverse_measurements = True
+        elif 'ORYX' in identity:
+            flip_reverse_measurements = False
+        else:
+            raise NotImplementedError
 
     attrs['forwardMeasurementChannel'] = meta['forward channel'][-1]
     if double_ended_flag:
@@ -773,7 +783,7 @@ def read_sensornet_files_routine_v3(
 
     #   Gather data
     # x has already been read. should not change over time
-    x = data['x']
+    xraw = data['x']
 
     # Define all variables
     referenceTemperature = np.zeros(ntime)
@@ -816,30 +826,61 @@ def read_sensornet_files_routine_v3(
             REV_ST[:, ii] = data['REV-ST']
             REV_AST[:, ii] = data['REV-AST']
 
+    if fiber_length is None and double_ended_flag:
+        fiber_length = np.max([0., xraw[-1] - add_internal_fiber_length])
+    elif fiber_length is None and not double_ended_flag:
+        fiber_length = xraw[-1]
+    else:
+        pass
+
+    assert fiber_length > 0., '`fiber_length` is not defined. Use key' \
+                              'word argument in read function.' + \
+                              str(fiber_length)
+
+    fiber_start_index = (np.abs(xraw + add_internal_fiber_length)).argmin()
+    fiber_0_index = np.abs(xraw).argmin()
+    fiber_1_index = (np.abs(xraw - fiber_length)).argmin()
+    fiber_n_indices = fiber_1_index - fiber_0_index
+    fiber_n_indices_internal = fiber_0_index - fiber_start_index
     if double_ended_flag:
-        # Get fiber length, and starting point for reverse channel reversal
-        if manual_fiber_start:
-            fiber_start = manual_fiber_start
+        fiber_end_index = np.min([
+            xraw.size,
+            fiber_1_index + fiber_n_indices_internal])
+    else:
+        fiber_end_index = fiber_1_index
+
+    if double_ended_flag:
+        if not flip_reverse_measurements:
+            # fiber length how the backward channel is aligned
+            fiber_length_raw = float(meta['fibre end'])
+            fiber_bw_1_index = np.abs(xraw - fiber_length_raw).argmin()
+            fiber_bw_end_index = np.min([
+                xraw.size,
+                fiber_bw_1_index + (fiber_end_index - fiber_1_index)])
+            fiber_bw_start_index = np.max([
+                0,
+                fiber_bw_1_index - fiber_n_indices - fiber_n_indices_internal])
+
+            REV_ST = REV_ST[fiber_bw_start_index:fiber_bw_end_index]
+            REV_AST = REV_AST[fiber_bw_start_index:fiber_bw_end_index]
+
         else:
-            fiber_start = -50
+            # Use the fiber indices from the forward channel
+            n_indices_internal_left = fiber_0_index - fiber_start_index
+            n_indices_internal_right = np.max([0, fiber_end_index -
+                                               fiber_1_index])
+            n_indices_internal_shortest = np.min([n_indices_internal_left,
+                                                  n_indices_internal_right])
+            fiber_start_index = fiber_0_index - n_indices_internal_shortest
+            fiber_end_index = fiber_0_index + fiber_n_indices + \
+                n_indices_internal_shortest
+            REV_ST = REV_ST[fiber_end_index:fiber_start_index:-1]
+            REV_AST = REV_AST[fiber_end_index:fiber_start_index:-1]
 
-        if manual_fiber_end:
-            fiber_end = manual_fiber_end
-        else:
-            fiber_end = float(meta['fibre end'])
-
-        assert fiber_end > 0., 'Fiber end is not defined. Use key word ' \
-                               'argument in read function.'
-
-        fiber_start_index = (np.abs(x - fiber_start)).argmin()
-        fiber_end_index = (np.abs(x - fiber_end)).argmin()
-
-        x = x[fiber_start_index:fiber_end_index]
-        TMP = TMP[fiber_start_index:fiber_end_index]
-        ST = ST[fiber_start_index:fiber_end_index]
-        AST = AST[fiber_start_index:fiber_end_index]
-        REV_ST = REV_ST[fiber_end_index:fiber_start_index:-1]
-        REV_AST = REV_AST[fiber_end_index:fiber_start_index:-1]
+    x = xraw[fiber_start_index:fiber_end_index]
+    TMP = TMP[fiber_start_index:fiber_end_index]
+    ST = ST[fiber_start_index:fiber_end_index]
+    AST = AST[fiber_start_index:fiber_end_index]
 
     data_vars = {
         'ST': (['x', 'time'], ST, dim_attrs['ST']),
