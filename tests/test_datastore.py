@@ -39,8 +39,10 @@ if 1:
         wd, 'data', 'double_single_ended', 'channel_1')
     data_dir_sensornet_single_ended = os.path.join(
         wd, 'data', 'sensornet_oryx_v3.7')
-    data_dir_sensornet_double_ended = os.path.join(
+    data_dir_sensornet_halo_double_ended = os.path.join(
         wd, 'data', 'sensornet_halo_v1.0')
+    data_dir_sensornet_oryx_double_ended = os.path.join(
+        wd, 'data', 'sensornet_oryx_v3.7_double')
     data_dir_single_silixa_v45 = os.path.join(wd, 'data', 'silixa_v4.5')
     data_dir_single_silixa_v7 = os.path.join(wd, 'data', 'silixa_v7.0')
     data_dir_ap_sensing = os.path.join(wd, 'data', 'ap_sensing')
@@ -76,8 +78,10 @@ else:
         '..', '..', 'tests', 'data', 'double_single_ended', 'channel_1')
     data_dir_sensornet_single_ended = os.path.join(
         '..', '..', 'tests', 'data', 'sensornet_oryx_v3.7')
-    data_dir_sensornet_double_ended = os.path.join(
+    data_dir_sensornet_halo_double_ended = os.path.join(
         '..', '..', 'tests', 'data', 'sensornet_halo_v1.0')
+    data_dir_sensornet_oryx_double_ended = os.path.join(
+        '..', '..', 'tests', 'data', 'sensornet_oryx_v3.7_double')
 
 
 def test_read_data_from_single_file_double_ended():
@@ -389,20 +393,39 @@ def test_read_sensornet_files_single_ended():
         directory=filepath,
         timezone_netcdf='UTC',
         timezone_input_files='UTC',
+        add_internal_fiber_length=50.,
+        fiber_length=None,
         file_ext='*.ddf')
-    np.testing.assert_almost_equal(ds.ST.sum(), 3015991.361, decimal=2)
+    np.testing.assert_almost_equal(ds.ST.sum(), 2955105.679, decimal=2)
     pass
 
 
-def test_read_sensornet_files_double_ended():
-    filepath = data_dir_sensornet_double_ended
+def test_read_sensornet_halo_files_double_ended():
+    filepath = data_dir_sensornet_halo_double_ended
     ds = read_sensornet_files(
         directory=filepath,
         timezone_netcdf='UTC',
         timezone_input_files='UTC',
+        add_internal_fiber_length=50.,
+        fiber_length=1253.3,
         file_ext='*.ddf')
 
-    np.testing.assert_almost_equal(ds.ST.sum(), 2832389.888, decimal=2)
+    np.testing.assert_almost_equal(ds.ST.sum(), 2835988.114, decimal=2)
+    pass
+
+
+def test_read_sensornet_oryx_files_double_ended():
+    filepath = data_dir_sensornet_oryx_double_ended
+    ds = read_sensornet_files(
+        directory=filepath,
+        timezone_netcdf='UTC',
+        timezone_input_files='UTC',
+        add_internal_fiber_length=50.,
+        fiber_length=187.,
+        file_ext='*.ddf')
+
+    np.testing.assert_almost_equal(ds.ST.sum(), 2301637.154, decimal=2)
+    np.testing.assert_almost_equal(ds['REV-ST'].sum(), 1835770.651, decimal=2)
     pass
 
 
