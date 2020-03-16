@@ -15,10 +15,10 @@ anymore.
 .. code:: ipython3
 
     import os
-    
+
     from dtscalibration import read_silixa_files
     import matplotlib.pyplot as plt
-    
+
     %matplotlib inline
 
 
@@ -31,12 +31,12 @@ anymore.
 .. code:: ipython3
 
     filepath = os.path.join('..', '..', 'tests', 'data', 'single_ended')
-    
+
     ds = read_silixa_files(
         directory=filepath,
         timezone_netcdf='UTC',
         file_ext='*.xml')
-    
+
     ds100 = ds.sel(x=slice(-30, 101))  # only calibrate parts of the fiber, in meters
     sections = {
                 'probe1Temperature':    [slice(20, 25.5)],  # warm bath
@@ -61,8 +61,8 @@ anymore.
 
 .. parsed-literal::
 
-    
-    
+
+
             Parameters
             ----------
             store_p_cov : str
@@ -119,17 +119,17 @@ anymore.
                 variance of the estimate of dalpha.
                 Covariances between alpha and other parameters are not accounted
                 for.
-    
+
             Returns
             -------
-    
-            
+
+
 
 
 .. code:: ipython3
 
-    ds100.calibration_single_ended(st_label='ST',
-                                   ast_label='AST',
+    ds100.calibration_single_ended(st_label='st',
+                                   ast_label='ast',
                                    method='ols')
 
 
@@ -144,9 +144,9 @@ Lets compare our calibrated values with the device calibration
 .. code:: ipython3
 
     ds1 = ds100.isel(time=0)  # take only the first timestep
-    
-    ds1.TMPF.plot(linewidth=1, figsize=(12, 8), label='User calibrated')  # plot the temperature calibrated by us
-    ds1.TMP.plot(linewidth=1, label='Device calibrated')  # plot the temperature calibrated by the device
+
+    ds1.tmpf.plot(linewidth=1, figsize=(12, 8), label='User calibrated')  # plot the temperature calibrated by us
+    ds1.tmp.plot(linewidth=1, label='Device calibrated')  # plot the temperature calibrated by the device
     plt.title('Temperature at the first time step')
     plt.legend();
 

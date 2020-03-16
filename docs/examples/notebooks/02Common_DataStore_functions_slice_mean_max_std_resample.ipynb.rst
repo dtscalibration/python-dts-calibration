@@ -12,7 +12,7 @@ Examples of how to do some of the more commonly used functions:
 .. code:: ipython3
 
     import os
-    
+
     from dtscalibration import read_silixa_files
 
 
@@ -28,7 +28,7 @@ learned from the previous notebook.
 .. code:: ipython3
 
     filepath = os.path.join('..', '..', 'tests', 'data', 'single_ended')
-    
+
     ds = read_silixa_files(
         directory=filepath,
         timezone_netcdf='UTC',
@@ -55,7 +55,7 @@ http://xarray.pydata.org/en/stable/indexing.html
 
 .. code:: ipython3
 
-    ds['ST']  # is the data stored, presented as a DataArray
+    ds['st']  # is the data stored, presented as a DataArray
 
 
 
@@ -87,7 +87,7 @@ http://xarray.pydata.org/en/stable/indexing.html
 
 .. code:: ipython3
 
-    ds['TMP'].plot(figsize=(12, 8));
+    ds['tmp'].plot(figsize=(12, 8));
 
 1 mean, min, max
 ----------------

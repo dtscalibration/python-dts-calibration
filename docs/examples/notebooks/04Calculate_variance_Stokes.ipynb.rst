@@ -10,10 +10,10 @@ estimate the variance of the noise to: - Perform a weighted calibration
 .. code:: ipython3
 
     import os
-    
+
     from dtscalibration import read_silixa_files
     from matplotlib import pyplot as plt
-    
+
     %matplotlib inline
 
 
@@ -26,7 +26,7 @@ estimate the variance of the noise to: - Perform a weighted calibration
 .. code:: ipython3
 
     filepath = os.path.join('..', '..', 'tests', 'data', 'double_ended2')
-    
+
     ds = read_silixa_files(
         directory=filepath,
         timezone_netcdf='UTC',
@@ -58,25 +58,25 @@ method.
 
 .. code:: ipython3
 
-    print(ds.variance_stokes.__doc__) 
+    print(ds.variance_stokes.__doc__)
 
 
 .. parsed-literal::
 
     Backwards compatibility
-    
+
             Use:
             - `variance_stokes_constant` for small setups with small variations in
             intensity
             - `variance_stokes_exponential` for small setups with very few time
             steps
             - `variance_stokes_linear` for larger setups with more time steps
-            
+
 
 
 .. code:: ipython3
 
-    I_var, residuals = ds.variance_stokes(st_label='ST')
+    I_var, residuals = ds.variance_stokes(st_label='st')
     print("The variance of the Stokes signal along the reference sections "
           "is approximately {} on a {} sec acquisition time".format(I_var, ds.userAcquisitionTimeFW.data[0]))
 
@@ -89,7 +89,7 @@ method.
 .. code:: ipython3
 
     from dtscalibration import plot
-    
+
     fig_handle = plot.plot_residuals_reference_sections(
             residuals,
             sections,
@@ -127,7 +127,7 @@ by coils/sharp bends in cable - Attenuation caused by a splice
 
     import scipy
     import numpy as np
-    
+
     sigma = residuals.std()
     mean = residuals.mean()
     x = np.linspace(mean - 3*sigma, mean + 3*sigma, 100)

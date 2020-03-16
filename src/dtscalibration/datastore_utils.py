@@ -5,7 +5,7 @@ import numpy as np
 
 def check_dims(ds, labels, correct_dims=None):
     """
-    Compare the dimensions of different labels (e.g., 'ST', 'REV-ST').
+    Compare the dimensions of different labels (e.g., 'st', 'rst').
     If a calculation is performed and the dimensions do not agree, the answers don't make
     sense and the matrices are broadcasted and the memory usage will explode. If no correct
     dims provided the dimensions of the different are compared.
@@ -143,8 +143,8 @@ def merge_double_ended(ds_fw, ds_bw, cable_length, plot_result=True):
 
     ds_bw = ds_bw.sortby('x')
 
-    ds['REV-ST'] = (['x', 'time'], ds_bw.ST.values)
-    ds['REV-AST'] = (['x', 'time'], ds_bw.AST.values)
+    ds['rst'] = (['x', 'time'], ds_bw.st.values)
+    ds['rast'] = (['x', 'time'], ds_bw.ast.values)
 
     ds = ds.dropna(dim='x')
 
@@ -154,8 +154,8 @@ def merge_double_ended(ds_fw, ds_bw, cable_length, plot_result=True):
 
     if plot_result:
         fig, ax = plt.subplots()
-        ds['ST'].isel(time=0).plot(ax=ax, label='Stokes forward')
-        ds['REV-ST'].isel(time=0).plot(ax=ax, label='Stokes backward')
+        ds['st'].isel(time=0).plot(ax=ax, label='Stokes forward')
+        ds['rst'].isel(time=0).plot(ax=ax, label='Stokes backward')
         ax.legend()
 
     return ds
@@ -200,22 +200,22 @@ def shift_double_ended(ds, i_shift):
     if i_shift < 0:
         # The cable was configured to be too long.
         # There is too much data recorded.
-        st = ds.ST.data[:i_shift]
-        ast = ds.AST.data[:i_shift]
-        rst = ds['REV-ST'].data[-i_shift:]
-        rast = ds['REV-AST'].data[-i_shift:]
+        st = ds.st.data[:i_shift]
+        ast = ds.ast.data[:i_shift]
+        rst = ds.rst.data[-i_shift:]
+        rast = ds.rast.data[-i_shift:]
         x2 = ds.x.data[:i_shift]
-        # TMP2 = ds.TMP.data[:i_shift]
+        # TMP2 = ds.tmp.data[:i_shift]
 
     else:
         # The cable was configured to be too short.
         # Part of the cable is not measured.
-        st = ds.ST.data[i_shift:]
-        ast = ds.AST.data[i_shift:]
-        rst = ds['REV-ST'].data[:nx2]
-        rast = ds['REV-AST'].data[:nx2]
+        st = ds.st.data[i_shift:]
+        ast = ds.ast.data[i_shift:]
+        rst = ds.rst.data[:nx2]
+        rast = ds.rast.data[:nx2]
         x2 = ds.x.data[i_shift:]
-        # TMP2 = ds.TMP.data[i_shift:]
+        # TMP2 = ds.tmp.data[i_shift:]
 
     d2_coords = dict(ds.coords)
     d2_coords['x'] = (('x',), x2, ds.x.attrs)
@@ -225,7 +225,7 @@ def shift_double_ended(ds, i_shift):
         if 'x' in ds[k].dims and k in d2_data:
             del d2_data[k]
 
-    new_data = (('ST', st), ('AST', ast), ('REV-ST', rst), ('REV-AST', rast))
+    new_data = (('st', st), ('ast', ast), ('rst', rst), ('rast', rast))
 
     for k, v in new_data:
         d2_data[k] = (ds[k].dims, v, ds[k].attrs)
@@ -290,17 +290,17 @@ def suggest_cable_shift_double_ended(ds, irange, plot_result=True,
         nx2 = nx - i_shift
         if i_shift < 0:
             # The cable was configured to be too long. There is too much data recorded.
-            st = ds.ST.data[:i_shift]
-            ast = ds.AST.data[:i_shift]
-            rst = ds['REV-ST'].data[-i_shift:]
-            rast = ds['REV-AST'].data[-i_shift:]
+            st = ds.st.data[:i_shift]
+            ast = ds.ast.data[:i_shift]
+            rst = ds.rst.data[-i_shift:]
+            rast = ds.rast.data[-i_shift:]
             x2 = ds.x.data[:i_shift]
         else:
             # The cable was configured to be too short. Part of the cable is not measured.
-            st = ds.ST.data[i_shift:]
-            ast = ds.AST.data[i_shift:]
-            rst = ds['REV-ST'].data[:nx2]
-            rast = ds['REV-AST'].data[:nx2]
+            st = ds.st.data[i_shift:]
+            ast = ds.ast.data[i_shift:]
+            rst = ds.rst.data[:nx2]
+            rast = ds.rast.data[:nx2]
             x2 = ds.x.data[i_shift:]
 
         i_f = np.log(st / ast)
@@ -330,17 +330,17 @@ def suggest_cable_shift_double_ended(ds, irange, plot_result=True,
 
         dt = ds.isel(time=0)
         x = dt.x.data
-        y = dt.ST.data
+        y = dt.st.data
         ax0.plot(x, y, label='ST original')
-        y = dt['REV-ST'].data
+        y = dt.rst.data
         ax0.plot(x, y, label='REV-ST original')
 
         dtsh1 = shift_double_ended(dt, ishift1)
         dtsh2 = shift_double_ended(dt, ishift2)
         x1 = dtsh1.x.data
         x2 = dtsh2.x.data
-        y1 = dtsh1['REV-ST'].data
-        y2 = dtsh2['REV-ST'].data
+        y1 = dtsh1.rst.data
+        y2 = dtsh2.rst.data
         ax0.plot(x1, y1, label='ST i_shift={}'.format(ishift1))
         ax0.plot(x2, y2, label='ST i_shift={}'.format(ishift2))
         ax0.set_xlabel('x (m)')

@@ -24,7 +24,7 @@ estimated temperature via Monte Carlo.
 .. code:: ipython3
 
     import os
-    
+
     from dtscalibration import read_silixa_files
     import matplotlib.pyplot as plt
     %matplotlib inline
@@ -43,7 +43,7 @@ estimated temperature via Monte Carlo.
         directory=filepath,
         timezone_netcdf='UTC',
         file_ext='*.xml')
-    
+
     ds = ds.sel(x=slice(-30, 101))  # only calibrate parts of the fiber
     sections = {
                 'probe1Temperature':    [slice(20, 25.5)],  # warm bath
@@ -69,8 +69,8 @@ estimated temperature via Monte Carlo.
 
 .. parsed-literal::
 
-    
-    
+
+
             Parameters
             ----------
             store_p_cov : str
@@ -127,17 +127,17 @@ estimated temperature via Monte Carlo.
                 variance of the estimate of dalpha.
                 Covariances between alpha and other parameters are not accounted
                 for.
-    
+
             Returns
             -------
-    
-            
+
+
 
 
 .. code:: ipython3
 
-    st_label = 'ST'
-    ast_label = 'AST'
+    st_label = 'st'
+    ast_label = 'ast'
 
 First calculate the variance in the measured Stokes and anti-Stokes
 signals, in the forward and backward direction.
@@ -202,7 +202,7 @@ entire measurement period’.
         ast_label=ast_label,
         st_var=st_var,
         ast_var=ast_var,
-        store_tmpf='TMPF',
+        store_tmpf='tmpf',
         store_tempvar='_var',
         conf_ints=[2.5, 97.5],
         mc_sample_size=500,
@@ -213,9 +213,9 @@ Lets compare our calibrated values with the device calibration
 .. code:: ipython3
 
     ds1 = ds.isel(time=0)  # take only the first timestep
-    ds1.TMPF.plot(linewidth=0.8, figsize=(12, 8), label='User calibrated')  # plot the temperature calibrated by us
-    ds1.TMP.plot(linewidth=0.8, label='Device calibrated')  # plot the temperature calibrated by the device
-    ds1.TMPF_MC.plot(linewidth=0.8, hue='CI', label='CI device')
+    ds1.tmpf.plot(linewidth=0.8, figsize=(12, 8), label='User calibrated')  # plot the temperature calibrated by us
+    ds1.tmp.plot(linewidth=0.8, label='Device calibrated')  # plot the temperature calibrated by the device
+    ds1.tmpf_mc.plot(linewidth=0.8, hue='CI', label='CI device')
     plt.title('Temperature at the first time step')
     plt.legend();
 
@@ -226,7 +226,7 @@ Lets compare our calibrated values with the device calibration
 
 .. code:: ipython3
 
-    ds.TMPF_MC_var.plot(figsize=(12, 8));
+    ds.tmpf_mc_var.plot(figsize=(12, 8));
 
 
 
@@ -235,9 +235,9 @@ Lets compare our calibrated values with the device calibration
 
 .. code:: ipython3
 
-    ds1.TMPF_MC.sel(CI=2.5).plot(label = '2.5% CI', figsize=(12, 8))
-    ds1.TMPF_MC.sel(CI=97.5).plot(label = '97.5% CI')
-    ds1.TMPF.plot(label='User calibrated')
+    ds1.tmpf_mc.sel(CI=2.5).plot(label = '2.5% CI', figsize=(12, 8))
+    ds1.tmpf_mc.sel(CI=97.5).plot(label = '97.5% CI')
+    ds1.tmpf.plot(label='User calibrated')
     plt.title('User calibrated temperature with 95% confidence interval')
     plt.legend();
 
@@ -253,7 +253,7 @@ this should be around 0.0059 degC.
 
 .. code:: ipython3
 
-    ds1.TMPF_MC_var.plot(figsize=(12, 8));
+    ds1.tmpf_mc_var.plot(figsize=(12, 8));
 
 
 
@@ -272,8 +272,8 @@ Lets have a look at the Stokes and anti-Stokes signal.
 
 .. code:: ipython3
 
-    ds1.ST.plot(figsize=(12, 8))
-    ds1.AST.plot();
+    ds1.st.plot(figsize=(12, 8))
+    ds1.ast.plot();
 
 
 

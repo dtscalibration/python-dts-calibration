@@ -240,7 +240,7 @@ def test_read_silixa_files_single_ended():
     ds = read_silixa_files(
         directory=filepath, timezone_netcdf='UTC', file_ext='*.xml')
 
-    np.testing.assert_almost_equal(ds.ST.sum(), 11387947.857, decimal=3)
+    np.testing.assert_almost_equal(ds.st.sum(), 11387947.857, decimal=3)
 
     pass
 
@@ -250,7 +250,7 @@ def test_read_silixa_files_double_ended():
     ds = read_silixa_files(
         directory=filepath, timezone_netcdf='UTC', file_ext='*.xml')
 
-    np.testing.assert_almost_equal(ds.ST.sum(), 19613502.2617, decimal=3)
+    np.testing.assert_almost_equal(ds.st.sum(), 19613502.2617, decimal=3)
 
     pass
 
@@ -264,7 +264,7 @@ def test_read_silixa_files_single_loadinmemory():
         timezone_netcdf='UTC',
         file_ext='*.xml',
         load_in_memory=False)
-    for k in ['ST', 'AST']:
+    for k in ['st', 'ast']:
         assert isinstance(ds[k].data, da.Array)
 
     # auto -> True
@@ -273,7 +273,7 @@ def test_read_silixa_files_single_loadinmemory():
         timezone_netcdf='UTC',
         file_ext='*.xml',
         load_in_memory='auto')
-    for k in ['ST', 'AST']:
+    for k in ['st', 'ast']:
         assert isinstance(ds[k].data, np.ndarray)
 
     # True
@@ -282,7 +282,7 @@ def test_read_silixa_files_single_loadinmemory():
         timezone_netcdf='UTC',
         file_ext='*.xml',
         load_in_memory=True)
-    for k in ['ST', 'AST']:
+    for k in ['st', 'ast']:
         assert isinstance(ds[k].data, np.ndarray)
 
     pass
@@ -297,7 +297,7 @@ def test_read_silixa_files_double_loadinmemory():
         timezone_netcdf='UTC',
         file_ext='*.xml',
         load_in_memory=False)
-    for k in ['ST', 'AST', 'REV-ST', 'REV-AST']:
+    for k in ['st', 'ast', 'rst', 'rast']:
         assert isinstance(ds[k].data, da.Array)
 
     # auto -> True Because small amount of data
@@ -306,7 +306,7 @@ def test_read_silixa_files_double_loadinmemory():
         timezone_netcdf='UTC',
         file_ext='*.xml',
         load_in_memory='auto')
-    for k in ['ST', 'AST', 'REV-ST', 'REV-AST']:
+    for k in ['st', 'ast', 'rst', 'rast']:
         assert isinstance(ds[k].data, np.ndarray)
 
     # True
@@ -315,7 +315,7 @@ def test_read_silixa_files_double_loadinmemory():
         timezone_netcdf='UTC',
         file_ext='*.xml',
         load_in_memory=True)
-    for k in ['ST', 'AST', 'REV-ST', 'REV-AST']:
+    for k in ['st', 'ast', 'rst', 'rast']:
         assert isinstance(ds[k].data, np.ndarray)
 
     pass
@@ -327,14 +327,14 @@ def test_read_single_silixa_v45():
         directory=filepath, timezone_netcdf='UTC', file_ext='*.xml',
         load_in_memory=False)
 
-    for k in ['ST', 'AST']:
+    for k in ['st', 'ast']:
         assert isinstance(ds[k].data, da.Array)
 
     ds = read_silixa_files(
         directory=filepath, timezone_netcdf='UTC', file_ext='*.xml',
         load_in_memory=True)
 
-    for k in ['ST', 'AST']:
+    for k in ['st', 'ast']:
         assert isinstance(ds[k].data, np.ndarray)
 
     pass
@@ -346,14 +346,14 @@ def test_read_single_silixa_v7():
         directory=filepath, timezone_netcdf='UTC', file_ext='*.xml',
         load_in_memory=False)
 
-    for k in ['ST', 'AST']:
+    for k in ['st', 'ast']:
         assert isinstance(ds[k].data, da.Array)
 
     ds = read_silixa_files(
         directory=filepath, timezone_netcdf='UTC', file_ext='*.xml',
         load_in_memory=True)
 
-    for k in ['ST', 'AST']:
+    for k in ['st', 'ast']:
         assert isinstance(ds[k].data, np.ndarray)
 
     pass
@@ -374,7 +374,7 @@ def test_read_silixa_zipped():
                 timezone_netcdf='UTC',
                 file_ext='*.xml',
                 load_in_memory=True)
-            np.testing.assert_almost_equal(ds.ST.sum(), stsum, decimal=0)
+            np.testing.assert_almost_equal(ds.st.sum(), stsum, decimal=0)
             ds.close()
     pass
 
@@ -383,7 +383,7 @@ def test_read_long_silixa_files():
     filepath = data_dir_silixa_long
     ds = read_silixa_files(
         directory=filepath, timezone_netcdf='UTC', file_ext='*.xml')
-    np.testing.assert_almost_equal(ds.ST.sum(), 133223729.17096, decimal=0)
+    np.testing.assert_almost_equal(ds.st.sum(), 133223729.17096, decimal=0)
     pass
 
 
@@ -396,7 +396,7 @@ def test_read_sensornet_files_single_ended():
         add_internal_fiber_length=50.,
         fiber_length=None,
         file_ext='*.ddf')
-    np.testing.assert_almost_equal(ds.ST.sum(), 2955105.679, decimal=2)
+    np.testing.assert_almost_equal(ds.st.sum(), 2955105.679, decimal=2)
     pass
 
 
@@ -410,7 +410,7 @@ def test_read_sensornet_halo_files_double_ended():
         fiber_length=1253.3,
         file_ext='*.ddf')
 
-    np.testing.assert_almost_equal(ds.ST.sum(), 2835988.114, decimal=2)
+    np.testing.assert_almost_equal(ds.st.sum(), 2835988.114, decimal=2)
     pass
 
 
@@ -424,8 +424,8 @@ def test_read_sensornet_oryx_files_double_ended():
         fiber_length=187.,
         file_ext='*.ddf')
 
-    np.testing.assert_almost_equal(ds.ST.sum(), 2301637.154, decimal=2)
-    np.testing.assert_almost_equal(ds['REV-ST'].sum(), 1835770.651, decimal=2)
+    np.testing.assert_almost_equal(ds.st.sum(), 2301637.154, decimal=2)
+    np.testing.assert_almost_equal(ds.rst.sum(), 1835770.651, decimal=2)
     pass
 
 
@@ -436,7 +436,7 @@ def test_read_apsensing_files():
         timezone_netcdf='UTC',
         timezone_input_files='UTC',
         file_ext='*.xml')
-    np.testing.assert_almost_equal(ds.ST.sum(), 10415.2837, decimal=2)
+    np.testing.assert_almost_equal(ds.st.sum(), 10415.2837, decimal=2)
     pass
 
 
@@ -449,7 +449,7 @@ def test_read_apsensing_files_loadinmemory():
         timezone_netcdf='UTC',
         file_ext='*.xml',
         load_in_memory=False)
-    for k in ['ST', 'AST']:
+    for k in ['st', 'ast']:
         assert isinstance(ds[k].data, da.Array)
 
     # auto -> True Because small amount of data
@@ -458,7 +458,7 @@ def test_read_apsensing_files_loadinmemory():
         timezone_netcdf='UTC',
         file_ext='*.xml',
         load_in_memory='auto')
-    for k in ['ST', 'AST']:
+    for k in ['st', 'ast']:
         assert isinstance(ds[k].data, np.ndarray)
 
     # True
@@ -467,7 +467,7 @@ def test_read_apsensing_files_loadinmemory():
         timezone_netcdf='UTC',
         file_ext='*.xml',
         load_in_memory=True)
-    for k in ['ST', 'AST']:
+    for k in ['st', 'ast']:
         assert isinstance(ds[k].data, np.ndarray)
 
     pass
@@ -478,7 +478,7 @@ def test_read_sensortran_files():
     ds = read_sensortran_files(
         directory=filepath,
         timezone_netcdf='UTC')
-    np.testing.assert_approx_equal(ds.ST.values.astype(np.int64).sum(),
+    np.testing.assert_approx_equal(ds.st.values.astype(np.int64).sum(),
                                    np.int64(1432441254828),
                                    significant=12)
     pass
@@ -502,14 +502,14 @@ def test_to_mf_netcdf_open_mf_datastore():
         ds1 = ds1.chunk({'time': 1})
         ds1.to_mf_netcdf(folder_path=tmpdirname, filename_preamble='file_',
                          filename_extension='.nc')
-        correct_val = float(ds1.ST.sum())
+        correct_val = float(ds1.st.sum())
         ds1.close()
         time.sleep(2)  # to ensure all is written on Windows and file released
 
         # Test loading
         path = os.path.join(tmpdirname, 'file_*.nc')
         ds2 = open_mf_datastore(path=path, load_in_memory=True)
-        test_val = float(ds1.ST.sum())
+        test_val = float(ds1.st.sum())
 
         np.testing.assert_equal(correct_val, test_val)
         ds2.close()
@@ -560,7 +560,7 @@ def test_resample_datastore():
     ds_resampled = ds.resample_datastore(how='mean', time="47S")
 
     assert ds_resampled.time.size == 2
-    assert ds_resampled.ST.dims == ('x', 'time'), 'The dimension have to ' \
+    assert ds_resampled.st.dims == ('x', 'time'), 'The dimension have to ' \
                                                   'be manually transposed ' \
                                                   'after resampling. To ' \
                                                   'guarantee the order'
@@ -641,8 +641,8 @@ def test_merge_double_ended():
                             cable_length=cable_length,
                             plot_result=True)
 
-    result = (ds.isel(time=0).ST -
-              ds.isel(time=0)['REV-ST']).sum().values
+    result = (ds.isel(time=0).st -
+              ds.isel(time=0).rst).sum().values
 
     np.testing.assert_approx_equal(result,
                                    -3712866.0382,

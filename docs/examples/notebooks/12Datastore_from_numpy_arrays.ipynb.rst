@@ -12,7 +12,7 @@ library in your current routine.
     import os
     import matplotlib.pyplot as plt
     import xarray as xr
-    
+
     from dtscalibration import DataStore, read_silixa_files
 
 
@@ -37,7 +37,7 @@ Let’s grab the data from an existing silixa dataset:
 .. code:: ipython3
 
     filepath = os.path.join('..', '..', 'tests', 'data', 'single_ended')
-    
+
     ds_silixa = read_silixa_files(directory=filepath,
                                   silent=True)
 
@@ -50,8 +50,8 @@ Let’s start with the most basic data:
 
     x = ds_silixa.x.values
     time = ds_silixa.time.values
-    ST = ds_silixa.ST.values
-    AST = ds_silixa.AST.values
+    ST = ds_silixa.st.values
+    AST = ds_silixa.ast.values
 
 Now this data has to be inserted into an xarray ``Dataset``
 
@@ -60,8 +60,8 @@ Now this data has to be inserted into an xarray ``Dataset``
     ds = xr.Dataset()
     ds['x'] = ('x', x)
     ds['time'] = ('time', time)
-    ds['ST'] = (['x', 'time'], ST)
-    ds['AST'] = (['x', 'time'], AST)
+    ds['st'] = (['x', 'time'], ST)
+    ds['ast'] = (['x', 'time'], AST)
 
 .. code:: ipython3
 
@@ -99,7 +99,7 @@ We’ll put these into the custom ``DataStore``:
     ds['acquisitiontimeFW'] = ds_silixa['acquisitiontimeFW'].values
     ds['temp1'] = ds_silixa['probe1Temperature']
     ds['temp2'] = ds_silixa['probe2Temperature']
-    
+
     ds.attrs['isDoubleEnded'] = '0'
 
 Now we can calibrate the data as usual (ordinary least squares in this
@@ -113,12 +113,12 @@ example).
                 'temp2':    [slice(5.5, 15.5)],  # cold bath
                 }
     ds.sections = sections
-    
-    ds.calibration_single_ended(st_label='ST',
-                                ast_label='AST',
+
+    ds.calibration_single_ended(st_label='st',
+                                ast_label='ast',
                                 method='ols')
-    
-    ds.isel(time=0).TMPF.plot()
+
+    ds.isel(time=0).tmpf.plot()
 
 
 .. parsed-literal::

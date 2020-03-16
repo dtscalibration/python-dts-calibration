@@ -31,7 +31,7 @@ measurements. Do this before the calibration steps.
 .. code:: ipython3
 
     filepath = os.path.join('..', '..', 'tests', 'data', 'double_ended2')
-    
+
     ds_aligned = read_silixa_files(
         directory=filepath,
         timezone_netcdf='UTC',
@@ -57,7 +57,7 @@ offsetting the forward and backward channel by 3 \`spacial indices’.
 
 .. parsed-literal::
 
-    I dont know what to do with the following data ['TMP']
+    I dont know what to do with the following data ['tmp']
 
 
 The device-calibrated temperature doesnot have a valid meaning anymore
@@ -66,9 +66,9 @@ and is dropped
 .. code:: ipython3
 
     suggested_shift = suggest_cable_shift_double_ended(
-        ds_notaligned, 
-        np.arange(-5, 5), 
-        plot_result=True, 
+        ds_notaligned,
+        np.arange(-5, 5),
+        plot_result=True,
         figsize=(12,8))
 
 
@@ -106,9 +106,9 @@ which suggestion to follow. Usually the two suggested shift are close
         name:              distance
         description:       Length along fiber
         long_description:  Starting at connector of forward channel
-        units:             m 
-    
-    
+        units:             m
+
+
      <xarray.DataArray 'x' (x: 1687)>
     array([-80.123 , -79.9959, -79.8688, ..., 133.913 , 134.04  , 134.167 ])
     Coordinates:

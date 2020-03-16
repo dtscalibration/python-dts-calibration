@@ -29,12 +29,12 @@ We load in both channels into seperate datastores
 
     filepath_ch1 = os.path.join('..', '..', 'tests', 'data', 'double_single_ended', 'channel_1')
     filepath_ch2 = os.path.join('..', '..', 'tests', 'data', 'double_single_ended', 'channel_2')
-    
+
     ds_ch1 = read_silixa_files(
         directory=filepath_ch1,
         timezone_netcdf='UTC',
         file_ext='*.xml')
-    
+
     ds_ch2 = read_silixa_files(
         directory=filepath_ch2,
         timezone_netcdf='UTC',
@@ -60,8 +60,8 @@ is a duplex measurement.
 
 .. code:: ipython3
 
-    ds_ch1.isel(time=0).ST.plot(label='ST ch1', lw=2)
-    ds_ch2.isel(time=0).ST.plot(label='ST ch2')
+    ds_ch1.isel(time=0).st.plot(label='ST ch1', lw=2)
+    ds_ch2.isel(time=0).st.plot(label='ST ch2')
     plt.legend()
 
 
@@ -89,13 +89,13 @@ the utilify function *merge_double_ended*
 .. code:: ipython3
 
     cable_length = 2017.7
-    
+
     ds = merge_double_ended(ds_fw = ds_ch1,
                             ds_bw = ds_ch2,
                             cable_length = cable_length,
                             plot_result = False)
-    
-    print((ds.isel(time=0).ST - ds.isel(time=0)['REV-ST']).sum().values)
+
+    print((ds.isel(time=0).st - ds.isel(time=0).rst).sum().values)
 
 
 .. parsed-literal::
@@ -112,18 +112,18 @@ It turns out we were off by 3 datapoints, so let’s shift it by that.
 .. code:: ipython3
 
     ds = ds.sel(x=slice(-10, cable_length + 10))
-    
+
     shift1, shift2 = suggest_cable_shift_double_ended(ds.isel(time=[0,-1]).compute(),
                                                       np.arange(-10, 10, 1, dtype=int))
-    
+
     ds = shift_double_ended(ds, shift1)
 
 
 .. parsed-literal::
 
-    I dont know what to do with the following data ['TMP']
-    I dont know what to do with the following data ['TMP']
-    I dont know what to do with the following data ['TMP']
+    I dont know what to do with the following data ['tmp']
+    I dont know what to do with the following data ['tmp']
+    I dont know what to do with the following data ['tmp']
 
 
 
