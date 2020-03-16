@@ -1477,12 +1477,15 @@ class DataStore(xr.Dataset):
             assert ta_dim not in self.coords, err
             self.coords[ta_dim] = transient_att_x
 
+        ix_sec = self.ufunc_per_section(x_indices=True, calc_per='all')
         assert not np.any(
-            self[st_label] <= 0.), \
-            'There is uncontrolled noise in the ST signal'
+            self[st_label].isel(x=ix_sec) <= 0.), \
+            'There is uncontrolled noise in the ST signal. Are your sections' \
+            'correctly defined?'
         assert not np.any(
-            self[ast_label] <= 0.), \
-            'There is uncontrolled noise in the AST signal'
+            self[ast_label].isel(x=ix_sec) <= 0.), \
+            'There is uncontrolled noise in the AST signal. Are your sections' \
+            'correctly defined?'
 
         if method == 'ols' or method == 'wls':
             if method == 'ols':
@@ -1912,6 +1915,23 @@ class DataStore(xr.Dataset):
 
         check_dims(self, [st_label, ast_label, rst_label, rast_label],
                    correct_dims=(x_dim, time_dim))
+
+        assert not np.any(
+            self[st_label].isel(x=ix_sec) <= 0.), \
+            'There is uncontrolled noise in the ST signal. Are your sections' \
+            'correctly defined?'
+        assert not np.any(
+            self[ast_label].isel(x=ix_sec) <= 0.), \
+            'There is uncontrolled noise in the AST signal. Are your sections' \
+            'correctly defined?'
+        assert not np.any(
+            self[rst_label].isel(x=ix_sec) <= 0.), \
+            'There is uncontrolled noise in the REV-ST signal. Are your ' \
+            'sections correctly defined?'
+        assert not np.any(
+            self[rast_label].isel(x=ix_sec) <= 0.), \
+            'There is uncontrolled noise in the REV-AST signal. Are your ' \
+            'sections correctly defined?'
 
         if np.any(matching_indices):
             assert not matching_sections, \
