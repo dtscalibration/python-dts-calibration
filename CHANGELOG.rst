@@ -1,6 +1,15 @@
 
 Changelog
 =========
+0.9.0 (2020-03-16)
+------------------
+* Increased precision of least squares solver, as this was limiting theprecision of the parameter estimation
+* The variance of the noise in the Stokes can change linear with the intensity
+* Improved residuals plot function
+* Reduced the number of equations for double ended calibration
+* Support for transient attenuation due to connectors along fibers
+* Matching sections
+
 0.8.0 (2020-02-14)
 ------------------
 * Valentine edition
