@@ -2928,6 +2928,12 @@ class DataStore(xr.Dataset):
             a string that is appended to the store_tmp_ keys. and the
             variance is calculated
             for those store_tmp_ keys
+        store_ta : str
+            Key of how transient attenuation parameters are stored. Default
+            is `talpha`. `_fw` and `_bw` is appended to for the forward and
+            backward parameters. The `transient_asym_att_x` is derived from
+            the `coords` of this DataArray. The `coords` of `ds[store_ta +
+            '_fw']` should be ('time', 'trans_att').
         conf_ints : iterable object of float
             A list with the confidence boundaries that are calculated. Valid
             values are between
@@ -3053,7 +3059,9 @@ class DataStore(xr.Dataset):
         assert isinstance(p_val, (str, np.ndarray, np.generic))
         if isinstance(p_val, str):
             p_val = self[p_val].values
-        assert p_val.shape == (npar,)
+        assert p_val.shape == (npar,), "Did you set `store_ta='talpha'` as " \
+                                       "keyword argument of the " \
+                                       "conf_int_double_ended() function?"
 
         assert isinstance(p_cov, (str, np.ndarray, np.generic, bool))
 
@@ -3160,7 +3168,6 @@ class DataStore(xr.Dataset):
                                      dtype=float)
                 for tai, taxi in zip(ta_bw.swapaxes(0, 2), self.coords[
                       ta_dim].values):  # iterate over the splices
-
                     i_splice = sum(self[x_dim].values < taxi)
                     mask = create_da_ta2(
                         no, i_splice, direction='bw', chunks=memchunk)
