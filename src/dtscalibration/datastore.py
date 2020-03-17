@@ -786,6 +786,64 @@ class DataStore(xr.Dataset):
         xis = self.x.astype(int) * 0 + np.arange(self.x.size, dtype=int)
         return xis.sel(x=sec).values
 
+    def check_deprecated_kwargs(self, kwargs):
+        msg = """Previously, it was possible to manually set the label from
+        which the Stokes and anti-Stokes were read within the DataStore
+        object. To reduce the clutter in the code base and be able to
+        maintain it, this option was removed.
+        See: https://github.com/dtscalibration/python-dts-calibration/issues/81
+
+        The new **fixed** names are: st, ast, rst, rast.
+
+        It is still possible to use the previous defaults, for example when
+        reading stored measurements from netCDF, by renaming the labels. The
+        old default labels were ST, AST, REV-ST, REV-AST.
+
+        ```
+        ds = open_datastore(path_to_old_file)
+        ds = ds.rename_labels()
+        ds.calibration_double_ended(
+            st_var=1.5,
+            ast_var=1.5,
+            rst_var=1.,
+            rast_var=1.,
+            method='wls')
+        ```
+
+        ds.tmpw.plot()
+        """
+        list_of_depr = ['st_label', 'ast_label', 'rst_label', 'rast_label']
+        for k in kwargs:
+            if k in list_of_depr:
+                raise NotImplementedError(msg)
+
+        if len(kwargs) != 0:
+            raise NotImplementedError('The following keywords are not ' +
+                                      'supported: ' + ', '.join(kwargs.keys()))
+
+        pass
+
+    def rename_labels(self):
+        re_dict = {
+            'ST': 'st',
+            'AST': 'ast',
+            'REV-ST': 'rst',
+            'REV-AST': 'rast',
+            'TMP': 'tmp',
+            'TMPF': 'tmpf',
+            'TMPB': 'tmpb',
+            'TMPW': 'tmpw'}
+
+        re_dict2 = {k: v for k, v in re_dict.items() if k in self.data_vars}
+
+        for k, v in re_dict2.items():
+            assert v not in self.data_vars, ('Unable to rename the st_labels '
+                                             'automagically. Please manually '
+                                             'rename ST->st and REV-ST->rst.'
+                                             'The parameter ' + v + ' is '
+                                             'already present')
+        return self.rename(re_dict2)
+
     def variance_stokes(self, *args, **kwargs):
         """Backwards compatibility
 
@@ -1333,7 +1391,8 @@ class DataStore(xr.Dataset):
             matching_sections=None,
             transient_att_x=None,
             fix_gamma=None,
-            fix_dalpha=None):
+            fix_dalpha=None,
+            **kwargs):
         """
 
         Parameters
@@ -1407,6 +1466,7 @@ class DataStore(xr.Dataset):
         -------
 
         """
+        self.check_deprecated_kwargs(kwargs)
 
         if sections:
             self.sections = sections
@@ -1746,7 +1806,8 @@ class DataStore(xr.Dataset):
             fix_alpha=None,
             matching_sections=None,
             matching_indices=None,
-            verbose=False):
+            verbose=False,
+            **kwargs):
         """
 
         Parameters
@@ -1843,6 +1904,7 @@ class DataStore(xr.Dataset):
         -------
 
         """
+        self.check_deprecated_kwargs(kwargs)
 
         if sections:
             self.sections = sections
@@ -2580,7 +2642,8 @@ class DataStore(xr.Dataset):
             ci_avg_x_flag=False,
             da_random_state=None,
             remove_mc_set_flag=True,
-            reduce_memory_usage=False):
+            reduce_memory_usage=False,
+            **kwargs):
         """
 
         Parameters
@@ -2635,6 +2698,7 @@ class DataStore(xr.Dataset):
         reduce_memory_usage : bool
             Use less memory but at the expense of longer computation time
         """
+        self.check_deprecated_kwargs(kwargs)
 
         assert conf_ints
 
@@ -2821,7 +2885,8 @@ class DataStore(xr.Dataset):
             var_only_sections=False,
             da_random_state=None,
             remove_mc_set_flag=True,
-            reduce_memory_usage=False):
+            reduce_memory_usage=False,
+            **kwargs):
         """
 
         Parameters
@@ -2941,6 +3006,8 @@ class DataStore(xr.Dataset):
                          dtype=bool)),
                     axis=1).rechunk((1, chunks[1], 1))
             return arr
+
+        self.check_deprecated_kwargs(kwargs)
 
         if da_random_state:
             # In testing environments
@@ -3686,6 +3753,9 @@ def open_datastore(
             attrs=ds_xr.attrs,
             **ds_kwargs)
 
+        # to support deprecated st_labels
+        ds = ds.rename_labels()
+
         if load_in_memory:
             if "cache" in kwargs:
                 raise TypeError("cache has no effect in this context")
@@ -3724,6 +3794,9 @@ def open_mf_datastore(path, combine='by_coords', load_in_memory=False,
             data_vars=xds.data_vars,
             coords=xds.coords,
             attrs=xds.attrs)
+
+        # to support deprecated st_labels
+        ds = ds.rename_labels()
 
         if load_in_memory:
             if "cache" in kwargs:
