@@ -34,7 +34,7 @@ def get_authors(file='AUTHORS.rst'):
 
 setup(
     name='dtscalibration',
-    version='0.9.1',
+    version='0.9.2',
     license='BSD 3-Clause License',
     description='A Python package to load raw DTS files, perform a calibration, and plot the '
                 'result',
