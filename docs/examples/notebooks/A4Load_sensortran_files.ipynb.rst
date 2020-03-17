@@ -12,7 +12,7 @@ requires the ``*BinaryRawDTS.dat`` and ``*BinaryTemp.dat`` files.
     import matplotlib.pyplot as plt
     from pandas.plotting import register_matplotlib_converters
     register_matplotlib_converters()
-        
+
     from dtscalibration import read_sensortran_files
 
 
@@ -40,7 +40,7 @@ The example data files are located in
 
     filepathlist = sorted(glob.glob(os.path.join(filepath, '*.dat')))
     filenamelist = [os.path.basename(path) for path in filepathlist]
-    
+
     for fn in filenamelist:
         print(fn)
 
@@ -113,7 +113,7 @@ time is needed for estimating variances, and is set a constant 1s.
         channel_id:                  1
         num_subtraces:               354
         num_skipped:                 0
-    
+
     .. and many more attributes. See: ds.attrs
 
 
@@ -130,9 +130,9 @@ incorporated into the calibration routine.
 .. code:: ipython3
 
     ds0 = ds.isel(time=0)
-    
+
     plt.figure()
-    ds0.ST.plot(label='Stokes signal')
+    ds0.st.plot(label='Stokes signal')
     plt.axhline(ds0.ST_zero.values, c='r', label="'zero' measurement")
     plt.legend()
     plt.title('')
@@ -152,13 +152,13 @@ look more like other manufacturer’s devices
 
 .. code:: ipython3
 
-    ds['ST'] = (ds.ST - ds.ST_zero)/1e4
-    ds['AST'] = (ds.AST - ds.AST_zero)/1e4
+    ds['st'] = (ds.ST - ds.ST_zero)/1e4
+    ds['ast'] = (ds.ast - ds.ast_zero)/1e4
 
 .. code:: ipython3
 
-    ds.isel(time=0).ST.plot(label='Stokes intensity')
-    ds.isel(time=0).AST.plot(label='anti-Stokes intensity')
+    ds.isel(time=0).st.plot(label='Stokes intensity')
+    ds.isel(time=0).ast.plot(label='anti-Stokes intensity')
     plt.legend()
     plt.axhline(c='k', lw=1)
     plt.xlabel('')

@@ -27,7 +27,7 @@ estimated temperature via Monte Carlo.
 .. code:: ipython3
 
     import os
-    
+
     from dtscalibration import read_silixa_files
     import matplotlib.pyplot as plt
     %matplotlib inline
@@ -42,12 +42,12 @@ estimated temperature via Monte Carlo.
 .. code:: ipython3
 
     filepath = os.path.join('..', '..', 'tests', 'data', 'double_ended2')
-    
+
     ds_ = read_silixa_files(
         directory=filepath,
         timezone_netcdf='UTC',
         file_ext='*.xml')
-    
+
     ds = ds_.sel(x=slice(0, 100))  # only calibrate parts of the fiber
     sections = {
         'probe1Temperature': [slice(7.5, 17.), slice(70., 80.)],  # cold bath
@@ -67,10 +67,10 @@ estimated temperature via Monte Carlo.
 
 .. code:: ipython3
 
-    st_label = 'ST'
-    ast_label = 'AST'
-    rst_label = 'REV-ST'
-    rast_label = 'REV-AST'
+    st_label = 'st'
+    ast_label = 'ast'
+    rst_label = 'rst'
+    rast_label = 'rast'
 
 First calculate the variance in the measured Stokes and anti-Stokes
 signals, in the forward and backward direction.
@@ -114,13 +114,13 @@ solver because it saves us memory.
         ast_var=ast_var,
         rst_var=rst_var,
         rast_var=rast_var,
-        store_tmpw='TMPW',
+        store_tmpw='tmpw',
         method='wls',
         solver='sparse')
 
 .. code:: ipython3
 
-    ds.TMPW.plot()
+    ds.tmpw.plot()
 
 
 
@@ -173,9 +173,9 @@ background temperature with a confidence interval.
         ast_var=ast_var,
         rst_var=rst_var,
         rast_var=rast_var,
-        store_tmpf='TMPF',
-        store_tmpb='TMPB',
-        store_tmpw='TMPW',
+        store_tmpf='tmpf',
+        store_tmpb='tmpb',
+        store_tmpw='tmpw',
         store_tempvar='_var',
         conf_ints=[2.5, 50., 97.5],
         mc_sample_size=500,  # <- choose a much larger sample size
@@ -184,9 +184,9 @@ background temperature with a confidence interval.
 .. code:: ipython3
 
     ds1 = ds.isel(time=-1)  # take only the first timestep
-    ds1.TMPW.plot(linewidth=0.7, figsize=(12, 8))
-    ds1.TMPW_MC.isel(CI=0).plot(linewidth=0.7, label='CI: 2.5%')
-    ds1.TMPW_MC.isel(CI=2).plot(linewidth=0.7, label='CI: 97.5%')
+    ds1.tmpw.plot(linewidth=0.7, figsize=(12, 8))
+    ds1.tmpw_mc.isel(CI=0).plot(linewidth=0.7, label='CI: 2.5%')
+    ds1.tmpw_mc.isel(CI=2).plot(linewidth=0.7, label='CI: 97.5%')
     plt.legend();
 
 
@@ -194,13 +194,13 @@ background temperature with a confidence interval.
 .. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_15_0.png
 
 
-The DataArrays ``TMPF_MC`` and ``TMPB_MC`` and the dimension ``CI`` are
+The DataArrays ``tmpf_mc`` and ``tmpb_mc`` and the dimension ``CI`` are
 added. ``MC`` stands for monte carlo and the ``CI`` dimension holds the
 confidence interval ‘coordinates’.
 
 .. code:: ipython3
 
-    (ds1.TMPW_MC_var**0.5).plot(figsize=(12, 4));
+    (ds1.tmpw_mc_var**0.5).plot(figsize=(12, 4));
     plt.ylabel('$\sigma$ ($^\circ$C)');
 
 
@@ -240,17 +240,17 @@ confidence interval ‘coordinates’.
         alpha_var              (x) float64 2.611e-07 2.691e-07 ... 2.712e-07
         df_var                 (time) float64 5.256e-07 5.256e-07 ... 5.256e-07
         db_var                 (time) float64 5.267e-07 5.267e-07 ... 5.268e-07
-        TMPF                   (x, time) float64 16.79 17.01 16.29 ... 13.57 13.74
-        TMPB                   (x, time) float64 16.81 16.86 16.91 ... 13.67 13.71
-        TMPF_MC_var            (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
-        TMPB_MC_var            (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
-        TMPW                   (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
-        TMPW_MC_var            (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
+        tmpf                   (x, time) float64 16.79 17.01 16.29 ... 13.57 13.74
+        tmpb                   (x, time) float64 16.81 16.86 16.91 ... 13.67 13.71
+        tmpf_mc_var            (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
+        tmpb_mc_var            (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
+        tmpw                   (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
+        tmpw_mc_var            (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
         p_val                  (params1) float64 482.6 1.465 ... -0.005343 -0.005238
         p_cov                  (params1, params2) float64 0.03742 ... 2.712e-07
-        TMPF_MC                (CI, x, time) float64 dask.array<chunksize=(3, 787, 6), meta=np.ndarray>
-        TMPB_MC                (CI, x, time) float64 dask.array<chunksize=(3, 787, 6), meta=np.ndarray>
-        TMPW_MC                (CI, x, time) float64 dask.array<chunksize=(3, 787, 6), meta=np.ndarray>
+        tmpf_mc                (CI, x, time) float64 dask.array<chunksize=(3, 787, 6), meta=np.ndarray>
+        tmpb_mc                (CI, x, time) float64 dask.array<chunksize=(3, 787, 6), meta=np.ndarray>
+        tmpw_mc                (CI, x, time) float64 dask.array<chunksize=(3, 787, 6), meta=np.ndarray>
 
 
 

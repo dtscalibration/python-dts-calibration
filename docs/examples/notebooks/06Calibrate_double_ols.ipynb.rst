@@ -13,7 +13,7 @@ channel should be aligned.
 .. code:: ipython3
 
     import os
-    
+
     from dtscalibration import read_silixa_files
     import matplotlib.pyplot as plt
     %matplotlib inline
@@ -28,12 +28,12 @@ channel should be aligned.
 .. code:: ipython3
 
     filepath = os.path.join('..', '..', 'tests', 'data', 'double_ended2')
-    
+
     ds = read_silixa_files(
         directory=filepath,
         timezone_netcdf='UTC',
         file_ext='*.xml')
-    
+
     ds100 = ds.sel(x=slice(0, 100))  # only calibrate parts of the fiber
     sections = {
         'probe1Temperature': [slice(7.5, 17.), slice(70., 80.)],  # cold bath
@@ -57,8 +57,8 @@ channel should be aligned.
 
 .. parsed-literal::
 
-    
-    
+
+
             Parameters
             ----------
             store_p_cov : str
@@ -149,20 +149,20 @@ channel should be aligned.
                 has three items. The first two items are the slices of the sections
                 that are matched. The third item is a boolean and is True if the two
                 sections have a reverse direction ("J-configuration").
-    
-    
+
+
             Returns
             -------
-    
-            
+
+
 
 
 .. code:: ipython3
 
-    st_label = 'ST'
-    ast_label = 'AST'
-    rst_label = 'REV-ST'
-    rast_label = 'REV-AST'
+    st_label = 'st'
+    ast_label = 'ast'
+    rst_label = 'rst'
+    rast_label = 'rast'
     ds100.calibration_double_ended(sections=sections,
                                    st_label=st_label,
                                    ast_label=ast_label,
@@ -171,8 +171,8 @@ channel should be aligned.
                                    method='ols')
 
 After calibration, two data variables are added to the ``DataStore``
-object: - ``TMPF``, temperature calculated along the forward direction -
-``TMPB``, temperature calculated along the backward direction
+object: - ``tmpf``, temperature calculated along the forward direction -
+``tmpb``, temperature calculated along the backward direction
 
 A better estimate, with a lower expected variance, of the temperature
 along the fiber is the average of the two. We cannot weigh on more than
@@ -181,10 +181,10 @@ the other, as we do not have more information about the weighing.
 .. code:: ipython3
 
     ds1 = ds100.isel(time=0)  # take only the first timestep
-    
-    ds1.TMPF.plot(linewidth=1, label='User cali. Forward', figsize=(12, 8))  # plot the temperature calibrated by us
-    ds1.TMPB.plot(linewidth=1, label='User cali. Backward')  # plot the temperature calibrated by us
-    ds1.TMP.plot(linewidth=1, label='Device calibrated')  # plot the temperature calibrated by the device
+
+    ds1.tmpf.plot(linewidth=1, label='User cali. Forward', figsize=(12, 8))  # plot the temperature calibrated by us
+    ds1.tmpb.plot(linewidth=1, label='User cali. Backward')  # plot the temperature calibrated by us
+    ds1.tmp.plot(linewidth=1, label='Device calibrated')  # plot the temperature calibrated by the device
     plt.legend();
 
 
@@ -198,9 +198,9 @@ first.
 
 .. code:: ipython3
 
-    ds1['TMPAVG'] = (ds1.TMPF + ds1.TMPB) / 2
+    ds1['TMPAVG'] = (ds1.tmpf + ds1.tmpb) / 2
     ds1_diff = ds1.TMP - ds1.TMPAVG
-    
+
     ds1_diff.plot(figsize=(12, 8));
 
 

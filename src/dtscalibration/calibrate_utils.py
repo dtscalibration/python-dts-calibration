@@ -6,8 +6,6 @@ from scipy.sparse import linalg as ln
 
 def calibration_single_ended_solver(
         ds,
-        st_label,
-        ast_label,
         st_var=None,
         ast_var=None,
         calc_cov=True,
@@ -19,8 +17,6 @@ def calibration_single_ended_solver(
     Parameters
     ----------
     ds : DataStore
-    st_label : str
-    ast_label : str
     st_var : float, array-like, optional
         If `None` use ols calibration. If `float` the variance of the noise
         from the Stokes detector is described with a single value. Or when the
@@ -78,7 +74,7 @@ def calibration_single_ended_solver(
 
     # X \gamma  # Eq.34
     cal_ref = ds.ufunc_per_section(
-        label=st_label, ref_temp_broadcasted=True, calc_per='all')
+        label='st', ref_temp_broadcasted=True, calc_per='all')
     cal_ref = cal_ref  # sort by increasing x
     data_gamma = 1 / (cal_ref.T.ravel() + 273.15)  # gamma
     coord_gamma_row = np.arange(nt * nx, dtype=int)
@@ -209,15 +205,15 @@ def calibration_single_ended_solver(
     ))
 
     # y, transpose the values to arrange them correctly
-    y = np.log(ds_sec[st_label] / ds_sec[ast_label]).values.T.ravel()
+    y = np.log(ds_sec.st / ds_sec.ast).values.T.ravel()
 
     if np.any(matching_indices):
         # y_m = I_1 - I_2
         y_m = (
             np.log(
-                ds_ms0[st_label].values / ds_ms0[ast_label].values)
+                ds_ms0.st.values / ds_ms0.ast.values)
             - np.log(
-                ds_ms1[st_label].values / ds_ms1[ast_label].values)
+                ds_ms1.st.values / ds_ms1.ast.values)
         ).T.ravel()
 
         y = np.hstack((y, y_m))
@@ -225,15 +221,15 @@ def calibration_single_ended_solver(
     # w
     if st_var is not None:
         w = 1 / (
-            ds_sec[st_label] ** -2 * st_var +
-            ds_sec[ast_label] ** -2 * ast_var).values.ravel()
+            ds_sec.st ** -2 * st_var +
+            ds_sec.ast ** -2 * ast_var).values.ravel()
 
         if np.any(matching_indices):
             w_ms = 1 / (
-                (ds_ms0[st_label].values ** -2 * st_var) +
-                (ds_ms0[ast_label].values ** -2 * ast_var) +
-                (ds_ms1[st_label].values ** -2 * st_var) +
-                (ds_ms1[ast_label].values ** -2 * ast_var)
+                (ds_ms0.st.values ** -2 * st_var) +
+                (ds_ms0.ast.values ** -2 * ast_var) +
+                (ds_ms1.st.values ** -2 * st_var) +
+                (ds_ms1.ast.values ** -2 * ast_var)
             ).ravel()
 
             w = np.hstack((w, w_ms))
@@ -281,10 +277,6 @@ def calibration_single_ended_solver(
 
 def calibration_double_ended_solver(
         ds,
-        st_label,
-        ast_label,
-        rst_label,
-        rast_label,
         st_var=None,
         ast_var=None,
         rst_var=None,
@@ -305,10 +297,6 @@ def calibration_double_ended_solver(
     Parameters
     ----------
     ds : DataStore
-    st_label : str
-    ast_label : str
-    rst_label : str
-    rast_label : str
     st_var : float, array-like, optional
         If `None` use ols calibration. If `float` the variance of the noise
         from the Stokes detector is described with a single value. Or when the
@@ -375,10 +363,6 @@ def calibration_double_ended_solver(
     E_all_guess, E_all_var_guess = calc_alpha_double(
         'guess',
         ds,
-        st_label,
-        ast_label,
-        rst_label,
-        rast_label,
         st_var,
         ast_var,
         rst_var,
@@ -386,45 +370,41 @@ def calibration_double_ended_solver(
         ix_alpha_is_zero=ix_alpha_is_zero)
     df_est, db_est = calc_df_db_double_est(
         ds,
-        st_label,
-        ast_label,
-        rst_label,
-        rast_label,
         ix_alpha_is_zero,
         485.)
 
     E, Z_D, Z_gamma, Zero_d, Z_TA_fw, Z_TA_bw, = \
-        construct_submatrices(nt, nx_sec, st_label, ds, transient_asym_att_x, x_sec)
+        construct_submatrices(nt, nx_sec, ds, transient_asym_att_x, x_sec)
 
     # y  # Eq.41--45
-    y_F = np.log(ds_sec[st_label] / ds_sec[ast_label]).values.ravel()
-    y_B = np.log(ds_sec[rst_label] / ds_sec[rast_label]).values.ravel()
+    y_F = np.log(ds_sec.st / ds_sec.ast).values.ravel()
+    y_B = np.log(ds_sec.rst / ds_sec.rast).values.ravel()
 
     # w
     if st_var is not None:  # WLS
         if callable(st_var):
-            st_var_sec = st_var(ds_sec[st_label])
+            st_var_sec = st_var(ds_sec.st)
         else:
             st_var_sec = np.asarray(st_var)
         if callable(ast_var):
-            ast_var_sec = ast_var(ds_sec[ast_label])
+            ast_var_sec = ast_var(ds_sec.ast)
         else:
             ast_var_sec = np.asarray(ast_var)
         if callable(rst_var):
-            rst_var_sec = rst_var(ds_sec[rst_label])
+            rst_var_sec = rst_var(ds_sec.rst)
         else:
             rst_var_sec = np.asarray(rst_var)
         if callable(rast_var):
-            rast_var_sec = rast_var(ds_sec[rast_label])
+            rast_var_sec = rast_var(ds_sec.rast)
         else:
             rast_var_sec = np.asarray(rast_var)
 
         w_F = 1 / (
-            ds_sec[st_label] ** -2 * st_var_sec +
-            ds_sec[ast_label] ** -2 * ast_var_sec).values.ravel()
+            ds_sec.st ** -2 * st_var_sec +
+            ds_sec.ast ** -2 * ast_var_sec).values.ravel()
         w_B = 1 / (
-            ds_sec[rst_label] ** -2 * rst_var_sec +
-            ds_sec[rast_label] ** -2 * rast_var_sec).values.ravel()
+            ds_sec.rst ** -2 * rst_var_sec +
+            ds_sec.rast ** -2 * rast_var_sec).values.ravel()
 
     else:  # OLS
         w_F = np.ones(nt * nx_sec)
@@ -482,73 +462,73 @@ def calibration_double_ended_solver(
              sp.hstack((Zero_eq12_gamma, Zero_d_eq12, E_match_B, Z_TA_eq2)),
              sp.hstack((Zero_eq3_gamma, d_no_cal, E_match_no_cal, Z_TA_eq3))))
 
-        y_F = np.log(ds_sec[st_label] / ds_sec[ast_label]).values.ravel()
-        y_B = np.log(ds_sec[rst_label] / ds_sec[rast_label]).values.ravel()
+        y_F = np.log(ds_sec.st / ds_sec.ast).values.ravel()
+        y_B = np.log(ds_sec.rst / ds_sec.rast).values.ravel()
 
         hix = matching_indices[:, 0]
         tix = matching_indices[:, 1]
         ds_hix = ds.isel(x=hix)
         ds_tix = ds.isel(x=tix)
-        y_eq1 = (np.log(ds_hix[st_label] / ds_hix[ast_label]).values.ravel() -
-                 np.log(ds_tix[st_label] / ds_tix[ast_label]).values.ravel())
-        y_eq2 = (np.log(ds_hix[rst_label] / ds_hix[rast_label]).values.ravel() -
-                 np.log(ds_tix[rst_label] / ds_tix[rast_label]).values.ravel())
+        y_eq1 = (np.log(ds_hix.st / ds_hix.ast).values.ravel() -
+                 np.log(ds_tix.st / ds_tix.ast).values.ravel())
+        y_eq2 = (np.log(ds_hix.rst / ds_hix.rast).values.ravel() -
+                 np.log(ds_tix.rst / ds_tix.rast).values.ravel())
 
         ds_mnc = ds.isel(x=ix_match_not_cal)
-        y_eq3 = ((np.log(ds_mnc[rst_label] / ds_mnc[rast_label]) -
-                 np.log(ds_mnc[st_label] / ds_mnc[ast_label])) /
+        y_eq3 = ((np.log(ds_mnc.rst / ds_mnc.rast) -
+                 np.log(ds_mnc.st / ds_mnc.ast)) /
                  2).values.ravel()
 
         y = np.concatenate((y_F, y_B, y_eq1, y_eq2, y_eq3))
 
         if callable(st_var):
-            st_var_hix = st_var(ds_hix[st_label])
-            st_var_tix = st_var(ds_tix[st_label])
-            st_var_mnc = st_var(ds_mnc[st_label])
+            st_var_hix = st_var(ds_hix.st)
+            st_var_tix = st_var(ds_tix.st)
+            st_var_mnc = st_var(ds_mnc.st)
         else:
             st_var_hix = np.asarray(st_var)
             st_var_tix = np.asarray(st_var)
             st_var_mnc = np.asarray(st_var)
         if callable(ast_var):
-            ast_var_hix = ast_var(ds_hix[ast_label])
-            ast_var_tix = ast_var(ds_tix[ast_label])
-            ast_var_mnc = ast_var(ds_mnc[ast_label])
+            ast_var_hix = ast_var(ds_hix.ast)
+            ast_var_tix = ast_var(ds_tix.ast)
+            ast_var_mnc = ast_var(ds_mnc.ast)
         else:
             ast_var_hix = np.asarray(ast_var)
             ast_var_tix = np.asarray(ast_var)
             ast_var_mnc = np.asarray(ast_var)
         if callable(rst_var):
-            rst_var_hix = rst_var(ds_hix[rst_label])
-            rst_var_tix = rst_var(ds_tix[rst_label])
-            rst_var_mnc = rst_var(ds_mnc[rst_label])
+            rst_var_hix = rst_var(ds_hix.rst)
+            rst_var_tix = rst_var(ds_tix.rst)
+            rst_var_mnc = rst_var(ds_mnc.rst)
         else:
             rst_var_hix = np.asarray(rst_var)
             rst_var_tix = np.asarray(rst_var)
             rst_var_mnc = np.asarray(rst_var)
         if callable(rast_var):
-            rast_var_hix = rast_var(ds_hix[rast_label])
-            rast_var_tix = rast_var(ds_tix[rast_label])
-            rast_var_mnc = rast_var(ds_mnc[rast_label])
+            rast_var_hix = rast_var(ds_hix.rast)
+            rast_var_tix = rast_var(ds_tix.rast)
+            rast_var_mnc = rast_var(ds_mnc.rast)
         else:
             rast_var_hix = np.asarray(rast_var)
             rast_var_tix = np.asarray(rast_var)
             rast_var_mnc = np.asarray(rast_var)
 
         w_eq1 = 1 / (
-            (ds_hix[st_label] ** -2 * st_var_hix +
-             ds_hix[ast_label] ** -2 * ast_var_hix).values.ravel() +
-            (ds_tix[st_label] ** -2 * st_var_tix +
-             ds_tix[ast_label] ** -2 * ast_var_tix).values.ravel())
+            (ds_hix.st ** -2 * st_var_hix +
+             ds_hix.ast ** -2 * ast_var_hix).values.ravel() +
+            (ds_tix.st ** -2 * st_var_tix +
+             ds_tix.ast ** -2 * ast_var_tix).values.ravel())
         w_eq2 = 1 / (
-            (ds_hix[rst_label] ** -2 * rst_var_hix +
-             ds_hix[rast_label] ** -2 * rast_var_hix).values.ravel() +
-            (ds_tix[rst_label] ** -2 * rst_var_tix +
-             ds_tix[rast_label] ** -2 * rast_var_tix).values.ravel())
+            (ds_hix.rst ** -2 * rst_var_hix +
+             ds_hix.rast ** -2 * rast_var_hix).values.ravel() +
+            (ds_tix.rst ** -2 * rst_var_tix +
+             ds_tix.rast ** -2 * rast_var_tix).values.ravel())
         w_eq3 = 1 / (
-            ds_mnc[st_label] ** -2 * st_var_mnc +
-            ds_mnc[ast_label] ** -2 * ast_var_mnc +
-            ds_mnc[rst_label] ** -2 * rst_var_mnc +
-            ds_mnc[rast_label] ** -2 * rast_var_mnc).values.ravel()
+            ds_mnc.st ** -2 * st_var_mnc +
+            ds_mnc.ast ** -2 * ast_var_mnc +
+            ds_mnc.rst ** -2 * rst_var_mnc +
+            ds_mnc.rast ** -2 * rast_var_mnc).values.ravel()
 
         w = np.concatenate((w_F, w_B, w_eq1, w_eq2, w_eq3))
 
@@ -642,7 +622,7 @@ def calibration_double_ended_solver(
 
     # put E outside of reference section in solution
     # concatenating makes a copy of the data instead of using a pointer
-    ds_sub = ds[[st_label, ast_label, rst_label, rast_label]]
+    ds_sub = ds[['st', 'ast', 'rst', 'rast']]
     time_dim = ds_sub.get_time_dim()
     ds_sub['df'] = ((time_dim,), p_sol[1:1 + nt])
     ds_sub['df_var'] = ((time_dim,), p_var[1:1 + nt])
@@ -651,10 +631,6 @@ def calibration_double_ended_solver(
     E_all_exact, E_all_var_exact = calc_alpha_double(
         'exact',
         ds_sub,
-        st_label,
-        ast_label,
-        rst_label,
-        rast_label,
         st_var,
         ast_var,
         rst_var,
@@ -951,7 +927,7 @@ def construct_submatrices_matching_sections(
             Zero_eq12_gamma, Zero_eq3_gamma, Zero_d_eq12)
 
 
-def construct_submatrices(nt, nx, st_label, ds, transient_asym_att_x, x_sec):
+def construct_submatrices(nt, nx, ds, transient_asym_att_x, x_sec):
     """Wrapped in a function to reduce memory usage.
     E is zero at the first index of the reference section (ds_sec)
     Constructing:
@@ -969,7 +945,7 @@ def construct_submatrices(nt, nx, st_label, ds, transient_asym_att_x, x_sec):
 
     # Z \gamma  # Eq.47
     cal_ref = np.array(ds.ufunc_per_section(
-        label=st_label, ref_temp_broadcasted=True, calc_per='all'))
+        label='st', ref_temp_broadcasted=True, calc_per='all'))
     data_gamma = 1 / (cal_ref.ravel() + 273.15)  # gamma
     coord_gamma_row = np.arange(nt * nx, dtype=int)
     coord_gamma_col = np.zeros(nt * nx, dtype=int)
@@ -1219,10 +1195,6 @@ def wls_stats(X, y, w=1., calc_cov=False, x0=None, return_werr=False,
 def calc_alpha_double(
         mode,
         ds,
-        st_label,
-        ast_label,
-        rst_label,
-        rast_label,
         st_var=None,
         ast_var=None,
         rst_var=None,
@@ -1245,35 +1217,35 @@ def calc_alpha_double(
 
     if st_var is not None:
         if callable(st_var):
-            st_var_val = st_var(ds[st_label])
+            st_var_val = st_var(ds.st)
         else:
             st_var_val = np.asarray(st_var)
         if callable(ast_var):
-            ast_var_val = ast_var(ds[ast_label])
+            ast_var_val = ast_var(ds.ast)
         else:
             ast_var_val = np.asarray(ast_var)
         if callable(rst_var):
-            rst_var_val = rst_var(ds[rst_label])
+            rst_var_val = rst_var(ds.rst)
         else:
             rst_var_val = np.asarray(rst_var)
         if callable(rast_var):
-            rast_var_val = rast_var(ds[rast_label])
+            rast_var_val = rast_var(ds.rast)
         else:
             rast_var_val = np.asarray(rast_var)
 
         i_var_fw = ds.i_var(
             st_var_val,
             ast_var_val,
-            st_label=st_label,
-            ast_label=ast_label)
+            st_label='st',
+            ast_label='ast')
         i_var_bw = ds.i_var(
             rst_var_val,
             rast_var_val,
-            st_label=rst_label,
-            ast_label=rast_label)
+            st_label='rst',
+            ast_label='rast')
 
-        i_fw = np.log(ds[st_label] / ds[ast_label])
-        i_bw = np.log(ds[rst_label] / ds[rast_label])
+        i_fw = np.log(ds.st / ds.ast)
+        i_bw = np.log(ds.rst / ds.rast)
 
         if mode == 'guess':
             A_var = (i_var_fw + i_var_bw) / 2
@@ -1320,8 +1292,8 @@ def calc_alpha_double(
         E = (A / A_var).sum(dim=time_dim) * E_var
 
     else:
-        i_fw = np.log(ds[st_label] / ds[ast_label])
-        i_bw = np.log(ds[rst_label] / ds[rast_label])
+        i_fw = np.log(ds.st / ds.ast)
+        i_bw = np.log(ds.rst / ds.rast)
 
         if mode == 'guess':
             A = (i_bw - i_fw) / 2
@@ -1343,14 +1315,13 @@ def calc_alpha_double(
     return E, E_var
 
 
-def calc_df_db_double_est(ds, st_label, ast_label, rst_label, rast_label,
-                          ix_alpha_is_zero, gamma_est):
-    Ifwx0 = np.log(ds[st_label].isel(x=ix_alpha_is_zero) /
-                   ds[ast_label].isel(x=ix_alpha_is_zero)).values
-    Ibwx0 = np.log(ds[rst_label].isel(x=ix_alpha_is_zero) /
-                   ds[rast_label].isel(x=ix_alpha_is_zero)).values
+def calc_df_db_double_est(ds, ix_alpha_is_zero, gamma_est):
+    Ifwx0 = np.log(ds.st.isel(x=ix_alpha_is_zero) /
+                   ds.ast.isel(x=ix_alpha_is_zero)).values
+    Ibwx0 = np.log(ds.rst.isel(x=ix_alpha_is_zero) /
+                   ds.rast.isel(x=ix_alpha_is_zero)).values
     ref_temps_refs = ds.ufunc_per_section(
-        label=st_label,
+        label='st',
         ref_temp_broadcasted=True,
         calc_per='all')
     ix_sec = ds.ufunc_per_section(x_indices=True, calc_per='all')

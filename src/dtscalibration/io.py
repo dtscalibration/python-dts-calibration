@@ -15,18 +15,18 @@ _dim_attrs = {
             description='Length along fiber',
             long_description='Starting at connector of forward channel',
             units='m'),
-    ('TMP', 'temperature'):
+    ('tmp', 'temperature'):
         dict(
-            name='TMP',
+            name='tmp',
             description='Temperature calibrated by device',
             units='degC'),
-    ('ST',): dict(name='ST', description='Stokes intensity', units='-'),
-    ('AST',): dict(name='AST', description='anti-Stokes intensity', units='-'),
-    ('REV-ST',):
-        dict(name='REV-ST', description='reverse Stokes intensity', units='-'),
-    ('REV-AST',):
+    ('st',): dict(name='st', description='Stokes intensity', units='-'),
+    ('ast',): dict(name='ast', description='anti-Stokes intensity', units='-'),
+    ('rst',):
+        dict(name='rst', description='reverse Stokes intensity', units='-'),
+    ('rast',):
         dict(
-            name='REV-AST',
+            name='rast',
             description='reverse anti-Stokes intensity',
             units='-'),
     ('acquisitionTime',):
@@ -56,7 +56,7 @@ _dim_attrs = {
 dim_attrs = {k: v for kl, v in _dim_attrs.items() for k in kl}
 
 dim_attrs_apsensing = dict(dim_attrs)
-dim_attrs_apsensing['TEMP'] = dim_attrs_apsensing.pop('TMP')
+dim_attrs_apsensing['TEMP'] = dim_attrs_apsensing.pop('tmp')
 dim_attrs_apsensing['TEMP']['name'] = 'TEMP'
 dim_attrs_apsensing.pop('acquisitionTime')
 dim_attrs_apsensing.pop('userAcquisitionTimeFW')
@@ -148,6 +148,10 @@ def read_silixa_files_routine_v6(
     """
     import dask
     from xml.etree import ElementTree
+
+    # translate names
+    tld = {'ST': 'st', 'AST': 'ast', 'REV-ST': 'rst', 'REV-AST': 'rast',
+           'TMP': 'tmp'}
 
     # Open the first xml file using ET, get the name space and amount of data
 
@@ -292,10 +296,9 @@ def read_silixa_files_routine_v6(
     for name, data_arri in zip(data_item_names, data_arr):
         if name == 'LAF':
             continue
-
-        if name in dim_attrs:
-            data_vars[name] = (['x', 'time'], data_arri, dim_attrs[name])
-
+        if tld[name] in dim_attrs:
+            data_vars[tld[name]] = (['x', 'time'], data_arri,
+                                    dim_attrs[tld[name]])
         else:
             raise ValueError(
                 'Dont know what to do with the' +
@@ -441,6 +444,10 @@ def read_silixa_files_routine_v4(
     import dask
     from xml.etree import ElementTree
 
+    # translate names
+    tld = {'ST': 'st', 'AST': 'ast', 'REV-ST': 'rst', 'REV-AST': 'rast',
+           'TMP': 'tmp'}
+
     # Open the first xml file using ET, get the name space and amount of data
     xml_tree = ElementTree.parse(filepathlist[0])
     namespace = get_xml_namespace(xml_tree.getroot())
@@ -584,8 +591,9 @@ def read_silixa_files_routine_v4(
         if name == 'LAF':
             continue
 
-        if name in dim_attrs:
-            data_vars[name] = (['x', 'time'], data_arri, dim_attrs[name])
+        if tld[name] in dim_attrs:
+            data_vars[tld[name]] = (['x', 'time'], data_arri,
+                                    dim_attrs[tld[name]])
 
         else:
             raise ValueError(
@@ -818,13 +826,13 @@ def read_sensornet_files_routine_v3(
         acquisitiontimeFW[ii] = float(meta['forward acquisition time'])
         acquisitiontimeBW[ii] = float(meta['reverse acquisition time'])
 
-        ST[:, ii] = data['ST']
-        AST[:, ii] = data['AST']
-        TMP[:, ii] = data['TMP']
+        ST[:, ii] = data['st']
+        AST[:, ii] = data['ast']
+        TMP[:, ii] = data['tmp']
 
         if double_ended_flag:
-            REV_ST[:, ii] = data['REV-ST']
-            REV_AST[:, ii] = data['REV-AST']
+            REV_ST[:, ii] = data['rst']
+            REV_AST[:, ii] = data['rast']
 
     if fiber_length is None and double_ended_flag:
         fiber_length = np.max([0., xraw[-1] - add_internal_fiber_length])
@@ -883,9 +891,9 @@ def read_sensornet_files_routine_v3(
     AST = AST[fiber_start_index:fiber_end_index]
 
     data_vars = {
-        'ST': (['x', 'time'], ST, dim_attrs['ST']),
-        'AST': (['x', 'time'], AST, dim_attrs['AST']),
-        'TMP': (['x', 'time'], TMP, dim_attrs['TMP']),
+        'st': (['x', 'time'], ST, dim_attrs['st']),
+        'ast': (['x', 'time'], AST, dim_attrs['ast']),
+        'tmp': (['x', 'time'], TMP, dim_attrs['tmp']),
         'probe1Temperature':
             (
                 'time', probe1temperature, {
@@ -934,8 +942,8 @@ def read_sensornet_files_routine_v3(
             ('time', acquisitiontimeBW, dim_attrs['userAcquisitionTimeBW'])}
 
     if double_ended_flag:
-        data_vars['REV-ST'] = (['x', 'time'], REV_ST, dim_attrs['REV-ST'])
-        data_vars['REV-AST'] = (['x', 'time'], REV_AST, dim_attrs['REV-AST'])
+        data_vars['rst'] = (['x', 'time'], REV_ST, dim_attrs['rst'])
+        data_vars['rast'] = (['x', 'time'], REV_AST, dim_attrs['rast'])
 
     filenamelist = [os.path.split(f)[-1] for f in filepathlist]
 
@@ -1112,22 +1120,22 @@ def read_sensortran_files_routine(
 
         referenceTemperature[ii] = data_temp['reference_temperature']-273.15
 
-        ST[:, ii] = data_dts['ST'][:nx]
-        AST[:, ii] = data_dts['AST'][:nx]
+        ST[:, ii] = data_dts['st'][:nx]
+        AST[:, ii] = data_dts['ast'][:nx]
         # The TMP can vary by 1 or 2 datapoints, dynamically assign the values
-        TMP[:meta_temp['num_points'], ii] = data_temp['TMP'][:nx]
+        TMP[:meta_temp['num_points'], ii] = data_temp['tmp'][:nx]
 
         zero_index = (meta_dts['num_points']-nx) // 2
-        ST_zero[ii] = np.mean(data_dts['ST'][nx+zero_index:])
-        AST_zero[ii] = np.mean(data_dts['AST'][nx+zero_index:])
+        ST_zero[ii] = np.mean(data_dts['st'][nx+zero_index:])
+        AST_zero[ii] = np.mean(data_dts['ast'][nx+zero_index:])
 
     data_vars = {
-        'ST': (['x', 'time'], ST, dim_attrs['ST']),
-        'AST': (['x', 'time'], AST, dim_attrs['AST']),
-        'TMP':
+        'st': (['x', 'time'], ST, dim_attrs['st']),
+        'ast': (['x', 'time'], AST, dim_attrs['ast']),
+        'tmp':
             (
                 ['x', 'time'], TMP, {
-                    'name': 'TMP',
+                    'name': 'tmp',
                     'description': 'Temperature calibrated by device',
                     'units': meta_temp['y_units']}),
         'referenceTemperature':
@@ -1137,11 +1145,11 @@ def read_sensortran_files_routine(
                     'description': 'Internal reference '
                                    'temperature',
                     'units': 'degC'}),
-        'ST_zero': (['time'], ST_zero, {
+        'st_zero': (['time'], ST_zero, {
                     'name': 'ST_zero',
                     'description': 'Stokes zero count',
                     'units': meta_dts['y_units']}),
-        'AST_zero': (['time'], AST_zero, {
+        'ast_zero': (['time'], AST_zero, {
                     'name': 'AST_zero',
                     'description': 'anit-Stokes zero count',
                     'units': meta_dts['y_units']}),
@@ -1222,15 +1230,15 @@ def read_sensortran_single(fname):
             temperature = np.frombuffer(data_2,
                                         dtype=np.float32)
             data['x'] = distance
-            data['TMP'] = temperature
+            data['tmp'] = temperature
 
         if meta['survey_type'] == 2:
             ST = np.frombuffer(data_1,
                                dtype=np.int32)
             AST = np.frombuffer(data_2,
                                 dtype=np.int32)
-            data['ST'] = ST
-            data['AST'] = AST
+            data['st'] = ST
+            data['ast'] = AST
 
     x_units_map = {0: 'm', 1: 'ft', 2: 'n/a'}
     meta['x_units'] = x_units_map[meta['x_units']]
@@ -1264,6 +1272,10 @@ def read_apsensing_files_routine(
     """
     import dask
     from xml.etree import ElementTree
+
+    # translate names
+    tld = {'ST': 'st', 'AST': 'ast', 'REV-ST': 'rst', 'REV-AST': 'rast',
+           'TEMP': 'tmp'}
 
     # Open the first xml file using ET, get the name space and amount of data
     xml_tree = ElementTree.parse(filepathlist[0])
@@ -1368,11 +1380,14 @@ def read_apsensing_files_routine(
         if name == 'LAF':
             continue
 
-        if name in dim_attrs_apsensing:
-            data_vars[name] = (['x', 'time'],
-                               data_arri,
-                               dim_attrs_apsensing[name])
-
+        if tld[name] in dim_attrs_apsensing:
+            data_vars[tld[name]] = (['x', 'time'],
+                                    data_arri,
+                                    dim_attrs_apsensing[tld[name]])
+        elif name in dim_attrs_apsensing:
+            data_vars[tld[name]] = (['x', 'time'],
+                                    data_arri,
+                                    dim_attrs_apsensing[name])
         else:
             raise ValueError(
                 'Dont know what to do with the' +
@@ -1548,36 +1563,36 @@ def read_sensornet_single(filename):
         if meta['differential loss correction'] == 'single-ended':
             data = {
                 'x': np.zeros(datalength),
-                'TMP': np.zeros(datalength),
-                'ST': np.zeros(datalength),
-                'AST': np.zeros(datalength)}
+                'tmp': np.zeros(datalength),
+                'st': np.zeros(datalength),
+                'ast': np.zeros(datalength)}
 
             for ii in range(0, datalength):
                 fileline = fileobject.readline().replace(',', '.').split('\t')
 
                 data['x'][ii] = float(fileline[0])
-                data['TMP'][ii] = float(fileline[1])
-                data['ST'][ii] = float(fileline[2])
-                data['AST'][ii] = float(fileline[3])
+                data['tmp'][ii] = float(fileline[1])
+                data['st'][ii] = float(fileline[2])
+                data['ast'][ii] = float(fileline[3])
 
         elif meta['differential loss correction'] == 'combined':
             data = {
                 'x': np.zeros(datalength),
-                'TMP': np.zeros(datalength),
-                'ST': np.zeros(datalength),
-                'AST': np.zeros(datalength),
-                'REV-ST': np.zeros(datalength),
-                'REV-AST': np.zeros(datalength)}
+                'tmp': np.zeros(datalength),
+                'st': np.zeros(datalength),
+                'ast': np.zeros(datalength),
+                'rst': np.zeros(datalength),
+                'rast': np.zeros(datalength)}
 
             for ii in range(0, datalength):
                 fileline = fileobject.readline().replace(',', '.').split('\t')
 
                 data['x'][ii] = float(fileline[0])
-                data['TMP'][ii] = float(fileline[1])
-                data['ST'][ii] = float(fileline[2])
-                data['AST'][ii] = float(fileline[3])
-                data['REV-ST'][ii] = float(fileline[4])
-                data['REV-AST'][ii] = float(fileline[5])
+                data['tmp'][ii] = float(fileline[1])
+                data['st'][ii] = float(fileline[2])
+                data['ast'][ii] = float(fileline[3])
+                data['rst'][ii] = float(fileline[4])
+                data['rast'][ii] = float(fileline[5])
 
         else:
             raise ValueError(

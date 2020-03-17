@@ -340,11 +340,11 @@ def plot_residuals_reference_sections_single(
     # y_ax_avg
     dp = resid.std(dim=time_dim)
     x = dp.values
-    y = dp[x_dim]
+    y = dp.x
     y_ax_avg.plot(x, y, c='blue')
     dp = resid.mean(dim=time_dim)
     x = dp.values
-    y = dp[x_dim]
+    y = dp.x
     y_ax_avg.plot(x, y, c='orange')
     y_ax_avg.set_ylim(main_ax.get_ylim())
     y_ax_avg.set_ylabel('x (m)')
@@ -469,14 +469,14 @@ def plot_accuracy(
     y_ax_avg.axvline(0, linestyle='-', c='black', linewidth=0.8)
     if precision_time_avg is not None:
         x = precision_time_avg.values
-        y = precision_time_avg[x_dim]
+        y = precision_time_avg.x
         y_ax_avg.plot(x, y, c='blue', linewidth=1.1)
     x = accuracy_time_avg.values
-    y = accuracy_time_avg[x_dim]
+    y = accuracy_time_avg.x
     y_ax_avg.plot(x, y, c='orange', linewidth=0.9)
     if real_accuracy_time_avg is not None:
         x = real_accuracy_time_avg.values
-        y = real_accuracy_time_avg[x_dim]
+        y = real_accuracy_time_avg.x
         y_ax_avg.plot(x, y, c='green', linewidth=0.9)
 
     y_ax_avg.set_ylim(main_ax.get_ylim())
@@ -542,7 +542,6 @@ def plot_sigma_report(
     itimes
     """
     time_dim = ds.get_time_dim(data_var_key=temp_label)
-    x_dim = ds.get_x_dim(data_var_key=temp_label)
     assert 'CI' not in ds[temp_label].dims, 'use other plot report function'
 
     fig, (ax1, ax2) = plt.subplots(nrows=2, sharex=True, figsize=(12, 8))
@@ -563,7 +562,7 @@ def plot_sigma_report(
         y2 = temp + l * stds
         label_str = '{0:2.2f}'.format(l) + r'$\sigma$ confidence interval'
         ax1.fill_between(
-            y1[x_dim],
+            y1.x,
             y1,
             y2,
             facecolor=c,
@@ -582,14 +581,14 @@ def plot_sigma_report(
     if itimes:
         # std_dts_proj = d.ufunc_per_section(
         #     func=np.std,
-        #     label='TMPF_MC_set',
+        #     label='tmpf_mc_set',
         #     calc_per='stretch',
         #     temp_err=False,
-        #     subtract_from_label='TMPF',
+        #     subtract_from_label='tmpf',
         #     axis=[0, 1])
         # std_dts_meas = d.ufunc_per_section(
         #     func=np.std,
-        #     label='TMPF',
+        #     label='tmpf',
         #     calc_per='stretch',
         #     temp_err=True,
         #     axis=0)
@@ -646,7 +645,7 @@ def plot_sigma_report(
 
     err_ref = ds.ufunc_per_section(
         label=temp_label, func=None, temp_err=True, calc_per='stretch')
-    x_ref = ds.ufunc_per_section(label=x_dim, calc_per='stretch')
+    x_ref = ds.ufunc_per_section(label='x', calc_per='stretch')
 
     for (k, v), (k_se, v_se), (kx, vx) in zip(ds.sections.items(),
                                               err_ref.items(), x_ref.items()):

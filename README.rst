@@ -37,9 +37,9 @@ Overview
     :alt: PyPI Package latest release
     :target: https://pypi.python.org/pypi/dtscalibration
 
-.. |commits-since| image:: https://img.shields.io/github/commits-since/dtscalibration/python-dts-calibration/v0.9.0.svg
+.. |commits-since| image:: https://img.shields.io/github/commits-since/dtscalibration/python-dts-calibration/v0.9.2.svg
     :alt: Commits since latest release
-    :target: https://github.com/dtscalibration/python-dts-calibration/compare/v0.9.0...master
+    :target: https://github.com/dtscalibration/python-dts-calibration/compare/v0.9.2...master
 
 .. |wheel| image:: https://img.shields.io/pypi/wheel/dtscalibration.svg
     :alt: PyPI Wheel
