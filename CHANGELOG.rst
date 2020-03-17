@@ -1,6 +1,14 @@
 
 Changelog
 =========
+0.9.2 (2020-03-17)
+------------------
+* Reduced flexibility in defining Stokes labels
+
+0.9.1 (2020-03-17)
+------------------
+* Same as 0.9.2
+
 0.9.0 (2020-03-16)
 ------------------
 * Increased precision of least squares solver, as this was limiting theprecision of the parameter estimation
