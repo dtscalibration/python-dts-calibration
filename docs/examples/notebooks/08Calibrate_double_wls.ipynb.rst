@@ -27,7 +27,7 @@ estimated temperature via Monte Carlo.
 .. code:: ipython3
 
     import os
-
+    
     from dtscalibration import read_silixa_files
     import matplotlib.pyplot as plt
     %matplotlib inline
@@ -42,12 +42,12 @@ estimated temperature via Monte Carlo.
 .. code:: ipython3
 
     filepath = os.path.join('..', '..', 'tests', 'data', 'double_ended2')
-
+    
     ds_ = read_silixa_files(
         directory=filepath,
         timezone_netcdf='UTC',
         file_ext='*.xml')
-
+    
     ds = ds_.sel(x=slice(0, 100))  # only calibrate parts of the fiber
     sections = {
         'probe1Temperature': [slice(7.5, 17.), slice(70., 80.)],  # cold bath
@@ -65,13 +65,6 @@ estimated temperature via Monte Carlo.
     Reading the data from disk
 
 
-.. code:: ipython3
-
-    st_label = 'st'
-    ast_label = 'ast'
-    rst_label = 'rst'
-    rast_label = 'rast'
-
 First calculate the variance in the measured Stokes and anti-Stokes
 signals, in the forward and backward direction.
 
@@ -83,10 +76,10 @@ as an estimate of the variance in measured signals.
 
 .. code:: ipython3
 
-    st_var, resid = ds.variance_stokes(st_label=st_label)
-    ast_var, _ = ds.variance_stokes(st_label=ast_label)
-    rst_var, _ = ds.variance_stokes(st_label=rst_label)
-    rast_var, _ = ds.variance_stokes(st_label=rast_label)
+    st_var, resid = ds.variance_stokes(st_label='st')
+    ast_var, _ = ds.variance_stokes(st_label='ast')
+    rst_var, _ = ds.variance_stokes(st_label='rst')
+    rast_var, _ = ds.variance_stokes(st_label='rast')
 
 .. code:: ipython3
 
@@ -94,7 +87,7 @@ as an estimate of the variance in measured signals.
 
 
 
-.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_8_0.png
+.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_7_0.png
 
 
 We calibrate the measurement with a single method call. The labels refer
@@ -106,10 +99,6 @@ solver because it saves us memory.
 .. code:: ipython3
 
     ds.calibration_double_ended(
-        st_label=st_label,
-        ast_label=ast_label,
-        rst_label=rst_label,
-        rast_label=rast_label,
         st_var=st_var,
         ast_var=ast_var,
         rst_var=rst_var,
@@ -127,12 +116,12 @@ solver because it saves us memory.
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x12b63a5d0>
+    <matplotlib.collections.QuadMesh at 0x121fd8590>
 
 
 
 
-.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_11_1.png
+.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_10_1.png
 
 
 Confidence intervals
@@ -165,10 +154,6 @@ background temperature with a confidence interval.
     ds.conf_int_double_ended(
         p_val='p_val',
         p_cov='p_cov',
-        st_label=st_label,
-        ast_label=ast_label,
-        rst_label=rst_label,
-        rast_label=rast_label,
         st_var=st_var,
         ast_var=ast_var,
         rst_var=rst_var,
@@ -191,7 +176,7 @@ background temperature with a confidence interval.
 
 
 
-.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_15_0.png
+.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_14_0.png
 
 
 The DataArrays ``tmpf_mc`` and ``tmpb_mc`` and the dimension ``CI`` are
@@ -205,7 +190,7 @@ confidence interval ‘coordinates’.
 
 
 
-.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_17_0.png
+.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_16_0.png
 
 
 .. code:: ipython3
@@ -218,11 +203,11 @@ confidence interval ‘coordinates’.
 .. parsed-literal::
 
     Data variables:
-        ST                     (x, time) float64 4.049e+03 4.044e+03 ... 3.501e+03
-        AST                    (x, time) float64 3.293e+03 3.296e+03 ... 2.803e+03
-        REV-ST                 (x, time) float64 4.061e+03 4.037e+03 ... 4.584e+03
-        REV-AST                (x, time) float64 3.35e+03 3.333e+03 ... 3.707e+03
-        TMP                    (x, time) float64 16.69 16.87 16.51 ... 13.6 13.69
+        st                     (x, time) float64 4.049e+03 4.044e+03 ... 3.501e+03
+        ast                    (x, time) float64 3.293e+03 3.296e+03 ... 2.803e+03
+        rst                    (x, time) float64 4.061e+03 4.037e+03 ... 4.584e+03
+        rast                   (x, time) float64 3.35e+03 3.333e+03 ... 3.707e+03
+        tmp                    (x, time) float64 16.69 16.87 16.51 ... 13.6 13.69
         acquisitionTime        (time) float32 2.098 2.075 2.076 2.133 2.085 2.062
         referenceTemperature   (time) float32 21.0536 21.054 ... 21.0531 21.057
         probe1Temperature      (time) float32 4.36149 4.36025 ... 4.36021 4.36118
@@ -233,21 +218,21 @@ confidence interval ‘coordinates’.
         userAcquisitionTimeFW  (time) float32 2.0 2.0 2.0 2.0 2.0 2.0
         userAcquisitionTimeBW  (time) float32 2.0 2.0 2.0 2.0 2.0 2.0
         gamma                  float64 482.6
-        alpha                  (x) float64 -0.007229 -0.003373 ... -0.005238
+        alpha                  (x) float64 -0.007236 -0.00338 ... -0.00535 -0.005245
         df                     (time) float64 1.465 1.466 1.465 1.465 1.465 1.465
         db                     (time) float64 1.465 1.465 1.464 1.465 1.466 1.464
-        gamma_var              float64 0.03742
-        alpha_var              (x) float64 2.611e-07 2.691e-07 ... 2.712e-07
-        df_var                 (time) float64 5.256e-07 5.256e-07 ... 5.256e-07
-        db_var                 (time) float64 5.267e-07 5.267e-07 ... 5.268e-07
-        tmpf                   (x, time) float64 16.79 17.01 16.29 ... 13.57 13.74
+        gamma_var              float64 0.04732
+        alpha_var              (x) float64 2.909e-07 2.989e-07 ... 3.01e-07 3.01e-07
+        df_var                 (time) float64 7.041e-07 7.041e-07 ... 7.041e-07
+        db_var                 (time) float64 7.062e-07 7.062e-07 ... 7.062e-07
+        tmpf                   (x, time) float64 16.79 17.02 16.29 ... 13.57 13.74
         tmpb                   (x, time) float64 16.81 16.86 16.91 ... 13.67 13.71
         tmpf_mc_var            (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
         tmpb_mc_var            (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
         tmpw                   (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
         tmpw_mc_var            (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
-        p_val                  (params1) float64 482.6 1.465 ... -0.005343 -0.005238
-        p_cov                  (params1, params2) float64 0.03742 ... 2.712e-07
+        p_val                  (params1) float64 482.6 1.465 ... -0.00535 -0.005245
+        p_cov                  (params1, params2) float64 0.04732 ... 3.01e-07
         tmpf_mc                (CI, x, time) float64 dask.array<chunksize=(3, 787, 6), meta=np.ndarray>
         tmpb_mc                (CI, x, time) float64 dask.array<chunksize=(3, 787, 6), meta=np.ndarray>
         tmpw_mc                (CI, x, time) float64 dask.array<chunksize=(3, 787, 6), meta=np.ndarray>

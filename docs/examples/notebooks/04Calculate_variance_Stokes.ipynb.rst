@@ -10,10 +10,10 @@ estimate the variance of the noise to: - Perform a weighted calibration
 .. code:: ipython3
 
     import os
-
+    
     from dtscalibration import read_silixa_files
     from matplotlib import pyplot as plt
-
+    
     %matplotlib inline
 
 
@@ -26,7 +26,7 @@ estimate the variance of the noise to: - Perform a weighted calibration
 .. code:: ipython3
 
     filepath = os.path.join('..', '..', 'tests', 'data', 'double_ended2')
-
+    
     ds = read_silixa_files(
         directory=filepath,
         timezone_netcdf='UTC',
@@ -58,20 +58,20 @@ method.
 
 .. code:: ipython3
 
-    print(ds.variance_stokes.__doc__)
+    print(ds.variance_stokes.__doc__) 
 
 
 .. parsed-literal::
 
     Backwards compatibility
-
+    
             Use:
             - `variance_stokes_constant` for small setups with small variations in
             intensity
             - `variance_stokes_exponential` for small setups with very few time
             steps
             - `variance_stokes_linear` for larger setups with more time steps
-
+            
 
 
 .. code:: ipython3
@@ -89,7 +89,7 @@ method.
 .. code:: ipython3
 
     from dtscalibration import plot
-
+    
     fig_handle = plot.plot_residuals_reference_sections(
             residuals,
             sections,
@@ -103,9 +103,9 @@ method.
 
 .. parsed-literal::
 
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/src/dtscalibration/plot.py:317: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/src/dtscalibration/plot.py:315: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
       if (np.issubdtype(resid[time_dim].dtype, np.float) or
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/src/dtscalibration/plot.py:318: FutureWarning: Conversion of the second argument of issubdtype from `int` to `np.signedinteger` is deprecated. In future, it will be treated as `np.int64 == np.dtype(int).type`.
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/src/dtscalibration/plot.py:316: FutureWarning: Conversion of the second argument of issubdtype from `int` to `np.signedinteger` is deprecated. In future, it will be treated as `np.int64 == np.dtype(int).type`.
       np.issubdtype(resid[time_dim].dtype, np.int)):
     /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/numpy/lib/nanfunctions.py:1667: RuntimeWarning: Degrees of freedom <= 0 for slice.
       keepdims=keepdims)
@@ -127,7 +127,7 @@ by coils/sharp bends in cable - Attenuation caused by a splice
 
     import scipy
     import numpy as np
-
+    
     sigma = residuals.std()
     mean = residuals.mean()
     x = np.linspace(mean - 3*sigma, mean + 3*sigma, 100)

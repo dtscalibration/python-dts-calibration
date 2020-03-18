@@ -129,11 +129,11 @@ times we have DTS measurements
 .. parsed-literal::
 
     Data variables:
-        ST                     (x, time) float64 1.281 -0.5321 ... -43.44 -41.08
-        AST                    (x, time) float64 0.4917 1.243 ... -30.14 -32.09
-        REV-ST                 (x, time) float64 0.4086 -0.568 ... 4.822e+03
-        REV-AST                (x, time) float64 2.569 -1.603 ... 4.224e+03
-        TMP                    (x, time) float64 196.1 639.1 218.7 ... 8.442 18.47
+        st                     (x, time) float64 1.281 -0.5321 ... -43.44 -41.08
+        ast                    (x, time) float64 0.4917 1.243 ... -30.14 -32.09
+        rst                    (x, time) float64 0.4086 -0.568 ... 4.822e+03
+        rast                   (x, time) float64 2.569 -1.603 ... 4.224e+03
+        tmp                    (x, time) float64 196.1 639.1 218.7 ... 8.442 18.47
         acquisitionTime        (time) float32 2.098 2.075 2.076 2.133 2.085 2.062
         referenceTemperature   (time) float32 21.0536 21.054 ... 21.0531 21.057
         probe1Temperature      (time) float32 4.36149 4.36025 ... 4.36021 4.36118

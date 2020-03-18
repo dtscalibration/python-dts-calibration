@@ -13,7 +13,7 @@ channel should be aligned.
 .. code:: ipython3
 
     import os
-
+    
     from dtscalibration import read_silixa_files
     import matplotlib.pyplot as plt
     %matplotlib inline
@@ -28,12 +28,12 @@ channel should be aligned.
 .. code:: ipython3
 
     filepath = os.path.join('..', '..', 'tests', 'data', 'double_ended2')
-
+    
     ds = read_silixa_files(
         directory=filepath,
         timezone_netcdf='UTC',
         file_ext='*.xml')
-
+    
     ds100 = ds.sel(x=slice(0, 100))  # only calibrate parts of the fiber
     sections = {
         'probe1Temperature': [slice(7.5, 17.), slice(70., 80.)],  # cold bath
@@ -57,8 +57,8 @@ channel should be aligned.
 
 .. parsed-literal::
 
-
-
+    
+    
             Parameters
             ----------
             store_p_cov : str
@@ -69,14 +69,6 @@ channel should be aligned.
             p_var : array-like, optional
             p_cov : array-like, optional
             sections : dict, optional
-            st_label : str
-                Label of the forward stokes measurement
-            ast_label : str
-                Label of the anti-Stoke measurement
-            rst_label : str
-                Label of the reversed Stoke measurement
-            rast_label : str
-                Label of the reversed anti-Stoke measurement
             st_var : float, array-like, callable, optional
                 The variance of the measurement noise of the Stokes signals in
                 the forward
@@ -93,7 +85,7 @@ channel should be aligned.
                 The variance of the measurement noise of the anti-Stokes signals
                 in the backward
                 direction. Required if method is wls.
-            store_df, store_db : str
+            (ds.tmpw_mc_var**0.5).mean().compute()store_df, store_db : str
                 Label of where to store D. Equals the integrated differential
                 attenuation at x=0
                 And should be equal to half the total integrated differential
@@ -123,7 +115,7 @@ channel should be aligned.
                 Either use the homemade weighted sparse solver or the weighted
                 dense matrix solver of
                 statsmodels
-            transient_asym_att_x : iterable, optional
+            transient_asym_att_x : iterable of float, optional
                 Connectors cause assymetrical attenuation. Normal double ended
                 calibration assumes symmetrical attenuation. An additional loss
                 term is added in the 'shadow' of the forward and backward
@@ -149,25 +141,23 @@ channel should be aligned.
                 has three items. The first two items are the slices of the sections
                 that are matched. The third item is a boolean and is True if the two
                 sections have a reverse direction ("J-configuration").
-
-
+            matching_indices : array
+                Provide an array of x-indices of size (npair, 2), where each pair
+                has the same temperature. Used to improve the estimate of the
+                integrated differential attenuation.
+            verbose : bool
+                Show additional calibration information
+    
+    
             Returns
             -------
-
-
+    
+            
 
 
 .. code:: ipython3
 
-    st_label = 'st'
-    ast_label = 'ast'
-    rst_label = 'rst'
-    rast_label = 'rast'
     ds100.calibration_double_ended(sections=sections,
-                                   st_label=st_label,
-                                   ast_label=ast_label,
-                                   rst_label=rst_label,
-                                   rast_label=rast_label,
                                    method='ols')
 
 After calibration, two data variables are added to the ``DataStore``
@@ -181,7 +171,7 @@ the other, as we do not have more information about the weighing.
 .. code:: ipython3
 
     ds1 = ds100.isel(time=0)  # take only the first timestep
-
+    
     ds1.tmpf.plot(linewidth=1, label='User cali. Forward', figsize=(12, 8))  # plot the temperature calibrated by us
     ds1.tmpb.plot(linewidth=1, label='User cali. Backward')  # plot the temperature calibrated by us
     ds1.tmp.plot(linewidth=1, label='Device calibrated')  # plot the temperature calibrated by the device
@@ -199,8 +189,8 @@ first.
 .. code:: ipython3
 
     ds1['TMPAVG'] = (ds1.tmpf + ds1.tmpb) / 2
-    ds1_diff = ds1.TMP - ds1.TMPAVG
-
+    ds1_diff = ds1.tmp - ds1.TMPAVG
+    
     ds1_diff.plot(figsize=(12, 8));
 
 

@@ -24,7 +24,7 @@ estimated temperature via Monte Carlo.
 .. code:: ipython3
 
     import os
-
+    
     from dtscalibration import read_silixa_files
     import matplotlib.pyplot as plt
     %matplotlib inline
@@ -43,7 +43,7 @@ estimated temperature via Monte Carlo.
         directory=filepath,
         timezone_netcdf='UTC',
         file_ext='*.xml')
-
+    
     ds = ds.sel(x=slice(-30, 101))  # only calibrate parts of the fiber
     sections = {
                 'probe1Temperature':    [slice(20, 25.5)],  # warm bath
@@ -69,8 +69,8 @@ estimated temperature via Monte Carlo.
 
 .. parsed-literal::
 
-
-
+    
+    
             Parameters
             ----------
             store_p_cov : str
@@ -81,10 +81,6 @@ estimated temperature via Monte Carlo.
             p_var : array-like, optional
             p_cov : array-like, optional
             sections : dict, optional
-            st_label : str
-                Label of the forward stokes measurement
-            ast_label : str
-                Label of the anti-Stoke measurement
             st_var : float, optional
                 The variance of the measurement noise of the Stokes signals in
                 the forward
@@ -103,6 +99,8 @@ estimated temperature via Monte Carlo.
                 Label of where to store alpha; The integrated differential
                 attenuation.
                 alpha(x=0) = 0
+            store_ta : str
+                Label of where to store transient alpha's
             store_tmpf : str
                 Label of where to store the calibrated temperature of the forward
                 direction
@@ -116,6 +114,18 @@ estimated temperature via Monte Carlo.
                 Either use the homemade weighted sparse solver or the weighted
                 dense matrix solver of
                 statsmodels
+            matching_sections : List[Tuple[slice, slice, bool]]
+                Provide a list of tuples. A tuple per matching section. Each tuple
+                has three items. The first two items are the slices of the sections
+                that are matched. The third item is a boolean and is True if the two
+                sections have a reverse direction ("J-configuration").
+            transient_att_x : iterable, optional
+                Splices can cause jumps in differential attenuation. Normal single
+                ended calibration assumes these are not present. An additional loss
+                term is added in the 'shadow' of the splice. Each location
+                introduces an additional nt parameters to solve for. Requiring
+                either an additional calibration section or matching sections.
+                If multiple locations are defined, the losses are added.
             fix_gamma : tuple
                 A tuple containing two floats. The first float is the value of
                 gamma, and the second item is the variance of the estimate of gamma.
@@ -127,17 +137,12 @@ estimated temperature via Monte Carlo.
                 variance of the estimate of dalpha.
                 Covariances between alpha and other parameters are not accounted
                 for.
-
+    
             Returns
             -------
+    
+            
 
-
-
-
-.. code:: ipython3
-
-    st_label = 'st'
-    ast_label = 'ast'
 
 First calculate the variance in the measured Stokes and anti-Stokes
 signals, in the forward and backward direction.
@@ -150,8 +155,8 @@ as an estimate of the variance in measured signals.
 
 .. code:: ipython3
 
-    st_var, resid = ds.variance_stokes(st_label=st_label)
-    ast_var, _ = ds.variance_stokes(st_label=ast_label)
+    st_var, resid = ds.variance_stokes(st_label='st')
+    ast_var, _ = ds.variance_stokes(st_label='ast')
 
 Similar to the ols procedure, we make a single function call to
 calibrate the temperature. If the method is ``wls`` and confidence
@@ -176,8 +181,6 @@ entire measurement period’.
 .. code:: ipython3
 
     ds.calibration_single_ended(sections=sections,
-                                st_label=st_label,
-                                ast_label=ast_label,
                                 st_var=st_var,
                                 ast_var=ast_var,
                                 method='wls',
@@ -189,7 +192,7 @@ entire measurement period’.
 
 .. parsed-literal::
 
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/dask/array/core.py:1333: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/dask/array/core.py:1361: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
       FutureWarning,
 
 
@@ -198,8 +201,6 @@ entire measurement period’.
     ds.conf_int_single_ended(
         p_val='p_val',
         p_cov='p_cov',
-        st_label=st_label,
-        ast_label=ast_label,
         st_var=st_var,
         ast_var=ast_var,
         store_tmpf='tmpf',
@@ -209,6 +210,75 @@ entire measurement period’.
         ci_avg_time_flag=False)
 
 Lets compare our calibrated values with the device calibration
+
+.. code:: ipython3
+
+    ds
+
+
+.. parsed-literal::
+
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/xarray/core/dataarray.py:669: FutureWarning: elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+      return key in self.data
+
+
+
+
+.. raw:: html
+
+    <pre>&lt;dtscalibration.DataStore&gt;
+    Sections:
+        probe1Temperature      ( 18.02 +/- 0.00°C)	20.00 - 25.50
+        probe2Temperature      (  6.62 +/- 0.00°C)	5.50 - 15.50
+    Dimensions:                (CI: 2, params1: 5, params2: 5, time: 3, x: 1030)
+    Coordinates:
+      * x                      (x) float64 -29.9 -29.78 -29.65 ... 100.6 100.8 100.9
+        filename               (time) &lt;U31 &#x27;channel 2_20180504132202074.xml&#x27; ... &#x27;channel 2_20180504132303723.xml&#x27;
+        filename_tstamp        (time) int64 20180504132202074 ... 20180504132303723
+        timestart              (time) datetime64[ns] 2018-05-04T12:22:02.710000 ... 2018-05-04T12:23:03.716000
+        timeend                (time) datetime64[ns] 2018-05-04T12:22:32.710000 ... 2018-05-04T12:23:33.716000
+      * time                   (time) datetime64[ns] 2018-05-04T12:22:17.710000 ... 2018-05-04T12:23:18.716000
+        acquisitiontimeFW      (time) timedelta64[ns] 00:00:30 00:00:30 00:00:30
+      * CI                     (CI) float64 2.5 97.5
+    Dimensions without coordinates: params1, params2
+    Data variables:
+        st                     (x, time) float64 6.267e+03 6.272e+03 ... 2.619e+03
+        ast                    (x, time) float64 5.473e+03 5.473e+03 ... 2.09e+03
+        tmp                    (x, time) float64 24.9 24.81 24.92 ... 10.63 10.71
+        acquisitionTime        (time) float32 30.71 30.702 30.716
+        referenceTemperature   (time) float32 24.5187 24.5168 24.5138
+        probe1Temperature      (time) float32 18.0204 18.0211 18.0216
+        probe2Temperature      (time) float32 6.61986 6.61692 6.61695
+        referenceProbeVoltage  (time) float32 0.123199 0.123198 0.123198
+        probe1Voltage          (time) float32 0.12 0.12 0.12
+        probe2Voltage          (time) float32 0.115 0.115 0.115
+        userAcquisitionTimeFW  (time) float32 30.0 30.0 30.0
+        gamma                  float64 481.9
+        dalpha                 float64 -2.073e-05
+        alpha                  (x) float64 0.0006198 0.0006171 ... -0.002091
+        c                      (time) float64 1.478 1.477 1.477
+        gamma_var              float64 0.4209
+        dalpha_var             float64 4.66e-11
+        c_var                  (time) float64 5.666e-06 5.666e-06 5.666e-06
+        tmpf                   (x, time) float64 25.46 25.36 25.47 ... 10.1 10.18
+        p_val                  (params1) float64 481.9 -2.073e-05 1.478 1.477 1.477
+        p_cov                  (params1, params2) float64 0.4209 ... 5.666e-06
+        tmpf_mc_var            (x, time) float64 dask.array&lt;chunksize=(1030, 3), meta=np.ndarray&gt;
+        tmpf_mc                (CI, x, time) float64 dask.array&lt;chunksize=(2, 1030, 3), meta=np.ndarray&gt;
+    Attributes:
+        uid:                                                                     ...
+        nameWell:                                                                ...
+        nameWellbore:                                                            ...
+        name:                                                                    ...
+        indexType:                                                               ...
+        startIndex:uom:                                                          ...
+        startIndex:#text:                                                        ...
+        endIndex:uom:                                                            ...
+        endIndex:#text:                                                          ...
+    
+    .. and many more attributes. See: ds.attrs</pre>
+
+
 
 .. code:: ipython3
 

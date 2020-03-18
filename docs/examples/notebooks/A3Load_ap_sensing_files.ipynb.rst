@@ -87,9 +87,9 @@ Calibration follows as usual (see the other notebooks).
         filename      (time) <U39 '_AP Sensing_N4386B_3_20180118201727.xml' ... '_AP Sensing_N4386B_3_20180118205357.xml'
       * time          (time) datetime64[ns] 2018-01-18T20:17:27 ... 2018-01-18T20:53:57
     Data variables:
-        TEMP          (x, time) float64 12.16 11.32 12.26 ... 17.68 15.08 17.83
-        ST            (x, time) float64 1.098 1.105 1.101 ... 3.39e-18 3.409e-18
-        AST           (x, time) float64 0.1888 0.1891 0.1895 ... 4.838e-19 4.945e-19
+        tmp           (x, time) float64 12.16 11.32 12.26 ... 17.68 15.08 17.83
+        st            (x, time) float64 1.098 1.105 1.101 ... 3.39e-18 3.409e-18
+        ast           (x, time) float64 0.1888 0.1891 0.1895 ... 4.838e-19 4.945e-19
         creationDate  (time) datetime64[ns] 2018-01-18T20:17:27 ... 2018-01-18T20:53:57
     Attributes:
         wellbore:uid:                                                            ...

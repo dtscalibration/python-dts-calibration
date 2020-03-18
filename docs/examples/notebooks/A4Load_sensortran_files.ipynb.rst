@@ -12,7 +12,7 @@ requires the ``*BinaryRawDTS.dat`` and ``*BinaryTemp.dat`` files.
     import matplotlib.pyplot as plt
     from pandas.plotting import register_matplotlib_converters
     register_matplotlib_converters()
-
+        
     from dtscalibration import read_sensortran_files
 
 
@@ -40,7 +40,7 @@ The example data files are located in
 
     filepathlist = sorted(glob.glob(os.path.join(filepath, '*.dat')))
     filenamelist = [os.path.basename(path) for path in filepathlist]
-
+    
     for fn in filenamelist:
         print(fn)
 
@@ -96,12 +96,12 @@ time is needed for estimating variances, and is set a constant 1s.
       * time                   (time) datetime64[ns] 2009-09-24T00:56:47 ... 2009-09-24T01:29:23
         acquisitiontimeFW      (time) timedelta64[ns] 00:00:01 00:00:01 00:00:01
     Data variables:
-        ST                     (x, time) int32 39040680 39057147 ... 39071213
-        AST                    (x, time) int32 39048646 39064414 ... 39407668
-        TMP                    (x, time) float64 -273.1 -273.1 ... 82.41 82.71
+        st                     (x, time) int32 39040680 39057147 ... 39071213
+        ast                    (x, time) int32 39048646 39064414 ... 39407668
+        tmp                    (x, time) float64 -273.1 -273.1 ... 82.41 82.71
         referenceTemperature   (time) float64 28.61 29.24 30.29
-        ST_zero                (time) float64 3.904e+07 3.906e+07 3.907e+07
-        AST_zero               (time) float64 3.905e+07 3.907e+07 3.908e+07
+        st_zero                (time) float64 3.904e+07 3.906e+07 3.907e+07
+        ast_zero               (time) float64 3.905e+07 3.907e+07 3.908e+07
         userAcquisitionTimeFW  (time) float64 1.0 1.0 1.0
     Attributes:
         survey_type:                 2
@@ -113,7 +113,7 @@ time is needed for estimating variances, and is set a constant 1s.
         channel_id:                  1
         num_subtraces:               354
         num_skipped:                 0
-
+    
     .. and many more attributes. See: ds.attrs
 
 
@@ -129,11 +129,54 @@ incorporated into the calibration routine.
 
 .. code:: ipython3
 
-    ds0 = ds.isel(time=0)
+    ds
 
+
+
+
+.. raw:: html
+
+    <pre>&lt;dtscalibration.DataStore&gt;
+    Sections:                  ()
+    Dimensions:                (time: 3, x: 11582)
+    Coordinates:
+      * x                      (x) float32 -451.37958 -450.87354 ... 5408.9644
+        filename               (time) &lt;U25 &#x27;15_56_47_BinaryRawDTS.dat&#x27; ... &#x27;16_29_23_BinaryRawDTS.dat&#x27;
+        filename_temp          (time) &lt;U23 &#x27;15_56_47_BinaryTemp.dat&#x27; ... &#x27;16_29_23_BinaryTemp.dat&#x27;
+        timestart              (time) datetime64[ns] 2009-09-24T00:56:46 ... 2009-09-24T01:29:22
+        timeend                (time) datetime64[ns] 2009-09-24T00:56:47 ... 2009-09-24T01:29:23
+      * time                   (time) datetime64[ns] 2009-09-24T00:56:47 ... 2009-09-24T01:29:23
+        acquisitiontimeFW      (time) timedelta64[ns] 00:00:01 00:00:01 00:00:01
+    Data variables:
+        st                     (x, time) int32 39040680 39057147 ... 39071213
+        ast                    (x, time) int32 39048646 39064414 ... 39407668
+        tmp                    (x, time) float64 -273.1 -273.1 ... 82.41 82.71
+        referenceTemperature   (time) float64 28.61 29.24 30.29
+        st_zero                (time) float64 3.904e+07 3.906e+07 3.907e+07
+        ast_zero               (time) float64 3.905e+07 3.907e+07 3.908e+07
+        userAcquisitionTimeFW  (time) float64 1.0 1.0 1.0
+    Attributes:
+        survey_type:                 2
+        hdr_version:                 3
+        x_units:                     n/a
+        y_units:                     counts
+        num_points:                  12000
+        num_pulses:                  25000
+        channel_id:                  1
+        num_subtraces:               354
+        num_skipped:                 0
+    
+    .. and many more attributes. See: ds.attrs</pre>
+
+
+
+.. code:: ipython3
+
+    ds0 = ds.isel(time=0)
+    
     plt.figure()
     ds0.st.plot(label='Stokes signal')
-    plt.axhline(ds0.ST_zero.values, c='r', label="'zero' measurement")
+    plt.axhline(ds0.st_zero.values, c='r', label="'zero' measurement")
     plt.legend()
     plt.title('')
     plt.axhline(c='k')
@@ -143,7 +186,7 @@ incorporated into the calibration routine.
 
 .. parsed-literal::
 
-    <matplotlib.lines.Line2D at 0x120c65710>
+    <matplotlib.lines.Line2D at 0x127ce3ad0>
 
 
 
@@ -152,7 +195,7 @@ look more like other manufacturer’s devices
 
 .. code:: ipython3
 
-    ds['st'] = (ds.ST - ds.ST_zero)/1e4
+    ds['st'] = (ds.st - ds.st_zero)/1e4
     ds['ast'] = (ds.ast - ds.ast_zero)/1e4
 
 .. code:: ipython3
@@ -171,5 +214,6 @@ look more like other manufacturer’s devices
 .. parsed-literal::
 
     (-50, 500)
+
 
 

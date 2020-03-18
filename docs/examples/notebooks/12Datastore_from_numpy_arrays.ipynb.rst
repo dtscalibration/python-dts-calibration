@@ -12,7 +12,7 @@ library in your current routine.
     import os
     import matplotlib.pyplot as plt
     import xarray as xr
-
+    
     from dtscalibration import DataStore, read_silixa_files
 
 
@@ -37,7 +37,7 @@ Let’s grab the data from an existing silixa dataset:
 .. code:: ipython3
 
     filepath = os.path.join('..', '..', 'tests', 'data', 'single_ended')
-
+    
     ds_silixa = read_silixa_files(directory=filepath,
                                   silent=True)
 
@@ -78,8 +78,8 @@ Now this data has to be inserted into an xarray ``Dataset``
       * x        (x) float64 -80.74 -80.62 -80.49 -80.36 ... 104.4 104.6 104.7 104.8
       * time     (time) datetime64[ns] 2018-05-04T12:22:17.710000 ... 2018-05-04T12:23:18.716000
     Data variables:
-        ST       (x, time) float64 -0.8058 0.4287 -0.513 ... 27.99 27.83 28.81
-        AST      (x, time) float64 -0.2459 -0.5932 0.1111 0.3748 ... 36.2 35.7 35.16
+        st       (x, time) float64 -0.8058 0.4287 -0.513 ... 27.99 27.83 28.81
+        ast      (x, time) float64 -0.2459 -0.5932 0.1111 0.3748 ... 36.2 35.7 35.16
     Attributes:
         _sections:  null\n...\n
 
@@ -99,7 +99,7 @@ We’ll put these into the custom ``DataStore``:
     ds['acquisitiontimeFW'] = ds_silixa['acquisitiontimeFW'].values
     ds['temp1'] = ds_silixa['probe1Temperature']
     ds['temp2'] = ds_silixa['probe2Temperature']
-
+    
     ds.attrs['isDoubleEnded'] = '0'
 
 Now we can calibrate the data as usual (ordinary least squares in this
@@ -113,17 +113,15 @@ example).
                 'temp2':    [slice(5.5, 15.5)],  # cold bath
                 }
     ds.sections = sections
-
-    ds.calibration_single_ended(st_label='st',
-                                ast_label='ast',
-                                method='ols')
-
+    
+    ds.calibration_single_ended(method='ols')
+    
     ds.isel(time=0).tmpf.plot()
 
 
 .. parsed-literal::
 
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/dask/array/core.py:1333: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/dask/array/core.py:1361: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
       FutureWarning,
 
 
@@ -131,6 +129,6 @@ example).
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x12b5ded90>]
+    [<matplotlib.lines.Line2D at 0x124b41dd0>]
 
 
