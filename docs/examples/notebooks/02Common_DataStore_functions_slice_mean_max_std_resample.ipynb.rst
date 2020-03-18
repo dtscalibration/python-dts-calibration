@@ -12,7 +12,7 @@ Examples of how to do some of the more commonly used functions:
 .. code:: ipython3
 
     import os
-
+    
     from dtscalibration import read_silixa_files
 
 
@@ -28,7 +28,7 @@ learned from the previous notebook.
 .. code:: ipython3
 
     filepath = os.path.join('..', '..', 'tests', 'data', 'single_ended')
-
+    
     ds = read_silixa_files(
         directory=filepath,
         timezone_netcdf='UTC',
@@ -62,7 +62,7 @@ http://xarray.pydata.org/en/stable/indexing.html
 
 .. raw:: html
 
-    <pre>&lt;xarray.DataArray &#x27;ST&#x27; (x: 1461, time: 3)&gt;
+    <pre>&lt;xarray.DataArray &#x27;st&#x27; (x: 1461, time: 3)&gt;
     array([[-8.05791e-01,  4.28741e-01, -5.13021e-01],
            [-4.58870e-01, -1.24484e-01,  9.68469e-03],
            [ 4.89174e-01, -9.57734e-02,  5.62837e-02],
@@ -79,7 +79,7 @@ http://xarray.pydata.org/en/stable/indexing.html
       * time               (time) datetime64[ns] 2018-05-04T12:22:17.710000 ... 2018-05-04T12:23:18.716000
         acquisitiontimeFW  (time) timedelta64[ns] 00:00:30 00:00:30 00:00:30
     Attributes:
-        name:         ST
+        name:         st
         description:  Stokes intensity
         units:        -</pre>
 
