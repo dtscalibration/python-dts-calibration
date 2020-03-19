@@ -2854,6 +2854,32 @@ def test_single_ended_matching_sections_synthetic():
     assert_almost_equal_verbose(
         ds_test.isel(trans_att=1).talpha, -np.log(tr_att2), decimal=8)
 
+    # Test conf. ints. for the combination of everything
+    ds_test.conf_int_single_ended(
+        p_val='p_val',
+        p_cov='p_cov',
+        st_var=1.0,
+        ast_var=1.0,
+        store_tmpf='tmpf',
+        store_tempvar='_var',
+        conf_ints=[2.5, 50., 97.5],
+        mc_sample_size=50,
+        ci_avg_time_flag=False)
+
+    ds_test_1 = ds_test.isel(time=-1)
+    ds_test_1.tmpf
+    ds_test_1.tmpf_mc.isel(CI=0).values
+    ds_test_1.tmpf_mc.isel(CI=2).values
+
+    assert np.all(
+        np.less(ds_test_1.tmpf_mc.isel(CI=0).values, ds_test_1.tmpf)
+    ), 'Single-ended, trans. att.; 2.5% confidence interval is incorrect'
+
+    assert np.all(
+        np.greater(ds_test_1.tmpf_mc.isel(CI=2).values, ds_test_1.tmpf)
+    ), 'Single-ended, trans. att.; 97.5% confidence interval is incorrect'
+
+
 
 def test_single_ended_exponential_variance_estimate_synthetic():
     """Checks whether the coefficients are correctly defined by creating a

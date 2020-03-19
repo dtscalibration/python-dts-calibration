@@ -2710,7 +2710,16 @@ class DataStore(xr.Dataset):
         time_dim = self.get_time_dim(data_var_key='st')
 
         no, nt = self.st.data.shape
-        npar = nt + 2  # number of parameters
+        if 'trans_att' in self.keys():
+            nta = self.trans_att.size
+        else:
+            nta = 0
+
+        # number of parameters
+        if 'trans_att' in self.keys():
+            npar = nt + 2 + nt * nta
+        else:
+            npar = nt + 2
 
         self.coords['mc'] = range(mc_sample_size)
         self.coords['CI'] = conf_ints
@@ -2726,9 +2735,13 @@ class DataStore(xr.Dataset):
             gamma = p_val[0]
             dalpha = p_val[1]
             c = p_val[2:nt + 2]
+            ta = p_val[nt+2:nt*nta+nt+2]
+
             self['gamma_mc'] = (tuple(), gamma)
             self['dalpha_mc'] = (tuple(), dalpha)
             self['c_mc'] = ((time_dim,), c)
+            self['ta_mc'] = (('trans_att', time_dim),
+                             np.reshape(ta.values, (nta, nt)))
 
         elif isinstance(p_cov, bool) and p_cov:
             raise NotImplementedError(
@@ -2746,10 +2759,13 @@ class DataStore(xr.Dataset):
             gamma = p_mc[:, 0]
             dalpha = p_mc[:, 1]
             c = p_mc[:, 2:nt + 2]
+            ta = p_mc[:, nt+2:nt*nta+nt+2]
 
             self['gamma_mc'] = (('mc',), gamma)
             self['dalpha_mc'] = (('mc',), dalpha)
             self['c_mc'] = (('mc', time_dim), c)
+            self['ta_mc'] = (('mc', 'trans_att', time_dim),
+                             np.reshape(ta, (mc_sample_size, nta, nt)))
 
         rsize = (self.mc.size, self.x.size, self.time.size)
 
@@ -2803,9 +2819,21 @@ class DataStore(xr.Dataset):
                     size=rsize,
                     chunks=memchunk))
 
+        ta_arr = np.zeros((mc_sample_size, no, nt))
+
+        if 'trans_att' in self.keys():
+            for ii, ta in enumerate(self['ta_mc']):
+                for tai, taxi in zip(ta.values,
+                                     self.coords['trans_att'].values):
+                    ta_arr[ii, self.x.values >= taxi] = \
+                        ta_arr[ii, self.x.values >= taxi] + tai
+        self['ta_mc_arr'] = (('mc', 'x', time_dim), ta_arr)
+
         self[store_tmpf + '_mc_set'] = self['gamma_mc'] / (
-            np.log(self['r_st'] / self['r_ast']) + self['c_mc'] +
-            self['dalpha_mc'] * self.x) - 273.15
+            (np.log(self['r_st']) - np.log(self['r_ast'])
+                + (self['c_mc'] + self['ta_mc_arr'])) +
+            (self['dalpha_mc'] * self.x)
+            ) - 273.15
 
         if ci_avg_time_flag and not ci_avg_x_flag:
             avg_dims = ['mc', time_dim]
