@@ -28,6 +28,7 @@ from .io import read_sensortran_files_routine
 from .io import read_silixa_files_routine_v4
 from .io import read_silixa_files_routine_v6
 from .io import sensortran_binary_version_check
+from .io import sensornet_ddf_version_check
 from .io import silixa_xml_version_check
 from .io import ziphandle_to_filepathlist
 
@@ -4117,13 +4118,34 @@ def read_sensornet_files(
         filepathlist) >= 1, 'No measurement files found in provided ' \
                             'list/directory'
 
+    ddf_version = sensornet_ddf_version_check(filepathlist)
+
+    valid_versions = [
+        'Halo DTS v1',
+        'ORYX F/W v1,02 Oryx Data Collector v3',
+        'ORYX F/W v4,00 Oryx Data Collector v3',
+    ]
+
+    if ddf_version in valid_versions:
+        if ddf_version == 'Halo DTS v1':
+            flip_reverse_measurements = True
+        else:
+            flip_reverse_measurements = False
+
+    else:
+        raise NotImplementedError(
+            'Sensornet .dff version ' '{0}'.format(ddf_version) +
+            ' not implemented.\nPlease open an issue on github' +
+            ' and provide an example file')
+
     data_vars, coords, attrs = read_sensornet_files_routine_v3(
         filepathlist,
         timezone_netcdf=timezone_netcdf,
         timezone_input_files=timezone_input_files,
         silent=silent,
         add_internal_fiber_length=add_internal_fiber_length,
-        fiber_length=fiber_length)
+        fiber_length=fiber_length,
+        flip_reverse_measurements=flip_reverse_measurements)
 
     ds = DataStore(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
     return ds

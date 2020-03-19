@@ -101,6 +101,34 @@ def silixa_xml_version_check(filepathlist):
     return major_version
 
 
+def sensornet_ddf_version_check(filepathlist):
+    """Function which checks and returns the .ddf file version
+
+    Parameters
+    ----------
+    filepathlist
+
+    Returns
+    -------
+    ddf_version
+
+    """
+
+    # Obtain metadata fro mthe first file
+    _, meta = read_sensornet_single(filepathlist[0])
+
+    if 'Software version number:' in meta.keys():
+        version_string = meta['Software version number:']
+    else:
+        raise ValueError(
+            'Software version number could not be detected in .ddf file'+\
+            'Either file is corrupted or not supported')
+
+    ddf_version = version_string.split('.')[0]
+
+    return ddf_version
+
+
 def sensortran_binary_version_check(filepathlist):
     """Function which tests which version the sensortran binaries are.
 
@@ -709,7 +737,8 @@ def read_sensornet_files_routine_v3(
         timezone_input_files='UTC',
         silent=False,
         add_internal_fiber_length=50.,
-        fiber_length=None):
+        fiber_length=None,
+        flip_reverse_measurements=False):
     """
     Internal routine that reads Sensor files.
     Use dtscalibration.read_sensornet_files function instead.
@@ -750,14 +779,6 @@ def read_sensornet_files_routine_v3(
         attrs['isDoubleEnded'] = '1'
 
     double_ended_flag = bool(int(attrs['isDoubleEnded']))
-    if double_ended_flag:
-        identity = attrs['Software version number:'].split()
-        if 'Halo' in identity:
-            flip_reverse_measurements = True
-        elif 'ORYX' in identity:
-            flip_reverse_measurements = False
-        else:
-            raise NotImplementedError
 
     attrs['forwardMeasurementChannel'] = meta['forward channel'][-1]
     if double_ended_flag:
