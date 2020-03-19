@@ -2880,7 +2880,6 @@ def test_single_ended_matching_sections_synthetic():
     ), 'Single-ended, trans. att.; 97.5% confidence interval is incorrect'
 
 
-
 def test_single_ended_exponential_variance_estimate_synthetic():
     """Checks whether the coefficients are correctly defined by creating a
     synthetic measurement set, and derive the parameters from this set.

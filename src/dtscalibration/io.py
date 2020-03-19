@@ -121,7 +121,7 @@ def sensornet_ddf_version_check(filepathlist):
         version_string = meta['Software version number:']
     else:
         raise ValueError(
-            'Software version number could not be detected in .ddf file'+\
+            'Software version number could not be detected in .ddf file' +
             'Either file is corrupted or not supported')
 
     ddf_version = version_string.split('.')[0]
@@ -1594,9 +1594,12 @@ def read_sensornet_single(filename):
 
     meta = {}
     with open_file(filename, encoding='windows-1252') as fileobject:
-        for ii in range(0, headerlength - 1):
+        for ii in range(0, 6):
             fileline = fileobject.readline().split('\t')
+            meta[fileline[0]] = fileline[1]
 
+        for ii in range(6, headerlength - 1):
+            fileline = fileobject.readline().split('\t')
             meta[fileline[0]] = fileline[1].replace('\n', '').replace(',', '.')
 
         # data_names =
