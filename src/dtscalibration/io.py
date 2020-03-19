@@ -293,6 +293,13 @@ def read_silixa_files_routine_v6(
             eltree = ElementTree.parse(f_h)
             arr_el = eltree.findall(arr_path, namespaces=ns)
 
+            if not len(arr_el) == nx:
+                raise ValueError(
+                    'Inconsistent length of x-dimension' +
+                    '\nCheck if files are mixed up, or if the number of ' +
+                    'data points vary per file.'
+                )
+
             # remove the breaks on both sides of the string
             # split the string on the comma
             arr_str = [arr_eli.text[1:-1].split(',') for arr_eli in arr_el]
@@ -587,6 +594,13 @@ def read_silixa_files_routine_v4(
         with open_file(file_handle, mode='r') as f_h:
             eltree = ElementTree.parse(f_h)
             arr_el = eltree.findall(arr_path, namespaces=ns)
+
+            if not len(arr_el) == nx:
+                raise ValueError(
+                    'Inconsistent length of x-dimension' +
+                    '\nCheck if files are mixed up, or if the number of ' +
+                    'data points vary per file.'
+                )
 
             # remove the breaks on both sides of the string
             # split the string on the comma
@@ -1368,6 +1382,13 @@ def read_apsensing_files_routine(
                 f_h.read(3)
             eltree = ElementTree.parse(f_h)
             arr_el = eltree.findall(arr_path, namespaces=ns)
+
+            if not len(arr_el) == nx:
+                raise ValueError(
+                    'Inconsistent length of x-dimension' +
+                    '\nCheck if files are mixed up, or if the number of ' +
+                    'data points vary per file.'
+                )
 
             # remove the breaks on both sides of the string
             # split the string on the comma
