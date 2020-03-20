@@ -101,6 +101,26 @@ def silixa_xml_version_check(filepathlist):
     return major_version
 
 
+def apsensing_xml_version_check(filepathlist):
+    """Function which tests which version of xml files are read.
+
+    Parameters
+    ----------
+    filepathlist
+
+    Returns
+    -------
+
+    """
+
+    sep = ':'
+    attrs, _ = read_apsensing_attrs_singlefile(filepathlist[0], sep)
+
+    device_string = attrs['wellbore:uid']
+
+    return device_string
+
+
 def sensornet_ddf_version_check(filepathlist):
     """Function which checks and returns the .ddf file version
 

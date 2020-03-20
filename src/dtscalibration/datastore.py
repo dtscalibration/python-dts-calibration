@@ -4,6 +4,7 @@ import inspect
 import os
 from typing import Dict
 from typing import List
+import warnings
 
 import dask
 import dask.array as da
@@ -22,6 +23,7 @@ from .calibrate_utils import match_sections
 from .calibrate_utils import wls_sparse
 from .calibrate_utils import wls_stats
 from .datastore_utils import check_timestep_allclose
+from .io import apsensing_xml_version_check
 from .io import read_apsensing_files_routine
 from .io import read_sensornet_files_routine_v3
 from .io import read_sensortran_files_routine
@@ -4042,6 +4044,22 @@ def read_apsensing_files(
         filepathlist) >= 1, 'No measurement files found in provided ' \
                             'list/directory'
 
+    device = apsensing_xml_version_check(filepathlist)
+
+    valid_devices = [
+        'CP320',
+    ]
+
+    if device in valid_devices:
+        pass
+
+    else:
+        warnings.warn(
+            'AP sensing device ' '"{0}"'.format(device) +
+            ' has not been tested.\nPlease open an issue on github' +
+            ' and provide an example file'
+            )
+
     data_vars, coords, attrs = read_apsensing_files_routine(
         filepathlist,
         timezone_netcdf=timezone_netcdf,
@@ -4133,10 +4151,11 @@ def read_sensornet_files(
             flip_reverse_measurements = False
 
     else:
-        raise NotImplementedError(
-            'Sensornet .dff version ' '{0}'.format(ddf_version) +
-            ' not implemented.\nPlease open an issue on github' +
-            ' and provide an example file')
+        warnings.warn(
+            'Sensornet .dff version ' '"{0}"'.format(ddf_version) +
+            ' has not been tested.\nPlease open an issue on github' +
+            ' and provide an example file'
+            )
 
     data_vars, coords, attrs = read_sensornet_files_routine_v3(
         filepathlist,
