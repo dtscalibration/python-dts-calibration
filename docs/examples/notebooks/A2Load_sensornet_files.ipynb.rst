@@ -14,7 +14,7 @@ measurements are supported.
 
 .. parsed-literal::
 
-    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
+    /usr/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
       super().__init_subclass__(*args, **kwargs)
 
 
@@ -103,12 +103,12 @@ the first files and stored as attributes of the ``DataStore``.
         userAcquisitionTimeFW  (time) float64 30.0 30.0 30.0 30.0 30.0 30.0 30.0
         userAcquisitionTimeBW  (time) float64 0.0 0.0 0.0 0.0 0.0 0.0 0.0
     Attributes:
-        DTS Sentinel unit serial number::  SN409017
-        Multiplexer serial number::        ORYX
-        Hardware model number::            OX4
-        Software version number::          ORYX F/W v1.02 Oryx Data Collector v3....
-        data status:                       ok
-        installation:                      speulderbos2017nov21
+        DTS Sentinel unit serial number::  SN409017\n
+        Multiplexer serial number::        ORYX\n
+        Hardware model number::            OX4\n
+        Software version number::          ORYX F/W v1,02 Oryx Data Collector v3....
+        data status:                       ok\n
+        installation:                      speulderbos2017nov21\n
         differential loss correction:      single-ended
         forward channel:                   channel 1
         reverse channel:                   N/A
@@ -163,12 +163,12 @@ REV-AST data variables.
         rst                    (x, time) float64 -0.384 -0.36 ... 1.76e+03 1.759e+03
         rast                   (x, time) float64 -0.535 -0.633 ... 2.241e+03
     Attributes:
-        DTS Sentinel unit serial number::  SN307009
-        Multiplexer serial number::        multiplexer serial number
-        Hardware model number::            HL4
-        Software version number::          Halo DTS v1.0
-        data status:                       ok
-        installation:                      NYAN30AUG2019
+        DTS Sentinel unit serial number::  SN307009\n
+        Multiplexer serial number::        multiplexer serial number\n
+        Hardware model number::            HL4\n
+        Software version number::          Halo DTS v1.0\n
+        data status:                       ok\n
+        installation:                      NYAN30AUG2019\n
         differential loss correction:      combined
         forward channel:                   channel 1
         reverse channel:                   channel 1 reverse

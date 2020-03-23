@@ -2,6 +2,7 @@
 import glob
 import inspect
 import os
+import warnings
 from typing import Dict
 from typing import List
 
@@ -22,11 +23,13 @@ from .calibrate_utils import match_sections
 from .calibrate_utils import wls_sparse
 from .calibrate_utils import wls_stats
 from .datastore_utils import check_timestep_allclose
+from .io import apsensing_xml_version_check
 from .io import read_apsensing_files_routine
 from .io import read_sensornet_files_routine_v3
 from .io import read_sensortran_files_routine
 from .io import read_silixa_files_routine_v4
 from .io import read_silixa_files_routine_v6
+from .io import sensornet_ddf_version_check
 from .io import sensortran_binary_version_check
 from .io import silixa_xml_version_check
 from .io import ziphandle_to_filepathlist
@@ -2710,7 +2713,16 @@ class DataStore(xr.Dataset):
         time_dim = self.get_time_dim(data_var_key='st')
 
         no, nt = self.st.data.shape
-        npar = nt + 2  # number of parameters
+        if 'trans_att' in self.keys():
+            nta = self.trans_att.size
+        else:
+            nta = 0
+
+        # number of parameters
+        if 'trans_att' in self.keys():
+            npar = nt + 2 + nt * nta
+        else:
+            npar = nt + 2
 
         self.coords['mc'] = range(mc_sample_size)
         self.coords['CI'] = conf_ints
@@ -2726,9 +2738,13 @@ class DataStore(xr.Dataset):
             gamma = p_val[0]
             dalpha = p_val[1]
             c = p_val[2:nt + 2]
+            ta = p_val[nt+2:nt*nta+nt+2]
+
             self['gamma_mc'] = (tuple(), gamma)
             self['dalpha_mc'] = (tuple(), dalpha)
             self['c_mc'] = ((time_dim,), c)
+            self['ta_mc'] = (('trans_att', time_dim),
+                             np.reshape(ta.values, (nta, nt)))
 
         elif isinstance(p_cov, bool) and p_cov:
             raise NotImplementedError(
@@ -2746,10 +2762,13 @@ class DataStore(xr.Dataset):
             gamma = p_mc[:, 0]
             dalpha = p_mc[:, 1]
             c = p_mc[:, 2:nt + 2]
+            ta = p_mc[:, nt+2:nt*nta+nt+2]
 
             self['gamma_mc'] = (('mc',), gamma)
             self['dalpha_mc'] = (('mc',), dalpha)
             self['c_mc'] = (('mc', time_dim), c)
+            self['ta_mc'] = (('mc', 'trans_att', time_dim),
+                             np.reshape(ta, (mc_sample_size, nta, nt)))
 
         rsize = (self.mc.size, self.x.size, self.time.size)
 
@@ -2803,9 +2822,21 @@ class DataStore(xr.Dataset):
                     size=rsize,
                     chunks=memchunk))
 
+        ta_arr = np.zeros((mc_sample_size, no, nt))
+
+        if 'trans_att' in self.keys():
+            for ii, ta in enumerate(self['ta_mc']):
+                for tai, taxi in zip(ta.values,
+                                     self.coords['trans_att'].values):
+                    ta_arr[ii, self.x.values >= taxi] = \
+                        ta_arr[ii, self.x.values >= taxi] + tai
+        self['ta_mc_arr'] = (('mc', 'x', time_dim), ta_arr)
+
         self[store_tmpf + '_mc_set'] = self['gamma_mc'] / (
-            np.log(self['r_st'] / self['r_ast']) + self['c_mc'] +
-            self['dalpha_mc'] * self.x) - 273.15
+            (np.log(self['r_st']) - np.log(self['r_ast'])
+                + (self['c_mc'] + self['ta_mc_arr'])) +
+            (self['dalpha_mc'] * self.x)
+            ) - 273.15
 
         if ci_avg_time_flag and not ci_avg_x_flag:
             avg_dims = ['mc', time_dim]
@@ -4013,6 +4044,22 @@ def read_apsensing_files(
         filepathlist) >= 1, 'No measurement files found in provided ' \
                             'list/directory'
 
+    device = apsensing_xml_version_check(filepathlist)
+
+    valid_devices = [
+        'CP320',
+    ]
+
+    if device in valid_devices:
+        pass
+
+    else:
+        warnings.warn(
+            'AP sensing device ' '"{0}"'.format(device) +
+            ' has not been tested.\nPlease open an issue on github' +
+            ' and provide an example file'
+            )
+
     data_vars, coords, attrs = read_apsensing_files_routine(
         filepathlist,
         timezone_netcdf=timezone_netcdf,
@@ -4089,13 +4136,35 @@ def read_sensornet_files(
         filepathlist) >= 1, 'No measurement files found in provided ' \
                             'list/directory'
 
+    ddf_version = sensornet_ddf_version_check(filepathlist)
+
+    valid_versions = [
+        'Halo DTS v1',
+        'ORYX F/W v1,02 Oryx Data Collector v3',
+        'ORYX F/W v4,00 Oryx Data Collector v3',
+    ]
+
+    if ddf_version in valid_versions:
+        if ddf_version == 'Halo DTS v1':
+            flip_reverse_measurements = True
+        else:
+            flip_reverse_measurements = False
+
+    else:
+        warnings.warn(
+            'Sensornet .dff version ' '"{0}"'.format(ddf_version) +
+            ' has not been tested.\nPlease open an issue on github' +
+            ' and provide an example file'
+            )
+
     data_vars, coords, attrs = read_sensornet_files_routine_v3(
         filepathlist,
         timezone_netcdf=timezone_netcdf,
         timezone_input_files=timezone_input_files,
         silent=silent,
         add_internal_fiber_length=add_internal_fiber_length,
-        fiber_length=fiber_length)
+        fiber_length=fiber_length,
+        flip_reverse_measurements=flip_reverse_measurements)
 
     ds = DataStore(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
     return ds
