@@ -15,6 +15,8 @@ Learn by Examples
     notebooks/11Merge_single_measurements_into_double.ipynb.rst
     notebooks/12Datastore_from_numpy_arrays.ipynb.rst
     notebooks/13Fixed_parameter_calibration.ipynb.rst
+    notebooks/14Lossy_splices.ipynb.rst
+    notebooks/15Matching_sections.ipynb.rst
     notebooks/A2Load_sensornet_files.ipynb.rst
     notebooks/A3Load_ap_sensing_files.ipynb.rst
     notebooks/A4Load_sensortran_files.ipynb.rst
