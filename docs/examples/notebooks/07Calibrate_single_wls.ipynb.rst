@@ -32,7 +32,7 @@ estimated temperature via Monte Carlo.
 
 .. parsed-literal::
 
-    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
+    /usr/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
       super().__init_subclass__(*args, **kwargs)
 
 
@@ -174,9 +174,9 @@ are calculated.
 
 The confidence intervals differ per time step. If you would like to
 calculate confidence intervals of all time steps together you have the
-option ``ci_avg_time_flag=True``. ‘We can say with 95% confidence that
+option ``ci_avg_time_flag=True``. 'We can say with 95% confidence that
 the temperature remained between this line and this line during the
-entire measurement period’.
+entire measurement period'.
 
 .. code:: ipython3
 
@@ -192,7 +192,7 @@ entire measurement period’.
 
 .. parsed-literal::
 
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/dask/array/core.py:1361: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
+    /home/bart/git/python-dts-calibration/.tox/docs/lib/python3.7/site-packages/dask/array/core.py:1333: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
       FutureWarning,
 
 
@@ -218,7 +218,7 @@ Lets compare our calibrated values with the device calibration
 
 .. parsed-literal::
 
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/xarray/core/dataarray.py:669: FutureWarning: elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+    /home/bart/git/python-dts-calibration/.tox/docs/lib/python3.7/site-packages/xarray/core/dataarray.py:679: FutureWarning: elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
       return key in self.data
 
 
@@ -230,7 +230,7 @@ Lets compare our calibrated values with the device calibration
     Sections:
         probe1Temperature      ( 18.02 +/- 0.00°C)	20.00 - 25.50
         probe2Temperature      (  6.62 +/- 0.00°C)	5.50 - 15.50
-    Dimensions:                (CI: 2, params1: 5, params2: 5, time: 3, x: 1030)
+    Dimensions:                (CI: 2, mc: 500, params1: 5, params2: 5, time: 3, trans_att: 0, x: 1030)
     Coordinates:
       * x                      (x) float64 -29.9 -29.78 -29.65 ... 100.6 100.8 100.9
         filename               (time) &lt;U31 &#x27;channel 2_20180504132202074.xml&#x27; ... &#x27;channel 2_20180504132303723.xml&#x27;
@@ -240,7 +240,7 @@ Lets compare our calibrated values with the device calibration
       * time                   (time) datetime64[ns] 2018-05-04T12:22:17.710000 ... 2018-05-04T12:23:18.716000
         acquisitiontimeFW      (time) timedelta64[ns] 00:00:30 00:00:30 00:00:30
       * CI                     (CI) float64 2.5 97.5
-    Dimensions without coordinates: params1, params2
+    Dimensions without coordinates: mc, params1, params2, trans_att
     Data variables:
         st                     (x, time) float64 6.267e+03 6.272e+03 ... 2.619e+03
         ast                    (x, time) float64 5.473e+03 5.473e+03 ... 2.09e+03
@@ -263,6 +263,8 @@ Lets compare our calibrated values with the device calibration
         tmpf                   (x, time) float64 25.46 25.36 25.47 ... 10.1 10.18
         p_val                  (params1) float64 481.9 -2.073e-05 1.478 1.477 1.477
         p_cov                  (params1, params2) float64 0.4209 ... 5.666e-06
+        ta_mc                  (mc, trans_att, time) float64 
+        ta_mc_arr              (mc, x, time) float64 0.0 0.0 0.0 0.0 ... 0.0 0.0 0.0
         tmpf_mc_var            (x, time) float64 dask.array&lt;chunksize=(1030, 3), meta=np.ndarray&gt;
         tmpf_mc                (CI, x, time) float64 dask.array&lt;chunksize=(2, 1030, 3), meta=np.ndarray&gt;
     Attributes:
