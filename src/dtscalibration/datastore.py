@@ -2,9 +2,9 @@
 import glob
 import inspect
 import os
+import warnings
 from typing import Dict
 from typing import List
-import warnings
 
 import dask
 import dask.array as da
@@ -29,8 +29,8 @@ from .io import read_sensornet_files_routine_v3
 from .io import read_sensortran_files_routine
 from .io import read_silixa_files_routine_v4
 from .io import read_silixa_files_routine_v6
-from .io import sensortran_binary_version_check
 from .io import sensornet_ddf_version_check
+from .io import sensortran_binary_version_check
 from .io import silixa_xml_version_check
 from .io import ziphandle_to_filepathlist
 

@@ -35,7 +35,7 @@ estimated temperature via Monte Carlo.
 
 .. parsed-literal::
 
-    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
+    /usr/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
       super().__init_subclass__(*args, **kwargs)
 
 
@@ -116,7 +116,7 @@ solver because it saves us memory.
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x121fd8590>
+    <matplotlib.collections.QuadMesh at 0x7f3819395950>
 
 
 
@@ -144,9 +144,9 @@ are calculated.
 
 The confidence intervals differ per time step. If you would like to
 calculate confidence intervals of all time steps together you have the
-option ``ci_avg_time_flag=True``. ‘We can say with 95% confidence that
+option ``ci_avg_time_flag=True``. 'We can say with 95% confidence that
 the temperature remained between this line and this line during the
-entire measurement period’. This is ideal if you’d like to calculate the
+entire measurement period'. This is ideal if you'd like to calculate the
 background temperature with a confidence interval.
 
 .. code:: ipython3
@@ -181,7 +181,7 @@ background temperature with a confidence interval.
 
 The DataArrays ``tmpf_mc`` and ``tmpb_mc`` and the dimension ``CI`` are
 added. ``MC`` stands for monte carlo and the ``CI`` dimension holds the
-confidence interval ‘coordinates’.
+confidence interval 'coordinates'.
 
 .. code:: ipython3
 
