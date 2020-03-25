@@ -3067,3 +3067,95 @@ def test_calibrate_wls_procedures():
     np.testing.assert_array_almost_equal(p_cov, psp_cov, decimal=dec)
 
     pass
+
+
+def test_average_measurements_double_ended():
+    filepath = data_dir_double_ended2
+
+    ds_ = read_silixa_files(
+        directory=filepath,
+        timezone_netcdf='UTC',
+        file_ext='*.xml')
+
+    ds = ds_.sel(x=slice(0, 100))  # only calibrate parts of the fiber
+    sections = {
+        'probe1Temperature': [slice(7.5, 17.), slice(70., 80.)],  # cold bath
+        'probe2Temperature': [slice(24., 34.), slice(85., 95.)],  # warm bath
+        }
+    ds.sections = sections
+
+    st_var, ast_var, rst_var, rast_var = 5., 5., 5., 5.
+
+    ds.calibration_double_ended(
+        st_var=st_var,
+        ast_var=ast_var,
+        rst_var=rst_var,
+        rast_var=rast_var,
+        store_tmpw='tmpw',
+        method='wls',
+        solver='sparse')
+    ds.average_double_ended(
+        p_val='p_val',
+        p_cov='p_cov',
+        st_var=st_var,
+        ast_var=ast_var,
+        rst_var=rst_var,
+        rast_var=rast_var,
+        store_tmpf='tmpf',
+        store_tmpb='tmpb',
+        store_tmpw='tmpw',
+        store_tempvar='_var',
+        conf_ints=[2.5, 97.5],
+        mc_sample_size=50,  # <- choose a much larger sample size
+        ci_avg_x_flag1=True,
+        ci_avg_x_sel=slice(6, 10))
+    ix = ds.get_section_indices(slice(6, 10))
+    ds.average_double_ended(
+        p_val='p_val',
+        p_cov='p_cov',
+        st_var=st_var,
+        ast_var=ast_var,
+        rst_var=rst_var,
+        rast_var=rast_var,
+        store_tmpf='tmpf',
+        store_tmpb='tmpb',
+        store_tmpw='tmpw',
+        store_tempvar='_var',
+        conf_ints=[2.5, 97.5],
+        mc_sample_size=50,  # <- choose a much larger sample size
+        ci_avg_x_flag2=True,
+        ci_avg_x_isel=ix)
+    sl = slice(np.datetime64('2018-03-28T00:40:54.097000000'),
+               np.datetime64('2018-03-28T00:41:12.084000000'))
+    ds.average_double_ended(
+        p_val='p_val',
+        p_cov='p_cov',
+        st_var=st_var,
+        ast_var=ast_var,
+        rst_var=rst_var,
+        rast_var=rast_var,
+        store_tmpf='tmpf',
+        store_tmpb='tmpb',
+        store_tmpw='tmpw',
+        store_tempvar='_var',
+        conf_ints=[2.5, 97.5],
+        mc_sample_size=50,  # <- choose a much larger sample size
+        ci_avg_time_flag1=True,
+        ci_avg_time_flag2=False,
+        ci_avg_time_sel=sl)
+    ds.average_double_ended(
+        p_val='p_val',
+        p_cov='p_cov',
+        st_var=st_var,
+        ast_var=ast_var,
+        rst_var=rst_var,
+        rast_var=rast_var,
+        store_tmpf='tmpf',
+        store_tmpb='tmpb',
+        store_tmpw='tmpw',
+        store_tempvar='_var',
+        conf_ints=[2.5, 97.5],
+        mc_sample_size=50,  # <- choose a much larger sample size
+        ci_avg_time_flag1=False,
+        ci_avg_time_flag2=True,
+        ci_avg_time_isel=range(3))

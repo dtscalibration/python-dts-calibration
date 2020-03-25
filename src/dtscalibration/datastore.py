@@ -3548,219 +3548,26 @@ class DataStore(xr.Dataset):
         else:
             pass
 
-        if da_random_state:
-            # In testing environments
-            assert isinstance(da_random_state, da.random.RandomState)
-            state = da_random_state
-        else:
-            state = da.random.RandomState()
+        self.conf_int_double_ended(
+            p_val=p_val,
+            p_cov=p_cov,
+            store_ta=store_ta,
+            st_var=st_var,
+            ast_var=ast_var,
+            rst_var=rst_var,
+            rast_var=rast_var,
+            store_tmpf=store_tmpf,
+            store_tmpb=store_tmpb,
+            store_tmpw=store_tmpw,
+            store_tempvar=store_tempvar,
+            conf_ints=None,
+            mc_sample_size=mc_sample_size,
+            da_random_state=da_random_state,
+            remove_mc_set_flag=False,
+            reduce_memory_usage=reduce_memory_usage,
+            **kwargs)
 
         time_dim = self.get_time_dim(data_var_key='st')
-
-        no, nt = self.st.shape
-        npar = 1 + 2 * nt + no  # number of parameters
-
-        if store_ta:
-            ta_dim = [
-                i for i in self[store_ta + '_fw'].dims if i != time_dim][0]
-            tax = self[ta_dim].values
-            nta = tax.size
-            npar += nt * 2 * nta
-        else:
-            nta = 0
-
-        rsize = (mc_sample_size, no, nt)
-
-        if reduce_memory_usage:
-            memchunk = da.ones((mc_sample_size, no, nt),
-                               chunks={0: -1, 1: 1, 2: 'auto'}).chunks
-        else:
-            if ci_avg_time_flag1 or ci_avg_time_flag2:
-                memchunk = da.ones((mc_sample_size, no, nt),
-                                   chunks={0: -1, 1: 'auto', 2: -1}).chunks
-            elif ci_avg_x_flag1 or ci_avg_x_flag2:
-                memchunk = da.ones((mc_sample_size, no, nt),
-                                   chunks={0: -1, 1: -1, 2: 'auto'}).chunks
-
-        self.coords['mc'] = range(mc_sample_size)
-        self.coords['CI'] = conf_ints
-
-        assert isinstance(p_val, (str, np.ndarray, np.generic))
-        if isinstance(p_val, str):
-            p_val = self[p_val].values
-        assert p_val.shape == (npar,), "Did you set `store_ta='talpha'` as " \
-                                       "keyword argument of the " \
-                                       "conf_int_double_ended() function?"
-
-        assert isinstance(p_cov, (str, np.ndarray, np.generic, bool))
-
-        if isinstance(p_cov, bool) and not p_cov:
-            # Exclude parameter uncertainty if p_cov == False
-            gamma = p_val[0]
-            d_fw = p_val[1:nt + 1]
-            d_bw = p_val[1 + nt:2 * nt + 1]
-            alpha = p_val[2 * nt + 1:2 * nt + 1 + no]
-
-            self['gamma_mc'] = (tuple(), gamma)
-            self['alpha_mc'] = (('x',), alpha)
-            self['df_mc'] = ((time_dim,), d_fw)
-            self['db_mc'] = ((time_dim,), d_bw)
-
-            if store_ta:
-                ta = p_val[2 * nt + 1 + no:].reshape((nt, 2, nta), order='F')
-                ta_fw = ta[:, 0, :]
-                ta_bw = ta[:, 1, :]
-
-                ta_fw_arr = np.zeros((no, nt))
-                for tai, taxi in zip(ta_fw.T, self.coords[ta_dim].values):
-                    ta_fw_arr[self.x.values >= taxi] = \
-                        ta_fw_arr[self.x.values >= taxi] + tai
-
-                ta_bw_arr = np.zeros((no, nt))
-                for tai, taxi in zip(ta_bw.T, self.coords[ta_dim].values):
-                    ta_bw_arr[self.x.values < taxi] = \
-                        ta_bw_arr[self.x.values < taxi] + tai
-
-                self[store_ta + '_fw_mc'] = (('x', time_dim), ta_fw_arr)
-                self[store_ta + '_bw_mc'] = (('x', time_dim), ta_bw_arr)
-
-        elif isinstance(p_cov, bool) and p_cov:
-            raise NotImplementedError(
-                'Not an implemented option. Check p_cov argument')
-
-        else:
-            # WLS
-            if isinstance(p_cov, str):
-                p_cov = self[p_cov].values
-            assert p_cov.shape == (npar, npar)
-
-            ix_sec = self.ufunc_per_section(x_indices=True, calc_per='all')
-            nx_sec = ix_sec.size
-            from_i = np.concatenate((np.arange(1 + 2 * nt),
-                                     1 + 2 * nt + ix_sec,
-                                     np.arange(1 + 2 * nt + no,
-                                               1 + 2 * nt + no + nt * 2 * nta)))
-            iox_sec1, iox_sec2 = np.meshgrid(
-                from_i, from_i, indexing='ij')
-            po_val = p_val[from_i]
-            po_cov = p_cov[iox_sec1, iox_sec2]
-
-            po_mc = sst.multivariate_normal.rvs(
-                mean=po_val, cov=po_cov, size=mc_sample_size)
-
-            gamma = po_mc[:, 0]
-            d_fw = po_mc[:, 1:nt + 1]
-            d_bw = po_mc[:, 1 + nt:2 * nt + 1]
-
-            self['gamma_mc'] = (('mc',), gamma)
-            self['df_mc'] = (('mc', time_dim), d_fw)
-            self['db_mc'] = (('mc', time_dim), d_bw)
-
-            # calculate alpha seperately
-            alpha = np.zeros((mc_sample_size, no), dtype=float)
-            alpha[:, ix_sec] = po_mc[:, 1 + 2 * nt:1 + 2 * nt + nx_sec]
-
-            not_ix_sec = np.array([i for i in range(no) if i not in ix_sec])
-
-            if np.any(not_ix_sec):
-                not_alpha_val = p_val[2 * nt + 1 + not_ix_sec]
-                not_alpha_var = p_cov[2 * nt + 1 + not_ix_sec,
-                                      2 * nt + 1 + not_ix_sec]
-
-                not_alpha_mc = np.random.normal(
-                    loc=not_alpha_val,
-                    scale=not_alpha_var ** 0.5,
-                    size=(mc_sample_size, not_alpha_val.size))
-
-                alpha[:, not_ix_sec] = not_alpha_mc
-
-            self['alpha_mc'] = (('mc', 'x'), alpha)
-
-            if store_ta:
-                ta = po_mc[:, 2 * nt + 1 + nx_sec:].reshape(
-                    (mc_sample_size, nt, 2, nta), order='F')
-                ta_fw = ta[:, :, 0, :]
-                ta_bw = ta[:, :, 1, :]
-
-                ta_fw_arr = da.zeros((mc_sample_size, no, nt), chunks=memchunk,
-                                     dtype=float)
-                for tai, taxi in zip(ta_fw.swapaxes(0, 2),
-                                     self.coords[ta_dim].values):
-                    # iterate over the splices
-                    i_splice = sum(self.x.values < taxi)
-                    mask = create_da_ta2(
-                        no, i_splice, direction='fw', chunks=memchunk)
-
-                    ta_fw_arr += mask * tai.T[:, None, :]
-
-                ta_bw_arr = da.zeros((mc_sample_size, no, nt), chunks=memchunk,
-                                     dtype=float)
-                for tai, taxi in zip(ta_bw.swapaxes(0, 2),
-                                     self.coords[ta_dim].values):  # iterate over the splices
-                    i_splice = sum(self.x.values < taxi)
-                    mask = create_da_ta2(
-                        no, i_splice, direction='bw', chunks=memchunk)
-
-                    ta_bw_arr += mask * tai.T[:, None, :]
-
-                self[store_ta + '_fw_mc'] = (('mc', 'x', time_dim), ta_fw_arr)
-                self[store_ta + '_bw_mc'] = (('mc', 'x', time_dim), ta_bw_arr)
-
-        # Draw from the normal distributions for the Stokes intensities
-        for k, st_labeli, st_vari in zip(
-                ['r_st', 'r_ast', 'r_rst', 'r_rast'],
-                ['st', 'ast', 'rst', 'rast'],
-                [st_var, ast_var, rst_var, rast_var]):
-
-            # Load the mean as chunked Dask array, otherwise eats memory
-            if type(self[st_labeli].data) == da.core.Array:
-                loc = da.asarray(self[st_labeli].data, chunks=memchunk[1:])
-            else:
-                loc = da.from_array(self[st_labeli].data, chunks=memchunk[1:])
-
-            # Load variance as chunked Dask array, otherwise eats memory
-            if type(st_vari) == da.core.Array:
-                st_vari_da = da.asarray(st_vari, chunks=memchunk[1:])
-
-            elif (callable(st_vari) and
-                  type(self[st_labeli].data) == da.core.Array):
-                st_vari_da = da.asarray(
-                    st_vari(self[st_labeli]).data,
-                    chunks=memchunk[1:])
-
-            elif (callable(st_vari) and
-                  type(self[st_labeli].data) != da.core.Array):
-                st_vari_da = da.from_array(
-                    st_vari(self[st_labeli]).data,
-                    chunks=memchunk[1:])
-
-            else:
-                st_vari_da = da.from_array(st_vari, chunks=memchunk[1:])
-
-            self[k] = (
-                ('mc', 'x', time_dim),
-                state.normal(
-                    loc=loc,  # has chunks=memchunk[1:]
-                    scale=st_vari_da ** 0.5,
-                    size=rsize,
-                    chunks=memchunk))
-
-        if store_ta:
-            self[store_tmpf + '_mc_set'] = self['gamma_mc'] / (
-                np.log(self['r_st'] / self['r_ast']) +
-                self['df_mc'] + self['alpha_mc'] +
-                self[store_ta + '_fw_mc']) - 273.15
-            self[store_tmpb + '_mc_set'] = self['gamma_mc'] / (
-                np.log(self['r_rst'] / self['r_rast']) +
-                self['db_mc'] - self['alpha_mc'] +
-                self[store_ta + '_bw_mc']) - 273.15
-        else:
-            self[store_tmpf + '_mc_set'] = self['gamma_mc'] / (
-                np.log(self['r_st'] / self['r_ast']) +
-                self['df_mc'] + self['alpha_mc']) - 273.15
-            self[store_tmpb + '_mc_set'] = self['gamma_mc'] / (
-                np.log(self['r_rst'] / self['r_rast']) +
-                self['db_mc'] - self['alpha_mc']) - 273.15
 
         for label in [store_tmpf, store_tmpb]:
             if ci_avg_time_sel is not None:
@@ -3971,7 +3778,7 @@ class DataStore(xr.Dataset):
             self[store_tmpw + '_avg1'] = \
                 self[store_tmpw + '_avgsec'].mean(dim=time_dim2)
 
-            self[store_tmpw + '_avg1' + store_tempvar] = \
+            self[store_tmpw + '_mc_avg1' + store_tempvar] = \
                 self[store_tmpw + '_mc_set'].var(dim=['mc', time_dim2])
 
             if conf_ints:
@@ -4032,7 +3839,7 @@ class DataStore(xr.Dataset):
             self[store_tmpw + '_avgx1'] = \
                 self[store_tmpw + '_avgsec'].mean(dim=x_dim2)
 
-            self[store_tmpw + '_avgx1' + store_tempvar] = \
+            self[store_tmpw + '_mc_avgx1' + store_tempvar] = \
                 self[store_tmpw + '_mc_set'].var(dim=x_dim2)
 
             if conf_ints:
@@ -4093,7 +3900,7 @@ class DataStore(xr.Dataset):
         if remove_mc_set_flag:
             remove_mc_set = [
                 'r_st', 'r_ast', 'r_rst', 'r_rast', 'gamma_mc', 'alpha_mc',
-                'df_mc', 'db_mc', 'x_avg']
+                'df_mc', 'db_mc', 'x_avg', 'time_avg', 'mc']
 
             for i in [store_tmpf, store_tmpb, store_tmpw]:
                 remove_mc_set.append(i + '_avgsec')
