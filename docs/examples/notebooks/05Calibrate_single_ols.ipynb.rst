@@ -24,7 +24,7 @@ anymore.
 
 .. parsed-literal::
 
-    /usr/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
+    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
       super().__init_subclass__(*args, **kwargs)
 
 
@@ -143,7 +143,7 @@ anymore.
 
 .. parsed-literal::
 
-    /home/bart/git/python-dts-calibration/.tox/docs/lib/python3.7/site-packages/dask/array/core.py:1333: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/dask/array/core.py:1361: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
       FutureWarning,
 
 

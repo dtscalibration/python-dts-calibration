@@ -165,7 +165,6 @@ def test_double_ended_variance_estimate_synthetic():
         store_tempvar='_var',
         conf_ints=[2.5, 50., 97.5],
         mc_sample_size=100,
-        ci_avg_time_flag=False,
         da_random_state=state)
 
     # Calibrated variance
@@ -288,7 +287,6 @@ def test_single_ended_variance_estimate_synthetic():
         store_tempvar='_var',
         conf_ints=[2.5, 50., 97.5],
         mc_sample_size=50,
-        ci_avg_time_flag=False,
         da_random_state=state
         )
 
@@ -1971,7 +1969,6 @@ def test_double_ended_exponential_variance_estimate_synthetic():
         store_tempvar='_var',
         conf_ints=[2.5, 50., 97.5],
         mc_sample_size=100,
-        ci_avg_time_flag=False,
         da_random_state=state)
 
     # Calibrated variance
@@ -2120,7 +2117,6 @@ def test_estimate_variance_of_temperature_estimate():
         store_tempvar='_var',
         conf_ints=[20., 80.],
         mc_sample_size=nmc,
-        ci_avg_time_flag=True,
         da_random_state=state,
         remove_mc_set_flag=False,
         reduce_memory_usage=1)
@@ -2863,8 +2859,7 @@ def test_single_ended_matching_sections_synthetic():
         store_tmpf='tmpf',
         store_tempvar='_var',
         conf_ints=[2.5, 50., 97.5],
-        mc_sample_size=50,
-        ci_avg_time_flag=False)
+        mc_sample_size=50)
 
     ds_test_1 = ds_test.isel(time=-1)
     ds_test_1.tmpf
@@ -2971,7 +2966,6 @@ def test_single_ended_exponential_variance_estimate_synthetic():
         store_tempvar='_var',
         conf_ints=[2.5, 50., 97.5],
         mc_sample_size=50,
-        ci_avg_time_flag=False,
         da_random_state=state
         )
 

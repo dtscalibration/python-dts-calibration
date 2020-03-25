@@ -5,7 +5,7 @@ Background
 ----------
 
 While it is best practice to not have connectors or splices within a DTS
-calibration, sometimes it can't be avoided. For example, in a borehole
+calibration, sometimes it can’t be avoided. For example, in a borehole
 the fibers in a duplex cable are often connected with either a splice or
 a loopback connector.
 
@@ -15,8 +15,8 @@ double ended setups this step loss can even be asymmetrical for the
 forward and backward measurements. All these effects have to be taken
 into account in the calibration.
 
-To calibrate over these splices/connectors, locations with 'transient
-attenuation' can be defined along the length of the fiber. Adding these
+To calibrate over these splices/connectors, locations with ‘transient
+attenuation’ can be defined along the length of the fiber. Adding these
 does mean that more information is needed to perform the calibration,
 such as extra reference sections or matching sections of fiber. Matching
 sections will be explained in notebook 15.
@@ -24,7 +24,7 @@ sections will be explained in notebook 15.
 Demonstration
 ~~~~~~~~~~~~~
 
-To demonstrate the effect of a lossy splice, we'll load the same dataset
+To demonstrate the effect of a lossy splice, we’ll load the same dataset
 that was used in previous notebooks, and modify the data to simulate a
 lossy splice.
 
@@ -39,7 +39,7 @@ lossy splice.
 
 .. parsed-literal::
 
-    /usr/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
+    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
       super().__init_subclass__(*args, **kwargs)
 
 
@@ -73,8 +73,8 @@ lossy splice.
 
 To simulate the lossy splice, we introduce a step loss in the signal
 strength at x = 50 m. For the forward channel, this means all data
-beyond 50 meters is reduced with a 'random' factor. For the backward
-channel, this means all data up to 50 meters is reduced with a 'random'
+beyond 50 meters is reduced with a ‘random’ factor. For the backward
+channel, this means all data up to 50 meters is reduced with a ‘random’
 factor.
 
 In the plots of the Stokes and anti-Stokes signal the big step loss is
@@ -101,7 +101,7 @@ clearly visible.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x7fc5ac4ef950>
+    <matplotlib.legend.Legend at 0x12d708810>
 
 
 
@@ -139,7 +139,7 @@ after the jump are too high.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x7fc5ac4e7ad0>]
+    [<matplotlib.lines.Line2D at 0x12d898950>]
 
 
 
@@ -148,14 +148,14 @@ after the jump are too high.
 
 
 Now we run a calibration, adding the keyword argument
-'**transient\_asym\_att\_x**', and provide a list of floats containing
-the locations of the splices. In this case we only add a single one at x
-= 50 m. After running the calibration you will see that by adding the
+‘**transient_asym_att_x**’, and provide a list of floats containing the
+locations of the splices. In this case we only add a single one at x =
+50 m. After running the calibration you will see that by adding the
 transient attenuation location the calibration returns the correct
 temperature, without the big jump.
 
 *In single-ended calibration the keyword is called
-'**transient\_att\_x**'.*
+‘**transient_att_x**’.*
 
 .. code:: ipython3
 
@@ -183,7 +183,7 @@ temperature, without the big jump.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x7fc5b0039c10>
+    <matplotlib.legend.Legend at 0x12d786450>
 
 
 

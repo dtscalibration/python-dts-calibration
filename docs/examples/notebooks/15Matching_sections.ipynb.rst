@@ -14,7 +14,7 @@ cables or twisted pairs of cable.
 Demonstration
 ~~~~~~~~~~~~~
 
-To demonstrate matching sections, we'll load the same dataset that was
+To demonstrate matching sections, we’ll load the same dataset that was
 used in previous notebooks, and modify the data to simulate a lossy
 splice, just as in notebook 14.
 
@@ -29,7 +29,7 @@ splice, just as in notebook 14.
 
 .. parsed-literal::
 
-    /usr/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
+    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
       super().__init_subclass__(*args, **kwargs)
 
 
@@ -63,8 +63,8 @@ splice, just as in notebook 14.
 
 Again, we introduce a step loss in the signal strength at x = 50 m. For
 the forward channel, this means all data beyond 50 meters is reduced
-with a 'random' factor. For the backward channel, this means all data up
-to 50 meters is reduced with a 'random' factor.
+with a ‘random’ factor. For the backward channel, this means all data up
+to 50 meters is reduced with a ‘random’ factor.
 
 .. code:: ipython3
 
@@ -106,7 +106,7 @@ calibrated correctly.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x7ff1b771d810>]
+    [<matplotlib.lines.Line2D at 0x125caef50>]
 
 
 
@@ -115,16 +115,16 @@ calibrated correctly.
 
 
 Now we run a calibration, adding the keyword argument
-'**transient\_asym\_att\_x**', and provide a list of floats containing
-the locations of the splices. In this case we only add a single one at x
-= 50 m.
+‘**transient_asym_att_x**’, and provide a list of floats containing the
+locations of the splices. In this case we only add a single one at x =
+50 m.
 
 We will also define the matching sections of cable. The matching
 sections have to be provided as a list of tuples. A tuple per matching
 section. Each tuple has three items, the first two items are the slices
 of the sections that are matching. The third item is a bool and is True
 if the two sections have a reverse direction (as in the
-"J-configuration").
+“J-configuration”).
 
 In this example we match the two cold baths to each other.
 
@@ -133,7 +133,7 @@ attenuation and matching sections the calibration returns the correct
 temperature, without the big jump.
 
 *In single-ended calibration the keyword is called
-'**transient\_att\_x**'.*
+‘**transient_att_x**’.*
 
 .. code:: ipython3
 
@@ -164,7 +164,7 @@ temperature, without the big jump.
 
 .. parsed-literal::
 
-    /home/bart/git/python-dts-calibration/.tox/docs/lib/python3.7/site-packages/scipy/sparse/_index.py:118: SparseEfficiencyWarning: Changing the sparsity structure of a csr_matrix is expensive. lil_matrix is more efficient.
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/scipy/sparse/_index.py:118: SparseEfficiencyWarning: Changing the sparsity structure of a csr_matrix is expensive. lil_matrix is more efficient.
       self._set_arrayXarray_sparse(i, j, x)
 
 
@@ -172,7 +172,7 @@ temperature, without the big jump.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x7ff19d4964d0>
+    <matplotlib.legend.Legend at 0x127fe0f50>
 
 
 
