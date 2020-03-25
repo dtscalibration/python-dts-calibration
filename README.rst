@@ -83,8 +83,10 @@ Package features
    * Both single- and double-ended setups
    * Confidence intervals of calibrated temperature
    * Time integration of calibration parameters
-   * Fixing parameters to a previously determined value
    * Weighted least-squares calibration
+   * `Fixing parameters to a previously determined value <..//master/examples/notebooks/13Fixed_parameter_calibration.ipynb>`_
+   * `(Asymmetric) step loss correction <../master/examples/notebooks/14Lossy_splices.ipynb>`_
+   * `Matching temperature sections <../master/examples/notebooks/15Matching_sections.ipynb>`_
 * Dynamic reference section definition
 * Tools for merging and aligning double-ended setups
 * Data formats of most manufacturers are supported
