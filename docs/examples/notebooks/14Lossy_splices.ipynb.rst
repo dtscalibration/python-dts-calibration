@@ -101,7 +101,7 @@ clearly visible.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x12d708810>
+    <matplotlib.legend.Legend at 0x129102e50>
 
 
 
@@ -139,7 +139,7 @@ after the jump are too high.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x12d898950>]
+    [<matplotlib.lines.Line2D at 0x12b6fa510>]
 
 
 
@@ -183,7 +183,7 @@ temperature, without the big jump.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x12d786450>
+    <matplotlib.legend.Legend at 0x1292eda50>
 
 
 

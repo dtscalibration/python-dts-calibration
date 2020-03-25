@@ -106,7 +106,7 @@ calibrated correctly.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x125caef50>]
+    [<matplotlib.lines.Line2D at 0x1242be050>]
 
 
 
@@ -172,7 +172,7 @@ temperature, without the big jump.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x127fe0f50>
+    <matplotlib.legend.Legend at 0x124434690>
 
 
 

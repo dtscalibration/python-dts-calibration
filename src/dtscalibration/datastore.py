@@ -2639,8 +2639,6 @@ class DataStore(xr.Dataset):
             store_tempvar='_var',
             conf_ints=None,
             mc_sample_size=100,
-            ci_avg_time_flag1=False,
-            ci_avg_x_flag=False,
             da_random_state=None,
             remove_mc_set_flag=True,
             reduce_memory_usage=False,
@@ -2678,17 +2676,6 @@ class DataStore(xr.Dataset):
         mc_sample_size : int
             Size of the monte carlo parameter set used to calculate the
             confidence interval
-        ci_avg_time_flag1 : bool
-            The confidence intervals differ per time step. If you would like
-            to calculate confidence
-            intervals of all time steps together. ‘We can say with 95%
-            confidence that the
-            temperature remained between this line and this line during the
-            entire measurement
-            period’.
-        ci_avg_x_flag : bool
-            Similar to `ci_avg_time_flag1` but then over the x-dimension
-            instead of the time-dimension
         da_random_state
             For testing purposes. Similar to random seed. The seed for dask.
             Makes random not so random. To produce reproducable results for
@@ -2700,8 +2687,6 @@ class DataStore(xr.Dataset):
             Use less memory but at the expense of longer computation time
         """
         self.check_deprecated_kwargs(kwargs)
-
-        assert conf_ints
 
         if da_random_state:
             state = da_random_state
@@ -2723,7 +2708,9 @@ class DataStore(xr.Dataset):
             npar = nt + 2
 
         self.coords['mc'] = range(mc_sample_size)
-        self.coords['CI'] = conf_ints
+
+        if conf_ints:
+            self.coords['CI'] = conf_ints
 
         assert isinstance(p_val, (str, np.ndarray, np.generic))
         if isinstance(p_val, str):
@@ -2774,12 +2761,8 @@ class DataStore(xr.Dataset):
             memchunk = da.ones((mc_sample_size, no, nt),
                                chunks={0: -1, 1: 1, 2: 'auto'}).chunks
         else:
-            if not ci_avg_time_flag1:
-                memchunk = da.ones((mc_sample_size, no, nt),
-                                   chunks={0: -1, 1: 'auto', 2: 'auto'}).chunks
-            else:
-                memchunk = da.ones((mc_sample_size, no, nt),
-                                   chunks={0: -1, 1: 'auto', 2: -1}).chunks
+            memchunk = da.ones((mc_sample_size, no, nt),
+                               chunks={0: -1, 1: 'auto', 2: 'auto'}).chunks
 
         # Draw from the normal distributions for the Stokes intensities
         for k, st_labeli, st_vari in zip(
@@ -2836,14 +2819,7 @@ class DataStore(xr.Dataset):
             (self['dalpha_mc'] * self.x)
             ) - 273.15
 
-        if ci_avg_time_flag1 and not ci_avg_x_flag:
-            avg_dims = ['mc', time_dim]
-        elif ci_avg_x_flag and not ci_avg_time_flag1:
-            avg_dims = ['mc', 'x']
-        elif ci_avg_x_flag and ci_avg_time_flag1:
-            avg_dims = ['mc', time_dim, 'x']
-        else:
-            avg_dims = ['mc']
+        avg_dims = ['mc']
 
         avg_axis = self[store_tmpf + '_mc_set'].get_axis_num(avg_dims)
 
@@ -2851,47 +2827,394 @@ class DataStore(xr.Dataset):
             self[store_tmpf + '_mc_set'] - self[store_tmpf]).var(
                 dim=avg_dims, ddof=1)
 
-        if ci_avg_time_flag1 and not ci_avg_x_flag:
-            chunks_axis = self[store_tmpf + '_mc_set'].get_axis_num('x')
-            new_chunks = ((len(conf_ints),),) + (
-                self[store_tmpf + '_mc_set'].chunks[chunks_axis],)
-        elif ci_avg_x_flag and not ci_avg_time_flag1:
-            chunks_axis = self[store_tmpf + '_mc_set'].get_axis_num(time_dim)
-            new_chunks = ((len(conf_ints),),) + (
-                self[store_tmpf + '_mc_set'].chunks[chunks_axis],)
-        elif ci_avg_x_flag and ci_avg_time_flag1:
-            new_chunks = (len(conf_ints),)
-        else:
+        if conf_ints:
             new_chunks = (
                 (len(conf_ints),),) + self[store_tmpf + '_mc_set'].chunks[1:]
 
-        if ci_avg_x_flag or ci_avg_time_flag1:
-            qq = self[store_tmpf + '_mc_set'] - self[store_tmpf]
-        else:
             qq = self[store_tmpf + '_mc_set']
 
-        q = qq.data.map_blocks(
-            lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
-            chunks=new_chunks,  #
-            drop_axis=avg_axis,  # avg dimesnions are dropped from input arr
-            new_axis=0)  # The new CI dimension is added as first axis
+            q = qq.data.map_blocks(
+                lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
+                chunks=new_chunks,  #
+                drop_axis=avg_axis,  # avg dimesnions are dropped from input arr
+                new_axis=0)  # The new CI dimension is added as first axis
 
-        if ci_avg_time_flag1 and not ci_avg_x_flag:
-            self[store_tmpf + '_mc'] = (('CI', 'x'), q)
-        elif ci_avg_x_flag and not ci_avg_time_flag1:
-            self[store_tmpf + '_mc'] = (('CI', time_dim), q)
-        elif ci_avg_x_flag and ci_avg_time_flag1:
-            self[store_tmpf + '_mc'] = (('CI',), q)
-        else:
             self[store_tmpf + '_mc'] = (('CI', 'x', time_dim), q)
 
         if remove_mc_set_flag:
             drop_var = [
                 'gamma_mc', 'dalpha_mc', 'c_mc', 'mc', 'r_st', 'r_ast',
-                store_tmpf + '_mc_set']
+                store_tmpf + '_mc_set', 'ta_mc_arr']
             for k in drop_var:
                 del self[k]
 
+        pass
+
+    def average_single_ended(
+            self,
+            p_val='p_val',
+            p_cov='p_cov',
+            st_var=None,
+            ast_var=None,
+            store_tmpf='tmpf',
+            store_tempvar='_var',
+            conf_ints=None,
+            mc_sample_size=100,
+            ci_avg_time_flag1=False,
+            ci_avg_time_flag2=False,
+            ci_avg_time_sel=None,
+            ci_avg_time_isel=None,
+            ci_avg_x_flag1=False,
+            ci_avg_x_flag2=False,
+            ci_avg_x_sel=None,
+            ci_avg_x_isel=None,
+            var_only_sections=None,
+            da_random_state=None,
+            remove_mc_set_flag=True,
+            reduce_memory_usage=False,
+            **kwargs):
+        """
+        See Example Notebook 16.
+
+
+        Parameters
+        ----------
+        p_val : array-like or string
+            parameter solution directly from calibration_double_ended_wls
+        p_cov : array-like or string
+            parameter covariance at the solution directly from
+            calibration_double_ended_wls
+            If set to False, no uncertainty in the parameters is propagated
+            into the confidence
+            intervals. Similar to the spec sheets of the DTS manufacturers.
+            And similar to
+            passing an array filled with zeros
+        st_var : float
+            Float of the variance of the Stokes signal
+        ast_var : float
+            Float of the variance of the anti-Stokes signal
+        store_tmpf : str
+            Key of how to store the Forward calculated temperature. Is
+            calculated using the
+            forward Stokes and anti-Stokes observations.
+        store_tempvar : str
+            a string that is appended to the store_tmp_ keys. and the
+            variance is calculated
+            for those store_tmp_ keys
+        store_ta : str
+            Key of how transient attenuation parameters are stored. Default
+            is `talpha`. `_fw` and `_bw` is appended to for the forward and
+            backward parameters. The `transient_asym_att_x` is derived from
+            the `coords` of this DataArray. The `coords` of `ds[store_ta +
+            '_fw']` should be ('time', 'trans_att').
+        conf_ints : iterable object of float
+            A list with the confidence boundaries that are calculated. Valid
+            values are between
+            [0, 1].
+        mc_sample_size : int
+            Size of the monte carlo parameter set used to calculate the
+            confidence interval
+        ci_avg_time_flag1 : bool
+            The confidence intervals differ each time step. Assumes the
+            temperature varies during the measurement period. Computes the
+            arithmic temporal mean. If you would like to know the confidence
+            interfal of:
+            (1) a single additional measurement. So you can state "if another
+            measurement were to be taken, it would have this ci"
+            (2) all measurements. So you can state "The temperature remained
+            during the entire measurement period between these ci bounds".
+            Adds store_tmpw + '_avg1' and store_tmpw + '_mc_avg1_var' to the
+            DataStore. If `conf_ints` are set, also the confidence intervals
+            `_mc_avg1` are added to the DataStore. Works independently of the
+            ci_avg_time_flag2 and ci_avg_x_flag.
+        ci_avg_time_flag2 : bool
+            The confidence intervals differ each time step. Assumes the
+            temperature remains constant during the measurement period.
+            Computes the inverse-variance-weighted-temporal-mean temperature
+            and its uncertainty.
+            If you would like to know the confidence interfal of:
+            (1) I want to estimate a background temperature with confidence
+            intervals. I hereby assume the temperature does not change over
+            time and average all measurements to get a better estimate of the
+            background temperature.
+            Adds store_tmpw + '_avg2' and store_tmpw + '_mc_avg2_var' to the
+            DataStore. If `conf_ints` are set, also the confidence intervals
+            `_mc_avg2` are added to the DataStore. Works independently of the
+            ci_avg_time_flag1 and ci_avg_x_flag.
+        ci_avg_time_sel : slice
+            Compute ci_avg_time_flag1 and ci_avg_time_flag2 using only a
+            selection of the data
+        ci_avg_time_isel : iterable of int
+            Compute ci_avg_time_flag1 and ci_avg_time_flag2 using only a
+            selection of the data
+        ci_avg_x_flag1 : bool
+            The confidence intervals differ at each location. Assumes the
+            temperature varies over `x` and over time. Computes the
+            arithmic spatial mean. If you would like to know the confidence
+            interfal of:
+            (1) a single additional measurement location. So you can state "if
+            another measurement location were to be taken,
+            it would have this ci"
+            (2) all measurement locations. So you can state "The temperature
+            along the fiber remained between these ci bounds".
+            Adds store_tmpw + '_avgx1' and store_tmpw + '_mc_avgx1_var' to the
+            DataStore. If `conf_ints` are set, also the confidence intervals
+            `_mc_avgx1` are added to the DataStore. Works independently of the
+            ci_avg_time_flag1, ci_avg_time_flag2 and ci_avg_x2_flag.
+        ci_avg_x_flag2 : bool
+            The confidence intervals differ at each location. Assumes the
+            temperature is the same at each location but varies over time.
+            Computes the inverse-variance-weighted-spatial-mean temperature
+            and its uncertainty.
+            If you would like to know the confidence interfal of:
+            (1) I have put a lot of fiber in water, and I know that the
+            temperature variation in the water is much smaller than along
+            other parts of the fiber. And I would like to average the
+            measurements from multiple locations to improve the estimated
+            temperature.
+            Adds store_tmpw + '_avg2' and store_tmpw + '_mc_avg2_var' to the
+            DataStore. If `conf_ints` are set, also the confidence intervals
+            `_mc_avg2` are added to the DataStore. Works independently of the
+            ci_avg_time_flag1 and ci_avg_x_flag.
+        ci_avg_x_sel : slice
+            Compute ci_avg_time_flag1 and ci_avg_time_flag2 using only a
+            selection of the data
+        ci_avg_x_isel : iterable of int
+            Compute ci_avg_time_flag1 and ci_avg_time_flag2 using only a
+            selection of the data
+        var_only_sections : bool
+            useful if using the ci_avg_x_flag. Only calculates the var over the
+            sections, so that the values can be compared with accuracy along the
+            reference sections. Where the accuracy is the variance of the
+            residuals between the estimated temperature and temperature of the
+            water baths.
+        da_random_state
+            For testing purposes. Similar to random seed. The seed for dask.
+            Makes random not so random. To produce reproducable results for
+            testing environments.
+        remove_mc_set_flag : bool
+            Remove the monte carlo data set, from which the CI and the
+            variance are calculated.
+        reduce_memory_usage : bool
+            Use less memory but at the expense of longer computation time
+
+        Returns
+        -------
+
+        """
+        self.check_deprecated_kwargs(kwargs)
+
+        if var_only_sections is not None:
+            raise NotImplementedError()
+
+        self.conf_int_single_ended(
+            p_val=p_val,
+            p_cov=p_cov,
+            st_var=st_var,
+            ast_var=ast_var,
+            store_tmpf=store_tmpf,
+            store_tempvar=store_tempvar,
+            conf_ints=None,
+            mc_sample_size=mc_sample_size,
+            da_random_state=da_random_state,
+            remove_mc_set_flag=False,
+            reduce_memory_usage=reduce_memory_usage,
+            **kwargs)
+
+        time_dim = self.get_time_dim(data_var_key='st')
+
+        if ci_avg_time_sel is not None:
+            time_dim2 = time_dim + '_avg'
+            x_dim2 = 'x'
+            self.coords[time_dim2] = ((time_dim2,), self[time_dim].sel(
+                **{time_dim: ci_avg_time_sel}))
+            self[store_tmpf + '_avgsec'] = (
+                ('x', time_dim2),
+                self[store_tmpf].sel(
+                    **{time_dim: ci_avg_time_sel}).data)
+            self[store_tmpf + '_mc_set'] = (
+                ('mc', 'x', time_dim2),
+                self[store_tmpf + '_mc_set'].sel(
+                    **{time_dim: ci_avg_time_sel}).data)
+
+        elif ci_avg_time_isel is not None:
+            time_dim2 = time_dim + '_avg'
+            x_dim2 = 'x'
+            self.coords[time_dim2] = ((time_dim2,), self[time_dim].isel(
+                **{time_dim: ci_avg_time_isel}))
+            self[store_tmpf + '_avgsec'] = (
+                ('x', time_dim2),
+                self[store_tmpf].isel(
+                    **{time_dim: ci_avg_time_isel}).data)
+            self[store_tmpf + '_mc_set'] = (
+                ('mc', 'x', time_dim2),
+                self[store_tmpf + '_mc_set'].isel(
+                    **{time_dim: ci_avg_time_isel}).data)
+
+        elif ci_avg_x_sel is not None:
+            time_dim2 = time_dim
+            x_dim2 = 'x_avg'
+            self.coords[x_dim2] = ((x_dim2,),
+                                   self.x.sel(x=ci_avg_x_sel))
+            self[store_tmpf + '_avgsec'] = (
+                (x_dim2, time_dim),
+                self[store_tmpf].sel(x=ci_avg_x_sel).data)
+            self[store_tmpf + '_mc_set'] = (
+                ('mc', x_dim2, time_dim),
+                self[store_tmpf + '_mc_set'].sel(x=ci_avg_x_sel).data)
+
+        elif ci_avg_x_isel is not None:
+            time_dim2 = time_dim
+            x_dim2 = 'x_avg'
+            self.coords[x_dim2] = ((x_dim2,),
+                                   self.x.isel(x=ci_avg_x_isel))
+            self[store_tmpf + '_avgsec'] = (
+                (x_dim2, time_dim2),
+                self[store_tmpf].isel(x=ci_avg_x_isel).data)
+            self[store_tmpf + '_mc_set'] = (
+                ('mc', x_dim2, time_dim2),
+                self[store_tmpf + '_mc_set'].isel(x=ci_avg_x_isel).data)
+        else:
+            self[store_tmpf + '_avgsec'] = self[store_tmpf]
+            x_dim2 = 'x'
+            time_dim2 = time_dim
+
+        # subtract the mean temperature
+        q = self[store_tmpf + '_mc_set'] - self[store_tmpf + '_avgsec']
+        self[store_tmpf + '_mc' + '_avgsec' + store_tempvar] = (q.var(
+            dim='mc', ddof=1))
+
+        if ci_avg_x_flag1:
+            # unweighted mean
+            self[store_tmpf + '_avgx1'] = self[store_tmpf + '_avgsec'].mean(
+                dim=x_dim2)
+
+            q = self[store_tmpf + '_mc_set'] - self[store_tmpf + '_avgsec']
+            qvar = q.var(dim=['mc', x_dim2], ddof=1)
+            self[store_tmpf + '_mc_avgx1' + store_tempvar] = qvar
+
+            if conf_ints:
+                new_chunks = (len(conf_ints),
+                              self[store_tmpf + '_mc_set'].chunks[2])
+                avg_axis = self[store_tmpf + '_mc_set'].get_axis_num(
+                    ['mc', x_dim2])
+                q = self[store_tmpf + '_mc_set'].data.map_blocks(
+                    lambda x: np.percentile(x, q=conf_ints,
+                                            axis=avg_axis),
+                    chunks=new_chunks,  #
+                    drop_axis=avg_axis,
+                    # avg dimensions are dropped from input arr
+                    new_axis=0)  # The new CI dim is added as firsaxis
+
+                self[store_tmpf + '_mc_avgx1'] = (('CI', time_dim2), q)
+
+        if ci_avg_x_flag2:
+            q = self[store_tmpf + '_mc_set'] - self[store_tmpf + '_avgsec']
+
+            qvar = q.var(dim=['mc'], ddof=1)
+
+            # Inverse-variance weighting
+            avg_x_var = 1 / (1 / qvar).sum(dim=x_dim2)
+
+            self[store_tmpf + '_mc_avgx2' + store_tempvar] = avg_x_var
+
+            self[store_tmpf + '_mc_avgx2_set'] = (
+                                                self[
+                                                    store_tmpf +
+                                                    '_mc_set'] /
+                                                qvar).sum(
+                dim=x_dim2) * avg_x_var
+            self[store_tmpf + '_avgx2'] = self[store_tmpf + '_mc_avgx2_set'].mean(
+                dim='mc')
+
+            if conf_ints:
+                new_chunks = (len(conf_ints),
+                              self[store_tmpf + '_mc_set'].chunks[2])
+                avg_axis_avgx = self[store_tmpf + '_mc_set'].get_axis_num(
+                    'mc')
+
+                qq = self[store_tmpf + '_mc_avgx2_set'].data.map_blocks(
+                    lambda x: np.percentile(x, q=conf_ints,
+                                            axis=avg_axis_avgx),
+                    chunks=new_chunks,  #
+                    drop_axis=avg_axis_avgx,
+                    # avg dimensions are dropped from input arr
+                    new_axis=0,
+                    dtype=float)  # The new CI dimension is added as
+                # firsaxis
+                self[store_tmpf + '_mc_avgx2'] = (('CI', time_dim2), qq)
+
+        if ci_avg_time_flag1 is not None:
+            # unweighted mean
+            self[store_tmpf + '_avg1'] = self[store_tmpf + '_avgsec'].mean(
+                dim=time_dim2)
+
+            q = self[store_tmpf + '_mc_set'] - self[store_tmpf + '_avgsec']
+            qvar = q.var(dim=['mc', time_dim2], ddof=1)
+            self[store_tmpf + '_mc_avg1' + store_tempvar] = qvar
+
+            if conf_ints:
+                new_chunks = (len(conf_ints),
+                              self[store_tmpf + '_mc_set'].chunks[1])
+                avg_axis = self[store_tmpf + '_mc_set'].get_axis_num(
+                    ['mc', time_dim2])
+                q = self[store_tmpf + '_mc_set'].data.map_blocks(
+                    lambda x: np.percentile(x, q=conf_ints,
+                                            axis=avg_axis),
+                    chunks=new_chunks,  #
+                    drop_axis=avg_axis,
+                    # avg dimensions are dropped from input arr
+                    new_axis=0)  # The new CI dim is added as firsaxis
+
+                self[store_tmpf + '_mc_avg1'] = (('CI', x_dim2), q)
+
+        if ci_avg_time_flag2:
+            q = self[store_tmpf + '_mc_set'] - self[store_tmpf + '_avgsec']
+
+            qvar = q.var(dim=['mc'], ddof=1)
+
+            # Inverse-variance weighting
+            avg_time_var = 1 / (1 / qvar).sum(dim=time_dim2)
+
+            self[store_tmpf + '_mc_avg2' + store_tempvar] = avg_time_var
+
+            self[store_tmpf + '_mc_avg2_set'] = (
+                                               self[
+                                                   store_tmpf + '_mc_set'] /
+                                               qvar).sum(
+                dim=time_dim2) * avg_time_var
+            self[store_tmpf + '_avg2'] = self[store_tmpf + '_mc_avg2_set'].mean(
+                dim='mc')
+
+            if conf_ints:
+                new_chunks = (len(conf_ints),
+                              self[store_tmpf + '_mc_set'].chunks[1])
+                avg_axis_avg2 = self[store_tmpf + '_mc_set'].get_axis_num(
+                    'mc')
+
+                qq = self[store_tmpf + '_mc_avg2_set'].data.map_blocks(
+                    lambda x: np.percentile(x, q=conf_ints,
+                                            axis=avg_axis_avg2),
+                    chunks=new_chunks,  #
+                    drop_axis=avg_axis_avg2,
+                    # avg dimensions are dropped from input arr
+                    new_axis=0,
+                    dtype=float)  # The new CI dimension is added as
+                # firsaxis
+                self[store_tmpf + '_mc_avg2'] = (('CI', x_dim2), qq)
+        # Clean up the garbage. All arrays with a Monte Carlo dimension.
+        if remove_mc_set_flag:
+            remove_mc_set = ['r_st', 'r_ast', 'gamma_mc', 'dalpha_mc',
+                             'c_mc', 'x_avg', 'time_avg', 'mc', 'ta_mc_arr']
+            remove_mc_set.append(store_tmpf + '_avgsec')
+            remove_mc_set.append(store_tmpf + '_mc_set')
+            remove_mc_set.append(store_tmpf + '_mc_avg2_set')
+            remove_mc_set.append(store_tmpf + '_mc_avgx2_set')
+            remove_mc_set.append(store_tmpf + '_mc_avgsec' + store_tempvar)
+
+            for k in remove_mc_set:
+                if k in self:
+                    del self[k]
         pass
 
     def conf_int_double_ended(
@@ -3366,6 +3689,8 @@ class DataStore(xr.Dataset):
             reduce_memory_usage=False,
             **kwargs):
         """
+        See Example Notebook 16.
+
 
         Parameters
         ----------

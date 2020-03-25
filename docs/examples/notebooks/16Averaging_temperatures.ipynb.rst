@@ -131,9 +131,11 @@ to the DataStore:
    tmpf_avg1              The average forward temperature
    tmpf_mc_avg1_var       The estimated variance of the average forward temperature
    tmpf_mc_avg1           The confidence intervals of the average forward temperature
+
    tmpb_avg1              The average backward temperature
    tmpb_mc_avg1_var       The estimated variance of the average backward temperature
    tmpb_mc_avg1           The confidence intervals of the average forward temperature
+
    tmpw_avg1              The average forward-backward-averaged temperature
    tmpw_avg1_var          The estimated variance of the average forward-backward-averaged temperature
    tmpw_mc_avg1           The confidence intervals of the average forward-backward-averaged temperature
@@ -174,9 +176,11 @@ to the DataStore:
    tmpf_avg2              The average forward temperature
    tmpf_mc_avg2_var       The estimated variance of the average forward temperature
    tmpf_mc_avg2           The confidence intervals of the average forward temperature
+
    tmpb_avg2              The average backward temperature
    tmpb_mc_avg2_var       The estimated variance of the average backward temperature
    tmpb_mc_avg2           The confidence intervals of the average forward temperature
+
    tmpw_avg2              The average forward-backward-averaged temperature
    tmpw_avg2_var          The estimated variance of the average forward-backward-averaged temperature
    tmpw_mc_avg2           The confidence intervals of the average forward-backward-averaged temperature
@@ -219,9 +223,11 @@ to the DataStore:
    tmpf_avgx1              The average forward temperature
    tmpf_mc_avgx1_var       The estimated variance of the average forward temperature
    tmpf_mc_avgx1           The confidence intervals of the average forward temperature
+
    tmpb_avgx1              The average backward temperature
    tmpb_mc_avgx1_var       The estimated variance of the average backward temperature
    tmpb_mc_avgx1           The confidence intervals of the average forward temperature
+
    tmpw_avgx1              The average forward-backward-averaged temperature
    tmpw_avgx1_var          The estimated variance of the average forward-backward-averaged temperature
    tmpw_mc_avgx1           The confidence intervals of the average forward-backward-averaged temperature
@@ -267,9 +273,11 @@ to the DataStore:
    tmpf_avgx2              The average forward temperature
    tmpf_mc_avgx2_var       The estimated variance of the average forward temperature
    tmpf_mc_avgx2           The confidence intervals of the average forward temperature
+
    tmpb_avgx2              The average backward temperature
    tmpb_mc_avgx2_var       The estimated variance of the average backward temperature
    tmpb_mc_avgx2           The confidence intervals of the average forward temperature
+
    tmpw_avgx2              The average forward-backward-averaged temperature
    tmpw_avgx2_var          The estimated variance of the average forward-backward-averaged temperature
    tmpw_mc_avgx2           The confidence intervals of the average forward-backward-averaged temperature

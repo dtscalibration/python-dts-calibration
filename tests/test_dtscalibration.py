@@ -3069,6 +3069,79 @@ def test_calibrate_wls_procedures():
     pass
 
 
+def test_average_measurements_single_ended():
+    filepath = data_dir_single_ended
+
+    ds_ = read_silixa_files(
+        directory=filepath,
+        timezone_netcdf='UTC',
+        file_ext='*.xml')
+
+    ds = ds_.sel(x=slice(0, 100))  # only calibrate parts of the fiber
+    sections = {
+        'probe2Temperature': [slice(6., 14.)]  # warm bath
+        }
+    ds.sections = sections
+
+    st_var, ast_var = 5., 5.
+
+    ds.calibration_single_ended(
+        st_var=st_var,
+        ast_var=ast_var,
+        method='wls',
+        solver='sparse')
+    ds.average_single_ended(
+        p_val='p_val',
+        p_cov='p_cov',
+        st_var=st_var,
+        ast_var=ast_var,
+        store_tmpf='tmpf',
+        store_tempvar='_var',
+        conf_ints=[2.5, 97.5],
+        mc_sample_size=50,  # <- choose a much larger sample size
+        ci_avg_x_flag1=True,
+        ci_avg_x_sel=slice(6., 14.))
+    ix = ds.get_section_indices(slice(6, 14))
+    ds.average_single_ended(
+        p_val='p_val',
+        p_cov='p_cov',
+        st_var=st_var,
+        ast_var=ast_var,
+        store_tmpf='tmpf',
+        store_tempvar='_var',
+        conf_ints=[2.5, 97.5],
+        mc_sample_size=50,  # <- choose a much larger sample size
+        ci_avg_x_flag2=True,
+        ci_avg_x_isel=ix)
+    sl = slice(np.datetime64('2018-05-04T12:22:17.710000000'),
+               np.datetime64('2018-05-04T12:22:47.702000000'))
+    ds.average_single_ended(
+        p_val='p_val',
+        p_cov='p_cov',
+        st_var=st_var,
+        ast_var=ast_var,
+        store_tmpf='tmpf',
+        store_tempvar='_var',
+        conf_ints=[2.5, 97.5],
+        mc_sample_size=50,  # <- choose a much larger sample size
+        ci_avg_time_flag1=True,
+        ci_avg_time_flag2=False,
+        ci_avg_time_sel=sl)
+    ds.average_single_ended(
+        p_val='p_val',
+        p_cov='p_cov',
+        st_var=st_var,
+        ast_var=ast_var,
+        store_tmpf='tmpf',
+        store_tempvar='_var',
+        conf_ints=[2.5, 97.5],
+        mc_sample_size=50,  # <- choose a much larger sample size
+        ci_avg_time_flag1=False,
+        ci_avg_time_flag2=True,
+        ci_avg_time_isel=range(3))
+    pass
+
+
 def test_average_measurements_double_ended():
     filepath = data_dir_double_ended2
 
@@ -3159,3 +3232,4 @@ def test_average_measurements_double_ended():
         ci_avg_time_flag1=False,
         ci_avg_time_flag2=True,
         ci_avg_time_isel=range(3))
+    pass
