@@ -2,7 +2,7 @@ A3. Loading AP Sensing files
 ============================
 
 This example loads AP sensing files. Only single-ended files are
-currently supported. Just like with Silixa's devices, the AP Sensing
+currently supported. Just like with Silixa’s devices, the AP Sensing
 data is in .xml files
 
 .. code:: ipython3
@@ -15,7 +15,7 @@ data is in .xml files
 
 .. parsed-literal::
 
-    /usr/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
+    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
       super().__init_subclass__(*args, **kwargs)
 
 

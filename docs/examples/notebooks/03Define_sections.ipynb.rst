@@ -15,7 +15,7 @@ timeseries is already part of the ``DataStore`` object.
 
 .. parsed-literal::
 
-    /usr/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
+    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
       super().__init_subclass__(*args, **kwargs)
 
 
@@ -57,16 +57,6 @@ all timeseries that can be used for calibration.
     ['acquisitionTime', 'referenceTemperature', 'probe1Temperature', 'probe2Temperature', 'referenceProbeVoltage', 'probe1Voltage', 'probe2Voltage', 'userAcquisitionTimeFW', 'userAcquisitionTimeBW']
 
 
-.. parsed-literal::
-
-    /home/bart/git/python-dts-calibration/.tox/docs/lib/python3.7/site-packages/pandas/plotting/_matplotlib/converter.py:103: FutureWarning: Using an implicitly registered datetime converter for a matplotlib plotting method. The converter was registered by pandas on import. Future versions of pandas will require you to explicitly register matplotlib converters.
-    
-    To register the converters:
-    	>>> from pandas.plotting import register_matplotlib_converters
-    	>>> register_matplotlib_converters()
-      warnings.warn(msg, FutureWarning)
-
-
 A calibration is needed to estimate temperature from Stokes and
 anti-Stokes measurements. There are three unknowns for a single ended
 calibration procedure :math:`\gamma`, :math:`C`, and :math:`\alpha`. The
@@ -76,21 +66,21 @@ while :math:`C` may vary.
 At least two calibration sections of different temperatures are needed
 to perform a decent calibration procedure.
 
-This setup has two baths, named 'cold' and 'warm'. Each bath has 2
+This setup has two baths, named ‘cold’ and ‘warm’. Each bath has 2
 sections. ``probe1Temperature`` is the temperature timeseries of the
 cold bath and ``probe2Temperature`` is the temperature timeseries of the
 warm bath.
 
-+------------+------------------------------+----------------+--------------------+
-| Name       | Name reference temperature   | Number of      | Location of        |
-| section    | time series                  | sections       | sections (m)       |
-+============+==============================+================+====================+
-| Cold bath  | probe1Temperature            | 2              | 7.5-17.0;          |
-|            |                              |                | 70.0-80.0          |
-+------------+------------------------------+----------------+--------------------+
-| Warm bath  | probe2Temperature            | 2              | 24.0-34.0;         |
-|            |                              |                | 85.0-95.0          |
-+------------+------------------------------+----------------+--------------------+
++---------+---------------------------+-------------+-----------------+
+| Name    | Name reference            | Number of   | Location of     |
+| section | temperature time series   | sections    | sections (m)    |
++=========+===========================+=============+=================+
+| Cold    | probe1Temperature         | 2           | 7.5-17.0;       |
+| bath    |                           |             | 70.0-80.0       |
++---------+---------------------------+-------------+-----------------+
+| Warm    | probe2Temperature         | 2           | 24.0-34.0;      |
+| bath    |                           |             | 85.0-95.0       |
++---------+---------------------------+-------------+-----------------+
 
 Sections are defined in a dictionary with its keywords of the names of
 the reference temperature time series. Its values are lists of slice

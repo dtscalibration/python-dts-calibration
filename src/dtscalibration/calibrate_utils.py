@@ -709,7 +709,7 @@ def calibration_double_ended_solver(
 
 
 def matching_section_location_indices(ix_sec, hix, tix):
-    # contains all indices of the entire fiber that either are using for
+    # contains all indices of the entire fiber that either are used for
     # calibrating to reference temperature or for matching sections. Is sorted.
     ix_cal_match = np.unique(np.concatenate((ix_sec, hix, tix)))
 

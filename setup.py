@@ -36,8 +36,8 @@ setup(
     name='dtscalibration',
     version='0.9.2',
     license='BSD 3-Clause License',
-    description='A Python package to load raw DTS files, perform a calibration, and plot the '
-                'result',
+    description='A Python package to load raw DTS files, perform a '
+                'calibration, and plot the result',
     long_description='%s\n%s' % (
         re.compile('^.. start-badges.*^.. end-badges', re.M | re.S
                    ).sub('', read('README.rst')),
@@ -89,6 +89,7 @@ setup(
         # https://github.com/pydata/xarray/issues/3401 cloud pickle should be
         # possible to remove from requirements soon. 2019/10/31
         'cloudpickle',
+        'nbformat'  # Needed to run the tests
         ],
     extras_require={
         # eg:

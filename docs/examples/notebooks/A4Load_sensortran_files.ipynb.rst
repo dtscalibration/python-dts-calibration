@@ -18,7 +18,7 @@ requires the ``*BinaryRawDTS.dat`` and ``*BinaryTemp.dat`` files.
 
 .. parsed-literal::
 
-    /usr/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
+    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
       super().__init_subclass__(*args, **kwargs)
 
 
@@ -73,8 +73,8 @@ The object tries to gather as much metadata from the measurement files
 as possible (temporal and spatial coordinates, filenames, temperature
 probes measurements). All other configuration settings are loaded from
 the first files and stored as attributes of the ``DataStore``.
-Sensortran's data files contain less information than the other
-manufacturer's devices, one being the acquisition time. The acquisition
+Sensortran’s data files contain less information than the other
+manufacturer’s devices, one being the acquisition time. The acquisition
 time is needed for estimating variances, and is set a constant 1s.
 
 .. code:: ipython3
@@ -118,7 +118,7 @@ time is needed for estimating variances, and is set a constant 1s.
 
 
 The sensortran files differ from other manufacturers, in that they
-return the 'counts' of the Stokes and anti-Stokes signals. These are not
+return the ‘counts’ of the Stokes and anti-Stokes signals. These are not
 corrected for offsets, which has to be done manually for proper
 calibration.
 
@@ -186,12 +186,12 @@ incorporated into the calibration routine.
 
 .. parsed-literal::
 
-    <matplotlib.lines.Line2D at 0x7fcadfa03050>
+    <matplotlib.lines.Line2D at 0x12e523d90>
 
 
 
 After a correction and rescaling (for human readability) the data will
-look more like other manufacturer's devices
+look more like other manufacturer’s devices
 
 .. code:: ipython3
 

@@ -17,6 +17,7 @@ Learn by Examples
     notebooks/13Fixed_parameter_calibration.ipynb.rst
     notebooks/14Lossy_splices.ipynb.rst
     notebooks/15Matching_sections.ipynb.rst
+    notebooks/16Averaging_temperatures.ipynb.rst
     notebooks/A2Load_sensornet_files.ipynb.rst
     notebooks/A3Load_ap_sensing_files.ipynb.rst
     notebooks/A4Load_sensortran_files.ipynb.rst

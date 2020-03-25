@@ -22,7 +22,9 @@ The confidence intervals consist of two sources of uncertainty.
    are correlated. Which is expressen in the covariance matrix.
 
 Both sources of uncertainty are propagated to an uncertainty in the
-estimated temperature via Monte Carlo.
+estimated temperature via Monte Carlo. If you would like to calculate
+confidence intervals temporal averages or averages of fiber sections see
+notebook 16.
 
 .. code:: ipython3
 
@@ -35,7 +37,7 @@ estimated temperature via Monte Carlo.
 
 .. parsed-literal::
 
-    /usr/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
+    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
       super().__init_subclass__(*args, **kwargs)
 
 
@@ -116,7 +118,7 @@ solver because it saves us memory.
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x7f3819395950>
+    <matplotlib.collections.QuadMesh at 0x12652cb10>
 
 
 
@@ -143,28 +145,18 @@ confidence interval of the calibrated temperature between 2.5% and 97.5%
 are calculated.
 
 The confidence intervals differ per time step. If you would like to
-calculate confidence intervals of all time steps together you have the
-option ``ci_avg_time_flag=True``. 'We can say with 95% confidence that
-the temperature remained between this line and this line during the
-entire measurement period'. This is ideal if you'd like to calculate the
-background temperature with a confidence interval.
+calculate confidence intervals temporal averages or averages of fiber
+sections see notebook 16.
 
 .. code:: ipython3
 
     ds.conf_int_double_ended(
-        p_val='p_val',
-        p_cov='p_cov',
         st_var=st_var,
         ast_var=ast_var,
         rst_var=rst_var,
         rast_var=rast_var,
-        store_tmpf='tmpf',
-        store_tmpb='tmpb',
-        store_tmpw='tmpw',
-        store_tempvar='_var',
         conf_ints=[2.5, 50., 97.5],
-        mc_sample_size=500,  # <- choose a much larger sample size
-        ci_avg_time_flag=False)
+        mc_sample_size=500)  # <- choose a much larger sample size)
 
 .. code:: ipython3
 
@@ -181,7 +173,7 @@ background temperature with a confidence interval.
 
 The DataArrays ``tmpf_mc`` and ``tmpb_mc`` and the dimension ``CI`` are
 added. ``MC`` stands for monte carlo and the ``CI`` dimension holds the
-confidence interval 'coordinates'.
+confidence interval ‘coordinates’.
 
 .. code:: ipython3
 
@@ -191,51 +183,5 @@ confidence interval 'coordinates'.
 
 
 .. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_16_0.png
-
-
-.. code:: ipython3
-
-    ds.data_vars
-
-
-
-
-.. parsed-literal::
-
-    Data variables:
-        st                     (x, time) float64 4.049e+03 4.044e+03 ... 3.501e+03
-        ast                    (x, time) float64 3.293e+03 3.296e+03 ... 2.803e+03
-        rst                    (x, time) float64 4.061e+03 4.037e+03 ... 4.584e+03
-        rast                   (x, time) float64 3.35e+03 3.333e+03 ... 3.707e+03
-        tmp                    (x, time) float64 16.69 16.87 16.51 ... 13.6 13.69
-        acquisitionTime        (time) float32 2.098 2.075 2.076 2.133 2.085 2.062
-        referenceTemperature   (time) float32 21.0536 21.054 ... 21.0531 21.057
-        probe1Temperature      (time) float32 4.36149 4.36025 ... 4.36021 4.36118
-        probe2Temperature      (time) float32 18.5792 18.5785 ... 18.5805 18.5723
-        referenceProbeVoltage  (time) float32 0.121704 0.121704 ... 0.121705
-        probe1Voltage          (time) float32 0.114 0.114 0.114 0.114 0.114 0.114
-        probe2Voltage          (time) float32 0.121 0.121 0.121 0.121 0.121 0.121
-        userAcquisitionTimeFW  (time) float32 2.0 2.0 2.0 2.0 2.0 2.0
-        userAcquisitionTimeBW  (time) float32 2.0 2.0 2.0 2.0 2.0 2.0
-        gamma                  float64 482.6
-        alpha                  (x) float64 -0.007236 -0.00338 ... -0.00535 -0.005245
-        df                     (time) float64 1.465 1.466 1.465 1.465 1.465 1.465
-        db                     (time) float64 1.465 1.465 1.464 1.465 1.466 1.464
-        gamma_var              float64 0.04732
-        alpha_var              (x) float64 2.909e-07 2.989e-07 ... 3.01e-07 3.01e-07
-        df_var                 (time) float64 7.041e-07 7.041e-07 ... 7.041e-07
-        db_var                 (time) float64 7.062e-07 7.062e-07 ... 7.062e-07
-        tmpf                   (x, time) float64 16.79 17.02 16.29 ... 13.57 13.74
-        tmpb                   (x, time) float64 16.81 16.86 16.91 ... 13.67 13.71
-        tmpf_mc_var            (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
-        tmpb_mc_var            (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
-        tmpw                   (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
-        tmpw_mc_var            (x, time) float64 dask.array<chunksize=(787, 6), meta=np.ndarray>
-        p_val                  (params1) float64 482.6 1.465 ... -0.00535 -0.005245
-        p_cov                  (params1, params2) float64 0.04732 ... 3.01e-07
-        tmpf_mc                (CI, x, time) float64 dask.array<chunksize=(3, 787, 6), meta=np.ndarray>
-        tmpb_mc                (CI, x, time) float64 dask.array<chunksize=(3, 787, 6), meta=np.ndarray>
-        tmpw_mc                (CI, x, time) float64 dask.array<chunksize=(3, 787, 6), meta=np.ndarray>
-
 
 
