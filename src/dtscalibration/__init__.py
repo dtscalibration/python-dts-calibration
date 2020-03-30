@@ -8,7 +8,7 @@ from .datastore import read_sensornet_files
 from .datastore import read_sensortran_files
 from .datastore import read_silixa_files
 
-__version__ = '0.9.2'
+__version__ = '1.0.0'
 __all__ = [
     "DataStore", "open_datastore", "open_mf_datastore",
     "read_apsensing_files", "read_sensornet_files", "read_sensortran_files",

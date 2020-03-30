@@ -1,6 +1,15 @@
 
 Changelog
 =========
+1.0.0 (2020-03-30)
+------------------
+* First major release
+* Reduced flexibility in defining names under which the Stokes are stored
+* 4 Averaging functions implemented, with uncertainty estimation. Seenotebook 16 for the various options
+* Notebook about transient attenuation caused by for example connectors
+* Bug in singel ended transient attenuation
+* Check for consistent number of measurement locations across read files
+
 0.9.2 (2020-03-17)
 ------------------
 * Reduced flexibility in defining Stokes labels
