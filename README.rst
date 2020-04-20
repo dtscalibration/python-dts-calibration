@@ -100,9 +100,24 @@ Devices currently supported
 
 Learn by examples
 =================
-Interactively run the example notebooks online by clicking the example-notebooks button in the beginning of this README.
+Interactively run the example notebooks online by clicking `here <https://mybinder.org/v2/gh/dtscalibration/python-dts-calibration/master?filepath=examples%2Fnotebooks>`_.
 
 Documentation
 =============
 
 https://python-dts-calibration.readthedocs.io/
+
+How to cite
+===========
+The following article explains and discusses the calibration procedure:
+
+    des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation of Temperature and Associated Uncertainty from Fiber-Optic Raman-Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235. https://doi.org/10.3390/s20082235
+
+Cite the specific implementation / repository via Zenodo:
+
+1. Check the version of `dtscalibration` that is used in your Python console with:
+    >>> import dtscalibration
+    >>> dtscalibration.__version__
+    '1.0.0'
+2. Go to `Zenodo <https://zenodo.org/search?q=conceptrecid:%221410097%22&sort=-version&all_versions=True>`_ and follow the link to the version of interest.
+3. The citation is found on the bottom right of the page
