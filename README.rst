@@ -59,7 +59,7 @@ Overview
 
 .. end-badges
 
-A Python package to load raw DTS files, perform a calibration, and plot the result
+A Python package to load Distributed Temperature Sensing files, perform a calibration, and plot the result. A detailed description of the calibration procedure can be found at https://doi.org/10.3390/s20082235 .
 
 * Free software: BSD 3-Clause License
 
@@ -120,4 +120,4 @@ Cite the specific implementation / repository via Zenodo:
     >>> dtscalibration.__version__
     '1.0.0'
 2. Go to `Zenodo <https://zenodo.org/search?q=conceptrecid:%221410097%22&sort=-version&all_versions=True>`_ and follow the link to the version of interest.
-3. The citation is found on the bottom right of the page
+3. The citation is found on the bottom right of the page.
