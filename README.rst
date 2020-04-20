@@ -116,6 +116,7 @@ The following article explains and discusses the calibration procedure:
 Cite the specific implementation / repository via Zenodo:
 
 1. Check the version of `dtscalibration` that is used in your Python console with:
+
     >>> import dtscalibration
     >>> dtscalibration.__version__
     '1.0.0'
