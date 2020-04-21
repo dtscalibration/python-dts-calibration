@@ -1942,6 +1942,12 @@ class DataStore(xr.Dataset):
             'There is uncontrolled noise in the REV-AST signal. Are your ' \
             'sections correctly defined?'
 
+        if method == 'wls':
+            for input_item in [st_var, ast_var, rst_var, rast_var]:
+                assert input_item is not None, \
+                    'For wls define all variances (`st_var`, `ast_var`,' +\
+                    ' `rst_var`, `rast_var`)'
+
         if np.any(matching_indices):
             assert not matching_sections, \
                 'Either define `matching_sections` or `matching_indices`'
@@ -2526,7 +2532,7 @@ class DataStore(xr.Dataset):
 
         # store variances in DataStore
         if method == 'wls' or method == 'external':
-            # the variances only have ameaning if the observations are weighted
+            # the variances only have meaning if the observations are weighted
             gammavar = p_var[0]
             dfvar = p_var[1:nt + 1]
             dbvar = p_var[1 + nt:1 + 2 * nt]
