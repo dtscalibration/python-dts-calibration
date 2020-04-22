@@ -195,7 +195,8 @@ class DataStore(xr.Dataset):
         -------
 
         """
-        assert hasattr(self, '_sections'), 'first set the sections'
+        if not hasattr(self, '_sections'):
+            self.attrs['_sections'] = 'null\n...\n'
         return yaml.load(self.attrs['_sections'], Loader=yaml.UnsafeLoader)
 
     @sections.setter
