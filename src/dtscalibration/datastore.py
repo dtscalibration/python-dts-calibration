@@ -110,6 +110,11 @@ class DataStore(xr.Dataset):
                         dim for dim in ideal_dim if dim in (var.dims + (...,)))
                     self._variables[name] = var.transpose(*var_dims)
 
+        # Get attributes from dataset
+        for arg in args:
+            if isinstance(arg, xr.Dataset):
+                self.attrs = arg.attrs
+
         if '_sections' not in self.attrs:
             self.attrs['_sections'] = yaml.dump(None)
 
@@ -195,8 +200,8 @@ class DataStore(xr.Dataset):
         -------
 
         """
-        if not hasattr(self, '_sections'):
-            self.attrs['_sections'] = 'null\n...\n'
+        if '_sections' not in self.attrs:
+            self.attrs['_sections'] = yaml.dump(None)
         return yaml.load(self.attrs['_sections'], Loader=yaml.UnsafeLoader)
 
     @sections.setter
