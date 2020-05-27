@@ -1377,6 +1377,43 @@ class DataStore(xr.Dataset):
 
         return np.logical_and(mask_dn, mask_up)
 
+    def check_reference_section_values(self):
+        """
+        Checks if the values of the used sections are of the right datatype
+        (floats), if there are finite number (no NaN/inf), and if the time
+        dimension corresponds with the time dimension of the st/ast data.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+
+        """
+        time_dim = self.get_time_dim()
+
+        for key in self.sections.keys():
+            if not np.issubdtype(self[key].dtype, np.floating):
+                raise ValueError(
+                    'Data of reference temperature "' + key +
+                    '" does not have a float data type. Please ensure that '
+                    'the data is of a valid type (e.g. np.float32)'
+                )
+
+            if np.any(~np.isfinite(self[key].values)):
+                raise ValueError(
+                    'NaN/inf value(s) found in reference temperature "' +
+                    key + '"'
+                )
+
+            if self[key].dims != (time_dim,):
+                raise ValueError(
+                    'Time dimension of the reference temperature timeseries ' +
+                    key + 'is not the same as the time dimension' +
+                    ' of the Stokes measurement. See examples/notebooks/09' +
+                    'Import_timeseries.ipynb for more info'
+                )
+
     def calibration_single_ended(
             self,
             sections=None,
@@ -1481,11 +1518,7 @@ class DataStore(xr.Dataset):
         else:
             assert self.sections, 'sections are not defined'
 
-        for key in self.sections.keys():
-            if np.any(np.isnan(self[key].values)):
-                raise ValueError(
-                    'NaN value found in reference temperature: ' + key
-                )
+        self.check_reference_section_values()
 
         time_dim = self.get_time_dim()
         nt = self[time_dim].size
@@ -1925,11 +1958,7 @@ class DataStore(xr.Dataset):
         else:
             assert self.sections, 'sections are not defined'
 
-        for key in self.sections.keys():
-            if np.any(np.isnan(self[key].values)):
-                raise ValueError(
-                    'NaN value found in reference temperature: ' + key
-                )
+        self.check_reference_section_values()
 
         nx = self.x.size
         time_dim = self.get_time_dim()

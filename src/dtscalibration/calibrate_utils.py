@@ -1049,15 +1049,19 @@ def wls_sparse(X, y, w=1., calc_cov=False, verbose=False, x0=None,
     -------
 
     """
-    # The var returned by ln.lsqr is normalized by the variance of the error. To
-    # obtain the correct variance, it needs to be scaled by the variance of the error.
+    # The var returned by ln.lsqr is normalized by the variance of the error.
+    # To obtain the correct variance, it needs to be scaled by the variance
+    # of the error.
+
     if x0 is not None:
-        assert not np.any(np.isnan(x0)), 'Nan in p0 initial estimate'
+        assert not np.any(~np.isfinite(x0)), 'Nan/inf in p0 initial estimate'
     else:
         raise NotImplementedError
 
-    assert not np.any(np.isnan(w)), 'Nan in weights'
-    assert not np.any(np.isnan(y)), 'Nan in observations'
+    assert not np.any(~np.isfinite(X)), 'Nan/inf in X: check reference' +\
+        ' temperatures?'
+    assert not np.any(~np.isfinite(w)), 'Nan/inf in weights'
+    assert not np.any(~np.isfinite(y)), 'Nan/inf in observations'
 
     # precision up to 10th decimal. So that the temperature is approximately
     # estimated with 8 decimal precision.
