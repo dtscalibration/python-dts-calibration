@@ -1481,6 +1481,12 @@ class DataStore(xr.Dataset):
         else:
             assert self.sections, 'sections are not defined'
 
+        for key in self.sections.keys():
+            if np.any(np.isnan(self[key].values)):
+                raise ValueError(
+                    'NaN value found in reference temperature: ' + key
+                )
+
         time_dim = self.get_time_dim()
         nt = self[time_dim].size
         nx = self.x.size
@@ -1918,6 +1924,12 @@ class DataStore(xr.Dataset):
             self.sections = sections
         else:
             assert self.sections, 'sections are not defined'
+
+        for key in self.sections.keys():
+            if np.any(np.isnan(self[key].values)):
+                raise ValueError(
+                    'NaN value found in reference temperature: ' + key
+                )
 
         nx = self.x.size
         time_dim = self.get_time_dim()
