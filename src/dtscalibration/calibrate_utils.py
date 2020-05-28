@@ -1058,8 +1058,12 @@ def wls_sparse(X, y, w=1., calc_cov=False, verbose=False, x0=None,
     else:
         raise NotImplementedError
 
-    assert not np.any(~np.isfinite(X.data)), 'Nan/inf in X: check reference' +\
-        ' temperatures?'
+    if sp.issparse(X):
+        assert not np.any(~np.isfinite(X.data)), 'Nan/inf in X: check ' +\
+            'reference temperatures?'
+    else:
+        assert not np.any(~np.isfinite(X)), 'Nan/inf in X: check ' +\
+            'reference temperatures?'
     assert not np.any(~np.isfinite(w)), 'Nan/inf in weights'
     assert not np.any(~np.isfinite(y)), 'Nan/inf in observations'
 
