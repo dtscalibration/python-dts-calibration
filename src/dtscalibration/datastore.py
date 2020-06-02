@@ -825,7 +825,22 @@ class DataStore(xr.Dataset):
 
         pass
 
-    def rename_labels(self):
+    def rename_labels(self, assertion=True):
+        """
+        Renames the `ST` DataArrays to `st` (see `re_dict`). The new naming
+        convention simplifies the notation of the reverse Stokes `ds['REV-ST']`
+        becomes `ds.rst`. Plus the parameter-naming convention in Python in
+        lowercase.
+
+        Parameters
+        ----------
+        assertion : bool
+            If set to `True`, raises an error if complications occur.
+
+        Returns
+        -------
+
+        """
         re_dict = {
             'ST': 'st',
             'AST': 'ast',
@@ -836,14 +851,23 @@ class DataStore(xr.Dataset):
             'TMPB': 'tmpb',
             'TMPW': 'tmpw'}
 
-        re_dict2 = {k: v for k, v in re_dict.items() if k in self.data_vars}
+        re_dict_err = {k: v for k, v in re_dict.items() if k in self.data_vars
+                       and v in self.data_vars}
 
-        for k, v in re_dict2.items():
-            assert v not in self.data_vars, ('Unable to rename the st_labels '
-                                             'automagically. Please manually '
-                                             'rename ST->st and REV-ST->rst.'
-                                             'The parameter ' + v + ' is '
-                                             'already present')
+        msg = ('Unable to rename the st_labels automagically. \n'
+               'Please manually rename ST->st and REV-ST->rst. The \n'
+               f'parameters {re_dict_err.values()} were already present')
+
+        if assertion:
+            assert len(re_dict_err) == 0, msg
+        elif len(re_dict_err) != 0:
+            print(msg)
+            for v in re_dict_err.values():
+                print(f'Variable {v} was not renamed')
+
+        re_dict2 = {k: v for k, v in re_dict.items() if k in self.data_vars
+                    and v not in self.data_vars}
+
         return self.rename(re_dict2)
 
     def variance_stokes(self, *args, **kwargs):
@@ -4628,7 +4652,7 @@ def open_datastore(
             **ds_kwargs)
 
         # to support deprecated st_labels
-        ds = ds.rename_labels()
+        ds = ds.rename_labels(assertion=False)
 
         if load_in_memory:
             if "cache" in kwargs:
@@ -4639,7 +4663,8 @@ def open_datastore(
             return ds
 
 
-def open_mf_datastore(path, combine='by_coords', load_in_memory=False,
+def open_mf_datastore(path=None, paths=None, combine='by_coords',
+                      load_in_memory=False,
                       **kwargs):
     """
     Open a datastore from multiple netCDF files. This script assumes the
@@ -4652,7 +4677,11 @@ def open_mf_datastore(path, combine='by_coords', load_in_memory=False,
     combine : {'by_coords', 'nested'}, optional
         Leave it at by_coords
     path : str
-        A file path to the stored netcdf files.
+        A file path to the stored netcdf files with an asterisk in the
+        filename to list all. Ensure you have leading zeros in the file
+        numbering.
+    paths : list
+        Define you own list of file paths.
     Returns
     -------
     dataset : Dataset
@@ -4660,8 +4689,9 @@ def open_mf_datastore(path, combine='by_coords', load_in_memory=False,
     """
     from xarray.backends.api import open_mfdataset
 
-    paths = sorted(glob.glob(path))
-    assert paths, 'No files match found with: ' + path
+    if paths is None:
+        paths = sorted(glob.glob(path))
+        assert paths, 'No files match found with: ' + path
 
     with open_mfdataset(paths=paths, combine=combine, **kwargs) as xds:
         ds = DataStore(
@@ -4670,7 +4700,7 @@ def open_mf_datastore(path, combine='by_coords', load_in_memory=False,
             attrs=xds.attrs)
 
         # to support deprecated st_labels
-        ds = ds.rename_labels()
+        ds = ds.rename_labels(assertion=False)
 
         if load_in_memory:
             if "cache" in kwargs:
