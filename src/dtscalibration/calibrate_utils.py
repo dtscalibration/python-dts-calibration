@@ -4,6 +4,63 @@ import scipy.sparse as sp
 from scipy.sparse import linalg as ln
 
 
+def parse_st_var(ds, st_var, st_label='st', ix_sel=None):
+    """
+    Utility function to check the st_var input, and to return in the correct
+    format.
+
+    Parameters
+    ----------
+    ds : DataStore
+    st_var : float, callable, array-like
+        If `float` the variance of the noise from the Stokes detector is
+        described with a single value.
+        If `callable` the variance of the noise from the Stokes detector is
+        a function of the intensity, as defined in the callable function.
+        Or when the variance is a function of the intensity (Poisson
+        distributed) define a DataArray of the shape shape as ds.st, where the
+        variance can be a function of time and/or x.
+    st_label : string
+        Name of the (reverse) stokes/anti-stokes data variable which is being
+        parsed.
+    ix_sel : None, array-like
+        Index mapping along the x-dimension to apply to st_var. Definition
+        required when st_var is array-like
+
+    Returns
+    -------
+    Parsed st_var
+    """
+    if callable(st_var):
+        st_var_sec = st_var(ds[st_label].isel(x=ix_sel)).values
+
+    elif np.size(st_var) > 1:
+        if ix_sel is None:
+            raise ValueError(
+                '`ix_sel` kwarg not defined while `st_var` is array-like')
+
+        for a, b in zip(st_var.shape[::-1], ds[st_label].shape[::-1]):
+            if a == 1 or b == 1 or a == b:
+                pass
+            else:
+                raise ValueError(
+                    st_label + '_var is not broadcastable to ds.' +
+                    st_label)
+
+        if len(st_var.shape) > 1:
+            st_var_sec = np.asarray(st_var, dtype=float)[ix_sel]
+        else:
+            st_var_sec = np.asarray(st_var, dtype=float)
+
+    else:
+        st_var_sec = np.asarray(st_var, dtype=float)
+
+    assert not np.any(~np.isfinite(st_var_sec)), \
+        'NaN/inf values detected in ' + st_label + '_var. Please check input.'
+
+    return st_var_sec
+
+
 def calibration_single_ended_solver(
         ds,
         st_var=None,
@@ -220,16 +277,30 @@ def calibration_single_ended_solver(
 
     # w
     if st_var is not None:
+        st_var_sec = parse_st_var(
+            ds, st_var, st_label='st', ix_sel=ix_sec)
+        ast_var_sec = parse_st_var(
+            ds, ast_var, st_label='ast', ix_sel=ix_sec)
+
         w = 1 / (
-            ds_sec.st ** -2 * st_var +
-            ds_sec.ast ** -2 * ast_var).values.ravel()
+            ds_sec.st ** -2 * st_var_sec +
+            ds_sec.ast ** -2 * ast_var_sec).values.ravel()
 
         if np.any(matching_indices):
+            st_var_ms0 = parse_st_var(
+                ds, st_var, st_label='st', ix_sel=matching_indices[:, 0])
+            st_var_ms1 = parse_st_var(
+                ds, st_var, st_label='st', ix_sel=matching_indices[:, 1])
+            ast_var_ms0 = parse_st_var(
+                ds, ast_var, st_label='ast', ix_sel=matching_indices[:, 0])
+            ast_var_ms1 = parse_st_var(
+                ds, ast_var, st_label='ast', ix_sel=matching_indices[:, 1])
+
             w_ms = 1 / (
-                (ds_ms0.st.values ** -2 * st_var) +
-                (ds_ms0.ast.values ** -2 * ast_var) +
-                (ds_ms1.st.values ** -2 * st_var) +
-                (ds_ms1.ast.values ** -2 * ast_var)
+                (ds_ms0.st.values ** -2 * st_var_ms0) +
+                (ds_ms0.ast.values ** -2 * ast_var_ms0) +
+                (ds_ms1.st.values ** -2 * st_var_ms1) +
+                (ds_ms1.ast.values ** -2 * ast_var_ms1)
             ).ravel()
 
             w = np.hstack((w, w_ms))
@@ -382,22 +453,14 @@ def calibration_double_ended_solver(
 
     # w
     if st_var is not None:  # WLS
-        if callable(st_var):
-            st_var_sec = st_var(ds_sec.st)
-        else:
-            st_var_sec = np.asarray(st_var)
-        if callable(ast_var):
-            ast_var_sec = ast_var(ds_sec.ast)
-        else:
-            ast_var_sec = np.asarray(ast_var)
-        if callable(rst_var):
-            rst_var_sec = rst_var(ds_sec.rst)
-        else:
-            rst_var_sec = np.asarray(rst_var)
-        if callable(rast_var):
-            rast_var_sec = rast_var(ds_sec.rast)
-        else:
-            rast_var_sec = np.asarray(rast_var)
+        st_var_sec = parse_st_var(
+            ds, st_var, st_label='st', ix_sel=ix_sec)
+        ast_var_sec = parse_st_var(
+            ds, ast_var, st_label='ast', ix_sel=ix_sec)
+        rst_var_sec = parse_st_var(
+            ds, rst_var, st_label='rst', ix_sel=ix_sec)
+        rast_var_sec = parse_st_var(
+            ds, rast_var, st_label='rast', ix_sel=ix_sec)
 
         w_F = 1 / (
             ds_sec.st ** -2 * st_var_sec +
@@ -481,38 +544,32 @@ def calibration_double_ended_solver(
 
         y = np.concatenate((y_F, y_B, y_eq1, y_eq2, y_eq3))
 
-        if callable(st_var):
-            st_var_hix = st_var(ds_hix.st)
-            st_var_tix = st_var(ds_tix.st)
-            st_var_mnc = st_var(ds_mnc.st)
-        else:
-            st_var_hix = np.asarray(st_var)
-            st_var_tix = np.asarray(st_var)
-            st_var_mnc = np.asarray(st_var)
-        if callable(ast_var):
-            ast_var_hix = ast_var(ds_hix.ast)
-            ast_var_tix = ast_var(ds_tix.ast)
-            ast_var_mnc = ast_var(ds_mnc.ast)
-        else:
-            ast_var_hix = np.asarray(ast_var)
-            ast_var_tix = np.asarray(ast_var)
-            ast_var_mnc = np.asarray(ast_var)
-        if callable(rst_var):
-            rst_var_hix = rst_var(ds_hix.rst)
-            rst_var_tix = rst_var(ds_tix.rst)
-            rst_var_mnc = rst_var(ds_mnc.rst)
-        else:
-            rst_var_hix = np.asarray(rst_var)
-            rst_var_tix = np.asarray(rst_var)
-            rst_var_mnc = np.asarray(rst_var)
-        if callable(rast_var):
-            rast_var_hix = rast_var(ds_hix.rast)
-            rast_var_tix = rast_var(ds_tix.rast)
-            rast_var_mnc = rast_var(ds_mnc.rast)
-        else:
-            rast_var_hix = np.asarray(rast_var)
-            rast_var_tix = np.asarray(rast_var)
-            rast_var_mnc = np.asarray(rast_var)
+        st_var_hix = parse_st_var(
+            ds, st_var, st_label='st', ix_sel=hix)
+        ast_var_hix = parse_st_var(
+            ds, ast_var, st_label='ast', ix_sel=hix)
+        rst_var_hix = parse_st_var(
+            ds, rst_var, st_label='rst', ix_sel=hix)
+        rast_var_hix = parse_st_var(
+            ds, rast_var, st_label='rast', ix_sel=hix)
+
+        st_var_tix = parse_st_var(
+            ds, st_var, st_label='st', ix_sel=tix)
+        ast_var_tix = parse_st_var(
+            ds, ast_var, st_label='ast', ix_sel=tix)
+        rst_var_tix = parse_st_var(
+            ds, rst_var, st_label='rst', ix_sel=tix)
+        rast_var_tix = parse_st_var(
+            ds, rast_var, st_label='rast', ix_sel=tix)
+
+        st_var_mnc = parse_st_var(
+            ds, st_var, st_label='st', ix_sel=ix_match_not_cal)
+        ast_var_mnc = parse_st_var(
+            ds, ast_var, st_label='ast', ix_sel=ix_match_not_cal)
+        rst_var_mnc = parse_st_var(
+            ds, rst_var, st_label='rst', ix_sel=ix_match_not_cal)
+        rast_var_mnc = parse_st_var(
+            ds, rast_var, st_label='rast', ix_sel=ix_match_not_cal)
 
         w_eq1 = 1 / (
             (ds_hix.st ** -2 * st_var_hix +

@@ -1190,7 +1190,7 @@ class DataStore(xr.Dataset):
             assert self.sections, 'sections are not defined'
 
         assert self[st_label].dims[0] == 'x', 'Stokes are transposed'
-        st_var, resid = self.variance_stokes(st_label=st_label)
+        _, resid = self.variance_stokes(st_label=st_label)
 
         ix_sec = self.ufunc_per_section(x_indices=True, calc_per='all')
         st = self.isel(x=ix_sec)[st_label].values.ravel()
@@ -1556,15 +1556,9 @@ class DataStore(xr.Dataset):
                 ast_var = None    # ols
                 calc_cov = False
             else:
-                for i_var, i_label in zip(
-                        [st_var, ast_var], ['st', 'ast']):
-                    if callable(i_var):
-                        ix_sec = self.ufunc_per_section(x_indices=True,
-                                                        calc_per='all')
-                        i_var = i_var(self[i_label].isel(x=ix_sec)).values
-
-                    else:
-                        i_var = np.asarray(i_var, dtype=float)
+                for input_item in [st_var, ast_var]:
+                    assert input_item is not None, \
+                       'For wls define all variances (`st_var`, `ast_var`)'
 
                 calc_cov = True
 
@@ -2829,6 +2823,17 @@ class DataStore(xr.Dataset):
             else:
                 loc = da.from_array(self[st_labeli].data, chunks=memchunk[1:])
 
+            # Make sure variance is of size (no, nt)
+            if np.size(st_vari) > 1:
+                if st_vari.shape == self[st_labeli].shape:
+                    pass
+                elif len(st_vari.shape) == 1:
+                    st_vari = st_vari[np.newaxis, :].repeat(no, axis=0)
+                else:
+                    st_vari = st_vari.repeat(nt, axis=1)
+            else:
+                pass
+
             # Load variance as chunked Dask array, otherwise eats memory
             if type(st_vari) == da.core.Array:
                 st_vari_da = da.asarray(st_vari, chunks=memchunk[1:])
@@ -3575,6 +3580,17 @@ class DataStore(xr.Dataset):
                 loc = da.asarray(self[st_labeli].data, chunks=memchunk[1:])
             else:
                 loc = da.from_array(self[st_labeli].data, chunks=memchunk[1:])
+
+            # Make sure variance is of size (no, nt)
+            if np.size(st_vari) > 1:
+                if st_vari.shape == self[st_labeli].shape:
+                    pass
+                elif len(st_vari.shape) == 1:
+                    st_vari = st_vari[np.newaxis, :].repeat(no, axis=0)
+                else:
+                    st_vari = st_vari.repeat(nt, axis=1)
+            else:
+                pass
 
             # Load variance as chunked Dask array, otherwise eats memory
             if type(st_vari) == da.core.Array:

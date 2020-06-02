@@ -57,6 +57,400 @@ def test_main():
     assert main([]) == 0
 
 
+def test_variance_input_types_single():
+    import dask.array as da
+    from src.dtscalibration import DataStore
+    import numpy as np
+    from scipy import stats
+
+    np.random.seed(0)
+    state = da.random.RandomState(0)
+
+    stokes_m_var = 40.
+    cable_len = 100.
+    nt = 500
+    time = np.arange(nt)
+    x = np.linspace(0., cable_len, 100)
+    ts_cold = np.ones(nt) * 4.
+    ts_warm = np.ones(nt) * 20.
+
+    C_p = 15246
+    C_m = 2400.
+    dalpha_r = 0.005284
+    dalpha_m = 0.004961
+    dalpha_p = 0.005607
+    gamma = 482.6
+    cold_mask = x < 0.5 * cable_len
+    warm_mask = np.invert(cold_mask)  # == False
+    temp_real = np.ones((len(x), nt))
+    temp_real[cold_mask] *= ts_cold + 273.15
+    temp_real[warm_mask] *= ts_warm + 273.15
+
+    st = C_p * np.exp(-dalpha_r * x[:, None]) * np.exp(-dalpha_p * x[:, None]) * np.exp(
+        -gamma / temp_real) / (1 - np.exp(-gamma / temp_real))
+    ast = C_m * np.exp(-dalpha_r * x[:, None]) * np.exp(-dalpha_m * x[:, None]) / (
+        1 - np.exp(-gamma / temp_real))
+
+    st_m = st + stats.norm.rvs(size=st.shape, scale=stokes_m_var ** 0.5)
+    ast_m = ast + stats.norm.rvs(size=ast.shape, scale=1.1 * stokes_m_var ** 0.5)
+
+    print('alphaint', cable_len * (dalpha_p - dalpha_m))
+    print('alpha', dalpha_p - dalpha_m)
+    print('C', np.log(C_p / C_m))
+    print('x0', x.max())
+
+    ds = DataStore({
+        'st':   (['x', 'time'], st_m),
+        'ast':  (['x', 'time'], ast_m),
+        'userAcquisitionTimeFW': (['time'], np.ones(nt)),
+        'cold':  (['time'], ts_cold),
+        'warm':  (['time'], ts_warm)
+        },
+        coords={
+            'x':    x,
+            'time': time},
+        attrs={
+            'isDoubleEnded': '0'})
+
+    sections = {
+        'cold': [slice(0., 0.4 * cable_len)],
+        'warm': [slice(0.6 * cable_len, cable_len)]}
+
+    # Test float input
+    st_var = 5.
+
+    ds.calibration_single_ended(
+        sections=sections,
+        st_var=st_var,
+        ast_var=st_var,
+        method='wls',
+        solver='sparse')
+
+    ds.conf_int_single_ended(
+        st_var=st_var,
+        ast_var=st_var,
+        mc_sample_size=100,
+        da_random_state=state
+    )
+
+    assert_almost_equal_verbose(
+        ds.tmpf_mc_var.sel(x=slice(0, 10)).mean(),
+        0.044361, decimal=2)
+    assert_almost_equal_verbose(
+        ds.tmpf_mc_var.sel(x=slice(90, 100)).mean(),
+        0.242028, decimal=2)
+
+    # Test callable input
+    def callable_st_var(stokes):
+        slope = 0.01
+        offset = 0
+        return slope * stokes + offset
+
+    ds.calibration_single_ended(
+        sections=sections,
+        st_var=callable_st_var,
+        ast_var=callable_st_var,
+        method='wls',
+        solver='sparse')
+
+    ds.conf_int_single_ended(
+        st_var=callable_st_var,
+        ast_var=callable_st_var,
+        mc_sample_size=100,
+        da_random_state=state
+    )
+
+    assert_almost_equal_verbose(
+        ds.tmpf_mc_var.sel(x=slice(0, 10)).mean(),
+        0.184753, decimal=2)
+    assert_almost_equal_verbose(
+        ds.tmpf_mc_var.sel(x=slice(90, 100)).mean(),
+        0.545186, decimal=2)
+
+    # Test input with shape of (ntime, nx)
+    st_var = ds.st.values*0 + 20.
+    ds.calibration_single_ended(sections=sections,
+                                st_var=st_var,
+                                ast_var=st_var,
+                                method='wls',
+                                solver='sparse')
+
+    ds.conf_int_single_ended(
+        st_var=st_var,
+        ast_var=st_var,
+        mc_sample_size=100,
+        da_random_state=state
+    )
+
+    assert_almost_equal_verbose(
+        ds.tmpf_mc_var.mean(),
+        0.418098, decimal=2)
+
+    # Test input with shape (nx, 1)
+    st_var = np.vstack(
+        ds.st.mean(dim='time').values*0 +
+        np.linspace(10, 50, num=ds.st.x.size))
+
+    ds.calibration_single_ended(sections=sections,
+                                st_var=st_var,
+                                ast_var=st_var,
+                                method='wls',
+                                solver='sparse')
+
+    ds.conf_int_single_ended(
+        st_var=st_var,
+        ast_var=st_var,
+        mc_sample_size=100,
+        da_random_state=state
+    )
+
+    assert_almost_equal_verbose(
+        ds.tmpf_mc_var.sel(x=slice(0, 50)).mean().values,
+        0.2377, decimal=2)
+    assert_almost_equal_verbose(
+        ds.tmpf_mc_var.sel(x=slice(50, 100)).mean().values,
+        1.3203, decimal=2)
+
+    # Test input with shape (ntime)
+    st_var = ds.st.mean(dim='x').values*0 + np.linspace(5, 200, num=nt)
+
+    ds.calibration_single_ended(sections=sections,
+                                st_var=st_var,
+                                ast_var=st_var,
+                                method='wls',
+                                solver='sparse')
+
+    ds.conf_int_single_ended(
+        st_var=st_var,
+        ast_var=st_var,
+        mc_sample_size=100,
+        da_random_state=state
+    )
+
+    assert_almost_equal_verbose(
+        ds.tmpf_mc_var.sel(time=slice(0, nt//2)).mean().values,
+        1.0908, decimal=2)
+    assert_almost_equal_verbose(
+        ds.tmpf_mc_var.sel(time=slice(nt//2, None)).mean().values,
+        3.0759, decimal=2)
+
+    pass
+
+
+def test_variance_input_types_double():
+    import dask.array as da
+    from src.dtscalibration import DataStore
+    import numpy as np
+    from scipy import stats
+
+    np.random.seed(0)
+    state = da.random.RandomState(0)
+
+    stokes_m_var = 40.
+    cable_len = 100.
+    nt = 500
+    time = np.arange(nt)
+    x = np.linspace(0., cable_len, 100)
+    ts_cold = np.ones(nt) * 4.
+    ts_warm = np.ones(nt) * 20.
+
+    C_p = 15246
+    C_m = 2400.
+    dalpha_r = 0.005284
+    dalpha_m = 0.004961
+    dalpha_p = 0.005607
+    gamma = 482.6
+    cold_mask = x < 0.5 * cable_len
+    warm_mask = np.invert(cold_mask)  # == False
+    temp_real = np.ones((len(x), nt))
+    temp_real[cold_mask] *= ts_cold + 273.15
+    temp_real[warm_mask] *= ts_warm + 273.15
+
+    st = C_p * np.exp(-dalpha_r * x[:, None]) * np.exp(-dalpha_p * x[:, None]) * np.exp(
+        -gamma / temp_real) / (1 - np.exp(-gamma / temp_real))
+    ast = C_m * np.exp(-dalpha_r * x[:, None]) * np.exp(-dalpha_m * x[:, None]) / (
+        1 - np.exp(-gamma / temp_real))
+    rst = C_p * np.exp(-dalpha_r * (-x[:, None] + 100)) * np.exp(
+        -dalpha_p * (-x[:, None] + 100)) * np.exp(-gamma / temp_real) / (
+                1 - np.exp(-gamma / temp_real))
+    rast = C_m * np.exp(-dalpha_r * (-x[:, None] + 100)) * np.exp(
+        -dalpha_m * (-x[:, None] + 100)) / (1 - np.exp(-gamma / temp_real))
+
+    st_m = st + stats.norm.rvs(size=st.shape, scale=stokes_m_var ** 0.5)
+    ast_m = ast + stats.norm.rvs(size=ast.shape, scale=1.1 * stokes_m_var ** 0.5)
+    rst_m = rst + stats.norm.rvs(size=rst.shape, scale=0.9 * stokes_m_var ** 0.5)
+    rast_m = rast + stats.norm.rvs(size=rast.shape, scale=0.8 * stokes_m_var ** 0.5)
+
+    print('alphaint', cable_len * (dalpha_p - dalpha_m))
+    print('alpha', dalpha_p - dalpha_m)
+    print('C', np.log(C_p / C_m))
+    print('x0', x.max())
+
+    ds = DataStore({
+        'st':   (['x', 'time'], st_m),
+        'ast':  (['x', 'time'], ast_m),
+        'rst':  (['x', 'time'], rst_m),
+        'rast': (['x', 'time'], rast_m),
+        'userAcquisitionTimeFW': (['time'], np.ones(nt)),
+        'userAcquisitionTimeBW': (['time'], np.ones(nt)),
+        'cold':  (['time'], ts_cold),
+        'warm':  (['time'], ts_warm)
+        },
+        coords={
+            'x':    x,
+            'time': time},
+        attrs={
+            'isDoubleEnded': '1'})
+
+    sections = {
+        'cold': [slice(0., 0.4 * cable_len)],
+        'warm': [slice(0.6 * cable_len, cable_len)]}
+
+    # Test float input
+    st_var = 5.
+
+    ds.calibration_double_ended(
+        sections=sections,
+        st_var=st_var,
+        ast_var=st_var,
+        rst_var=st_var,
+        rast_var=st_var,
+        method='wls',
+        solver='sparse')
+
+    ds.conf_int_double_ended(
+        st_var=st_var,
+        ast_var=st_var,
+        rst_var=st_var,
+        rast_var=st_var,
+        mc_sample_size=100,
+        da_random_state=state
+    )
+
+    assert_almost_equal_verbose(
+        ds.tmpf_mc_var.sel(x=slice(0, 10)).mean(),
+        0.03584935, decimal=2)
+    assert_almost_equal_verbose(
+        ds.tmpf_mc_var.sel(x=slice(90, 100)).mean(),
+        0.22982146, decimal=2)
+
+    # Test callable input
+    def st_var_callable(stokes):
+        slope = 0.01
+        offset = 0
+        return slope * stokes + offset
+
+    ds.calibration_double_ended(
+        sections=sections,
+        st_var=st_var_callable,
+        ast_var=st_var_callable,
+        rst_var=st_var_callable,
+        rast_var=st_var_callable,
+        method='wls',
+        solver='sparse')
+
+    ds.conf_int_double_ended(
+        st_var=st_var_callable,
+        ast_var=st_var_callable,
+        rst_var=st_var_callable,
+        rast_var=st_var_callable,
+        mc_sample_size=100,
+        da_random_state=state
+    )
+
+    assert_almost_equal_verbose(
+        ds.tmpf_mc_var.sel(x=slice(0, 10)).mean(),
+        0.18058514, decimal=2)
+    assert_almost_equal_verbose(
+        ds.tmpf_mc_var.sel(x=slice(90, 100)).mean(),
+        0.53862813, decimal=2)
+
+    # Test input with shape of (ntime, nx)
+    st_var = ds.st.values*0 + 20.
+
+    ds.calibration_double_ended(
+        sections=sections,
+        st_var=st_var,
+        ast_var=st_var,
+        rst_var=st_var,
+        rast_var=st_var,
+        method='wls',
+        solver='sparse')
+
+    ds.conf_int_double_ended(
+        st_var=st_var,
+        ast_var=st_var,
+        rst_var=st_var,
+        rast_var=st_var,
+        mc_sample_size=100,
+        da_random_state=state
+    )
+
+    assert_almost_equal_verbose(
+        ds.tmpf_mc_var.mean(),
+        0.40725674, decimal=2)
+
+    # Test input with shape (nx, 1)
+    st_var = np.vstack(
+        ds.st.mean(dim='time').values*0 +
+        np.linspace(10, 50, num=ds.st.x.size))
+
+    ds.calibration_double_ended(
+        sections=sections,
+        st_var=st_var,
+        ast_var=st_var,
+        rst_var=st_var,
+        rast_var=st_var,
+        method='wls',
+        solver='sparse')
+
+    ds.conf_int_double_ended(
+        st_var=st_var,
+        ast_var=st_var,
+        rst_var=st_var,
+        rast_var=st_var,
+        mc_sample_size=100,
+        da_random_state=state
+    )
+
+    assert_almost_equal_verbose(
+        ds.tmpf_mc_var.sel(x=slice(0, 50)).mean().values,
+        0.21163704, decimal=2)
+    assert_almost_equal_verbose(
+        ds.tmpf_mc_var.sel(x=slice(50, 100)).mean().values,
+        1.28247762, decimal=2)
+
+    # Test input with shape (ntime)
+    st_var = ds.st.mean(dim='x').values*0 + np.linspace(5, 200, num=nt)
+
+    ds.calibration_double_ended(
+        sections=sections,
+        st_var=st_var,
+        ast_var=st_var,
+        rst_var=st_var,
+        rast_var=st_var,
+        method='wls',
+        solver='sparse')
+
+    ds.conf_int_double_ended(
+        st_var=st_var,
+        ast_var=st_var,
+        rst_var=st_var,
+        rast_var=st_var,
+        mc_sample_size=100,
+        da_random_state=state
+    )
+
+    assert_almost_equal_verbose(
+        ds.tmpf_mc_var.sel(time=slice(0, nt//2)).mean().values,
+        1.090, decimal=2)
+    assert_almost_equal_verbose(
+        ds.tmpf_mc_var.sel(time=slice(nt//2, None)).mean().values,
+        3.06, decimal=2)
+
+    pass
+
+
 def test_double_ended_variance_estimate_synthetic():
     import dask.array as da
     from dtscalibration import DataStore
