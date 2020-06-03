@@ -4,4 +4,6 @@ Reference
 .. toctree::
     :glob:
 
-    dtscalibration*
+.. automodapi:: dtscalibration
+   :no-inheritance-diagram:
+   :skip: plot_dask
