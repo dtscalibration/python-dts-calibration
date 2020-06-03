@@ -1,30 +1,26 @@
 8. Calibration of double ended measurement with WLS and confidence intervals
 ============================================================================
 
-Calibration procedure
----------------------
+A double-ended calibration is performed where the unknown parameters are
+estimated using fiber sections that have a reference temperature. The
+parameters are estimated with a weighted least squares optimization
+using Stokes and anti-Stokes measurements from all timesteps. Thus
+Stokes and anti-Stokes measurements with a large signal to noise ratio
+contribute more towards estimating the optimal parameter set. But an
+estimate of the noise variance is required.
 
-A double ended calibration is performed with weighted least squares.
-Over all timesteps simultaneous. :math:`\gamma` and :math:`\alpha`
-remain constant, while :math:`C` varies over time. The weights are not
-considered equal here. The weights kwadratically decrease with the
-signal strength of the measured Stokes and anti-Stokes signals.
+Double-ended calibration requires a few steps. Please have a look at [1]
+for more information: 1. Read the raw data files loaded from your DTS
+machine 2. Define the reference sections: fiber sections that have a
+known temperature. 3. Estimate the variance of the noise in the Stokes
+and anti-Stokes measurements 4. Perform the parameter search and compute
+the temperature along the entire fiber. 5. Compute the confidence
+intervals for the temperature
 
-The confidence intervals can be calculated as the weights are correctly
-defined.
-
-The confidence intervals consist of two sources of uncertainty.
-
-1. Measurement noise in the measured Stokes and anti-Stokes signals.
-   Expressed in a single variance value.
-2. Inherent to least squares procedures / overdetermined systems, the
-   parameters are estimated with limited certainty and all parameters
-   are correlated. Which is expressen in the covariance matrix.
-
-Both sources of uncertainty are propagated to an uncertainty in the
-estimated temperature via Monte Carlo. If you would like to calculate
-confidence intervals temporal averages or averages of fiber sections see
-notebook 16.
+[1]: des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation of
+Temperature and Associated Uncertainty from Fiber-Optic Raman-Spectrum
+Distributed Temperature Sensing. Sensors, 20(8), 2235.
+https://doi.org/10.3390/s20082235
 
 .. code:: ipython3
 
@@ -37,7 +33,7 @@ notebook 16.
 
 .. parsed-literal::
 
-    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
+    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:847: FutureWarning: xarray subclass DataStore should explicitly define __slots__
       super().__init_subclass__(*args, **kwargs)
 
 
@@ -89,7 +85,7 @@ as an estimate of the variance in measured signals.
 
 
 
-.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_7_0.png
+.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_6_0.png
 
 
 We calibrate the measurement with a single method call. The labels refer
@@ -118,12 +114,12 @@ solver because it saves us memory.
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x12652cb10>
+    <matplotlib.collections.QuadMesh at 0x122048d90>
 
 
 
 
-.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_10_1.png
+.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_9_1.png
 
 
 Confidence intervals
@@ -168,7 +164,7 @@ sections see notebook 16.
 
 
 
-.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_14_0.png
+.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_13_0.png
 
 
 The DataArrays ``tmpf_mc`` and ``tmpb_mc`` and the dimension ``CI`` are
@@ -182,6 +178,6 @@ confidence interval ‘coordinates’.
 
 
 
-.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_16_0.png
+.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_15_0.png
 
 

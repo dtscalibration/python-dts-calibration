@@ -19,7 +19,7 @@ estimate the variance of the noise to: - Perform a weighted calibration
 
 .. parsed-literal::
 
-    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
+    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:847: FutureWarning: xarray subclass DataStore should explicitly define __slots__
       super().__init_subclass__(*args, **kwargs)
 
 
@@ -63,14 +63,7 @@ method.
 
 .. parsed-literal::
 
-    Backwards compatibility
-    
-            Use:
-            - `variance_stokes_constant` for small setups with small variations in
-            intensity
-            - `variance_stokes_exponential` for small setups with very few time
-            steps
-            - `variance_stokes_linear` for larger setups with more time steps
+    Backwards compatibility. See `ds.variance_stokes_constant()`
             
 
 

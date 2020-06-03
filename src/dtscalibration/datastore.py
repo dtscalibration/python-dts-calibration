@@ -272,6 +272,7 @@ class DataStore(xr.Dataset):
     @property
     def is_double_ended(self):
         """
+        Whether or not the data is loaded from a double-ended setup.
 
         Returns
         -------
@@ -293,6 +294,7 @@ class DataStore(xr.Dataset):
     @property
     def chfw(self):
         """
+        Zero based channel index of the forward measurements
 
         Returns
         -------
@@ -303,6 +305,7 @@ class DataStore(xr.Dataset):
     @property
     def chbw(self):
         """
+        Zero based channel index of the backward measurements
 
         Returns
         -------
@@ -317,6 +320,7 @@ class DataStore(xr.Dataset):
     @property
     def channel_configuration(self):
         """
+        Renaming conversion dictionary
 
         Returns
         -------
@@ -684,6 +688,8 @@ class DataStore(xr.Dataset):
 
     def get_default_encoding(self, time_chunks_from_key=None):
         """
+        Returns a dictionary with sensible compression setting for writing
+        netCDF files.
 
         Returns
         -------
@@ -795,6 +801,18 @@ class DataStore(xr.Dataset):
         return xis.sel(x=sec).values
 
     def check_deprecated_kwargs(self, kwargs):
+        """
+        Internal function that parses the `kwargs` for depreciated keyword arguments
+
+        Parameters
+        ----------
+        kwargs : Dict
+            A dictionary with keyword arguments.
+
+        Returns
+        -------
+
+        """
         msg = """Previously, it was possible to manually set the label from
         which the Stokes and anti-Stokes were read within the DataStore
         object. To reduce the clutter in the code base and be able to
@@ -833,10 +851,10 @@ class DataStore(xr.Dataset):
 
     def rename_labels(self, assertion=True):
         """
-        Renames the `ST` DataArrays to `st` (see `re_dict`). The new naming
-        convention simplifies the notation of the reverse Stokes `ds['REV-ST']`
-        becomes `ds.rst`. Plus the parameter-naming convention in Python in
-        lowercase.
+        Renames the `ST` DataArrays (old convention) to `st` (new convention).
+        The new naming convention simplifies the notation of the reverse Stokes
+        `ds['REV-ST']` becomes `ds.rst`. Plus the parameter-naming convention in
+        Python in lowercase.
 
         Parameters
         ----------
@@ -886,7 +904,9 @@ class DataStore(xr.Dataset):
             st_label,
             sections=None,
             reshape_residuals=True):
-        """Use:
+        """
+        Approximate the variance of the noise in Stokes intensity measurements
+        with one value, suitable for small setups.
 
         * `ds.variance_stokes_constant()` for small setups with small variations in\
         intensity. Variance of the Stokes measurements is assumed to be the same\
@@ -910,9 +930,9 @@ class DataStore(xr.Dataset):
         The Stokes and anti-Stokes intensities are measured with detectors,
         which inherently introduce noise to the measurements. Knowledge of the
         distribution of the measurement noise is needed for a calibration with
-        weighted observations (Sections 6 and 7 of [1]_)
+        weighted observations (Sections 5 and 6 of [1]_)
         and to project the associated uncertainty to the temperature confidence
-        intervals (Section 8 of [1]_). Two sources dominate the noise
+        intervals (Section 7 of [1]_). Two sources dominate the noise
         in the Stokes and anti-Stokes intensity measurements
         (Hartog, 2017, p.125). Close to the laser, noise from the conversion of
         backscatter to electricity dominates the measurement noise. The
@@ -1055,8 +1075,9 @@ class DataStore(xr.Dataset):
             suppress_info=True,
             reshape_residuals=True):
         """
-
-        Use:
+        Approximate the variance of the noise in Stokes intensity measurements
+        with one value, suitable for small setups with measurements from only
+        a few times.
 
         * `ds.variance_stokes_constant()` for small setups with small variations in\
         intensity. Variance of the Stokes measurements is assumed to be the same\
@@ -1080,9 +1101,9 @@ class DataStore(xr.Dataset):
         The Stokes and anti-Stokes intensities are measured with detectors,
         which inherently introduce noise to the measurements. Knowledge of the
         distribution of the measurement noise is needed for a calibration with
-        weighted observations (Sections 6 and 7 of [1]_)
+        weighted observations (Sections 5 and 6 of [1]_)
         and to project the associated uncertainty to the temperature confidence
-        intervals (Section 8 of [1]_). Two sources dominate the noise
+        intervals (Section 7 of [1]_). Two sources dominate the noise
         in the Stokes and anti-Stokes intensity measurements
         (Hartog, 2017, p.125). Close to the laser, noise from the conversion of
         backscatter to electricity dominates the measurement noise. The
@@ -1317,10 +1338,9 @@ class DataStore(xr.Dataset):
             nbin=50,
             through_zero=True,
             plot_fit=False):
-        """Use:
-        Estimate a Stokes variance that is linear dependent on the intensity.
-
-        Use:
+        """
+        Approximate the variance of the noise in Stokes intensity measurements
+        with a linear function of the intensity, suitable for large setups.
 
         * `ds.variance_stokes_constant()` for small setups with small variations in\
         intensity. Variance of the Stokes measurements is assumed to be the same\
@@ -1344,9 +1364,9 @@ class DataStore(xr.Dataset):
         The Stokes and anti-Stokes intensities are measured with detectors,
         which inherently introduce noise to the measurements. Knowledge of the
         distribution of the measurement noise is needed for a calibration with
-        weighted observations (Sections 6 and 7 of [1]_)
+        weighted observations (Sections 5 and 6 of [1]_)
         and to project the associated uncertainty to the temperature confidence
-        intervals (Section 8 of [1]_). Two sources dominate the noise
+        intervals (Section 7 of [1]_). Two sources dominate the noise
         in the Stokes and anti-Stokes intensity measurements
         (Hartog, 2017, p.125). Close to the laser, noise from the conversion of
         backscatter to electricity dominates the measurement noise. The
@@ -1509,6 +1529,49 @@ class DataStore(xr.Dataset):
         return slope, offset, st_sort_mean, st_sort_var, resid, var_fun
 
     def i_var(self, st_var, ast_var, st_label='st', ast_label='ast'):
+        """
+        Compute the variance of an observation given the stokes and anti-Stokes
+        intensities and their variance.
+        The variance, :math:`\sigma^2_{I_{m,n}}`, of the distribution of the
+        noise in the observation at location :math:`m`, time :math:`n`, is a
+        function of the variance of the noise in the Stokes and anti-Stokes
+        intensity measurements (:math:`\sigma_{P_+}^2` and
+        :math:`\sigma_{P_-}^2`), and is approximated with (Ku et al., 1966):
+
+        .. math::
+
+            \sigma^2_{I_{m,n}} \\approx \left[\\frac{\partial I_{m,n}}{\partial\
+            P_{m,n+}}\\right]^2\sigma^2_{P_{+}} + \left[\\frac{\partial\
+            I_{m,n}}{\partial\
+            P_{m,n-}}\\right]^2\sigma^2_{P_{-}}
+
+       .. math::
+
+            \sigma^2_{I_{m,n}} \\approx \\frac{1}{P_{m,n+}^2}\sigma^2_{P_{+}} +\
+            \\frac{1}{P_{m,n-}^2}\sigma^2_{P_{-}}
+
+        The variance of the noise in the Stokes and anti-Stokes intensity
+        measurements is estimated directly from Stokes and anti-Stokes intensity
+        measurements using the steps outlined in Section 4.
+
+        Parameters
+        ----------
+        st_var, ast_var : float, callable, array-like, optional
+            The variance of the measurement noise of the Stokes signals in the
+            forward direction. If `float` the variance of the noise from the
+            Stokes detector is described with a single value.
+            If `callable` the variance of the noise from the Stokes detector is
+            a function of the intensity, as defined in the callable function.
+            Or manually define a variance with a DataArray of the shape
+            `ds.st.shape`, where the variance can be a function of time and/or
+            x.
+        st_label : {'st', 'rst'}
+        ast_label : {'ast', 'rast'}
+
+        Returns
+        -------
+
+        """
         st = self[st_label]
         ast = self[ast_label]
 
@@ -1708,7 +1771,7 @@ class DataStore(xr.Dataset):
         intensity measurements, respectively.
         The parameters :math:`\gamma`, :math:`C(t)`, and :math:`\Delta\\alpha`
         must be estimated from calibration to reference sections, as discussed
-        in Section 6 [1]_. The parameter :math:`C` must be estimated
+        in Section 5 [1]_. The parameter :math:`C` must be estimated
         for each time and is constant along the fiber. :math:`T` in the listed
         equations is in Kelvin, but is converted to Celsius after calibration.
 
@@ -1730,6 +1793,9 @@ class DataStore(xr.Dataset):
             timestep.
         p_cov : array-like, optional
             The covariances of `p_val`.
+            If set to False, no uncertainty in the parameters is propagated
+            into the confidence intervals. Similar to the spec sheets of the DTS
+            manufacturers. And similar to passing an array filled with zeros.
         sections : Dict[str, List[slice]], optional
             If `None` is supplied, `ds.sections` is used. Define calibration
             sections. Each section requires a reference temperature time series,
@@ -2261,7 +2327,7 @@ C_\mathrm{B}(t) + \int_x^L{\Delta\\alpha(x')\,\mathrm{d}x'}}
         Parameters :math:`D_\mathrm{F}` (`ds.df`) and :math:`D_\mathrm{B}`
         (`ds.db`) must be estimated for each time and are constant along the fiber, and parameter
         :math:`A` must be estimated for each location and is constant over time.
-        The calibration procedure is discussed in Section~\\ref{chp:double}.
+        The calibration procedure is discussed in Section 6.
         :math:`T_\mathrm{F}` (`ds.tmpf`) and :math:`T_\mathrm{B}` (`ds.tmpb`)
         are separate
         approximations of the same temperature at the same time. The estimated
@@ -2270,7 +2336,7 @@ C_\mathrm{B}(t) + \int_x^L{\Delta\\alpha(x')\,\mathrm{d}x'}}
         :math:`T_\mathrm{B}` is more accurate near :math:`x=L`. A single best
         estimate of the temperature is obtained from the weighted average of
         :math:`T_\mathrm{F}` and :math:`T_\mathrm{B}` as discussed in
-        Section 8.2 [1]_ .
+        Section 7.2 [1]_ .
 
         Parameters
         ----------
@@ -2292,6 +2358,9 @@ C_\mathrm{B}(t) + \int_x^L{\Delta\\alpha(x')\,\mathrm{d}x'}}
             Is the variance of `p_val`.
         p_cov : array-like, optional
             The covariances of `p_val`. Square matrix.
+            If set to False, no uncertainty in the parameters is propagated
+            into the confidence intervals. Similar to the spec sheets of the DTS
+            manufacturers. And similar to passing an array filled with zeros.
         sections : Dict[str, List[slice]], optional
             If `None` is supplied, `ds.sections` is used. Define calibration
             sections. Each section requires a reference temperature time series,
@@ -3140,23 +3209,46 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             reduce_memory_usage=False,
             **kwargs):
         """
+        Estimation of the confidence intervals for the temperatures measured
+        with a single-ended setup. It consists of five steps. First, the variances
+        of the Stokes and anti-Stokes intensity measurements are estimated
+        following the steps in Section 4 [1]_. A Normal
+        distribution is assigned to each intensity measurement that is centered
+        at the measurement and using the estimated variance. Second, a multi-
+        variate Normal distribution is assigned to the estimated parameters
+        using the covariance matrix from the calibration procedure presented in
+        Section 5 [1]_. Third, the distributions are sampled, and the
+        temperature is computed with Equation 12 [1]_. Fourth, step
+        three is repeated, e.g., 10,000 times for each location and for each
+        time. The resulting 10,000 realizations of the temperatures
+        approximate the probability density functions of the estimated
+        temperature at that location and time. Fifth, the standard uncertainties
+        are computed with the standard deviations of the realizations of the
+        temperatures, and the 95\% confidence intervals are computed from the
+        2.5\% and 97.5\% percentiles of the realizations of the temperatures.
+
 
         Parameters
         ----------
-        p_val : array-like or string
-            parameter solution directly from calibration_double_ended_wls
-        p_cov : array-like or string or bool
-            parameter covariance at p_val directly from
-            calibration_double_ended_wls. If set to False, no uncertainty in
-            the parameters is propagated into the confidence intervals.
-            Similar to the spec sheets of the DTS manufacturers. And similar to
-            passing an array filled with zeros. If set to string, the p_cov
-            is retreived by accessing ds[p_cov] . See p_cov keyword argument in
-            the calibration routine.
-        st_var : float
-            Float of the variance of the Stokes signal
-        ast_var : float
-            Float of the variance of the anti-Stokes signal
+        p_val : array-like, optional
+            Define `p_val`, `p_var`, `p_cov` if you used an external function
+            for calibration. Has size 2 + `nt`. First value is :math:`\gamma`,
+            second is :math:`\Delta \\alpha`, others are :math:`C` for each
+            timestep.
+            If set to False, no uncertainty in the parameters is propagated
+            into the confidence intervals. Similar to the spec sheets of the DTS
+            manufacturers. And similar to passing an array filled with zeros
+        p_cov : array-like, optional
+            The covariances of `p_val`.
+        st_var, ast_var : float, callable, array-like, optional
+            The variance of the measurement noise of the Stokes signals in the
+            forward direction. If `float` the variance of the noise from the
+            Stokes detector is described with a single value.
+            If `callable` the variance of the noise from the Stokes detector is
+            a function of the intensity, as defined in the callable function.
+            Or manually define a variance with a DataArray of the shape
+            `ds.st.shape`, where the variance can be a function of time and/or
+            x. Required if method is wls.
         store_tmpf : str
             Key of how to store the Forward calculated temperature. Is
             calculated using the
@@ -3181,6 +3273,14 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             variance are calculated.
         reduce_memory_usage : bool
             Use less memory but at the expense of longer computation time
+
+
+        References
+        ----------
+        .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
+            of Temperature and Associated Uncertainty from Fiber-Optic Raman-
+            Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
+            https://doi.org/10.3390/s20082235
         """
         self.check_deprecated_kwargs(kwargs)
 
@@ -3370,25 +3470,32 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             reduce_memory_usage=False,
             **kwargs):
         """
-        See Example Notebook 16.
+        Average temperatures from double-ended setups.
+
+        Four types of averaging are implemented. Please see Example Notebook 16.
 
 
         Parameters
         ----------
-        p_val : array-like or string
-            parameter solution directly from calibration_double_ended_wls
-        p_cov : array-like or string
-            parameter covariance at the solution directly from
-            calibration_double_ended_wls
+        p_val : array-like, optional
+            Define `p_val`, `p_var`, `p_cov` if you used an external function
+            for calibration. Has size 2 + `nt`. First value is :math:`\gamma`,
+            second is :math:`\Delta \\alpha`, others are :math:`C` for each
+            timestep.
             If set to False, no uncertainty in the parameters is propagated
-            into the confidence
-            intervals. Similar to the spec sheets of the DTS manufacturers.
-            And similar to
-            passing an array filled with zeros
-        st_var : float
-            Float of the variance of the Stokes signal
-        ast_var : float
-            Float of the variance of the anti-Stokes signal
+            into the confidence intervals. Similar to the spec sheets of the DTS
+            manufacturers. And similar to passing an array filled with zeros
+        p_cov : array-like, optional
+            The covariances of `p_val`.
+        st_var, ast_var : float, callable, array-like, optional
+            The variance of the measurement noise of the Stokes signals in the
+            forward direction. If `float` the variance of the noise from the
+            Stokes detector is described with a single value.
+            If `callable` the variance of the noise from the Stokes detector is
+            a function of the intensity, as defined in the callable function.
+            Or manually define a variance with a DataArray of the shape
+            `ds.st.shape`, where the variance can be a function of time and/or
+            x. Required if method is wls.
         store_tmpf : str
             Key of how to store the Forward calculated temperature. Is
             calculated using the
@@ -3734,27 +3841,91 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             reduce_memory_usage=False,
             **kwargs):
         """
+        Estimation of the confidence intervals for the temperatures measured
+        with a double-ended setup.
+        Double-ended setups require four additional steps to estimate the
+        confidence intervals for the temperature. First, the variances of the
+        Stokes and anti-Stokes intensity measurements of the forward and
+        backward channels are estimated following the steps in
+        Section 4 [1]_. See `ds.variance_stokes_constant()`.
+        A Normal distribution is assigned to each
+        intensity measurement that is centered at the measurement and using the
+        estimated variance. Second, a multi-variate Normal distribution is
+        assigned to the estimated parameters using the covariance matrix from
+        the calibration procedure presented in Section 6 [1]_ (`p_cov`). Third,
+        Normal distributions are assigned for :math:`A` (`ds.alpha`)
+        for each location
+        outside of the reference sections. These distributions are centered
+        around :math:`A_p` and have variance :math:`\sigma^2\left[A_p\\right]`
+        given by Equations 44 and 45. Fourth, the distributions are sampled
+        and :math:`T_{\mathrm{F},m,n}` and :math:`T_{\mathrm{B},m,n}` are
+        computed with Equations 16 and 17, respectively. Fifth, step four is repeated to
+        compute, e.g., 10,000 realizations (`mc_sample_size`) of :math:`T_{\mathrm{F},m,n}` and
+        :math:`T_{\mathrm{B},m,n}` to approximate their probability density
+        functions. Sixth, the standard uncertainties of
+        :math:`T_{\mathrm{F},m,n}` and :math:`T_{\mathrm{B},m,n}`
+        (:math:`\sigma\left[T_{\mathrm{F},m,n}\\right]` and
+        :math:`\sigma\left[T_{\mathrm{B},m,n}\\right]`) are estimated with the
+        standard deviation of their realizations. Seventh, for each realization
+        :math:`i` the temperature :math:`T_{m,n,i}` is computed as the weighted
+        average of :math:`T_{\mathrm{F},m,n,i}` and
+        :math:`T_{\mathrm{B},m,n,i}`:
+
+        .. math::
+
+            T_{m,n,i} =\
+            \sigma^2\left[T_{m,n}\\right]\left({\\frac{T_{\mathrm{F},m,n,i}}{\
+            \sigma^2\left[T_{\mathrm{F},m,n}\\right]} +\
+            \\frac{T_{\mathrm{B},m,n,i}}{\
+            \sigma^2\left[T_{\mathrm{B},m,n}\\right]}}\\right)
+
+        where
+
+        .. math::
+
+            \sigma^2\left[T_{m,n}\\right] = \\frac{1}{1 /\
+            \sigma^2\left[T_{\mathrm{F},m,n}\\right] + 1 /\
+            \sigma^2\left[T_{\mathrm{B},m,n}\\right]}
+
+        The best estimate of the temperature :math:`T_{m,n}` is computed
+        directly from the best estimates of :math:`T_{\mathrm{F},m,n}` and
+        :math:`T_{\mathrm{B},m,n}` as:
+
+        .. math::
+            T_{m,n} =\
+            \sigma^2\left[T_{m,n}\\right]\left({\\frac{T_{\mathrm{F},m,n}}{\
+            \sigma^2\left[T_{\mathrm{F},m,n}\\right]} + \\frac{T_{\mathrm{B},m,n}}{\
+            \sigma^2\left[T_{\mathrm{B},m,n}\\right]}}\\right)
+
+        Alternatively, the best estimate of :math:`T_{m,n}` can be approximated
+        with the mean of the :math:`T_{m,n,i}` values. Finally, the 95\%
+        confidence interval for :math:`T_{m,n}` are estimated with the 2.5\% and
+        97.5\% percentiles of :math:`T_{m,n,i}`.
 
         Parameters
         ----------
-        p_val : array-like or string
-            parameter solution directly from calibration_double_ended_wls
-        p_cov : array-like or string
-            parameter covariance at the solution directly from
-            calibration_double_ended_wls
+        p_val : array-like, optional
+            Define `p_val`, `p_var`, `p_cov` if you used an external function
+            for calibration. Has size `1 + 2 * nt + nx + 2 * nt * nta`.
+            First value is :math:`\gamma`, then `nt` times
+            :math:`D_\mathrm{F}`, then `nt` times
+            :math:`D_\mathrm{B}`, then for each location :math:`D_\mathrm{B}`,
+            then for each connector that introduces directional attenuation two
+            parameters per time step.
+        p_cov : array-like, optional
+            The covariances of `p_val`. Square matrix.
             If set to False, no uncertainty in the parameters is propagated
-            into the confidence
-            intervals. Similar to the spec sheets of the DTS manufacturers.
-            And similar to
-            passing an array filled with zeros
-        st_var : float
-            Float of the variance of the Stokes signal
-        ast_var : float
-            Float of the variance of the anti-Stokes signal
-        rst_var : float
-            Float of the variance of the backward Stokes signal
-        rast_var : float
-            Float of the variance of the backward anti-Stokes signal
+            into the confidence intervals. Similar to the spec sheets of the DTS
+            manufacturers. And similar to passing an array filled with zeros.
+        st_var, ast_var, rst_var, rast_var : float, callable, array-like, optional
+            The variance of the measurement noise of the Stokes signals in the
+            forward direction. If `float` the variance of the noise from the
+            Stokes detector is described with a single value.
+            If `callable` the variance of the noise from the Stokes detector is
+            a function of the intensity, as defined in the callable function.
+            Or manually define a variance with a DataArray of the shape
+            `ds.st.shape`, where the variance can be a function of time and/or
+            x. Required if method is wls.
         store_tmpf : str
             Key of how to store the Forward calculated temperature. Is
             calculated using the
@@ -3783,8 +3954,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             '_fw']` should be ('time', 'trans_att').
         conf_ints : iterable object of float
             A list with the confidence boundaries that are calculated. Valid
-            values are between
-            [0, 1].
+            values are between [0, 1].
         mc_sample_size : int
             Size of the monte carlo parameter set used to calculate the
             confidence interval
@@ -3806,6 +3976,13 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
 
         Returns
         -------
+
+        References
+        ----------
+        .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
+            of Temperature and Associated Uncertainty from Fiber-Optic Raman-
+            Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
+            https://doi.org/10.3390/s20082235
 
         """
 
@@ -4185,29 +4362,31 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             reduce_memory_usage=False,
             **kwargs):
         """
-        See Example Notebook 16.
+        Average temperatures from double-ended setups.
 
+        Four types of averaging are implemented. Please see Example Notebook 16.
 
         Parameters
         ----------
-        p_val : array-like or string
-            parameter solution directly from calibration_double_ended_wls
-        p_cov : array-like or string
-            parameter covariance at the solution directly from
-            calibration_double_ended_wls
+        p_val : array-like, optional
+            Define `p_val`, `p_var`, `p_cov` if you used an external function
+            for calibration. Has size 2 + `nt`. First value is :math:`\gamma`,
+            second is :math:`\Delta \\alpha`, others are :math:`C` for each
+            timestep.
             If set to False, no uncertainty in the parameters is propagated
-            into the confidence
-            intervals. Similar to the spec sheets of the DTS manufacturers.
-            And similar to
-            passing an array filled with zeros
-        st_var : float
-            Float of the variance of the Stokes signal
-        ast_var : float
-            Float of the variance of the anti-Stokes signal
-        rst_var : float
-            Float of the variance of the backward Stokes signal
-        rast_var : float
-            Float of the variance of the backward anti-Stokes signal
+            into the confidence intervals. Similar to the spec sheets of the DTS
+            manufacturers. And similar to passing an array filled with zeros
+        p_cov : array-like, optional
+            The covariances of `p_val`.
+        st_var, ast_var, rst_var, rast_var : float, callable, array-like, optional
+            The variance of the measurement noise of the Stokes signals in the
+            forward direction. If `float` the variance of the noise from the
+            Stokes detector is described with a single value.
+            If `callable` the variance of the noise from the Stokes detector is
+            a function of the intensity, as defined in the callable function.
+            Or manually define a variance with a DataArray of the shape
+            `ds.st.shape`, where the variance can be a function of time and/or
+            x. Required if method is wls.
         store_tmpf : str
             Key of how to store the Forward calculated temperature. Is
             calculated using the
@@ -4309,12 +4488,6 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
         ci_avg_x_isel : iterable of int
             Compute ci_avg_time_flag1 and ci_avg_time_flag2 using only a
             selection of the data
-        var_only_sections : bool
-            useful if using the ci_avg_x_flag. Only calculates the var over the
-            sections, so that the values can be compared with accuracy along the
-            reference sections. Where the accuracy is the variance of the
-            residuals between the estimated temperature and temperature of the
-            water baths.
         da_random_state
             For testing purposes. Similar to random seed. The seed for dask.
             Makes random not so random. To produce reproducable results for
@@ -4739,13 +4912,25 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                     del self[k]
         pass
 
-    def temperature_residuals(self, label=None):
+    def temperature_residuals(self, label=None, sections=None):
         """
+        Compute the temperature residuals, between the known temperature of the
+        reference sections and the DTS temperature.
 
         Parameters
         ----------
         label : str
             The key of the temperature DataArray
+        sections : Dict[str, List[slice]], optional
+            If `None` is supplied, `ds.sections` is used. Define calibration
+            sections. Each section requires a reference temperature time series,
+            such as the temperature measured by an external temperature sensor.
+            They should already be part of the DataStore object. `sections`
+            is defined with a dictionary with its keywords of the
+            names of the reference temperature time series. Its values are
+            lists of slice objects, where each slice object is a fiber stretch
+            that has the reference temperature. Afterwards, `sections` is stored
+            under `ds.sections`.
 
         Returns
         -------
@@ -4754,9 +4939,10 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
         """
         time_dim = self.get_time_dim(data_var_key=label)
 
-        resid_temp = self.ufunc_per_section(
+        resid_temp = self.ufunc_per_section(sections=sections,
             label=label, temp_err=True, calc_per='all')
-        resid_x = self.ufunc_per_section(label='x', calc_per='all')
+        resid_x = self.ufunc_per_section(sections=sections, label='x',
+                                         calc_per='all')
 
         resid_ix = np.array(
             [np.argmin(np.abs(ai - self.x.data)) for ai in resid_x])
