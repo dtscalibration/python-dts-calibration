@@ -59,7 +59,7 @@ Overview
 
 .. end-badges
 
-A Python package to load raw DTS files, perform a calibration, and plot the result
+A Python package to load Distributed Temperature Sensing files, perform a calibration, and plot the result. A detailed description of the calibration procedure can be found at https://doi.org/10.3390/s20082235 .
 
 * Free software: BSD 3-Clause License
 
@@ -83,8 +83,10 @@ Package features
    * Both single- and double-ended setups
    * Confidence intervals of calibrated temperature
    * Time integration of calibration parameters
-   * Fixing parameters to a previously determined value
    * Weighted least-squares calibration
+   * `Fixing parameters to a previously determined value <..//master/examples/notebooks/13Fixed_parameter_calibration.ipynb>`_
+   * `(Asymmetric) step loss correction <../master/examples/notebooks/14Lossy_splices.ipynb>`_
+   * `Matching temperature sections <../master/examples/notebooks/15Matching_sections.ipynb>`_
 * Dynamic reference section definition
 * Tools for merging and aligning double-ended setups
 * Data formats of most manufacturers are supported
@@ -98,9 +100,25 @@ Devices currently supported
 
 Learn by examples
 =================
-Interactively run the example notebooks online by clicking the example-notebooks button in the beginning of this README.
+Interactively run the example notebooks online by clicking `here <https://mybinder.org/v2/gh/dtscalibration/python-dts-calibration/master?filepath=examples%2Fnotebooks>`_.
 
 Documentation
 =============
 
 https://python-dts-calibration.readthedocs.io/
+
+How to cite
+===========
+The following article explains and discusses the calibration procedure:
+
+    des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation of Temperature and Associated Uncertainty from Fiber-Optic Raman-Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235. https://doi.org/10.3390/s20082235
+
+Cite the specific implementation / repository via Zenodo:
+
+1. Check the version of `dtscalibration` that is used in your Python console with:
+
+    >>> import dtscalibration
+    >>> dtscalibration.__version__
+    '1.0.0'
+2. Go to `Zenodo <https://zenodo.org/search?q=conceptrecid:%221410097%22&sort=-version&all_versions=True>`_ and follow the link to the version of interest.
+3. The citation is found on the bottom right of the page.

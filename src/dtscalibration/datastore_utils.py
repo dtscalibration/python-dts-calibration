@@ -161,7 +161,7 @@ def merge_double_ended(ds_fw, ds_bw, cable_length, plot_result=True):
     return ds
 
 
-def shift_double_ended(ds, i_shift):
+def shift_double_ended(ds, i_shift, verbose=True):
     """
     The cable length was initially configured during the DTS measurement. For double ended
     measurements it is important to enter the correct length so that the forward channel and the
@@ -184,7 +184,10 @@ def shift_double_ended(ds, i_shift):
     i_shift : int
         if i_shift < 0, the cable was configured to be too long and there is too much data
         recorded. If i_shift > 0, the cable was configured to be too short and part of the cable is
-        not measured.
+        not measured
+    verbose: bool
+        If True, the function will inform the user which variables are
+        dropped. If False, the function will silently drop the variables.
 
     Returns
     -------
@@ -231,7 +234,7 @@ def shift_double_ended(ds, i_shift):
         d2_data[k] = (ds[k].dims, v, ds[k].attrs)
 
     not_included = [k for k in ds.data_vars if k not in d2_data]
-    if not_included:
+    if (not_included and verbose):
         print('I dont know what to do with the following data', not_included)
 
     return DataStore(data_vars=d2_data, coords=d2_coords, attrs=ds.attrs)
