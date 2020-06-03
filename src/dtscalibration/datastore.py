@@ -1426,6 +1426,11 @@ class DataStore(xr.Dataset):
             fix_dalpha=None,
             **kwargs):
         """
+        Calibrate the Stokes (`ds.st`) and anti-Stokes (`ds.ast`) data to
+        temperature using fiber sections with a known temperature
+        (`ds.sections`) for single ended setups. The calibrated temperature is
+        stored under `ds.tmpf` and its variance under `ds.tmpf_var`.
+
         In single-ended setups, Stokes and anti-Stokes intensity is measured
         from a single end of the fiber. The differential attenuation is assumed
         constant along the fiber so that the integrated differential attenuation
