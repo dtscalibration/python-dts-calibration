@@ -20,9 +20,11 @@ extensions = [
     'IPython.sphinxext.ipython_directive',
     'IPython.sphinxext.ipython_console_highlighting',
     # 'matplotlib.sphinxext.mathmpl',
-    'matplotlib.sphinxext.only_directives',
+    # 'matplotlib.sphinxext.only_directives',  # not needed after matplotlib
+    # >3.0.0
     'matplotlib.sphinxext.plot_directive',
     # 'matplotlib.sphinxext.ipython_directive',
+    'recommonmark',  # Parses markdown
     ]
 
 if os.getenv('SPELLCHECK'):
@@ -30,11 +32,12 @@ if os.getenv('SPELLCHECK'):
     spelling_show_suggestions = True
     spelling_lang = 'en_US'
 
-source_suffix = '.rst'
+
+source_suffix = ['.rst', '.md']
 master_doc = 'index'
 project = 'dtscalibration'
 year = str(date.today().year)
-author = 'Bas des Tombe'
+author = 'Bas des Tombe and Bart Schilperoort'
 copyright = '{0}, {1}'.format(year, author)
 version = release = '1.0.0'
 

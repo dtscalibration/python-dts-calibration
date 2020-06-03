@@ -1420,6 +1420,42 @@ class DataStore(xr.Dataset):
             fix_dalpha=None,
             **kwargs):
         """
+        In single-ended setups, Stokes and anti-Stokes intensity is measured
+        from a single end of the fiber. The differential attenuation is assumed
+        constant along the fiber so that the integrated differential attenuation
+        may be written as (Hausner et al, 2011):
+
+        .. math::
+
+            \int_0^x{\Delta\\alpha(x')\,\mathrm{d}x'} \\approx \Delta\\alpha x
+
+        The temperature can now be written from Equation 10 [1]_ as:
+
+        .. math::
+
+            T(x,t)  \\approx \\frac{\gamma}{I(x,t) + C(t) + \Delta\\alpha x}
+
+        where
+
+        .. math::
+
+            I(x,t) = \ln{\left(\\frac{P_+(x,t)}{P_-(x,t)}\\right)}
+
+
+        .. math::
+
+            C(t) = \ln{\left(\\frac{\eta_-(t)K_-/\lambda_-^4}{\eta_+(t)K_+/\lambda_+^4}\\right)}
+
+        where :math:`C` is the lumped effect of the difference in gain at
+        :math:`x=0` between Stokes and anti-Stokes intensity measurements and
+        the dependence of the scattering intensity on the wavelength. The
+        parameters :math:`P_+` and :math:`P_-` are the Stokes and anti-Stokes
+        intensity measurements, respectively.
+        The parameters :math:`\gamma`, :math:`C(t)`, and :math:`\Delta\\alpha`
+        must be estimated from calibration to reference sections, as discussed
+        in Section 6 [1]_. The parameter :math:`C` must be estimated
+        for each time and is constant along the fiber. :math:`T` in the listed
+        equations is in Kelvin, but is converted to Celsius after calibration.
 
         Parameters
         ----------
@@ -1428,9 +1464,27 @@ class DataStore(xr.Dataset):
         store_p_val : str
             Key to store the values of the calibrated parameters
         p_val : array-like, optional
+            Define `p_val`, `p_var`, `p_cov` if you used an external function
+            for calibration. Has size 2 + `nt`. First value is :math:`\gamma`,
+            second is :math:`\Delta \\alpha`, others are :math:`C` for each
+            timestep.
         p_var : array-like, optional
+            Define `p_val`, `p_var`, `p_cov` if you used an external function
+            for calibration. Has size 2 + `nt`. First value is :math:`\gamma`,
+            second is :math:`\Delta \\alpha`, others are :math:`C` for each
+            timestep.
         p_cov : array-like, optional
-        sections : dict, optional
+            The covariances of `p_val`.
+        sections : Dict[str, List[slice]], optional
+            If `None` is supplied, `ds.sections` is used. Define calibration
+            sections. Each section requires a reference temperature time series,
+            such as the temperature measured by an external temperature sensor.
+            They should already be part of the DataStore object. `sections`
+            is defined with a dictionary with its keywords of the
+            names of the reference temperature time series. Its values are
+            lists of slice objects, where each slice object is a fiber stretch
+            that has the reference temperature. Afterwards, `sections` is stored
+            under `ds.sections`.
         st_var : float, optional
             The variance of the measurement noise of the Stokes signals in
             the forward
@@ -1444,7 +1498,7 @@ class DataStore(xr.Dataset):
         store_gamma : str
             Label of where to store gamma
         store_dalpha : str
-            Label of where to store dalpha; the spatial derivative  of alpha.
+            Label of where to store dalpha; the spatial derivative of alpha.
         store_alpha : str
             Label of where to store alpha; The integrated differential
             attenuation.
@@ -1454,17 +1508,20 @@ class DataStore(xr.Dataset):
         store_tmpf : str
             Label of where to store the calibrated temperature of the forward
             direction
-        variance_suffix : str, optional
+        variance_suffix : str
             String appended for storing the variance. Only used when method
             is wls.
         method : {'ols', 'wls'}
-            Use 'ols' for ordinary least squares and 'wls' for weighted least
-            squares
+            Use `'ols'` for ordinary least squares and `'wls'` for weighted least
+            squares. `'wls'` is the default, and there is currently no reason to
+            use `'ols'`.
         solver : {'sparse', 'stats'}
             Either use the homemade weighted sparse solver or the weighted
-            dense matrix solver of
-            statsmodels
-        matching_sections : List[Tuple[slice, slice, bool]]
+            dense matrix solver of statsmodels. The sparse solver uses much less
+            memory, is faster, and gives the same result as the statsmodels
+            solver. The statsmodels solver is mostly used to check the sparse
+            solver. `'stats'` is the default.
+        matching_sections : List[Tuple[slice, slice, bool]], optional
             Provide a list of tuples. A tuple per matching section. Each tuple
             has three items. The first two items are the slices of the sections
             that are matched. The third item is a boolean and is True if the two
@@ -1476,20 +1533,34 @@ class DataStore(xr.Dataset):
             introduces an additional nt parameters to solve for. Requiring
             either an additional calibration section or matching sections.
             If multiple locations are defined, the losses are added.
-        fix_gamma : tuple
+        fix_gamma : Tuple[float, float], optional
             A tuple containing two floats. The first float is the value of
             gamma, and the second item is the variance of the estimate of gamma.
             Covariances between gamma and other parameters are not accounted
             for.
-        fix_dalpha : tuple
+        fix_dalpha : Tuple[float, float], optional
             A tuple containing two floats. The first float is the value of
-            dalpha (Delta alpha in paper), and the second item is the
+            dalpha (:math:`\Delta \\alpha` in [1]_), and the second item is the
             variance of the estimate of dalpha.
             Covariances between alpha and other parameters are not accounted
             for.
 
         Returns
         -------
+
+        References
+        ----------
+        .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
+            of Temperature and Associated Uncertainty from Fiber-Optic Raman-
+            Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
+            https://doi.org/10.3390/s20082235
+
+        Examples
+        --------
+        - `Example notebook 7: Calibrate single ended <https://github.com/\
+dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
+07Calibrate_single_wls.ipynb>`_
+
 
         """
         self.check_deprecated_kwargs(kwargs)
