@@ -1572,7 +1572,7 @@ class DataStore(xr.Dataset):
             I_{m,n}}{\partial\
             P_{m,n-}}\\right]^2\sigma^2_{P_{-}}
 
-       .. math::
+        .. math::
 
             \sigma^2_{I_{m,n}} \\approx \\frac{1}{P_{m,n+}^2}\sigma^2_{P_{+}} +\
             \\frac{1}{P_{m,n-}^2}\sigma^2_{P_{-}}
