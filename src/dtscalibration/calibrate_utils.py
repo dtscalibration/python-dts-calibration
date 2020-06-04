@@ -55,7 +55,7 @@ def parse_st_var(ds, st_var, st_label='st', ix_sel=None):
     else:
         st_var_sec = np.asarray(st_var, dtype=float)
 
-    assert not np.any(~np.isfinite(st_var_sec)), \
+    assert np.all(np.isfinite(st_var_sec)), \
         'NaN/inf values detected in ' + st_label + '_var. Please check input.'
 
     return st_var_sec
@@ -1111,18 +1111,18 @@ def wls_sparse(X, y, w=1., calc_cov=False, verbose=False, x0=None,
     # of the error.
 
     if x0 is not None:
-        assert not np.any(~np.isfinite(x0)), 'Nan/inf in p0 initial estimate'
+        assert np.all(np.isfinite(x0)), 'Nan/inf in p0 initial estimate'
     else:
         raise NotImplementedError
 
     if sp.issparse(X):
-        assert not np.any(~np.isfinite(X.data)), 'Nan/inf in X: check ' +\
+        assert np.all(np.isfinite(X.data)), 'Nan/inf in X: check ' +\
             'reference temperatures?'
     else:
-        assert not np.any(~np.isfinite(X)), 'Nan/inf in X: check ' +\
+        assert np.all(np.isfinite(X)), 'Nan/inf in X: check ' +\
             'reference temperatures?'
-    assert not np.any(~np.isfinite(w)), 'Nan/inf in weights'
-    assert not np.any(~np.isfinite(y)), 'Nan/inf in observations'
+    assert np.all(np.isfinite(w)), 'Nan/inf in weights'
+    assert np.all(np.isfinite(y)), 'Nan/inf in observations'
 
     # precision up to 10th decimal. So that the temperature is approximately
     # estimated with 8 decimal precision.
