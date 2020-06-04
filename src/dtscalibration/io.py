@@ -141,8 +141,8 @@ def sensornet_ddf_version_check(filepathlist):
         version_string = meta['Software version number:']
     else:
         raise ValueError(
-            'Software version number could not be detected in .ddf file' +
-            'Either file is corrupted or not supported')
+            'Software version number could not be detected in .ddf file'
+            + 'Either file is corrupted or not supported')
 
     ddf_version = version_string.split('.')[0]
 
@@ -198,8 +198,12 @@ def read_silixa_files_routine_v6(
     from xml.etree import ElementTree
 
     # translate names
-    tld = {'ST': 'st', 'AST': 'ast', 'REV-ST': 'rst', 'REV-AST': 'rast',
-           'TMP': 'tmp'}
+    tld = {
+        'ST': 'st',
+        'AST': 'ast',
+        'REV-ST': 'rst',
+        'REV-AST': 'rast',
+        'TMP': 'tmp'}
 
     # Open the first xml file using ET, get the name space and amount of data
 
@@ -253,8 +257,8 @@ def read_silixa_files_routine_v6(
         print(
             '%s files were found, each representing a single timestep' % ntime)
         print(
-            '%s recorded vars were found: ' % nitem +
-            ', '.join(data_item_names))
+            '%s recorded vars were found: ' % nitem
+            + ', '.join(data_item_names))
         print('Recorded at %s points along the cable' % nx)
 
         if double_ended_flag:
@@ -315,10 +319,9 @@ def read_silixa_files_routine_v6(
 
             if not len(arr_el) == nx:
                 raise ValueError(
-                    'Inconsistent length of x-dimension' +
-                    '\nCheck if files are mixed up, or if the number of ' +
-                    'data points vary per file.'
-                )
+                    'Inconsistent length of x-dimension'
+                    + '\nCheck if files are mixed up, or if the number of '
+                    + 'data points vary per file.')
 
             # remove the breaks on both sides of the string
             # split the string on the comma
@@ -352,12 +355,12 @@ def read_silixa_files_routine_v6(
         if name == 'LAF':
             continue
         if tld[name] in dim_attrs:
-            data_vars[tld[name]] = (['x', 'time'], data_arri,
-                                    dim_attrs[tld[name]])
+            data_vars[tld[name]] = (
+                ['x', 'time'], data_arri, dim_attrs[tld[name]])
         else:
             raise ValueError(
-                'Dont know what to do with the' +
-                ' {} data column'.format(name))
+                'Dont know what to do with the'
+                + ' {} data column'.format(name))
 
     # Obtaining the timeseries data (reference temperature etc)
     _ts_dtype = [(k, np.float32) for k in timeseries]
@@ -421,14 +424,14 @@ def read_silixa_files_routine_v6(
             elif xml_version == 7:
                 tstamp = np.int64(file_name[15:27])
             else:
-                raise ValueError('Unknown version number: {}'.format(
-                                                                xml_version))
+                raise ValueError(
+                    'Unknown version number: {}'.format(xml_version))
 
             out += [tstamp, startDateTimeIndex, endDateTimeIndex]
         return np.array(tuple(out), dtype=ts_dtype)
 
     ts_lst_dly = [
-            grab_timeseries_per_file(fp, xml_version) for fp in filepathlist]
+        grab_timeseries_per_file(fp, xml_version) for fp in filepathlist]
     ts_lst = [
         da.from_delayed(x, shape=tuple(), dtype=ts_dtype) for x in ts_lst_dly]
     ts_arr = da.stack(ts_lst).compute()
@@ -500,8 +503,12 @@ def read_silixa_files_routine_v4(
     from xml.etree import ElementTree
 
     # translate names
-    tld = {'ST': 'st', 'AST': 'ast', 'REV-ST': 'rst', 'REV-AST': 'rast',
-           'TMP': 'tmp'}
+    tld = {
+        'ST': 'st',
+        'AST': 'ast',
+        'REV-ST': 'rst',
+        'REV-AST': 'rast',
+        'TMP': 'tmp'}
 
     # Open the first xml file using ET, get the name space and amount of data
     xml_tree = ElementTree.parse(filepathlist[0])
@@ -555,8 +562,8 @@ def read_silixa_files_routine_v4(
         print(
             '%s files were found, each representing a single timestep' % ntime)
         print(
-            '%s recorded vars were found: ' % nitem +
-            ', '.join(data_item_names))
+            '%s recorded vars were found: ' % nitem
+            + ', '.join(data_item_names))
         print('Recorded at %s points along the cable' % nx)
 
         if double_ended_flag:
@@ -617,10 +624,9 @@ def read_silixa_files_routine_v4(
 
             if not len(arr_el) == nx:
                 raise ValueError(
-                    'Inconsistent length of x-dimension' +
-                    '\nCheck if files are mixed up, or if the number of ' +
-                    'data points vary per file.'
-                )
+                    'Inconsistent length of x-dimension'
+                    + '\nCheck if files are mixed up, or if the number of '
+                    + 'data points vary per file.')
 
             # remove the breaks on both sides of the string
             # split the string on the comma
@@ -654,13 +660,13 @@ def read_silixa_files_routine_v4(
             continue
 
         if tld[name] in dim_attrs:
-            data_vars[tld[name]] = (['x', 'time'], data_arri,
-                                    dim_attrs[tld[name]])
+            data_vars[tld[name]] = (
+                ['x', 'time'], data_arri, dim_attrs[tld[name]])
 
         else:
             raise ValueError(
-                'Dont know what to do with the' +
-                ' {} data column'.format(name))
+                'Dont know what to do with the'
+                + ' {} data column'.format(name))
 
     # Obtaining the timeseries data (reference temperature etc)
     _ts_dtype = [(k, np.float32) for k in timeseries]
@@ -835,8 +841,8 @@ def read_sensornet_files_routine_v3(
     # print summary
     if not silent:
         print(
-            '%s files were found,' % ntime +
-            ' each representing a single timestep')
+            '%s files were found,' % ntime
+            + ' each representing a single timestep')
         print('Recorded at %s points along the cable' % nx)
 
         if double_ended_flag:
@@ -906,9 +912,8 @@ def read_sensornet_files_routine_v3(
     fiber_n_indices = fiber_1_index - fiber_0_index
     fiber_n_indices_internal = fiber_0_index - fiber_start_index
     if double_ended_flag:
-        fiber_end_index = np.min([
-            xraw.size,
-            fiber_1_index + fiber_n_indices_internal])
+        fiber_end_index = np.min(
+            [xraw.size, fiber_1_index + fiber_n_indices_internal])
     else:
         fiber_end_index = fiber_1_index
 
@@ -917,12 +922,14 @@ def read_sensornet_files_routine_v3(
             # fiber length how the backward channel is aligned
             fiber_length_raw = float(meta['fibre end'])
             fiber_bw_1_index = np.abs(xraw - fiber_length_raw).argmin()
-            fiber_bw_end_index = np.min([
-                xraw.size,
-                fiber_bw_1_index + (fiber_end_index - fiber_1_index)])
-            fiber_bw_start_index = np.max([
-                0,
-                fiber_bw_1_index - fiber_n_indices - fiber_n_indices_internal])
+            fiber_bw_end_index = np.min(
+                [
+                    xraw.size, fiber_bw_1_index +
+                    (fiber_end_index - fiber_1_index)])
+            fiber_bw_start_index = np.max(
+                [
+                    0, fiber_bw_1_index - fiber_n_indices
+                    - fiber_n_indices_internal])
 
             REV_ST = REV_ST[fiber_bw_start_index:fiber_bw_end_index]
             REV_AST = REV_AST[fiber_bw_start_index:fiber_bw_end_index]
@@ -930,10 +937,10 @@ def read_sensornet_files_routine_v3(
         else:
             # Use the fiber indices from the forward channel
             n_indices_internal_left = fiber_0_index - fiber_start_index
-            n_indices_internal_right = np.max([0, fiber_end_index -
-                                               fiber_1_index])
-            n_indices_internal_shortest = np.min([n_indices_internal_left,
-                                                  n_indices_internal_right])
+            n_indices_internal_right = np.max(
+                [0, fiber_end_index - fiber_1_index])
+            n_indices_internal_shortest = np.min(
+                [n_indices_internal_left, n_indices_internal_right])
             fiber_start_index = fiber_0_index - n_indices_internal_shortest
             fiber_end_index = fiber_0_index + fiber_n_indices + \
                 n_indices_internal_shortest
@@ -1134,7 +1141,7 @@ def read_sensortran_files_routine(
     # Add standardised required attributes
     attrs['isDoubleEnded'] = '0'
 
-    attrs['forwardMeasurementChannel'] = meta_dts['channel_id']-1
+    attrs['forwardMeasurementChannel'] = meta_dts['channel_id'] - 1
     attrs['backwardMeasurementChannel'] = 'N/A'
 
     # obtain basic data info
@@ -1145,8 +1152,8 @@ def read_sensortran_files_routine(
     # print summary
     if not silent:
         print(
-            '%s files were found,' % ntime +
-            ' each representing a single timestep')
+            '%s files were found,' % ntime
+            + ' each representing a single timestep')
         print('Recorded at %s points along the cable' % nx)
 
         print('The measurement is single ended')
@@ -1173,16 +1180,16 @@ def read_sensortran_files_routine(
 
         timestamp[ii] = data_dts['time']
 
-        referenceTemperature[ii] = data_temp['reference_temperature']-273.15
+        referenceTemperature[ii] = data_temp['reference_temperature'] - 273.15
 
         ST[:, ii] = data_dts['st'][:nx]
         AST[:, ii] = data_dts['ast'][:nx]
         # The TMP can vary by 1 or 2 datapoints, dynamically assign the values
         TMP[:meta_temp['num_points'], ii] = data_temp['tmp'][:nx]
 
-        zero_index = (meta_dts['num_points']-nx) // 2
-        ST_zero[ii] = np.mean(data_dts['st'][nx+zero_index:])
-        AST_zero[ii] = np.mean(data_dts['ast'][nx+zero_index:])
+        zero_index = (meta_dts['num_points'] - nx) // 2
+        ST_zero[ii] = np.mean(data_dts['st'][nx + zero_index:])
+        AST_zero[ii] = np.mean(data_dts['ast'][nx + zero_index:])
 
     data_vars = {
         'st': (['x', 'time'], ST, dim_attrs['st']),
@@ -1200,11 +1207,15 @@ def read_sensortran_files_routine(
                     'description': 'Internal reference '
                                    'temperature',
                     'units': 'degC'}),
-        'st_zero': (['time'], ST_zero, {
+        'st_zero':
+            (
+                ['time'], ST_zero, {
                     'name': 'ST_zero',
                     'description': 'Stokes zero count',
                     'units': meta_dts['y_units']}),
-        'ast_zero': (['time'], AST_zero, {
+        'ast_zero':
+            (
+                ['time'], AST_zero, {
                     'name': 'AST_zero',
                     'description': 'anit-Stokes zero count',
                     'units': meta_dts['y_units']}),
@@ -1215,11 +1226,14 @@ def read_sensortran_files_routine(
     filenamelist_temp = [os.path.split(f)[-1] for f in filepathlist_temp]
 
     coords = {
-        'x': ('x', x, {'name': 'distance',
-                       'description': 'Length along fiber',
-                       'long_description': 'Starting at connector ' +
-                                           'of forward channel',
-                       'units': 'm'}),
+        'x':
+            (
+                'x', x, {
+                    'name': 'distance',
+                    'description': 'Length along fiber',
+                    'long_description':
+                        'Starting at connector ' + 'of forward channel',
+                    'units': 'm'}),
         'filename': ('time', filenamelist_dts),
         'filename_temp': ('time', filenamelist_temp)}
 
@@ -1269,29 +1283,25 @@ def read_sensortran_single(fname):
 
         data['reference_temperature'] = struct.unpack('<f', f.read(4))[0]
         data['time'] = datetime.fromtimestamp(
-                        struct.unpack('<i', f.read(4))[0])
+            struct.unpack('<i', f.read(4))[0])
 
         meta['probe_name'] = f.read(128).decode('utf-16').split('\x00')[0]
 
         meta['hdr_size'] = struct.unpack('<i', f.read(4))[0]
         meta['hw_config'] = struct.unpack('<i', f.read(4))[0]
 
-        data_1 = f.read(meta['num_points']*4)
-        data_2 = f.read(meta['num_points']*4)
+        data_1 = f.read(meta['num_points'] * 4)
+        data_2 = f.read(meta['num_points'] * 4)
 
         if meta['survey_type'] == 0:
-            distance = np.frombuffer(data_1,
-                                     dtype=np.float32)
-            temperature = np.frombuffer(data_2,
-                                        dtype=np.float32)
+            distance = np.frombuffer(data_1, dtype=np.float32)
+            temperature = np.frombuffer(data_2, dtype=np.float32)
             data['x'] = distance
             data['tmp'] = temperature
 
         if meta['survey_type'] == 2:
-            ST = np.frombuffer(data_1,
-                               dtype=np.int32)
-            AST = np.frombuffer(data_2,
-                                dtype=np.int32)
+            ST = np.frombuffer(data_1, dtype=np.int32)
+            AST = np.frombuffer(data_2, dtype=np.int32)
             data['st'] = ST
             data['ast'] = AST
 
@@ -1329,15 +1339,21 @@ def read_apsensing_files_routine(
     from xml.etree import ElementTree
 
     # translate names
-    tld = {'ST': 'st', 'AST': 'ast', 'REV-ST': 'rst', 'REV-AST': 'rast',
-           'TEMP': 'tmp'}
+    tld = {
+        'ST': 'st',
+        'AST': 'ast',
+        'REV-ST': 'rst',
+        'REV-AST': 'rast',
+        'TEMP': 'tmp'}
 
     # Open the first xml file using ET, get the name space and amount of data
     xml_tree = ElementTree.parse(filepathlist[0])
     namespace = get_xml_namespace(xml_tree.getroot())
 
-    logtree = xml_tree.find(('{0}wellSet/{0}well/{0}wellboreSet/{0}wellbore' +
-                             '/{0}wellLogSet/{0}wellLog').format(namespace))
+    logtree = xml_tree.find(
+        (
+            '{0}wellSet/{0}well/{0}wellboreSet/{0}wellbore'
+            + '/{0}wellLogSet/{0}wellLog').format(namespace))
     logdata_tree = logtree.find('./{0}logData'.format(namespace))
 
     # Amount of datapoints is the size of the logdata tree
@@ -1359,8 +1375,8 @@ def read_apsensing_files_routine(
     attrs['backwardMeasurementChannel'] = 'N/A'
 
     data_item_names = [
-       attrs['wellbore:wellLogSet:wellLog:logCurveInfo_{0}:mnemonic'.format(x)]
-       for x in range(0, 4)]
+        attrs['wellbore:wellLogSet:wellLog:logCurveInfo_{0}:mnemonic'.format(
+            x)] for x in range(0, 4)]
 
     nitem = len(data_item_names)
 
@@ -1371,8 +1387,8 @@ def read_apsensing_files_routine(
         print(
             '%s files were found, each representing a single timestep' % ntime)
         print(
-            '%s recorded vars were found: ' % nitem +
-            ', '.join(data_item_names))
+            '%s recorded vars were found: ' % nitem
+            + ', '.join(data_item_names))
         print('Recorded at %s points along the cable' % nx)
 
         if double_ended_flag:
@@ -1381,8 +1397,10 @@ def read_apsensing_files_routine(
             print('The measurement is single ended')
 
     # Gather data
-    arr_path = 's:' + '/s:'.join(['wellSet', 'well', 'wellboreSet', 'wellbore',
-                                  'wellLogSet', 'wellLog', 'logData', 'data'])
+    arr_path = 's:' + '/s:'.join(
+        [
+            'wellSet', 'well', 'wellboreSet', 'wellbore', 'wellLogSet',
+            'wellLog', 'logData', 'data'])
 
     @dask.delayed
     def grab_data_per_file(file_handle):
@@ -1405,10 +1423,9 @@ def read_apsensing_files_routine(
 
             if not len(arr_el) == nx:
                 raise ValueError(
-                    'Inconsistent length of x-dimension' +
-                    '\nCheck if files are mixed up, or if the number of ' +
-                    'data points vary per file.'
-                )
+                    'Inconsistent length of x-dimension'
+                    + '\nCheck if files are mixed up, or if the number of '
+                    + 'data points vary per file.')
 
             # remove the breaks on both sides of the string
             # split the string on the comma
@@ -1443,21 +1460,17 @@ def read_apsensing_files_routine(
             continue
 
         if tld[name] in dim_attrs_apsensing:
-            data_vars[tld[name]] = (['x', 'time'],
-                                    data_arri,
-                                    dim_attrs_apsensing[tld[name]])
+            data_vars[tld[name]] = (
+                ['x', 'time'], data_arri, dim_attrs_apsensing[tld[name]])
         elif name in dim_attrs_apsensing:
-            data_vars[tld[name]] = (['x', 'time'],
-                                    data_arri,
-                                    dim_attrs_apsensing[name])
+            data_vars[tld[name]] = (
+                ['x', 'time'], data_arri, dim_attrs_apsensing[name])
         else:
             raise ValueError(
-                'Dont know what to do with the' +
-                ' {} data column'.format(name))
+                'Dont know what to do with the'
+                + ' {} data column'.format(name))
 
-    _time_dtype = [
-     ('filename_tstamp', np.int64),
-     ('acquisitionTime', '<U29')]
+    _time_dtype = [('filename_tstamp', np.int64), ('acquisitionTime', '<U29')]
     ts_dtype = np.dtype(_time_dtype)
 
     @dask.delayed
@@ -1480,11 +1493,11 @@ def read_apsensing_files_routine(
             out = []
 
             # get all the time related data
-            creationDate = eltree.find(('{0}wellSet/{0}well/{0}wellboreSet' +
-                                        '/{0}wellbore/{0}wellLogSet' +
-                                        '/{0}wellLog/{0}creationDate'
-                                        ).format(namespace)
-                                       ).text
+            creationDate = eltree.find(
+                (
+                    '{0}wellSet/{0}well/{0}wellboreSet'
+                    + '/{0}wellbore/{0}wellLogSet'
+                    + '/{0}wellLog/{0}creationDate').format(namespace)).text
 
             if isinstance(file_handle, tuple):
                 file_name = os.path.split(file_handle[0])[-1]
@@ -1502,9 +1515,7 @@ def read_apsensing_files_routine(
     ts_arr = da.stack(ts_lst).compute()
 
     data_vars['creationDate'] = (
-        ('time',),
-        [pd.Timestamp(str(item[1])) for item in ts_arr]
-    )
+        ('time',), [pd.Timestamp(str(item[1])) for item in ts_arr])
 
     # construct the coordinate dictionary
     coords = {
@@ -1559,9 +1570,8 @@ def read_apsensing_attrs_singlefile(filename, sep):
             else:
                 prefix_parse = sep.join([prefix, key.replace('@', '')])
 
-            if prefix_parse == sep.join(('wellbore', 'wellLogSet',
-                                         'wellLog', 'logData', 'data')):
-                # skip the LAF , ST data
+            items = ('wellbore', 'wellLogSet', 'wellLog', 'logData', 'data')
+            if prefix_parse == sep.join(items):
                 continue
 
             if hasattr(dict_to_parse[key], 'keys'):
@@ -1661,8 +1671,8 @@ def read_sensornet_single(filename):
 
         else:
             raise ValueError(
-                'unknown differential loss correction: "' +
-                meta['differential loss correction']+'"')
+                'unknown differential loss correction: "'
+                + meta['differential loss correction'] + '"')
 
     return data, meta
 
@@ -1796,9 +1806,9 @@ def coords_time(
         index_time_BWmean = maxTimeIndex + dt2 / 2
 
         coords_zip = [
-            ('timeFWstart',
-             index_time_FWstart), ('timeFWend', index_time_FWend),
-            ('timeFW', index_time_FWmean), ('timeBWstart', index_time_BWstart),
+            ('timeFWstart', index_time_FWstart),
+            ('timeFWend', index_time_FWend), ('timeFW', index_time_FWmean),
+            ('timeBWstart', index_time_BWstart),
             ('timeBWend', index_time_BWend), ('timeBW', index_time_BWmean),
             ('timestart', index_time_FWstart), ('timeend', index_time_BWend),
             ('time', index_time_FWend)]
@@ -1807,13 +1817,15 @@ def coords_time(
         coords = {
             k: (
                 'time', pd.DatetimeIndex(v).tz_localize(
-                    tz=timezone_input_files).tz_convert(timezone_netcdf).astype(
-                        'datetime64[ns]'), time_attrs[k])
+                    tz=timezone_input_files).tz_convert(
+                        timezone_netcdf).astype('datetime64[ns]'),
+                time_attrs[k])
             for k, v in coords_zip}
     else:
         coords = {
-            k: ('time', pd.DatetimeIndex(v).tz_convert(timezone_netcdf).astype(
-                        'datetime64[ns]'), time_attrs[k])
+            k: (
+                'time', pd.DatetimeIndex(v).tz_convert(timezone_netcdf).astype(
+                    'datetime64[ns]'), time_attrs[k])
             for k, v in coords_zip}
 
     # The units are already stored in the dtype

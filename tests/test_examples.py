@@ -22,17 +22,16 @@ def _notebook_run(path):
 
     jupyter_exec = shutil.which('jupyter')
 
-    args = [jupyter_exec, "nbconvert", path,
-            "--output", nbpath,
-            "--to", "notebook",
-            "--execute", "--ExecutePreprocessor.timeout=60"]
+    args = [
+        jupyter_exec, "nbconvert", path, "--output", nbpath, "--to",
+        "notebook", "--execute", "--ExecutePreprocessor.timeout=60"]
     subprocess.check_call(args)
 
     nb = nbformat.read(nbpath, nbformat.current_nbformat)
 
-    errors = [output for cell in nb.cells if "outputs" in cell
-              for output in cell["outputs"]
-              if output.output_type == "error"]
+    errors = [
+        output for cell in nb.cells if "outputs" in cell
+        for output in cell["outputs"] if output.output_type == "error"]
 
     # Remove the temp file once the test is done
     if os.path.exists(nbpath):

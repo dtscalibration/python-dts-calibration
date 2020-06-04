@@ -18,8 +18,7 @@ from setuptools import setup
 def read(*names, **kwargs):
     return io.open(
         join(dirname(__file__), *names),
-        encoding=kwargs.get('encoding', 'utf8')
-        ).read()
+        encoding=kwargs.get('encoding', 'utf8')).read()
 
 
 def get_authors(file='AUTHORS.rst'):
@@ -37,19 +36,17 @@ setup(
     version='1.0.0',
     license='BSD 3-Clause License',
     description='A Python package to load raw DTS files, perform a '
-                'calibration, and plot the result',
+    'calibration, and plot the result',
     long_description='%s\n%s' % (
-        re.compile('^.. start-badges.*^.. end-badges', re.M | re.S
-                   ).sub('', read('README.rst')),
-        re.sub(':[a-z]+:`~?(.*?)`', r'``\1``', read('CHANGELOG.rst'))
-        ),
+        re.compile('^.. start-badges.*^.. end-badges', re.M | re.S).sub(
+            '', read('README.rst')),
+        re.sub(':[a-z]+:`~?(.*?)`', r'``\1``', read('CHANGELOG.rst'))),
     long_description_content_type='text/x-rst',
     author=get_authors(file='AUTHORS.rst'),
     author_email='bdestombe@gmail.com',
     url='https://github.com/dtscalibration/python-dts-calibration',
     packages=find_packages('src'),
-    package_dir={
-        '': 'src'},
+    package_dir={'': 'src'},
     py_modules=[splitext(basename(path))[0] for path in glob('src/*.py')],
     python_requires='>= 3.6',  # default dictionary is sorted
     include_package_data=True,
@@ -66,11 +63,10 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
-        'Topic :: Utilities',
-        ],
+        'Topic :: Utilities'],
     keywords=[
-        'DTS', 'Calibration',
-        ],
+        'DTS',
+        'Calibration'],
     install_requires=[
         'numpy',
         'xarray',
@@ -90,15 +86,12 @@ setup(
         # possible to remove from requirements soon. 2019/10/31
         'cloudpickle',
         'nbformat'  # Needed to run the tests
-        ],
+    ],
     extras_require={
         # eg:
         #   'rst': ['docutils>=0.11'],
         #   ':python_version=="2.6"': ['argparse'],
-        },
+    },
     entry_points={
-        'console_scripts': [
-            'dtscalibration = dtscalibration.cli:main',
-            ]
-        },
-    )
+        'console_scripts': ['dtscalibration = dtscalibration.cli:main']},
+)

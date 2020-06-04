@@ -121,8 +121,8 @@ def merge_double_ended(ds_fw, ds_bw, cable_length, plot_result=True):
     ds : DataStore object
         With the two channels merged
     """
-    assert (ds_fw.attrs['isDoubleEnded'] == '0' and
-            ds_bw.attrs['isDoubleEnded'] == '0'), \
+    assert (ds_fw.attrs['isDoubleEnded'] == '0'
+            and ds_bw.attrs['isDoubleEnded'] == '0'), \
         "(one of the) input DataStores is already double ended"
 
     assert (ds_fw.time.size == ds_bw.time.size), \
@@ -137,9 +137,8 @@ def merge_double_ended(ds_fw, ds_bw, cable_length, plot_result=True):
     # TODO: check if reindexing matters, and should be used.
     # one way to do it is performed below, but this could create artifacts
     x_resolution = ds.x.values[1] - ds.x.values[0]
-    ds_bw = ds_bw.reindex({'x': ds.x},
-                          method='nearest',
-                          tolerance=0.99*x_resolution)
+    ds_bw = ds_bw.reindex(
+        {'x': ds.x}, method='nearest', tolerance=0.99 * x_resolution)
 
     ds_bw = ds_bw.sortby('x')
 
@@ -149,8 +148,8 @@ def merge_double_ended(ds_fw, ds_bw, cable_length, plot_result=True):
     ds = ds.dropna(dim='x')
 
     ds.attrs['isDoubleEnded'] = '1'
-    ds['userAcquisitionTimeBW'] = ('time',
-                                   ds_bw['userAcquisitionTimeFW'].values)
+    ds['userAcquisitionTimeBW'] = (
+        'time', ds_bw['userAcquisitionTimeFW'].values)
 
     if plot_result:
         fig, ax = plt.subplots()
@@ -240,8 +239,8 @@ def shift_double_ended(ds, i_shift, verbose=True):
     return DataStore(data_vars=d2_data, coords=d2_coords, attrs=ds.attrs)
 
 
-def suggest_cable_shift_double_ended(ds, irange, plot_result=True,
-                                     **fig_kwargs):
+def suggest_cable_shift_double_ended(
+        ds, irange, plot_result=True, **fig_kwargs):
     """The cable length was initially configured during the DTS measurement.
     For double ended measurements it is important to enter the correct length
     so that the forward channel and the backward channel are aligned.

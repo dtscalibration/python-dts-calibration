@@ -47,12 +47,10 @@ if 1:
     data_dir_single_silixa_v7 = os.path.join(wd, 'data', 'silixa_v7.0')
     data_dir_ap_sensing = os.path.join(wd, 'data', 'ap_sensing')
     data_dir_sensortran_binary = os.path.join(wd, 'data', 'sensortran_binary')
-    data_dir_double_single_ch1 = os.path.join(wd, 'data',
-                                              'double_single_ended',
-                                              'channel_1')
-    data_dir_double_single_ch2 = os.path.join(wd, 'data',
-                                              'double_single_ended',
-                                              'channel_2')
+    data_dir_double_single_ch1 = os.path.join(
+        wd, 'data', 'double_single_ended', 'channel_1')
+    data_dir_double_single_ch2 = os.path.join(
+        wd, 'data', 'double_single_ended', 'channel_2')
 
     # zips
     data_dir_zipped_single_ended = os.path.join(
@@ -180,8 +178,9 @@ def test_sections_property():
 
     # test if accepts singleton numpy arrays
     ds.sections = {
-        'probe1Temperature': [
-            slice(np.array(0.), np.array(17.)), slice(70., 80.)]}
+        'probe1Temperature':
+            [slice(np.array(0.), np.array(17.)),
+             slice(70., 80.)]}
 
     # delete property
     del ds.sections
@@ -198,7 +197,8 @@ def test_io_sections_property():
             'probe1Temperature': (['time'], range(5)),
             'probe2Temperature': (['time'], range(5))},
         coords={
-            'x': ('x', range(100), {'units': 'm'}),
+            'x': ('x', range(100), {
+                'units': 'm'}),
             'time': range(5)})
 
     sections = {
@@ -324,14 +324,18 @@ def test_read_silixa_files_double_loadinmemory():
 def test_read_single_silixa_v45():
     filepath = data_dir_single_silixa_v45
     ds = read_silixa_files(
-        directory=filepath, timezone_netcdf='UTC', file_ext='*.xml',
+        directory=filepath,
+        timezone_netcdf='UTC',
+        file_ext='*.xml',
         load_in_memory=False)
 
     for k in ['st', 'ast']:
         assert isinstance(ds[k].data, da.Array)
 
     ds = read_silixa_files(
-        directory=filepath, timezone_netcdf='UTC', file_ext='*.xml',
+        directory=filepath,
+        timezone_netcdf='UTC',
+        file_ext='*.xml',
         load_in_memory=True)
 
     for k in ['st', 'ast']:
@@ -343,14 +347,18 @@ def test_read_single_silixa_v45():
 def test_read_single_silixa_v7():
     filepath = data_dir_single_silixa_v7
     ds = read_silixa_files(
-        directory=filepath, timezone_netcdf='UTC', file_ext='*.xml',
+        directory=filepath,
+        timezone_netcdf='UTC',
+        file_ext='*.xml',
         load_in_memory=False)
 
     for k in ['st', 'ast']:
         assert isinstance(ds[k].data, da.Array)
 
     ds = read_silixa_files(
-        directory=filepath, timezone_netcdf='UTC', file_ext='*.xml',
+        directory=filepath,
+        timezone_netcdf='UTC',
+        file_ext='*.xml',
         load_in_memory=True)
 
     for k in ['st', 'ast']:
@@ -359,8 +367,9 @@ def test_read_single_silixa_v7():
     pass
 
 
-@pytest.mark.skip(reason="Randomly fails. Has to do with delayed reading"
-                         "out of zips with dask.")
+@pytest.mark.skip(
+    reason="Randomly fails. Has to do with delayed reading"
+    "out of zips with dask.")
 def test_read_silixa_zipped():
     files = [
         (data_dir_zipped_single_ended, 11387947.857184),
@@ -476,12 +485,11 @@ def test_read_apsensing_files_loadinmemory():
 
 def test_read_sensortran_files():
     filepath = data_dir_sensortran_binary
-    ds = read_sensortran_files(
-        directory=filepath,
-        timezone_netcdf='UTC')
-    np.testing.assert_approx_equal(ds.st.values.astype(np.int64).sum(),
-                                   np.int64(1432441254828),
-                                   significant=12)
+    ds = read_sensortran_files(directory=filepath, timezone_netcdf='UTC')
+    np.testing.assert_approx_equal(
+        ds.st.values.astype(np.int64).sum(),
+        np.int64(1432441254828),
+        significant=12)
     pass
 
 
@@ -501,8 +509,10 @@ def test_to_mf_netcdf_open_mf_datastore():
 
         # Test saving
         ds1 = ds1.chunk({'time': 1})
-        ds1.to_mf_netcdf(folder_path=tmpdirname, filename_preamble='file_',
-                         filename_extension='.nc')
+        ds1.to_mf_netcdf(
+            folder_path=tmpdirname,
+            filename_preamble='file_',
+            filename_extension='.nc')
         correct_val = float(ds1.st.sum())
         ds1.close()
         time.sleep(2)  # to ensure all is written on Windows and file released
@@ -631,20 +641,14 @@ def test_merge_double_ended():
     filepath_fw = data_dir_double_single_ch1
     filepath_bw = data_dir_double_single_ch2
 
-    ds_fw = read_silixa_files(
-                directory=filepath_fw)
+    ds_fw = read_silixa_files(directory=filepath_fw)
 
-    ds_bw = read_silixa_files(
-                directory=filepath_bw)
+    ds_bw = read_silixa_files(directory=filepath_bw)
 
     cable_length = 2017.7
-    ds = merge_double_ended(ds_fw, ds_bw,
-                            cable_length=cable_length,
-                            plot_result=True)
+    ds = merge_double_ended(
+        ds_fw, ds_bw, cable_length=cable_length, plot_result=True)
 
-    result = (ds.isel(time=0).st -
-              ds.isel(time=0).rst).sum().values
+    result = (ds.isel(time=0).st - ds.isel(time=0).rst).sum().values
 
-    np.testing.assert_approx_equal(result,
-                                   -3712866.0382,
-                                   significant=10)
+    np.testing.assert_approx_equal(result, -3712866.0382, significant=10)
