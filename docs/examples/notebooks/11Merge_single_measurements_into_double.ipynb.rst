@@ -69,7 +69,7 @@ is a duplex measurement.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x12d5c8450>
+    <matplotlib.legend.Legend at 0x121330790>
 
 
 

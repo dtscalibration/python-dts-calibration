@@ -74,9 +74,9 @@ and is dropped
 
 .. parsed-literal::
 
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/src/dtscalibration/datastore_utils.py:309: RuntimeWarning: invalid value encountered in log
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/src/dtscalibration/datastore_utils.py:308: RuntimeWarning: invalid value encountered in log
       i_f = np.log(st / ast)
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/src/dtscalibration/datastore_utils.py:310: RuntimeWarning: invalid value encountered in log
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/src/dtscalibration/datastore_utils.py:309: RuntimeWarning: invalid value encountered in log
       i_b = np.log(rst / rast)
 
 
