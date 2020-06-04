@@ -358,6 +358,7 @@ def test_read_single_silixa_v7():
 
     pass
 
+
 @pytest.mark.skip(reason="Randomly fails. Has to do with delayed reading"
                          "out of zips with dask.")
 def test_read_silixa_zipped():

@@ -1478,7 +1478,7 @@ class DataStore(xr.Dataset):
             assert self.sections, 'sections are not defined'
 
         assert self[st_label].dims[0] == 'x', 'Stokes are transposed'
-        st_var, resid = self.variance_stokes(st_label=st_label)
+        _, resid = self.variance_stokes(st_label=st_label)
 
         ix_sec = self.ufunc_per_section(x_indices=True, calc_per='all')
         st = self.isel(x=ix_sec)[st_label].values.ravel()
@@ -1708,6 +1708,43 @@ class DataStore(xr.Dataset):
 
         return np.logical_and(mask_dn, mask_up)
 
+    def check_reference_section_values(self):
+        """
+        Checks if the values of the used sections are of the right datatype
+        (floats), if there are finite number (no NaN/inf), and if the time
+        dimension corresponds with the time dimension of the st/ast data.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+
+        """
+        time_dim = self.get_time_dim()
+
+        for key in self.sections.keys():
+            if not np.issubdtype(self[key].dtype, np.floating):
+                raise ValueError(
+                    'Data of reference temperature "' + key +
+                    '" does not have a float data type. Please ensure that '
+                    'the data is of a valid type (e.g. np.float32)'
+                )
+
+            if np.any(~np.isfinite(self[key].values)):
+                raise ValueError(
+                    'NaN/inf value(s) found in reference temperature "' +
+                    key + '"'
+                )
+
+            if self[key].dims != (time_dim,):
+                raise ValueError(
+                    'Time dimension of the reference temperature timeseries ' +
+                    key + 'is not the same as the time dimension' +
+                    ' of the Stokes measurement. See examples/notebooks/09' +
+                    'Import_timeseries.ipynb for more info'
+                )
+
     def calibration_single_ended(
             self,
             sections=None,
@@ -1892,6 +1929,8 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
         else:
             assert self.sections, 'sections are not defined'
 
+        self.check_reference_section_values()
+
         time_dim = self.get_time_dim()
         nt = self[time_dim].size
         nx = self.x.size
@@ -1928,15 +1967,9 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                 ast_var = None    # ols
                 calc_cov = False
             else:
-                for i_var, i_label in zip(
-                        [st_var, ast_var], ['st', 'ast']):
-                    if callable(i_var):
-                        ix_sec = self.ufunc_per_section(x_indices=True,
-                                                        calc_per='all')
-                        i_var = i_var(self[i_label].isel(x=ix_sec)).values
-
-                    else:
-                        i_var = np.asarray(i_var, dtype=float)
+                for input_item in [st_var, ast_var]:
+                    assert input_item is not None, \
+                       'For wls define all variances (`st_var`, `ast_var`)'
 
                 calc_cov = True
 
@@ -2471,6 +2504,8 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             self.sections = sections
         else:
             assert self.sections, 'sections are not defined'
+
+        self.check_reference_section_values()
 
         nx = self.x.size
         time_dim = self.get_time_dim()
@@ -3372,6 +3407,15 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             else:
                 loc = da.from_array(self[st_labeli].data, chunks=memchunk[1:])
 
+            # Make sure variance is of size (no, nt)
+            if np.size(st_vari) > 1:
+                if st_vari.shape == self[st_labeli].shape:
+                    pass
+                else:
+                    st_vari = np.broadcast_to(st_vari, (no, nt))
+            else:
+                pass
+
             # Load variance as chunked Dask array, otherwise eats memory
             if type(st_vari) == da.core.Array:
                 st_vari_da = da.asarray(st_vari, chunks=memchunk[1:])
@@ -4195,6 +4239,15 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                 loc = da.asarray(self[st_labeli].data, chunks=memchunk[1:])
             else:
                 loc = da.from_array(self[st_labeli].data, chunks=memchunk[1:])
+
+            # Make sure variance is of size (no, nt)
+            if np.size(st_vari) > 1:
+                if st_vari.shape == self[st_labeli].shape:
+                    pass
+                else:
+                    st_vari = np.broadcast_to(st_vari, (no, nt))
+            else:
+                pass
 
             # Load variance as chunked Dask array, otherwise eats memory
             if type(st_vari) == da.core.Array:

@@ -557,19 +557,19 @@ def plot_sigma_report(
         temp = ds[temp_label].mean(dim=time_dim).compute()
         stds = np.sqrt(ds[temp_var_acc_label]).mean(dim=time_dim).compute()
 
-    for l, c in zip([2., 1.], colors):
-        y1 = temp - l * stds
-        y2 = temp + l * stds
-        label_str = '{0:2.2f}'.format(l) + r'$\sigma$ confidence interval'
+    for lbl, clr in zip([2., 1.], colors):
+        y1 = temp - lbl * stds
+        y2 = temp + lbl * stds
+        label_str = '{0:2.2f}'.format(lbl) + r'$\sigma$ confidence interval'
         ax1.fill_between(
             y1.x,
             y1,
             y2,
-            facecolor=c,
+            facecolor=clr,
             label=label_str,
             alpha=0.9,
             linewidth=0.7,
-            edgecolor=c)
+            edgecolor=clr)
 
     if isinstance(itimes, list):
         for iitimes in itimes:
