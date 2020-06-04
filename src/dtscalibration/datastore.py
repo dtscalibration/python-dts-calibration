@@ -3470,7 +3470,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             reduce_memory_usage=False,
             **kwargs):
         """
-        Average temperatures from double-ended setups.
+        Average temperatures from single-ended setups.
 
         Four types of averaging are implemented. Please see Example Notebook 16.
 
