@@ -460,6 +460,7 @@ class DataStore(xr.Dataset):
             unlimited_dims=None,
             compute=True):
         """Write datastore contents to a netCDF file.
+
         Parameters
         ----------
         path : str, Path or file-like object, optional
