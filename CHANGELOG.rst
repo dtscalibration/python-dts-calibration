@@ -1,6 +1,14 @@
 
 Changelog
 =========
+1.0.1 (2020-05-04)
+------------------
+* Variances can now passed as a float, a function, or an array to calibrationroutines
+* European Geosciences Union conference 2020 presentation added
+* Check for nans from reference temperature in wls_sparse routine
+* Updated documentation with content article
+* Use YAPF formatting of the Python files.
+
 1.0.0 (2020-03-30)
 ------------------
 * First major release
