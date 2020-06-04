@@ -1,6 +1,20 @@
 
 Changelog
 =========
+1.0.3 (UNRELEASED)
+------------------
+New features
+
+*
+
+Bug fixes
+
+*
+
+Others
+
+*
+
 1.0.2 (2020-05-04)
 ------------------
 * Same as v1.0.1
