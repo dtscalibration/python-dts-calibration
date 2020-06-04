@@ -18,7 +18,7 @@ from .plot import plot_residuals_reference_sections
 from .plot import plot_residuals_reference_sections_single
 from .plot import plot_sigma_report
 
-__version__ = '1.0.1'
+__version__ = '1.0.2'
 __all__ = [
     "DataStore", "open_datastore", "open_mf_datastore", "read_apsensing_files",
     "read_sensornet_files", "read_sensortran_files", "read_silixa_files",
