@@ -39,7 +39,7 @@ lossy splice.
 
 .. parsed-literal::
 
-    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
+    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:847: FutureWarning: xarray subclass DataStore should explicitly define __slots__
       super().__init_subclass__(*args, **kwargs)
 
 
@@ -101,7 +101,7 @@ clearly visible.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x129102e50>
+    <matplotlib.legend.Legend at 0x1290ff910>
 
 
 
@@ -139,7 +139,7 @@ after the jump are too high.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x12b6fa510>]
+    [<matplotlib.lines.Line2D at 0x12b42ca90>]
 
 
 
@@ -183,7 +183,7 @@ temperature, without the big jump.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x1292eda50>
+    <matplotlib.legend.Legend at 0x128f1fad0>
 
 
 

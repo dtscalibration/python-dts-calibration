@@ -29,7 +29,7 @@ splice, just as in notebook 14.
 
 .. parsed-literal::
 
-    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
+    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:847: FutureWarning: xarray subclass DataStore should explicitly define __slots__
       super().__init_subclass__(*args, **kwargs)
 
 
@@ -106,7 +106,7 @@ calibrated correctly.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x1242be050>]
+    [<matplotlib.lines.Line2D at 0x12178dd90>]
 
 
 
@@ -172,7 +172,7 @@ temperature, without the big jump.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x124434690>
+    <matplotlib.legend.Legend at 0x123d3d690>
 
 
 
