@@ -19,7 +19,7 @@ estimate the variance of the noise to: - Perform a weighted calibration
 
 .. parsed-literal::
 
-    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
+    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:847: FutureWarning: xarray subclass DataStore should explicitly define __slots__
       super().__init_subclass__(*args, **kwargs)
 
 
@@ -63,14 +63,7 @@ method.
 
 .. parsed-literal::
 
-    Backwards compatibility
-    
-            Use:
-            - `variance_stokes_constant` for small setups with small variations in
-            intensity
-            - `variance_stokes_exponential` for small setups with very few time
-            steps
-            - `variance_stokes_linear` for larger setups with more time steps
+    Backwards compatibility. See `ds.variance_stokes_constant()`
             
 
 
@@ -103,10 +96,10 @@ method.
 
 .. parsed-literal::
 
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/src/dtscalibration/plot.py:315: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
-      if (np.issubdtype(resid[time_dim].dtype, np.float) or
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/src/dtscalibration/plot.py:316: FutureWarning: Conversion of the second argument of issubdtype from `int` to `np.signedinteger` is deprecated. In future, it will be treated as `np.int64 == np.dtype(int).type`.
-      np.issubdtype(resid[time_dim].dtype, np.int)):
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/src/dtscalibration/plot.py:316: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+      if np.issubdtype(resid[time_dim].dtype, np.float) or np.issubdtype(
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/src/dtscalibration/plot.py:317: FutureWarning: Conversion of the second argument of issubdtype from `int` to `np.signedinteger` is deprecated. In future, it will be treated as `np.int64 == np.dtype(int).type`.
+      resid[time_dim].dtype, np.int):
     /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/numpy/lib/nanfunctions.py:1667: RuntimeWarning: Degrees of freedom <= 0 for slice.
       keepdims=keepdims)
     /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/xarray/core/nanops.py:142: RuntimeWarning: Mean of empty slice

@@ -20,7 +20,7 @@ measurements. Do this before the calibration steps.
 
 .. parsed-literal::
 
-    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:845: FutureWarning: xarray subclass DataStore should explicitly define __slots__
+    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:847: FutureWarning: xarray subclass DataStore should explicitly define __slots__
       super().__init_subclass__(*args, **kwargs)
 
 
@@ -74,9 +74,9 @@ and is dropped
 
 .. parsed-literal::
 
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/src/dtscalibration/datastore_utils.py:306: RuntimeWarning: invalid value encountered in log
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/src/dtscalibration/datastore_utils.py:308: RuntimeWarning: invalid value encountered in log
       i_f = np.log(st / ast)
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/src/dtscalibration/datastore_utils.py:307: RuntimeWarning: invalid value encountered in log
+    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/src/dtscalibration/datastore_utils.py:309: RuntimeWarning: invalid value encountered in log
       i_b = np.log(rst / rast)
 
 

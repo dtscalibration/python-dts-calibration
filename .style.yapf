@@ -139,7 +139,7 @@ join_multiple_lines=True
 #
 #   1 + 2*3 - 4/5
 #
-no_spaces_around_selected_binary_operators=
+no_spaces_around_selected_binary_operators=False
 
 # Use spaces around default or named assigns.
 spaces_around_default_or_named_assign=False
@@ -163,7 +163,11 @@ split_arguments_when_comma_terminated=False
 
 # Set to True to prefer splitting before '&', '|' or '^' rather than
 # after.
-split_before_bitwise_operator=True
+split_before_bitwise_operator=False
+
+#SPLIT_BEFORE_ARITHMETIC_OPERATOR
+#Set to True to prefer splitting before +, -, *, /, //, or @ rather than after.
+split_before_arithmetic_operator=True
 
 # Split before the closing bracket if a list or dict literal doesn't fit on
 # a single line.

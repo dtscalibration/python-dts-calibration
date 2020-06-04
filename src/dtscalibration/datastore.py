@@ -83,7 +83,6 @@ class DataStore(xr.Dataset):
         dtscalibration.open_datastore : Load (calibrated) measurements from
         netCDF-like file
         """
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -148,8 +147,9 @@ class DataStore(xr.Dataset):
                 preamble_new += sec_stat
 
                 # print sections
-                vl = ['{0:.2f}{2} - {1:.2f}{2}'.format(vi.start, vi.stop, unit)
-                      for vi in v]
+                vl = [
+                    '{0:.2f}{2} - {1:.2f}{2}'.format(vi.start, vi.stop, unit)
+                    for vi in v]
                 preamble_new += ' and '.join(vl) + '\n'
 
         else:
@@ -169,9 +169,9 @@ class DataStore(xr.Dataset):
         else:
             attr_list = attr_list_all
 
-        s_out = (preamble_new +
-                 s[len_preamble_old:attr_index] +
-                 '\n'.join(attr_list))
+        s_out = (
+            preamble_new + s[len_preamble_old:attr_index]
+            + '\n'.join(attr_list))
 
         # return new __repr__
         return s_out
@@ -213,8 +213,9 @@ class DataStore(xr.Dataset):
 
             # be less restrictive for capitalized labels
             # find lower cases label
-            labels = np.reshape([[s.lower(), s] for s in
-                                 self.data_vars.keys()], (-1,)).tolist()
+            labels = np.reshape(
+                [[s.lower(), s] for s in self.data_vars.keys()],
+                (-1,)).tolist()
 
             sections_fix = dict()
             for k, v in sections.items():
@@ -225,10 +226,10 @@ class DataStore(xr.Dataset):
                     sections_fix[k_normal_case] = v
                 else:
                     assert k in self.data_vars, 'The keys of the ' \
-                                              'sections-dictionary should ' \
-                                              'refer ' \
-                                              'to a valid timeserie already ' \
-                                              'stored in ds.data_vars'
+                                                'sections-dictionary should ' \
+                                                'refer to a valid timeserie ' \
+                                                'already stored in ' \
+                                                'ds.data_vars '
 
             sections_fix_slice_fixed = dict()
 
@@ -251,13 +252,14 @@ class DataStore(xr.Dataset):
                     slice(float(vi.start), float(vi.stop)) for vi in v]
                 stretch_start = [i.start for i in stretch_unsort]
                 stretch_i_sorted = np.argsort(stretch_start)
-                sections_fix_slice_fixed[k] = [stretch_unsort[i] for i in
-                                               stretch_i_sorted]
+                sections_fix_slice_fixed[k] = [
+                    stretch_unsort[i] for i in stretch_i_sorted]
 
             # Prevent overlapping slices
             ix_sec = self.ufunc_per_section(
                 sections=sections_fix_slice_fixed,
-                x_indices=True, calc_per='all')
+                x_indices=True,
+                calc_per='all')
             assert np.unique(ix_sec).size == ix_sec.size, \
                 "The sections are overlapping"
 
@@ -272,6 +274,7 @@ class DataStore(xr.Dataset):
     @property
     def is_double_ended(self):
         """
+        Whether or not the data is loaded from a double-ended setup.
 
         Returns
         -------
@@ -293,6 +296,7 @@ class DataStore(xr.Dataset):
     @property
     def chfw(self):
         """
+        Zero based channel index of the forward measurements
 
         Returns
         -------
@@ -303,6 +307,7 @@ class DataStore(xr.Dataset):
     @property
     def chbw(self):
         """
+        Zero based channel index of the backward measurements
 
         Returns
         -------
@@ -317,6 +322,7 @@ class DataStore(xr.Dataset):
     @property
     def channel_configuration(self):
         """
+        Renaming conversion dictionary
 
         Returns
         -------
@@ -626,14 +632,16 @@ class DataStore(xr.Dataset):
 
         except:  # noqa: E722
             if self[time_chunks_from_key].dims == ('x', 'time'):
-                _, t_chunks = da.ones(self[time_chunks_from_key].shape,
-                                      chunks=(-1, 'auto'),
-                                      dtype='float64').chunks
+                _, t_chunks = da.ones(
+                    self[time_chunks_from_key].shape,
+                    chunks=(-1, 'auto'),
+                    dtype='float64').chunks
 
             elif self[time_chunks_from_key].dims == ('time', 'x'):
-                _, t_chunks = da.ones(self[time_chunks_from_key].shape,
-                                      chunks=('auto', -1),
-                                      dtype='float64').chunks
+                _, t_chunks = da.ones(
+                    self[time_chunks_from_key].shape,
+                    chunks=('auto', -1),
+                    dtype='float64').chunks
             else:
                 assert 0, 'something went wrong with your Stokes dimensions'
 
@@ -641,27 +649,35 @@ class DataStore(xr.Dataset):
         x = [range(bu, bd) for bu, bd in zip(bnds[:-1], bnds[1:])]
 
         datasets = [self.isel(time=xi) for xi in x]
-        paths = [os.path.join(folder_path,
-                              filename_preamble +
-                              "{:04d}".format(ix) +
-                              filename_extension) for ix in range(len(x))]
+        paths = [
+            os.path.join(
+                folder_path,
+                filename_preamble + "{:04d}".format(ix) + filename_extension)
+            for ix in range(len(x))]
 
         encodings = []
         for ids, ds in enumerate(datasets):
             if encoding is None:
-                encodings.append(ds.get_default_encoding(
-                    time_chunks_from_key=time_chunks_from_key))
+                encodings.append(
+                    ds.get_default_encoding(
+                        time_chunks_from_key=time_chunks_from_key))
 
             else:
                 encodings.append(encoding[ids])
 
-        writers, stores = zip(*[
-            xr.backends.api.to_netcdf(
-                ds, path, mode, format, None, engine,
-                compute=compute,
-                multifile=True,
-                encoding=enc)
-            for ds, path, enc in zip(datasets, paths, encodings)])
+        writers, stores = zip(
+            *[
+                xr.backends.api.to_netcdf(
+                    ds,
+                    path,
+                    mode,
+                    format,
+                    None,
+                    engine,
+                    compute=compute,
+                    multifile=True,
+                    encoding=enc)
+                for ds, path, enc in zip(datasets, paths, encodings)])
 
         try:
             writes = [w.sync(compute=compute) for w in writers]
@@ -671,19 +687,24 @@ class DataStore(xr.Dataset):
                     store.close()
 
         if not compute:
+
             def _finalize_store(write, store):
                 """ Finalize this store by explicitly syncing and closing"""
                 del write  # ensure writing is done first
                 store.close()
                 pass
 
-            return dask.delayed([dask.delayed(_finalize_store)(w, s)
-                                 for w, s in zip(writes, stores)])
+            return dask.delayed(
+                [
+                    dask.delayed(_finalize_store)(w, s)
+                    for w, s in zip(writes, stores)])
 
         pass
 
     def get_default_encoding(self, time_chunks_from_key=None):
         """
+        Returns a dictionary with sensible compression setting for writing
+        netCDF files.
 
         Returns
         -------
@@ -691,10 +712,12 @@ class DataStore(xr.Dataset):
         """
         # The following variables are stored with a sufficiently large
         # precision in 32 bit
-        float32l = ['st', 'ast', 'rst', 'rast', 'time', 'timestart',
-                    'tmp', 'timeend', 'acquisitionTime', 'x']
-        int32l = ['filename_tstamp', 'acquisitiontimeFW', 'acquisitiontimeBW',
-                  'userAcquisitionTimeFW', 'userAcquisitionTimeBW']
+        float32l = [
+            'st', 'ast', 'rst', 'rast', 'time', 'timestart', 'tmp', 'timeend',
+            'acquisitionTime', 'x']
+        int32l = [
+            'filename_tstamp', 'acquisitiontimeFW', 'acquisitiontimeBW',
+            'userAcquisitionTimeFW', 'userAcquisitionTimeBW']
 
         # default variable compression
         compdata = dict(
@@ -719,14 +742,16 @@ class DataStore(xr.Dataset):
         if time_chunks_from_key is not None:
             # obtain optimal chunk sizes in time and x dim
             if self[time_chunks_from_key].dims == ('x', 'time'):
-                x_chunk, t_chunk = da.ones(self[time_chunks_from_key].shape,
-                                           chunks=(-1, 'auto'),
-                                           dtype='float64').chunks
+                x_chunk, t_chunk = da.ones(
+                    self[time_chunks_from_key].shape,
+                    chunks=(-1, 'auto'),
+                    dtype='float64').chunks
 
             elif self[time_chunks_from_key].dims == ('time', 'x'):
-                x_chunk, t_chunk = da.ones(self[time_chunks_from_key].shape,
-                                           chunks=('auto', -1),
-                                           dtype='float64').chunks
+                x_chunk, t_chunk = da.ones(
+                    self[time_chunks_from_key].shape,
+                    chunks=('auto', -1),
+                    dtype='float64').chunks
             else:
                 assert 0, 'something went wrong with your Stokes dimensions'
 
@@ -766,8 +791,9 @@ class DataStore(xr.Dataset):
         -------
 
         """
-        options = ['date', 'time', 'day', 'days', 'hour', 'hours', 'minute',
-                   'minutes', 'second', 'seconds']
+        options = [
+            'date', 'time', 'day', 'days', 'hour', 'hours', 'minute',
+            'minutes', 'second', 'seconds']
         if data_var_key is None:
             if 'st' in self.data_vars:
                 data_var_key = 'st'
@@ -778,8 +804,7 @@ class DataStore(xr.Dataset):
 
         dims = self[data_var_key].dims
         # find all dims in options
-        in_opt = [next(filter(lambda s: s == d, options), None) for d in
-                  dims]
+        in_opt = [next(filter(lambda s: s == d, options), None) for d in dims]
 
         if in_opt and in_opt != [None]:
             # exclude Nones from list
@@ -795,6 +820,18 @@ class DataStore(xr.Dataset):
         return xis.sel(x=sec).values
 
     def check_deprecated_kwargs(self, kwargs):
+        """
+        Internal function that parses the `kwargs` for depreciated keyword arguments
+
+        Parameters
+        ----------
+        kwargs : Dict
+            A dictionary with keyword arguments.
+
+        Returns
+        -------
+
+        """
         msg = """Previously, it was possible to manually set the label from
         which the Stokes and anti-Stokes were read within the DataStore
         object. To reduce the clutter in the code base and be able to
@@ -826,12 +863,28 @@ class DataStore(xr.Dataset):
                 raise NotImplementedError(msg)
 
         if len(kwargs) != 0:
-            raise NotImplementedError('The following keywords are not ' +
-                                      'supported: ' + ', '.join(kwargs.keys()))
+            raise NotImplementedError(
+                'The following keywords are not ' + 'supported: '
+                + ', '.join(kwargs.keys()))
 
         pass
 
-    def rename_labels(self):
+    def rename_labels(self, assertion=True):
+        """
+        Renames the `ST` DataArrays (old convention) to `st` (new convention).
+        The new naming convention simplifies the notation of the reverse Stokes
+        `ds['REV-ST']` becomes `ds.rst`. Plus the parameter-naming convention in
+        Python in lowercase.
+
+        Parameters
+        ----------
+        assertion : bool
+            If set to `True`, raises an error if complications occur.
+
+        Returns
+        -------
+
+        """
         re_dict = {
             'ST': 'st',
             'AST': 'ast',
@@ -842,62 +895,117 @@ class DataStore(xr.Dataset):
             'TMPB': 'tmpb',
             'TMPW': 'tmpw'}
 
-        re_dict2 = {k: v for k, v in re_dict.items() if k in self.data_vars}
+        re_dict_err = {
+            k: v
+            for k, v in re_dict.items()
+            if k in self.data_vars and v in self.data_vars}
 
-        for k, v in re_dict2.items():
-            assert v not in self.data_vars, ('Unable to rename the st_labels '
-                                             'automagically. Please manually '
-                                             'rename ST->st and REV-ST->rst.'
-                                             'The parameter ' + v + ' is '
-                                             'already present')
+        msg = (
+            'Unable to rename the st_labels automagically. \n'
+            'Please manually rename ST->st and REV-ST->rst. The \n'
+            f'parameters {re_dict_err.values()} were already present')
+
+        if assertion:
+            assert len(re_dict_err) == 0, msg
+        elif len(re_dict_err) != 0:
+            print(msg)
+            for v in re_dict_err.values():
+                print(f'Variable {v} was not renamed')
+
+        re_dict2 = {
+            k: v
+            for k, v in re_dict.items()
+            if k in self.data_vars and v not in self.data_vars}
+
         return self.rename(re_dict2)
 
     def variance_stokes(self, *args, **kwargs):
-        """Backwards compatibility
-
-        Use:
-        - `variance_stokes_constant` for small setups with small variations in
-        intensity
-        - `variance_stokes_exponential` for small setups with very few time
-        steps
-        - `variance_stokes_linear` for larger setups with more time steps
+        """Backwards compatibility. See `ds.variance_stokes_constant()`
         """
         return self.variance_stokes_constant(*args, **kwargs)
 
     def variance_stokes_constant(
-            self,
-            st_label,
-            sections=None,
-            reshape_residuals=True):
-        """Use:
-        - `variance_stokes_constant` for small setups with small variations in
-        intensity
-        - `variance_stokes_exponential` for small setups with very few time
-        steps
-        - `variance_stokes_linear` for larger setups with more time steps
+            self, st_label, sections=None, reshape_residuals=True):
+        """
+        Approximate the variance of the noise in Stokes intensity measurements
+        with one value, suitable for small setups.
+
+        * `ds.variance_stokes_constant()` for small setups with small variations in\
+        intensity. Variance of the Stokes measurements is assumed to be the same\
+        along the entire fiber.
+
+        * `ds.variance_stokes_exponential()` for small setups with very few time\
+        steps. Too many degrees of freedom results in an under estimation of the\
+        noise variance. Almost never the case, but use when calibrating pre time\
+        step.
+
+        * `ds.variance_stokes_linear()` for larger setups with more time steps.\
+            Assumes Poisson distributed noise with the following model::
+
+                st_var = a * ds.st + b
+
+
+            where `a` and `b` are constants. Requires reference sections at
+            beginning and end of the fiber, to have residuals at high and low
+            intensity measurements.
+
+        The Stokes and anti-Stokes intensities are measured with detectors,
+        which inherently introduce noise to the measurements. Knowledge of the
+        distribution of the measurement noise is needed for a calibration with
+        weighted observations (Sections 5 and 6 of [1]_)
+        and to project the associated uncertainty to the temperature confidence
+        intervals (Section 7 of [1]_). Two sources dominate the noise
+        in the Stokes and anti-Stokes intensity measurements
+        (Hartog, 2017, p.125). Close to the laser, noise from the conversion of
+        backscatter to electricity dominates the measurement noise. The
+        detecting component, an avalanche photodiode, produces Poisson-
+        distributed noise with a variance that increases linearly with the
+        intensity. The Stokes and anti-Stokes intensities are commonly much
+        larger than the standard deviation of the noise, so that the Poisson
+        distribution can be approximated with a Normal distribution with a mean
+        of zero and a variance that increases linearly with the intensity. At
+        the far-end of the fiber, noise from the electrical circuit dominates
+        the measurement noise. It produces Normal-distributed noise with a mean
+        of zero and a variance that is independent of the intensity.
 
         Calculates the variance between the measurements and a best fit
         at each reference section. This fits a function to the nt * nx
         measurements with ns * nt + nx parameters, where nx are the total
-        number of obervation locations along all sections. The temperature is
+        number of reference locations along all sections. The temperature is
         constant along the reference sections, so the expression of the
         Stokes power can be split in a time series per reference section and
         a constant per observation location.
 
-        Assumptions: 1) the temperature is the same along a reference
-        section.
-
-        Idea from discussion at page 127 in Richter, P. H. (1995). Estimating
+        Idea from Discussion at page 127 in Richter, P. H. (1995). Estimating
         errors in least-squares fitting.
+
+        The timeseries and the constant are, of course, highly correlated
+        (Equations 20 and 21 in [1]_), but that is not relevant here as only the
+        product is of interest. The residuals between the fitted product and the
+        Stokes intensity measurements are attributed to the
+        noise from the detector. The variance of the residuals is used as a
+        proxy for the variance of the noise in the Stokes and anti-Stokes
+        intensity measurements. A non-uniform temperature of
+        the reference sections results in an over estimation of the noise
+        variance estimate because all temperature variation is attributed to
+        the noise.
 
         Parameters
         ----------
         reshape_residuals
         st_label : str
             label of the Stokes, anti-Stokes measurement.
-            E.g., ST, AST, REV-ST, REV-AST
-        sections : dict, optional
-            Define sections. See documentation
+            E.g., st, ast, rst, rast
+        sections : Dict[str, List[slice]], optional
+            If `None` is supplied, `ds.sections` is used. Define calibration
+            sections. Each section requires a reference temperature time series,
+            such as the temperature measured by an external temperature sensor.
+            They should already be part of the DataStore object. `sections`
+            is defined with a dictionary with its keywords of the
+            names of the reference temperature time series. Its values are
+            lists of slice objects, where each slice object is a fiber stretch
+            that has the reference temperature. Afterwards, `sections` is stored
+            under `ds.sections`.
 
         Returns
         -------
@@ -908,8 +1016,27 @@ class DataStore(xr.Dataset):
 
         Notes
         -----
-        Because there are a large number of unknowns, spend time on
+
+        * Because there are a large number of unknowns, spend time on\
         calculating an initial estimate. Can be turned off by setting to False.
+
+        * It is often not needed to use measurements from all time steps. If\
+        your variance estimate does not change when including measurements from\
+        more time steps, you have included enough measurements.
+
+        References
+        ----------
+        .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
+            of Temperature and Associated Uncertainty from Fiber-Optic Raman-
+            Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
+            https://doi.org/10.3390/s20082235
+
+        Examples
+        --------
+        - `Example notebook 4: Calculate variance Stokes intensity measurements\
+        <https://github.com/\
+        dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
+        04Calculate_variance_Stokes.ipynb>`_
         """
         if sections:
             self.sections = sections
@@ -921,8 +1048,8 @@ class DataStore(xr.Dataset):
         check_timestep_allclose(self, eps=0.01)
 
         data_dict = da.compute(
-            self.ufunc_per_section(label=st_label, calc_per='stretch')
-            )[0]  # should maybe be per section. But then residuals
+            self.ufunc_per_section(label=st_label, calc_per='stretch'))[
+                0]  # should maybe be per section. But then residuals
         # seem to be correlated between stretches. I don't know why.. BdT.
         resid_list = []
 
@@ -931,12 +1058,9 @@ class DataStore(xr.Dataset):
                 nxs, nt = vi.shape
                 npar = nt + nxs
 
-                p1 = np.ones(npar) * vi.mean() ** 0.5
+                p1 = np.ones(npar) * vi.mean()**0.5
 
-                res = minimize(
-                    func_cost, p1,
-                    args=(vi, nxs),
-                    method='Powell')
+                res = minimize(func_cost, p1, args=(vi, nxs), method='Powell')
                 assert res.success, 'Unable to fit. Try variance_stokes_exponential'
 
                 fit = func_fit(res.x, nxs)
@@ -957,8 +1081,7 @@ class DataStore(xr.Dataset):
                 shape=self[st_label].shape, fill_value=np.nan)
             resid_sorted[ix_resid, :] = resid
             resid_da = xr.DataArray(
-                data=resid_sorted,
-                coords=self[st_label].coords)
+                data=resid_sorted, coords=self[st_label].coords)
 
             return var_I, resid_da
 
@@ -969,15 +1092,54 @@ class DataStore(xr.Dataset):
             use_statsmodels=False,
             suppress_info=True,
             reshape_residuals=True):
-        """Use:
-        - `variance_stokes_constant` for small setups with small variations in
-        intensity
-        - `variance_stokes_exponential` for small setups with very few time
-        steps
-        - `variance_stokes_linear` for larger setups with more time steps
+        """
+        Approximate the variance of the noise in Stokes intensity measurements
+        with one value, suitable for small setups with measurements from only
+        a few times.
+
+        * `ds.variance_stokes_constant()` for small setups with small variations in\
+        intensity. Variance of the Stokes measurements is assumed to be the same\
+        along the entire fiber.
+
+        * `ds.variance_stokes_exponential()` for small setups with very few time\
+        steps. Too many degrees of freedom results in an under estimation of the\
+        noise variance. Almost never the case, but use when calibrating pre time\
+        step.
+
+        * `ds.variance_stokes_linear()` for larger setups with more time steps.\
+            Assumes Poisson distributed noise with the following model::
+
+                st_var = a * ds.st + b
+
+
+            where `a` and `b` are constants. Requires reference sections at
+            beginning and end of the fiber, to have residuals at high and low
+            intensity measurements.
+
+        The Stokes and anti-Stokes intensities are measured with detectors,
+        which inherently introduce noise to the measurements. Knowledge of the
+        distribution of the measurement noise is needed for a calibration with
+        weighted observations (Sections 5 and 6 of [1]_)
+        and to project the associated uncertainty to the temperature confidence
+        intervals (Section 7 of [1]_). Two sources dominate the noise
+        in the Stokes and anti-Stokes intensity measurements
+        (Hartog, 2017, p.125). Close to the laser, noise from the conversion of
+        backscatter to electricity dominates the measurement noise. The
+        detecting component, an avalanche photodiode, produces Poisson-
+        distributed noise with a variance that increases linearly with the
+        intensity. The Stokes and anti-Stokes intensities are commonly much
+        larger than the standard deviation of the noise, so that the Poisson
+        distribution can be approximated with a Normal distribution with a mean
+        of zero and a variance that increases linearly with the intensity. At
+        the far-end of the fiber, noise from the electrical circuit dominates
+        the measurement noise. It produces Normal-distributed noise with a mean
+        of zero and a variance that is independent of the intensity.
 
         Calculates the variance between the measurements and a best fit
-        exponential at each reference section. This fits a two-parameter
+        at each reference section. This fits a function to the nt * nx
+        measurements with ns * nt + nx parameters, where nx are the total
+        number of reference locations along all sections. The temperature is
+        constant along the reference sections. This fits a two-parameter
         exponential to the stokes measurements. The temperature is constant
         and there are no splices/sharp bends in each reference section.
         Therefore all signal decrease is due to differential attenuation,
@@ -992,16 +1154,33 @@ class DataStore(xr.Dataset):
         errors in least-squares fitting. For weights used error propagation:
         w^2 = 1/sigma(lny)^2 = y^2/sigma(y)^2 = y^2
 
+        The timeseries and the constant are, of course, highly correlated
+        (Equations 20 and 21 in [1]_), but that is not relevant here as only the
+        product is of interest. The residuals between the fitted product and the
+        Stokes intensity measurements are attributed to the
+        noise from the detector. The variance of the residuals is used as a
+        proxy for the variance of the noise in the Stokes and anti-Stokes
+        intensity measurements. A non-uniform temperature of
+        the reference sections results in an over estimation of the noise
+        variance estimate because all temperature variation is attributed to
+        the noise.
+
         Parameters
         ----------
         reshape_residuals
-        use_statsmodels
-        suppress_info
         st_label : str
             label of the Stokes, anti-Stokes measurement.
-            E.g., ST, AST, REV-ST, REV-AST
-        sections : dict, optional
-            Define sections. See documentation
+            E.g., st, ast, rst, rast
+        sections : Dict[str, List[slice]], optional
+            If `None` is supplied, `ds.sections` is used. Define calibration
+            sections. Each section requires a reference temperature time series,
+            such as the temperature measured by an external temperature sensor.
+            They should already be part of the DataStore object. `sections`
+            is defined with a dictionary with its keywords of the
+            names of the reference temperature time series. Its values are
+            lists of slice objects, where each slice object is a fiber stretch
+            that has the reference temperature. Afterwards, `sections` is stored
+            under `ds.sections`.
 
         Returns
         -------
@@ -1009,6 +1188,30 @@ class DataStore(xr.Dataset):
             Variance of the residuals between measured and best fit
         resid : array_like
             Residuals between measured and best fit
+
+        Notes
+        -----
+
+        * Because there are a large number of unknowns, spend time on\
+        calculating an initial estimate. Can be turned off by setting to False.
+
+        * It is often not needed to use measurements from all time steps. If\
+        your variance estimate does not change when including measurements from\
+        more time steps, you have included enough measurements.
+
+        References
+        ----------
+        .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
+            of Temperature and Associated Uncertainty from Fiber-Optic Raman-
+            Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
+            https://doi.org/10.3390/s20082235
+
+        Examples
+        --------
+        - `Example notebook 4: Calculate variance Stokes intensity measurements\
+        <https://github.com/\
+        dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
+        04Calculate_variance_Stokes.ipynb>`_
         """
         if sections:
             self.sections = sections
@@ -1035,7 +1238,8 @@ class DataStore(xr.Dataset):
                 len_stretch_list.append(_x.size)
 
         n_sections = len(len_stretch_list)  # number of sections
-        n_locs = sum(len_stretch_list)  # total number of locations along cable used
+        n_locs = sum(
+            len_stretch_list)  # total number of locations along cable used
         # for reference.
 
         x = np.concatenate(x_list)  # coordinates are already in memory
@@ -1048,15 +1252,17 @@ class DataStore(xr.Dataset):
         # alpha is NOT the same for all -> one column per section
         coords1row = np.arange(nt * n_locs)
         coords1col = np.hstack(
-            [np.ones(in_locs * nt) * i
+            [
+                np.ones(in_locs * nt) * i
                 for i, in_locs in enumerate(len_stretch_list)])  # C for
 
         # second calibration parameter is different per section and per timestep
         coords2row = np.arange(nt * n_locs)
         coords2col = np.hstack(
-            [np.repeat(
-                np.arange(i * nt + n_sections, (i + 1) * nt + n_sections),
-                in_locs)
+            [
+                np.repeat(
+                    np.arange(i * nt + n_sections, (i + 1) * nt + n_sections),
+                    in_locs)
                 for i, in_locs in enumerate(len_stretch_list)])  # C for
         coords = (
             np.concatenate([coords1row, coords2row]),
@@ -1099,12 +1305,14 @@ class DataStore(xr.Dataset):
 
         beta = a[:n_sections]
         beta_expand_to_sec = np.hstack(
-            [np.repeat(float(beta[i]), leni * nt)
-             for i, leni in enumerate(len_stretch_list)])
+            [
+                np.repeat(float(beta[i]), leni * nt)
+                for i, leni in enumerate(len_stretch_list)])
         G = np.asarray(a[n_sections:])
         G_expand_to_sec = np.hstack(
-            [np.repeat(G[i * nt:(i + 1) * nt], leni)
-             for i, leni in enumerate(len_stretch_list)])
+            [
+                np.repeat(G[i * nt:(i + 1) * nt], leni)
+                for i, leni in enumerate(len_stretch_list)])
 
         I_est = np.exp(G_expand_to_sec) * np.exp(x * beta_expand_to_sec)
         resid = I_est - y
@@ -1141,8 +1349,7 @@ class DataStore(xr.Dataset):
                 shape=self[st_label].shape, fill_value=np.nan)
             resid_sorted[ix_resid, :] = resid
             resid_da = xr.DataArray(
-                data=resid_sorted,
-                coords=self[st_label].coords)
+                data=resid_sorted, coords=self[st_label].coords)
 
             return var_I, resid_da
 
@@ -1153,14 +1360,117 @@ class DataStore(xr.Dataset):
             nbin=50,
             through_zero=True,
             plot_fit=False):
-        """Use:
-        - `variance_stokes_constant` for small setups with small variations in
-        intensity
-        - `variance_stokes_exponential` for small setups with very few time
-        steps
-        - `variance_stokes_linear` for larger setups with more time steps
+        """
+        Approximate the variance of the noise in Stokes intensity measurements
+        with a linear function of the intensity, suitable for large setups.
 
-        Estimate a Stokes variance that is linear dependent on the intensity.
+        * `ds.variance_stokes_constant()` for small setups with small variations in\
+        intensity. Variance of the Stokes measurements is assumed to be the same\
+        along the entire fiber.
+
+        * `ds.variance_stokes_exponential()` for small setups with very few time\
+        steps. Too many degrees of freedom results in an under estimation of the\
+        noise variance. Almost never the case, but use when calibrating pre time\
+        step.
+
+        * `ds.variance_stokes_linear()` for larger setups with more time steps.\
+            Assumes Poisson distributed noise with the following model::
+
+                st_var = a * ds.st + b
+
+
+            where `a` and `b` are constants. Requires reference sections at
+            beginning and end of the fiber, to have residuals at high and low
+            intensity measurements.
+
+        The Stokes and anti-Stokes intensities are measured with detectors,
+        which inherently introduce noise to the measurements. Knowledge of the
+        distribution of the measurement noise is needed for a calibration with
+        weighted observations (Sections 5 and 6 of [1]_)
+        and to project the associated uncertainty to the temperature confidence
+        intervals (Section 7 of [1]_). Two sources dominate the noise
+        in the Stokes and anti-Stokes intensity measurements
+        (Hartog, 2017, p.125). Close to the laser, noise from the conversion of
+        backscatter to electricity dominates the measurement noise. The
+        detecting component, an avalanche photodiode, produces Poisson-
+        distributed noise with a variance that increases linearly with the
+        intensity. The Stokes and anti-Stokes intensities are commonly much
+        larger than the standard deviation of the noise, so that the Poisson
+        distribution can be approximated with a Normal distribution with a mean
+        of zero and a variance that increases linearly with the intensity. At
+        the far-end of the fiber, noise from the electrical circuit dominates
+        the measurement noise. It produces Normal-distributed noise with a mean
+        of zero and a variance that is independent of the intensity.
+
+        Calculates the variance between the measurements and a best fit
+        at each reference section. This fits a function to the nt * nx
+        measurements with ns * nt + nx parameters, where nx are the total
+        number of reference locations along all sections. The temperature is
+        constant along the reference sections, so the expression of the
+        Stokes power can be split in a time series per reference section and
+        a constant per observation location.
+
+        Idea from Discussion at page 127 in Richter, P. H. (1995). Estimating
+        errors in least-squares fitting.
+
+        The timeseries and the constant are, of course, highly correlated
+        (Equations 20 and 21 in [1]_), but that is not relevant here as only the
+        product is of interest. The residuals between the fitted product and the
+        Stokes intensity measurements are attributed to the
+        noise from the detector. The variance of the residuals is used as a
+        proxy for the variance of the noise in the Stokes and anti-Stokes
+        intensity measurements. A non-uniform temperature of
+        the reference sections results in an over estimation of the noise
+        variance estimate because all temperature variation is attributed to
+        the noise.
+
+        Parameters
+        ----------
+        reshape_residuals
+        st_label : str
+            label of the Stokes, anti-Stokes measurement.
+            E.g., st, ast, rst, rast
+        sections : Dict[str, List[slice]], optional
+            If `None` is supplied, `ds.sections` is used. Define calibration
+            sections. Each section requires a reference temperature time series,
+            such as the temperature measured by an external temperature sensor.
+            They should already be part of the DataStore object. `sections`
+            is defined with a dictionary with its keywords of the
+            names of the reference temperature time series. Its values are
+            lists of slice objects, where each slice object is a fiber stretch
+            that has the reference temperature. Afterwards, `sections` is stored
+            under `ds.sections`.
+
+        Returns
+        -------
+        I_var : float
+            Variance of the residuals between measured and best fit
+        resid : array_like
+            Residuals between measured and best fit
+
+        Notes
+        -----
+
+        * Because there are a large number of unknowns, spend time on\
+        calculating an initial estimate. Can be turned off by setting to False.
+
+        * It is often not needed to use measurements from all time steps. If\
+        your variance estimate does not change when including measurements from\
+        more time steps, you have included enough measurements.
+
+        References
+        ----------
+        .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
+            of Temperature and Associated Uncertainty from Fiber-Optic Raman-
+            Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
+            https://doi.org/10.3390/s20082235
+
+        Examples
+        --------
+        - `Example notebook 4: Calculate variance Stokes intensity measurements\
+        <https://github.com/\
+        dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
+        04Calculate_variance_Stokes.ipynb>`_
 
         Parameters
         ----------
@@ -1203,8 +1513,9 @@ class DataStore(xr.Dataset):
             nbin_ -= 1
 
         if nbin_ != nbin:
-            print('Estimation of linear variance of', st_label,
-                  'Adjusting nbin to:', nbin_)
+            print(
+                'Estimation of linear variance of', st_label,
+                'Adjusting nbin to:', nbin_)
             nbin = nbin_
 
         isort = np.argsort(st)
@@ -1214,8 +1525,8 @@ class DataStore(xr.Dataset):
         if through_zero:
             # VAR(Stokes) = slope * Stokes
             offset = 0.
-            slope = np.linalg.lstsq(st_sort_mean[:, None], st_sort_var,
-                                    rcond=None)[0]
+            slope = np.linalg.lstsq(
+                st_sort_mean[:, None], st_sort_var, rcond=None)[0]
         else:
             # VAR(Stokes) = slope * Stokes + offset
             slope, offset = np.linalg.lstsq(
@@ -1229,18 +1540,65 @@ class DataStore(xr.Dataset):
         if plot_fit:
             plt.figure()
             plt.scatter(st_sort_mean, st_sort_var, marker='.', c='black')
-            plt.plot([0., st_sort_mean[-1]],
-                     [var_fun(0.), var_fun(st_sort_mean[-1])], c='white',
-                     lw=1.3)
-            plt.plot([0., st_sort_mean[-1]],
-                     [var_fun(0.), var_fun(st_sort_mean[-1])], c='black',
-                     lw=0.8)
+            plt.plot(
+                [0., st_sort_mean[-1]],
+                [var_fun(0.), var_fun(st_sort_mean[-1])],
+                c='white',
+                lw=1.3)
+            plt.plot(
+                [0., st_sort_mean[-1]],
+                [var_fun(0.), var_fun(st_sort_mean[-1])],
+                c='black',
+                lw=0.8)
             plt.xlabel(st_label + ' intensity')
             plt.ylabel(st_label + ' intensity variance')
 
         return slope, offset, st_sort_mean, st_sort_var, resid, var_fun
 
     def i_var(self, st_var, ast_var, st_label='st', ast_label='ast'):
+        """
+        Compute the variance of an observation given the stokes and anti-Stokes
+        intensities and their variance.
+        The variance, :math:`\sigma^2_{I_{m,n}}`, of the distribution of the
+        noise in the observation at location :math:`m`, time :math:`n`, is a
+        function of the variance of the noise in the Stokes and anti-Stokes
+        intensity measurements (:math:`\sigma_{P_+}^2` and
+        :math:`\sigma_{P_-}^2`), and is approximated with (Ku et al., 1966):
+
+        .. math::
+
+            \sigma^2_{I_{m,n}} \\approx \left[\\frac{\partial I_{m,n}}{\partial\
+            P_{m,n+}}\\right]^2\sigma^2_{P_{+}} + \left[\\frac{\partial\
+            I_{m,n}}{\partial\
+            P_{m,n-}}\\right]^2\sigma^2_{P_{-}}
+
+       .. math::
+
+            \sigma^2_{I_{m,n}} \\approx \\frac{1}{P_{m,n+}^2}\sigma^2_{P_{+}} +\
+            \\frac{1}{P_{m,n-}^2}\sigma^2_{P_{-}}
+
+        The variance of the noise in the Stokes and anti-Stokes intensity
+        measurements is estimated directly from Stokes and anti-Stokes intensity
+        measurements using the steps outlined in Section 4.
+
+        Parameters
+        ----------
+        st_var, ast_var : float, callable, array-like, optional
+            The variance of the measurement noise of the Stokes signals in the
+            forward direction. If `float` the variance of the noise from the
+            Stokes detector is described with a single value.
+            If `callable` the variance of the noise from the Stokes detector is
+            a function of the intensity, as defined in the callable function.
+            Or manually define a variance with a DataArray of the shape
+            `ds.st.shape`, where the variance can be a function of time and/or
+            x.
+        st_label : {'st', 'rst'}
+        ast_label : {'ast', 'rast'}
+
+        Returns
+        -------
+
+        """
         st = self[st_label]
         ast = self[ast_label]
 
@@ -1254,7 +1612,7 @@ class DataStore(xr.Dataset):
         else:
             ast_var = np.asarray(ast_var, dtype=float)
 
-        return st ** -2 * st_var + ast ** -2 * ast_var
+        return st**-2 * st_var + ast**-2 * ast_var
 
     def inverse_variance_weighted_mean(
             self,
@@ -1294,8 +1652,8 @@ class DataStore(xr.Dataset):
         self[tmpw_var_store] = 1 / (1 / self[tmp1_var] + 1 / self[tmp2_var])
 
         self[tmpw_store] = (
-            self[tmp1] / self[tmp1_var] +
-            self[tmp2] / self[tmp2_var]) * self[tmpw_var_store]
+            self[tmp1] / self[tmp1_var]
+            + self[tmp2] / self[tmp2_var]) * self[tmpw_var_store]
 
         pass
 
@@ -1362,15 +1720,10 @@ class DataStore(xr.Dataset):
             ref_temp_broadcasted=True,
             calc_per='all')
         ix_resid = self.ufunc_per_section(
-            sections=sections,
-            x_indices=True,
-            calc_per='all')
-        ref_sorted = np.full(
-            shape=tmp_dn.shape, fill_value=np.nan)
+            sections=sections, x_indices=True, calc_per='all')
+        ref_sorted = np.full(shape=tmp_dn.shape, fill_value=np.nan)
         ref_sorted[ix_resid, :] = ref
-        ref_da = xr.DataArray(
-            data=ref_sorted,
-            coords=tmp_dn.coords)
+        ref_da = xr.DataArray(data=ref_sorted, coords=tmp_dn.coords)
 
         mask_dn = ref_da >= tmp_dn
         mask_up = ref_da <= tmp_up
@@ -1395,24 +1748,21 @@ class DataStore(xr.Dataset):
         for key in self.sections.keys():
             if not np.issubdtype(self[key].dtype, np.floating):
                 raise ValueError(
-                    'Data of reference temperature "' + key +
-                    '" does not have a float data type. Please ensure that '
-                    'the data is of a valid type (e.g. np.float32)'
-                )
+                    'Data of reference temperature "' + key
+                    + '" does not have a float data type. Please ensure that '
+                    'the data is of a valid type (e.g. np.float32)')
 
             if np.any(~np.isfinite(self[key].values)):
                 raise ValueError(
-                    'NaN/inf value(s) found in reference temperature "' +
-                    key + '"'
-                )
+                    'NaN/inf value(s) found in reference temperature "' + key
+                    + '"')
 
             if self[key].dims != (time_dim,):
                 raise ValueError(
-                    'Time dimension of the reference temperature timeseries ' +
-                    key + 'is not the same as the time dimension' +
-                    ' of the Stokes measurement. See examples/notebooks/09' +
-                    'Import_timeseries.ipynb for more info'
-                )
+                    'Time dimension of the reference temperature timeseries '
+                    + key + 'is not the same as the time dimension'
+                    + ' of the Stokes measurement. See examples/notebooks/09'
+                    + 'Import_timeseries.ipynb for more info')
 
     def calibration_single_ended(
             self,
@@ -1439,6 +1789,47 @@ class DataStore(xr.Dataset):
             fix_dalpha=None,
             **kwargs):
         """
+        Calibrate the Stokes (`ds.st`) and anti-Stokes (`ds.ast`) data to
+        temperature using fiber sections with a known temperature
+        (`ds.sections`) for single-ended setups. The calibrated temperature is
+        stored under `ds.tmpf` and its variance under `ds.tmpf_var`.
+
+        In single-ended setups, Stokes and anti-Stokes intensity is measured
+        from a single end of the fiber. The differential attenuation is assumed
+        constant along the fiber so that the integrated differential attenuation
+        may be written as (Hausner et al, 2011):
+
+        .. math::
+
+            \int_0^x{\Delta\\alpha(x')\,\mathrm{d}x'} \\approx \Delta\\alpha x
+
+        The temperature can now be written from Equation 10 [1]_ as:
+
+        .. math::
+
+            T(x,t)  \\approx \\frac{\gamma}{I(x,t) + C(t) + \Delta\\alpha x}
+
+        where
+
+        .. math::
+
+            I(x,t) = \ln{\left(\\frac{P_+(x,t)}{P_-(x,t)}\\right)}
+
+
+        .. math::
+
+            C(t) = \ln{\left(\\frac{\eta_-(t)K_-/\lambda_-^4}{\eta_+(t)K_+/\lambda_+^4}\\right)}
+
+        where :math:`C` is the lumped effect of the difference in gain at
+        :math:`x=0` between Stokes and anti-Stokes intensity measurements and
+        the dependence of the scattering intensity on the wavelength. The
+        parameters :math:`P_+` and :math:`P_-` are the Stokes and anti-Stokes
+        intensity measurements, respectively.
+        The parameters :math:`\gamma`, :math:`C(t)`, and :math:`\Delta\\alpha`
+        must be estimated from calibration to reference sections, as discussed
+        in Section 5 [1]_. The parameter :math:`C` must be estimated
+        for each time and is constant along the fiber. :math:`T` in the listed
+        equations is in Kelvin, but is converted to Celsius after calibration.
 
         Parameters
         ----------
@@ -1447,23 +1838,45 @@ class DataStore(xr.Dataset):
         store_p_val : str
             Key to store the values of the calibrated parameters
         p_val : array-like, optional
+            Define `p_val`, `p_var`, `p_cov` if you used an external function
+            for calibration. Has size 2 + `nt`. First value is :math:`\gamma`,
+            second is :math:`\Delta \\alpha`, others are :math:`C` for each
+            timestep.
         p_var : array-like, optional
+            Define `p_val`, `p_var`, `p_cov` if you used an external function
+            for calibration. Has size 2 + `nt`. First value is :math:`\gamma`,
+            second is :math:`\Delta \\alpha`, others are :math:`C` for each
+            timestep.
         p_cov : array-like, optional
-        sections : dict, optional
-        st_var : float, optional
-            The variance of the measurement noise of the Stokes signals in
-            the forward
-            direction Required if method is wls.
-        ast_var : float, optional
-            The variance of the measurement noise of the anti-Stokes signals
-            in the forward
-            direction. Required if method is wls.
+            The covariances of `p_val`.
+            If set to False, no uncertainty in the parameters is propagated
+            into the confidence intervals. Similar to the spec sheets of the DTS
+            manufacturers. And similar to passing an array filled with zeros.
+        sections : Dict[str, List[slice]], optional
+            If `None` is supplied, `ds.sections` is used. Define calibration
+            sections. Each section requires a reference temperature time series,
+            such as the temperature measured by an external temperature sensor.
+            They should already be part of the DataStore object. `sections`
+            is defined with a dictionary with its keywords of the
+            names of the reference temperature time series. Its values are
+            lists of slice objects, where each slice object is a fiber stretch
+            that has the reference temperature. Afterwards, `sections` is stored
+            under `ds.sections`.
+        st_var, ast_var : float, callable, array-like, optional
+            The variance of the measurement noise of the Stokes signals in the
+            forward direction. If `float` the variance of the noise from the
+            Stokes detector is described with a single value.
+            If `callable` the variance of the noise from the Stokes detector is
+            a function of the intensity, as defined in the callable function.
+            Or manually define a variance with a DataArray of the shape
+            `ds.st.shape`, where the variance can be a function of time and/or
+            x. Required if method is wls.
         store_c : str
             Label of where to store C
         store_gamma : str
             Label of where to store gamma
         store_dalpha : str
-            Label of where to store dalpha; the spatial derivative  of alpha.
+            Label of where to store dalpha; the spatial derivative of alpha.
         store_alpha : str
             Label of where to store alpha; The integrated differential
             attenuation.
@@ -1473,17 +1886,20 @@ class DataStore(xr.Dataset):
         store_tmpf : str
             Label of where to store the calibrated temperature of the forward
             direction
-        variance_suffix : str, optional
+        variance_suffix : str
             String appended for storing the variance. Only used when method
             is wls.
         method : {'ols', 'wls'}
-            Use 'ols' for ordinary least squares and 'wls' for weighted least
-            squares
+            Use `'ols'` for ordinary least squares and `'wls'` for weighted least
+            squares. `'wls'` is the default, and there is currently no reason to
+            use `'ols'`.
         solver : {'sparse', 'stats'}
             Either use the homemade weighted sparse solver or the weighted
-            dense matrix solver of
-            statsmodels
-        matching_sections : List[Tuple[slice, slice, bool]]
+            dense matrix solver of statsmodels. The sparse solver uses much less
+            memory, is faster, and gives the same result as the statsmodels
+            solver. The statsmodels solver is mostly used to check the sparse
+            solver. `'stats'` is the default.
+        matching_sections : List[Tuple[slice, slice, bool]], optional
             Provide a list of tuples. A tuple per matching section. Each tuple
             has three items. The first two items are the slices of the sections
             that are matched. The third item is a boolean and is True if the two
@@ -1495,20 +1911,34 @@ class DataStore(xr.Dataset):
             introduces an additional nt parameters to solve for. Requiring
             either an additional calibration section or matching sections.
             If multiple locations are defined, the losses are added.
-        fix_gamma : tuple
+        fix_gamma : Tuple[float, float], optional
             A tuple containing two floats. The first float is the value of
             gamma, and the second item is the variance of the estimate of gamma.
             Covariances between gamma and other parameters are not accounted
             for.
-        fix_dalpha : tuple
+        fix_dalpha : Tuple[float, float], optional
             A tuple containing two floats. The first float is the value of
-            dalpha (Delta alpha in paper), and the second item is the
+            dalpha (:math:`\Delta \\alpha` in [1]_), and the second item is the
             variance of the estimate of dalpha.
             Covariances between alpha and other parameters are not accounted
             for.
 
         Returns
         -------
+
+        References
+        ----------
+        .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
+            of Temperature and Associated Uncertainty from Fiber-Optic Raman-
+            Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
+            https://doi.org/10.3390/s20082235
+
+        Examples
+        --------
+        - `Example notebook 7: Calibrate single ended <https://github.com/\
+dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
+07Calibrate_single_wls.ipynb>`_
+
 
         """
         self.check_deprecated_kwargs(kwargs)
@@ -1552,20 +1982,24 @@ class DataStore(xr.Dataset):
 
         if method == 'ols' or method == 'wls':
             if method == 'ols':
-                st_var = None     # ols
-                ast_var = None    # ols
+                st_var = None  # ols
+                ast_var = None  # ols
                 calc_cov = False
             else:
                 for input_item in [st_var, ast_var]:
-                    assert input_item is not None, \
-                       'For wls define all variances (`st_var`, `ast_var`)'
+                    assert input_item is not None, 'For wls define all ' \
+                                                   'variances (`st_var`, ' \
+                                                   '`ast_var`) '
 
                 calc_cov = True
 
             if fix_gamma and fix_dalpha:
                 split = calibration_single_ended_solver(
-                    self, st_var, ast_var,
-                    calc_cov=calc_cov, solver='external_split',
+                    self,
+                    st_var,
+                    ast_var,
+                    calc_cov=calc_cov,
+                    solver='external_split',
                     matching_indices=matching_indices,
                     transient_att_x=transient_att_x)
 
@@ -1576,25 +2010,24 @@ class DataStore(xr.Dataset):
                         fix_gamma[0] * split['X_gamma'].toarray().flatten() +
                         fix_dalpha[0] * split['X_dalpha'].toarray().flatten(),
                         (fix_dalpha[0] * split['X_m'].tocsr()[:, 1].
-                         tocoo().toarray().flatten())
-                        ))
+                         tocoo().toarray().flatten())))
                 # Use only the remaining coefficients
-                X = sp.vstack((
+                X = sp.vstack(
+                    (
                         sp.hstack((split['X_c'], split['X_TA'])),
-                        split['X_m'].tocsr()[:, 2:].tocoo()
-                        ))
+                        split['X_m'].tocsr()[:, 2:].tocoo()))
                 # variances are added. weight is the inverse of the variance
                 # of the observations
                 if method == 'wls':
                     w = 1 / (
-                        1 / split['w'] + np.hstack((
-                            fix_gamma[1] *
-                            split['X_gamma'].toarray().flatten() +
-                            fix_dalpha[1] *
-                            split['X_dalpha'].toarray().flatten(),
-                            (fix_dalpha[1] * split['X_m'].tocsr()[:, 1].
-                             tocoo().toarray().flatten())
-                        )))
+                        1 / split['w'] + np.hstack(
+                            (
+                                fix_gamma[1]
+                                * split['X_gamma'].toarray().flatten()
+                                + fix_dalpha[1]
+                                * split['X_dalpha'].toarray().flatten(), (
+                                    fix_dalpha[1] * split['X_m'].tocsr()
+                                    [:, 1].tocoo().toarray().flatten()))))
                 else:
                     w = 1.
 
@@ -1602,15 +2035,11 @@ class DataStore(xr.Dataset):
 
                 if solver == 'sparse':
                     out = wls_sparse(
-                        X, y, w=w, x0=p0_est,
-                        calc_cov=calc_cov,
-                        verbose=False)
+                        X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=False)
 
                 elif solver == 'stats':
                     out = wls_stats(
-                        X, y, w=w,
-                        calc_cov=calc_cov,
-                        verbose=False)
+                        X, y, w=w, calc_cov=calc_cov, verbose=False)
 
                 # Added fixed gamma and its variance to the solution
                 p_val = np.concatenate(([fix_gamma[0], fix_dalpha[0]], out[0]))
@@ -1623,8 +2052,11 @@ class DataStore(xr.Dataset):
 
             elif fix_gamma:
                 split = calibration_single_ended_solver(
-                    self, st_var, ast_var,
-                    calc_cov=calc_cov, solver='external_split',
+                    self,
+                    st_var,
+                    ast_var,
+                    calc_cov=calc_cov,
+                    solver='external_split',
                     matching_indices=matching_indices,
                     transient_att_x=transient_att_x)
 
@@ -1636,18 +2068,20 @@ class DataStore(xr.Dataset):
                         np.zeros(split['X_m'].shape[0])))
 
                 # Use only the remaining coefficients
-                X = sp.vstack((
-                    sp.hstack((split['X_dalpha'], split['X_c'],
-                               split['X_TA'])),
-                    split['X_m'].tocsr()[:, 1:].tocoo()))
+                X = sp.vstack(
+                    (
+                        sp.hstack(
+                            (split['X_dalpha'], split['X_c'], split['X_TA'])),
+                        split['X_m'].tocsr()[:, 1:].tocoo()))
 
                 # variances are added. weight is the inverse of the variance
                 # of the observations
                 if method == 'wls':
-                    w = 1 / (1 / split['w'] +
-                             np.hstack((
-                                fix_gamma[1] *
-                                split['X_gamma'].toarray().flatten(),
+                    w = 1 / (
+                        1 / split['w'] + np.hstack(
+                            (
+                                fix_gamma[1]
+                                * split['X_gamma'].toarray().flatten(),
                                 np.zeros(split['X_m'].shape[0]))))
                 else:
                     w = 1.
@@ -1655,15 +2089,11 @@ class DataStore(xr.Dataset):
 
                 if solver == 'sparse':
                     out = wls_sparse(
-                        X, y, w=w, x0=p0_est,
-                        calc_cov=calc_cov,
-                        verbose=False)
+                        X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=False)
 
                 elif solver == 'stats':
                     out = wls_stats(
-                        X, y, w=w,
-                        calc_cov=calc_cov,
-                        verbose=False)
+                        X, y, w=w, calc_cov=calc_cov, verbose=False)
 
                 # Added fixed gamma and its variance to the solution
                 p_val = np.concatenate(([fix_gamma[0]], out[0]))
@@ -1675,8 +2105,11 @@ class DataStore(xr.Dataset):
 
             elif fix_dalpha:
                 split = calibration_single_ended_solver(
-                    self, st_var, ast_var,
-                    calc_cov=calc_cov, solver='external_split',
+                    self,
+                    st_var,
+                    ast_var,
+                    calc_cov=calc_cov,
+                    solver='external_split',
                     matching_indices=matching_indices,
                     transient_att_x=transient_att_x)
 
@@ -1686,46 +2119,44 @@ class DataStore(xr.Dataset):
                     np.hstack((
                         fix_dalpha[0] * split['X_dalpha'].toarray().flatten(),
                         (fix_dalpha[0] * split['X_m'].tocsr()[:, 1].
-                         tocoo().toarray().flatten())
-                        ))
+                         tocoo().toarray().flatten())))
                 # Use only the remaining coefficients
                 remaining_idx = np.delete(np.arange(split['X_m'].shape[1]), 1)
-                X = sp.vstack((
-                        sp.hstack((split['X_gamma'], split['X_c'],
-                                   split['X_TA'])),
+                X = sp.vstack(
+                    (
+                        sp.hstack(
+                            (split['X_gamma'], split['X_c'], split['X_TA'])),
                         split['X_m'].tocsr()[:, remaining_idx].tocoo(),
-                        ))
+                    ))
                 # variances are added. weight is the inverse of the variance
                 # of the observations
                 if method == 'wls':
                     w = 1 / (
-                        1 / split['w'] + np.hstack((
-                            fix_dalpha[1] *
-                            split['X_dalpha'].toarray().flatten(),
-                            (fix_dalpha[1] * split['X_m'].tocsr()[:, 1].
-                             tocoo().toarray().flatten())
-                        )))
+                        1 / split['w'] + np.hstack(
+                            (
+                                fix_dalpha[1]
+                                * split['X_dalpha'].toarray().flatten(), (
+                                    fix_dalpha[1] * split['X_m'].tocsr()
+                                    [:, 1].tocoo().toarray().flatten()))))
                 else:
                     w = 1.
 
-                p0_est = np.concatenate((
-                    split['p0_est'][[0]], split['p0_est'][2:]))
+                p0_est = np.concatenate(
+                    (split['p0_est'][[0]], split['p0_est'][2:]))
 
                 if solver == 'sparse':
                     out = wls_sparse(
-                        X, y, w=w, x0=p0_est,
-                        calc_cov=calc_cov,
-                        verbose=False)
+                        X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=False)
 
                 elif solver == 'stats':
                     out = wls_stats(
-                        X, y, w=w,
-                        calc_cov=calc_cov,
-                        verbose=False)
+                        X, y, w=w, calc_cov=calc_cov, verbose=False)
 
                 # Added fixed gamma and its variance to the solution
-                p_val = np.concatenate((out[0][[0]], [fix_dalpha[0]], out[0][1:]))
-                p_var = np.concatenate((out[1][[0]], [fix_dalpha[1]], out[1][1:]))
+                p_val = np.concatenate(
+                    (out[0][[0]], [fix_dalpha[0]], out[0][1:]))
+                p_var = np.concatenate(
+                    (out[1][[0]], [fix_dalpha[1]], out[1][1:]))
 
                 if calc_cov:
                     p_cov = np.eye(p_val.size) * fix_dalpha[1]
@@ -1736,8 +2167,11 @@ class DataStore(xr.Dataset):
 
             else:
                 out = calibration_single_ended_solver(
-                    self, st_var, ast_var,
-                    calc_cov=calc_cov, solver=solver,
+                    self,
+                    st_var,
+                    ast_var,
+                    calc_cov=calc_cov,
+                    solver=solver,
                     matching_indices=matching_indices,
                     transient_att_x=transient_att_x)
 
@@ -1783,8 +2217,8 @@ class DataStore(xr.Dataset):
 
             if transient_att_x:
                 tavar = p_var[nt + 2:].reshape((nt, nta), order='F')
-                self[store_ta + variance_suffix] = (
-                    (time_dim, ta_dim), tavar[:, :])
+                self[store_ta
+                     + variance_suffix] = ((time_dim, ta_dim), tavar[:, :])
 
         # deal with FW
         if store_tmpf:
@@ -1796,9 +2230,8 @@ class DataStore(xr.Dataset):
                         ta_arr[self.x.values >= taxi] + tai
 
             tempF_data = gamma / (
-                (np.log(self.st.data) - np.log(self.ast.data)
-                 + (c + ta_arr)) + (self.x.data[:, None] * dalpha)
-                ) - 273.15
+                (np.log(self.st.data) - np.log(self.ast.data) + (c + ta_arr)) +
+                (self.x.data[:, None] * dalpha)) - 273.15
             self[store_tmpf] = (('x', time_dim), tempF_data)
 
         if store_p_val and (method == 'wls' or method == 'external'):
@@ -1850,6 +2283,115 @@ class DataStore(xr.Dataset):
             verbose=False,
             **kwargs):
         """
+        Calibrate the Stokes (`ds.st`) and anti-Stokes (`ds.ast`) of the forward
+        channel and from the backward channel (`ds.rst`, `ds.rast`) data to
+        temperature using fiber sections with a known temperature
+        (`ds.sections`) for double-ended setups. The calibrated temperature of
+        the forward channel is stored under `ds.tmpf` and its variance under
+        `ds.tmpf_var`, and that of the the backward channel under `ds.tmpb` and
+        `ds.tmpb_var`. The inverse-variance weighted average of the forward and
+        backward channel is stored under `ds.tmpw` and `ds.tmpw_var`.
+
+        In double-ended setups, Stokes and anti-Stokes intensity is measured in
+        two directions from both ends of the fiber. The forward-channel
+        measurements are denoted with subscript F, and the backward-channel
+        measurements are denoted with subscript B. Both measurement channels
+        start at a different end of the fiber and have opposite directions, and
+        therefore have different spatial coordinates. The first processing step
+        with double-ended measurements is to align the measurements of the two
+        measurement channels so that they have the same spatial coordinates. The
+        spatial coordinate :math:`x` (m) is defined here positive in the forward
+        direction, starting at 0 where the fiber is connected to the forward
+        channel of the DTS system; the length of the fiber is :math:`L`.
+        Consequently, the backward-channel measurements are flipped and shifted
+        to align with the forward-channel measurements. Alignment of the
+        measurements of the two channels is prone to error because it requires
+        the exact fiber length (McDaniel et al., 2018). Depending on the DTS system
+        used, the forward channel and backward channel are measured one after
+        another by making use of an optical switch, so that only a single
+        detector is needed. However, it is assumed in this paper that the
+        forward channel and backward channel are measured simultaneously, so
+        that the temperature of both measurements is the same. This assumption
+        holds better for short acquisition times with respect to the time scale
+        of the temperature variation, and when there is no systematic difference
+        in temperature between the two channels. The temperature may be computed
+        from the forward-channel measurements (Equation 10 [1]_) with:
+
+        .. math::
+
+            T_\mathrm{F} (x,t)  = \\frac{\gamma}{I_\mathrm{F}(x,t) + \
+C_\mathrm{F}(t) + \int_0^x{\Delta\\alpha(x')\,\mathrm{d}x'}}
+
+        and from the backward-channel measurements with:
+
+        .. math::
+            T_\mathrm{B} (x,t)  = \\frac{\gamma}{I_\mathrm{B}(x,t) + \
+C_\mathrm{B}(t) + \int_x^L{\Delta\\alpha(x')\,\mathrm{d}x'}}
+
+        with
+
+        .. math::
+
+            I(x,t) = \ln{\left(\\frac{P_+(x,t)}{P_-(x,t)}\\right)}
+
+
+        .. math::
+
+            C(t) = \ln{\left(\\frac{\eta_-(t)K_-/\lambda_-^4}{\eta_+(t)K_+/\lambda_+^4}\\right)}
+
+
+        where :math:`C` is the lumped effect of the difference in gain at
+        :math:`x=0` between Stokes and anti-Stokes intensity measurements and
+        the dependence of the scattering intensity on the wavelength. The
+        parameters :math:`P_+` and :math:`P_-` are the Stokes and anti-Stokes
+        intensity measurements, respectively.
+        :math:`C_\mathrm{F}(t)` and :math:`C_\mathrm{B}(t)` are the
+        parameter :math:`C(t)` for the forward-channel and backward-channel
+        measurements, respectively. :math:`C_\mathrm{B}(t)` may be different
+        from :math:`C_\mathrm{F}(t)` due to differences in gain, and difference
+        in the attenuation between the detectors and the point the fiber end is
+        connected to the DTS system (:math:`\eta_+` and :math:`\eta_-` in
+        Equation~\\ref{eqn:c}). :math:`T` in the listed
+        equations is in Kelvin, but is converted to Celsius after calibration.
+        The calibration procedure presented in van de
+        Giesen et al. 2012 approximates :math:`C(t)` to be
+        the same for the forward and backward-channel measurements, but this
+        approximation is not made here.
+
+        Parameter :math:`A(x)` (`ds.alpha`) is introduced to simplify the notation of the
+        double-ended calibration procedure and represents the integrated
+        differential attenuation between locations :math:`x_1` and :math:`x`
+        along the fiber. Location :math:`x_1` is the first reference section
+        location (the smallest x-value of all used reference sections).
+
+        .. math::
+            A(x) = \int_{x_1}^x{\Delta\\alpha(x')\,\mathrm{d}x'}
+
+        so that the expressions for temperature may be written as:
+
+        .. math::
+            T_\mathrm{F} (x,t) = \\frac{\gamma}{I_\mathrm{F}(x,t) + D_\mathrm{F}(t) + A(x)},
+            T_\mathrm{B} (x,t) = \\frac{\gamma}{I_\mathrm{B}(x,t) + D_\mathrm{B}(t) - A(x)}
+
+        where
+
+        .. math::
+            D_{\mathrm{F}}(t) = C_{\mathrm{F}}(t) + \int_0^{x_1}{\Delta\\alpha(x')\,\mathrm{d}x'},
+            D_{\mathrm{B}}(t) = C_{\mathrm{B}}(t) + \int_{x_1}^L{\Delta\\alpha(x')\,\mathrm{d}x'}
+
+        Parameters :math:`D_\mathrm{F}` (`ds.df`) and :math:`D_\mathrm{B}`
+        (`ds.db`) must be estimated for each time and are constant along the fiber, and parameter
+        :math:`A` must be estimated for each location and is constant over time.
+        The calibration procedure is discussed in Section 6.
+        :math:`T_\mathrm{F}` (`ds.tmpf`) and :math:`T_\mathrm{B}` (`ds.tmpb`)
+        are separate
+        approximations of the same temperature at the same time. The estimated
+        :math:`T_\mathrm{F}` is more accurate near :math:`x=0` because that is
+        where the signal is strongest. Similarly, the estimated
+        :math:`T_\mathrm{B}` is more accurate near :math:`x=L`. A single best
+        estimate of the temperature is obtained from the weighted average of
+        :math:`T_\mathrm{F}` and :math:`T_\mathrm{B}` as discussed in
+        Section 7.2 [1]_ .
 
         Parameters
         ----------
@@ -1858,31 +2400,44 @@ class DataStore(xr.Dataset):
         store_p_val : str
             Key to store the values of the calibrated parameters
         p_val : array-like, optional
+            Define `p_val`, `p_var`, `p_cov` if you used an external function
+            for calibration. Has size `1 + 2 * nt + nx + 2 * nt * nta`.
+            First value is :math:`\gamma`, then `nt` times
+            :math:`D_\mathrm{F}`, then `nt` times
+            :math:`D_\mathrm{B}`, then for each location :math:`D_\mathrm{B}`,
+            then for each connector that introduces directional attenuation two
+            parameters per time step.
         p_var : array-like, optional
+            Define `p_val`, `p_var`, `p_cov` if you used an external function
+            for calibration. Has size `1 + 2 * nt + nx + 2 * nt * nta`.
+            Is the variance of `p_val`.
         p_cov : array-like, optional
-        sections : dict, optional
-        st_var : float, array-like, callable, optional
-            The variance of the measurement noise of the Stokes signals in
-            the forward
-            direction Required if method is wls.
-        ast_var : float, optional
-            The variance of the measurement noise of the anti-Stokes signals
-            in the forward
-            direction. Required if method is wls.
-        rst_var : float, optional
-            The variance of the measurement noise of the Stokes signals in
-            the backward
-            direction. Required if method is wls.
-        rast_var : float, optional
-            The variance of the measurement noise of the anti-Stokes signals
-            in the backward
-            direction. Required if method is wls.
-        (ds.tmpw_mc_var**0.5).mean().compute()store_df, store_db : str
-            Label of where to store D. Equals the integrated differential
-            attenuation at x=0
-            And should be equal to half the total integrated differential
-            attenuation plus the integrated differential attenuation of x=0.
-            D is different for the forward channel and the backward channel
+            The covariances of `p_val`. Square matrix.
+            If set to False, no uncertainty in the parameters is propagated
+            into the confidence intervals. Similar to the spec sheets of the DTS
+            manufacturers. And similar to passing an array filled with zeros.
+        sections : Dict[str, List[slice]], optional
+            If `None` is supplied, `ds.sections` is used. Define calibration
+            sections. Each section requires a reference temperature time series,
+            such as the temperature measured by an external temperature sensor.
+            They should already be part of the DataStore object. `sections`
+            is defined with a dictionary with its keywords of the
+            names of the reference temperature time series. Its values are
+            lists of slice objects, where each slice object is a fiber stretch
+            that has the reference temperature. Afterwards, `sections` is stored
+            under `ds.sections`.
+        st_var, ast_var, rst_var, rast_var : float, callable, array-like, optional
+            The variance of the measurement noise of the Stokes signals in the
+            forward direction. If `float` the variance of the noise from the
+            Stokes detector is described with a single value.
+            If `callable` the variance of the noise from the Stokes detector is
+            a function of the intensity, as defined in the callable function.
+            Or manually define a variance with a DataArray of the shape
+            `ds.st.shape`, where the variance can be a function of time and/or
+            x. Required if method is wls.
+        store_df, store_db : str
+            Label of where to store D. D is different for the forward channel
+            and the backward channel
         store_gamma : str
             Label of where to store gamma
         store_alpha : str
@@ -1896,17 +2451,25 @@ class DataStore(xr.Dataset):
             Label of where to store the calibrated temperature of the
             backward direction
         store_tmpw : str
+            Label of where to store the inverse-variance weighted average
+            temperature of the forward and backward channel measurements.
         tmpw_mc_size : int
+            The number of Monte Carlo samples drawn used to estimate the
+            variance of the forward and backward channel temperature estimates
+            and estimate the inverse-variance weighted average temperature.
         variance_suffix : str, optional
             String appended for storing the variance. Only used when method
             is wls.
         method : {'ols', 'wls', 'external'}
-            Use 'ols' for ordinary least squares and 'wls' for weighted least
-            squares
+            Use `'ols'` for ordinary least squares and `'wls'` for weighted least
+            squares. `'wls'` is the default, and there is currently no reason to
+            use `'ols'`.
         solver : {'sparse', 'stats'}
             Either use the homemade weighted sparse solver or the weighted
-            dense matrix solver of
-            statsmodels
+            dense matrix solver of statsmodels. The sparse solver uses much less
+            memory, is faster, and gives the same result as the statsmodels
+            solver. The statsmodels solver is mostly used to check the sparse
+            solver. `'stats'` is the default.
         transient_asym_att_x : iterable of float, optional
             Connectors cause assymetrical attenuation. Normal double ended
             calibration assumes symmetrical attenuation. An additional loss
@@ -1916,16 +2479,15 @@ class DataStore(xr.Dataset):
             Each location introduces an additional 2*nt parameters to solve
             for. Requiering either an additional calibration section or
             matching sections.
-        fix_gamma : tuple
+        fix_gamma : Tuple[float, float], optional
             A tuple containing two floats. The first float is the value of
             gamma, and the second item is the variance of the estimate of gamma.
             Covariances between gamma and other parameters are not accounted
             for.
-        fix_alpha : tuple
+        fix_alpha : Tuple[array-like, array-like], optional
             A tuple containing two arrays. The first array contains the
-            values of integrated differential att (integral of Delta alpha
-            between 0 and x in paper), and the second array
-            contains the variance of the estimate of alpha.
+            values of integrated differential att (:math:`A` in paper), and the
+            second array contains the variance of the estimate of alpha.
             Covariances (in-) between alpha and other parameters are not
             accounted for.
         matching_sections : List[Tuple[slice, slice, bool]]
@@ -1943,6 +2505,19 @@ class DataStore(xr.Dataset):
 
         Returns
         -------
+
+        References
+        ----------
+        .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
+            of Temperature and Associated Uncertainty from Fiber-Optic Raman-
+            Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
+            https://doi.org/10.3390/s20082235
+
+        Examples
+        --------
+        - `Example notebook 8: Calibrate double ended <https://github.com/\
+dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
+08Calibrate_double_wls.ipynb>`_
 
         """
         self.check_deprecated_kwargs(kwargs)
@@ -2013,15 +2588,25 @@ class DataStore(xr.Dataset):
 
             if fix_alpha or fix_gamma:
                 split = calibration_double_ended_solver(
-                    self, st_var, ast_var, rst_var, rast_var,
-                    calc_cov=calc_cov, solver='external_split',
+                    self,
+                    st_var,
+                    ast_var,
+                    rst_var,
+                    rast_var,
+                    calc_cov=calc_cov,
+                    solver='external_split',
                     transient_asym_att_x=transient_asym_att_x,
                     matching_indices=matching_indices,
                     verbose=verbose)
             else:
                 out = calibration_double_ended_solver(
-                    self, st_var, ast_var, rst_var, rast_var,
-                    calc_cov=calc_cov, solver=solver,
+                    self,
+                    st_var,
+                    ast_var,
+                    rst_var,
+                    rast_var,
+                    calc_cov=calc_cov,
+                    solver=solver,
                     transient_asym_att_x=transient_asym_att_x,
                     matching_indices=matching_indices,
                     verbose=verbose)
@@ -2059,47 +2644,45 @@ class DataStore(xr.Dataset):
 
                 if np.any(matching_indices):
                     n_E_in_cal = split['ix_from_cal_match_to_glob'].size
-                    p0_est = np.concatenate((
-                        split['p0_est'][1:1 + 2 * nt],
-                        split['p0_est'][1 + 2 * nt + n_E_in_cal:]))
+                    p0_est = np.concatenate(
+                        (
+                            split['p0_est'][1:1 + 2 * nt],
+                            split['p0_est'][1 + 2 * nt + n_E_in_cal:]))
                     X_E1 = sp.csr_matrix(
-                        ([], ([], [])),
-                        shape=(nt * nx_sec, self.x.size))
+                        ([], ([], [])), shape=(nt * nx_sec, self.x.size))
                     X_E1[:, ix_sec[1:]] = split['E']
                     X_E2 = X_E1[:, split['ix_from_cal_match_to_glob']]
-                    X_E = sp.vstack((
-                        -X_E2,
-                        X_E2,
-                        split['E_match_F'],
-                        split['E_match_B'],
-                        split['E_match_no_cal']))
+                    X_E = sp.vstack(
+                        (
+                            -X_E2, X_E2, split['E_match_F'],
+                            split['E_match_B'], split['E_match_no_cal']))
 
-                    X_gamma = sp.vstack((
-                        split['Z_gamma'],
-                        split['Z_gamma'],
-                        split['Zero_eq12_gamma'],
-                        split['Zero_eq12_gamma'],
-                        split['Zero_eq3_gamma'])).toarray().flatten()
+                    X_gamma = sp.vstack(
+                        (
+                            split['Z_gamma'], split['Z_gamma'],
+                            split['Zero_eq12_gamma'], split['Zero_eq12_gamma'],
+                            split['Zero_eq3_gamma'])).toarray().flatten()
 
                     X = sp.vstack(
-                        (sp.hstack((-split['Z_D'],
-                                    split['Zero_d'],
+                        (
+                            sp.hstack(
+                                (
+                                    -split['Z_D'], split['Zero_d'],
                                     split['Z_TA_fw'])),
-                         sp.hstack((split['Zero_d'],
-                                    -split['Z_D'],
+                            sp.hstack(
+                                (
+                                    split['Zero_d'], -split['Z_D'],
                                     split['Z_TA_bw'])),
-                         sp.hstack((split['Zero_d_eq12'],
-                                    split['Z_TA_eq1'])),
-                         sp.hstack((split['Zero_d_eq12'],
-                                    split['Z_TA_eq2'])),
-                         sp.hstack((split['d_no_cal'],
-                                    split['Z_TA_eq3']))))
+                            sp.hstack(
+                                (split['Zero_d_eq12'], split['Z_TA_eq1'])),
+                            sp.hstack(
+                                (split['Zero_d_eq12'], split['Z_TA_eq2'])),
+                            sp.hstack((split['d_no_cal'], split['Z_TA_eq3']))))
 
-                    y = np.concatenate((split['y_F'],
-                                        split['y_B'],
-                                        split['y_eq1'],
-                                        split['y_eq2'],
-                                        split['y_eq3']))
+                    y = np.concatenate(
+                        (
+                            split['y_F'], split['y_B'], split['y_eq1'],
+                            split['y_eq2'], split['y_eq3']))
                     y -= X_E.dot(
                         fix_alpha[0][split['ix_from_cal_match_to_glob']])
                     y -= fix_gamma[0] * X_gamma
@@ -2107,49 +2690,49 @@ class DataStore(xr.Dataset):
                     # variances are added. weight is the inverse of the variance
                     # of the observations
                     if method == 'wls':
-                        w_ = np.concatenate((split['w_F'],
-                                             split['w_B'],
-                                             split['w_eq1'],
-                                             split['w_eq2'],
-                                             split['w_eq3']))
-                        w = 1 / (1 / w_ + X_E.dot(
-                            fix_alpha[1][split['ix_from_cal_match_to_glob']])
-                                 + fix_gamma[1] * X_gamma)
+                        w_ = np.concatenate(
+                            (
+                                split['w_F'], split['w_B'], split['w_eq1'],
+                                split['w_eq2'], split['w_eq3']))
+                        w = 1 / (
+                            1 / w_ + X_E.dot(
+                                fix_alpha[1][split['ix_from_cal_match_to_glob']])
+                            + fix_gamma[1] * X_gamma)
 
                     else:
                         w = 1.
 
                 else:
                     # X_gamma
-                    X_E = sp.vstack((
-                        -split['E'],
-                        split['E']))
-                    X_gamma = sp.vstack((
-                        split['Z_gamma'],
-                        split['Z_gamma'])).toarray().flatten()
+                    X_E = sp.vstack((-split['E'], split['E']))
+                    X_gamma = sp.vstack(
+                        (split['Z_gamma'],
+                         split['Z_gamma'])).toarray().flatten()
                     # Use only the remaining coefficients
                     # Stack all X's
                     X = sp.vstack(
-                        (sp.hstack((-split['Z_D'],
-                                    split['Zero_d'],
+                        (
+                            sp.hstack(
+                                (
+                                    -split['Z_D'], split['Zero_d'],
                                     split['Z_TA_fw'])),
-                         sp.hstack((split['Zero_d'],
-                                    -split['Z_D'],
+                            sp.hstack(
+                                (
+                                    split['Zero_d'], -split['Z_D'],
                                     split['Z_TA_bw']))))
 
                     # Move the coefficients times the fixed gamma to the
                     # observations
-                    y = np.concatenate((split['y_F'],
-                                        split['y_B']))
+                    y = np.concatenate((split['y_F'], split['y_B']))
                     y -= X_E.dot(fix_alpha[0][ix_sec[1:]])
                     y -= fix_gamma[0] * X_gamma
                     # variances are added. weight is the inverse of the variance
                     # of the observations
                     if method == 'wls':
-                        w_ = np.concatenate((split['w_F'],
-                                             split['w_B']))
-                        w = 1 / (1 / w_ + X_E.dot(fix_alpha[1][ix_sec[1:]]) +
-                                 fix_gamma[1] * X_gamma)
+                        w_ = np.concatenate((split['w_F'], split['w_B']))
+                        w = 1 / (
+                            1 / w_ + X_E.dot(fix_alpha[1][ix_sec[1:]])
+                            + fix_gamma[1] * X_gamma)
 
                     else:
                         w = 1.
@@ -2157,40 +2740,39 @@ class DataStore(xr.Dataset):
                     # [C_1, C_2, .., C_nt, TA_fw_a_1, TA_fw_a_2, TA_fw_a_nt,
                     # TA_bw_a_1, TA_bw_a_2, TA_bw_a_nt] Then continues with
                     # TA for connector b.
-                    p0_est = np.concatenate((
-                        split['p0_est'][1:1 + 2 * nt],
-                        split['p0_est'][1 + 2 * nt + nx_sec - 1:]))
+                    p0_est = np.concatenate(
+                        (
+                            split['p0_est'][1:1 + 2 * nt],
+                            split['p0_est'][1 + 2 * nt + nx_sec - 1:]))
 
                 if solver == 'sparse':
                     out = wls_sparse(
-                        X, y, w=w, x0=p0_est,
-                        calc_cov=calc_cov,
-                        verbose=False)
+                        X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=False)
 
                 elif solver == 'stats':
                     out = wls_stats(
-                        X, y, w=w,
-                        calc_cov=calc_cov,
-                        verbose=False)
+                        X, y, w=w, calc_cov=calc_cov, verbose=False)
 
                 # Added fixed gamma and its variance to the solution
-                p_val = np.concatenate(([fix_gamma[0]],
-                                        out[0][:2 * nt],
-                                        fix_alpha[0],
-                                        out[0][2 * nt:]))
-                p_var = np.concatenate(([fix_gamma[1]],
-                                        out[1][:2 * nt],
-                                        fix_alpha[1],
-                                        out[1][2 * nt:]))
+                p_val = np.concatenate(
+                    (
+                        [fix_gamma[0]], out[0][:2 * nt], fix_alpha[0],
+                        out[0][2 * nt:]))
+                p_var = np.concatenate(
+                    (
+                        [fix_gamma[1]], out[1][:2 * nt], fix_alpha[1],
+                        out[1][2 * nt:]))
 
                 if calc_cov:
                     # whether it returns a copy or a view depends on what
                     # version of numpy you are using
                     p_cov = np.diag(p_var).copy()
                     from_i = np.concatenate(
-                        (np.arange(1, 2 * nt + 1),
-                         np.arange(1 + 2 * nt + nx,
-                                   1 + 2 * nt + nx + nta * nt * 2)))
+                        (
+                            np.arange(1, 2 * nt + 1),
+                            np.arange(
+                                1 + 2 * nt + nx,
+                                1 + 2 * nt + nx + nta * nt * 2)))
                     iox_sec1, iox_sec2 = np.meshgrid(
                         from_i, from_i, indexing='ij')
                     p_cov[iox_sec1, iox_sec2] = out[2]
@@ -2200,80 +2782,79 @@ class DataStore(xr.Dataset):
                     # n_E_in_cal = split['ix_from_cal_match_to_glob'].size
                     p0_est = split['p0_est'][1:]
                     X_E1 = sp.csr_matrix(
-                        ([], ([], [])),
-                        shape=(nt * nx_sec, self.x.size))
+                        ([], ([], [])), shape=(nt * nx_sec, self.x.size))
                     from_i = ix_sec[1:]
                     X_E1[:, from_i] = split['E']
                     X_E2 = X_E1[:, split['ix_from_cal_match_to_glob']]
                     X = sp.vstack(
-                        (sp.hstack((-split['Z_D'],
-                                    split['Zero_d'],
-                                    -X_E2,
+                        (
+                            sp.hstack(
+                                (
+                                    -split['Z_D'], split['Zero_d'], -X_E2,
                                     split['Z_TA_fw'])),
-                         sp.hstack((split['Zero_d'],
-                                    -split['Z_D'],
-                                    X_E2,
+                            sp.hstack(
+                                (
+                                    split['Zero_d'], -split['Z_D'], X_E2,
                                     split['Z_TA_bw'])),
-                         sp.hstack((split['Zero_d_eq12'],
-                                    split['E_match_F'],
+                            sp.hstack(
+                                (
+                                    split['Zero_d_eq12'], split['E_match_F'],
                                     split['Z_TA_eq1'])),
-                         sp.hstack((split['Zero_d_eq12'],
-                                    split['E_match_B'],
+                            sp.hstack(
+                                (
+                                    split['Zero_d_eq12'], split['E_match_B'],
                                     split['Z_TA_eq2'])),
-                         sp.hstack((split['d_no_cal'],
-                                    split['E_match_no_cal'],
+                            sp.hstack(
+                                (
+                                    split['d_no_cal'], split['E_match_no_cal'],
                                     split['Z_TA_eq3']))))
-                    X_gamma = sp.vstack((
-                        split['Z_gamma'],
-                        split['Z_gamma'],
-                        split['Zero_eq12_gamma'],
-                        split['Zero_eq12_gamma'],
-                        split['Zero_eq3_gamma'])).toarray().flatten()
+                    X_gamma = sp.vstack(
+                        (
+                            split['Z_gamma'], split['Z_gamma'],
+                            split['Zero_eq12_gamma'], split['Zero_eq12_gamma'],
+                            split['Zero_eq3_gamma'])).toarray().flatten()
 
-                    y = np.concatenate((split['y_F'],
-                                        split['y_B'],
-                                        split['y_eq1'],
-                                        split['y_eq2'],
-                                        split['y_eq3']))
+                    y = np.concatenate(
+                        (
+                            split['y_F'], split['y_B'], split['y_eq1'],
+                            split['y_eq2'], split['y_eq3']))
                     y -= fix_gamma[0] * X_gamma
 
                     # variances are added. weight is the inverse of the variance
                     # of the observations
                     if method == 'wls':
-                        w_ = np.concatenate((split['w_F'],
-                                             split['w_B'],
-                                             split['w_eq1'],
-                                             split['w_eq2'],
-                                             split['w_eq3']))
+                        w_ = np.concatenate(
+                            (
+                                split['w_F'], split['w_B'], split['w_eq1'],
+                                split['w_eq2'], split['w_eq3']))
                         w = 1 / (1 / w_ + fix_gamma[1] * X_gamma)
 
                     else:
                         w = 1.
 
                 else:
-                    X_gamma = sp.vstack((
-                        split['Z_gamma'],
-                        split['Z_gamma'])).toarray().flatten()
+                    X_gamma = sp.vstack(
+                        (split['Z_gamma'],
+                         split['Z_gamma'])).toarray().flatten()
                     # Use only the remaining coefficients
                     X = sp.vstack(
-                        (sp.hstack((-split['Z_D'],
-                                    split['Zero_d'],
-                                    -split['E'],
-                                    split['Z_TA_fw'])),
-                         sp.hstack((split['Zero_d'],
-                                    -split['Z_D'],
-                                    split['E'],
+                        (
+                            sp.hstack(
+                                (
+                                    -split['Z_D'], split['Zero_d'],
+                                    -split['E'], split['Z_TA_fw'])),
+                            sp.hstack(
+                                (
+                                    split['Zero_d'], -split['Z_D'], split['E'],
                                     split['Z_TA_bw']))))
                     # Move the coefficients times the fixed gamma to the
                     # observations
-                    y = np.concatenate((split['y_F'],
-                                        split['y_B']))
+                    y = np.concatenate((split['y_F'], split['y_B']))
                     y -= fix_gamma[0] * X_gamma
                     # variances are added. weight is the inverse of the variance
                     # of the observations
                     if method == 'wls':
-                        w_ = np.concatenate((split['w_F'],
-                                             split['w_B']))
+                        w_ = np.concatenate((split['w_F'], split['w_B']))
                         w = 1 / (1 / w_ + fix_gamma[1] * X_gamma)
 
                     else:
@@ -2282,15 +2863,11 @@ class DataStore(xr.Dataset):
 
                 if solver == 'sparse':
                     out = wls_sparse(
-                        X, y, w=w, x0=p0_est,
-                        calc_cov=calc_cov,
-                        verbose=False)
+                        X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=False)
 
                 elif solver == 'stats':
                     out = wls_stats(
-                        X, y, w=w,
-                        calc_cov=calc_cov,
-                        verbose=False)
+                        X, y, w=w, calc_cov=calc_cov, verbose=False)
 
                 # put E outside of reference section in solution
                 # concatenating makes a copy of the data instead of using a
@@ -2304,11 +2881,10 @@ class DataStore(xr.Dataset):
                 if transient_asym_att_x:
                     if np.any(matching_indices):
                         n_E_in_cal = split['ix_from_cal_match_to_glob'].size
-                        ta = out[0][2 * nt + n_E_in_cal:
-                                    ].reshape((nt, 2, nta), order='F')
-                        ta_var = out[1][
-                                 2 * nt + n_E_in_cal:
-                                 ].reshape((nt, 2, nta), order='F')
+                        ta = out[0][2 * nt + n_E_in_cal:].reshape(
+                            (nt, 2, nta), order='F')
+                        ta_var = out[1][2 * nt + n_E_in_cal:].reshape(
+                            (nt, 2, nta), order='F')
 
                     else:
                         ta = out[0][2 * nt + nx_sec - 1:].reshape(
@@ -2347,35 +2923,35 @@ class DataStore(xr.Dataset):
                 if not np.any(matching_indices):
                     # Added fixed gamma and its variance to the solution. And
                     # expand to include locations outside reference sections.
-                    p_val = np.concatenate(([fix_gamma[0]],
-                                            out[0][:2 * nt],
-                                            E_all_exact,
-                                            out[0][2 * nt + nx_sec - 1:]))
-                    p_val[1 + 2 * nt + ix_sec[1:]] = out[0][
-                                                     2 * nt:2 * nt + nx_sec - 1]
+                    p_val = np.concatenate(
+                        (
+                            [fix_gamma[0]], out[0][:2 * nt], E_all_exact,
+                            out[0][2 * nt + nx_sec - 1:]))
+                    p_val[1 + 2 * nt + ix_sec[1:]] = out[0][2 * nt:2 * nt
+                                                            + nx_sec - 1]
                     p_val[1 + 2 * nt + ix_sec[0]] = 0.
-                    p_var = np.concatenate(([fix_gamma[1]],
-                                            out[1][:2 * nt],
-                                            E_all_var_exact,
-                                            out[1][2 * nt + nx_sec - 1:]))
-                    p_var[1 + 2 * nt + ix_sec[1:]] = out[1][
-                                                     2 * nt:2 * nt + nx_sec - 1]
+                    p_var = np.concatenate(
+                        (
+                            [fix_gamma[1]], out[1][:2 * nt], E_all_var_exact,
+                            out[1][2 * nt + nx_sec - 1:]))
+                    p_var[1 + 2 * nt + ix_sec[1:]] = out[1][2 * nt:2 * nt
+                                                            + nx_sec - 1]
                 else:
                     n_E_in_cal = split['ix_from_cal_match_to_glob'].size
 
                     # Added fixed gamma and its variance to the solution. And
                     # expand to include locations outside reference sections.
-                    p_val = np.concatenate(([fix_gamma[0]],
-                                            out[0][:2 * nt],
-                                            E_all_exact,
-                                            out[0][2 * nt + n_E_in_cal:]))
+                    p_val = np.concatenate(
+                        (
+                            [fix_gamma[0]], out[0][:2 * nt], E_all_exact,
+                            out[0][2 * nt + n_E_in_cal:]))
                     p_val[1 + 2 * nt + split['ix_from_cal_match_to_glob']] = \
                         out[0][2 * nt:2 * nt + n_E_in_cal]
                     p_val[1 + 2 * nt + ix_sec[0]] = 0.
-                    p_var = np.concatenate(([fix_gamma[1]],
-                                            out[1][:2 * nt],
-                                            E_all_var_exact,
-                                            out[1][2 * nt + n_E_in_cal:]))
+                    p_var = np.concatenate(
+                        (
+                            [fix_gamma[1]], out[1][:2 * nt], E_all_var_exact,
+                            out[1][2 * nt + n_E_in_cal:]))
                     p_var[1 + 2 * nt + split['ix_from_cal_match_to_glob']] = \
                         out[1][2 * nt:2 * nt + n_E_in_cal]
 
@@ -2384,16 +2960,20 @@ class DataStore(xr.Dataset):
 
                     if not np.any(matching_indices):
                         from_i = np.concatenate(
-                            (np.arange(1, 2 * nt + 1),
-                             2 * nt + 1 + ix_sec[1:],
-                             np.arange(1 + 2 * nt + nx,
-                                       1 + 2 * nt + nx + nta * nt * 2)))
+                            (
+                                np.arange(1,
+                                          2 * nt + 1), 2 * nt + 1 + ix_sec[1:],
+                                np.arange(
+                                    1 + 2 * nt + nx,
+                                    1 + 2 * nt + nx + nta * nt * 2)))
                     else:
                         from_i = np.concatenate(
-                            (np.arange(1, 2 * nt + 1),
-                             2 * nt + 1 + split['ix_from_cal_match_to_glob'],
-                             np.arange(1 + 2 * nt + nx,
-                                       1 + 2 * nt + nx + nta * nt * 2)))
+                            (
+                                np.arange(1, 2 * nt + 1), 2 * nt + 1
+                                + split['ix_from_cal_match_to_glob'],
+                                np.arange(
+                                    1 + 2 * nt + nx,
+                                    1 + 2 * nt + nx + nta * nt * 2)))
 
                     iox_sec1, iox_sec2 = np.meshgrid(
                         from_i, from_i, indexing='ij')
@@ -2411,125 +2991,121 @@ class DataStore(xr.Dataset):
 
                 if not np.any(matching_indices):
                     # X_gamma
-                    X_E = sp.vstack((
-                        -split['E'],
-                        split['E']))
+                    X_E = sp.vstack((-split['E'], split['E']))
                     # Use only the remaining coefficients
                     # Stack all X's
                     X = sp.vstack(
-                        (sp.hstack((split['Z_gamma'],
-                                    -split['Z_D'],
-                                    split['Zero_d'],
-                                    split['Z_TA_fw'])),
-                         sp.hstack((split['Z_gamma'],
-                                    split['Zero_d'],
-                                    -split['Z_D'],
-                                    split['Z_TA_bw']))))
+                        (
+                            sp.hstack(
+                                (
+                                    split['Z_gamma'], -split['Z_D'],
+                                    split['Zero_d'], split['Z_TA_fw'])),
+                            sp.hstack(
+                                (
+                                    split['Z_gamma'], split['Zero_d'],
+                                    -split['Z_D'], split['Z_TA_bw']))))
                     # Move the coefficients times the fixed gamma to the
                     # observations
-                    y = np.concatenate((split['y_F'],
-                                        split['y_B']))
+                    y = np.concatenate((split['y_F'], split['y_B']))
                     y -= X_E.dot(fix_alpha[0][ix_sec[1:]])
 
                     # variances are added. weight is the inverse of the variance
                     # of the observations
                     if method == 'wls':
-                        w_ = np.concatenate((split['w_F'],
-                                             split['w_B']))
+                        w_ = np.concatenate((split['w_F'], split['w_B']))
                         w = 1 / (1 / w_ + X_E.dot(fix_alpha[1][ix_sec[1:]]))
 
                     else:
                         w = 1.
 
                     p0_est = np.concatenate(
-                        (split['p0_est'][:1 + 2 * nt],
-                         split['p0_est'][1 + 2 * nt + nx_sec - 1:]))
+                        (
+                            split['p0_est'][:1 + 2 * nt],
+                            split['p0_est'][1 + 2 * nt + nx_sec - 1:]))
 
                 else:
                     n_E_in_cal = split['ix_from_cal_match_to_glob'].size
-                    p0_est = np.concatenate((
-                        split['p0_est'][:1 + 2 * nt],
-                        split['p0_est'][1 + 2 * nt + n_E_in_cal:]))
+                    p0_est = np.concatenate(
+                        (
+                            split['p0_est'][:1 + 2 * nt],
+                            split['p0_est'][1 + 2 * nt + n_E_in_cal:]))
                     X_E1 = sp.csr_matrix(
-                        ([], ([], [])),
-                        shape=(nt * nx_sec, self.x.size))
+                        ([], ([], [])), shape=(nt * nx_sec, self.x.size))
                     X_E1[:, ix_sec[1:]] = split['E']
                     X_E2 = X_E1[:, split['ix_from_cal_match_to_glob']]
-                    X_E = sp.vstack((
-                        -X_E2,
-                        X_E2,
-                        split['E_match_F'],
-                        split['E_match_B'],
-                        split['E_match_no_cal']))
+                    X_E = sp.vstack(
+                        (
+                            -X_E2, X_E2, split['E_match_F'],
+                            split['E_match_B'], split['E_match_no_cal']))
 
                     X = sp.vstack(
-                        (sp.hstack((split['Z_gamma'],
-                                    -split['Z_D'],
-                                    split['Zero_d'],
-                                    split['Z_TA_fw'])),
-                         sp.hstack((split['Z_gamma'],
-                                    split['Zero_d'],
-                                    -split['Z_D'],
-                                    split['Z_TA_bw'])),
-                         sp.hstack((split['Zero_eq12_gamma'],
-                                    split['Zero_d_eq12'],
-                                    split['Z_TA_eq1'])),
-                         sp.hstack((split['Zero_eq12_gamma'],
-                                    split['Zero_d_eq12'],
-                                    split['Z_TA_eq2'])),
-                         sp.hstack((split['Zero_eq3_gamma'],
-                                    split['d_no_cal'],
+                        (
+                            sp.hstack(
+                                (
+                                    split['Z_gamma'], -split['Z_D'],
+                                    split['Zero_d'], split['Z_TA_fw'])),
+                            sp.hstack(
+                                (
+                                    split['Z_gamma'], split['Zero_d'],
+                                    -split['Z_D'], split['Z_TA_bw'])),
+                            sp.hstack(
+                                (
+                                    split['Zero_eq12_gamma'],
+                                    split['Zero_d_eq12'], split['Z_TA_eq1'])),
+                            sp.hstack(
+                                (
+                                    split['Zero_eq12_gamma'],
+                                    split['Zero_d_eq12'], split['Z_TA_eq2'])),
+                            sp.hstack(
+                                (
+                                    split['Zero_eq3_gamma'], split['d_no_cal'],
                                     split['Z_TA_eq3']))))
 
-                    y = np.concatenate((split['y_F'],
-                                        split['y_B'],
-                                        split['y_eq1'],
-                                        split['y_eq2'],
-                                        split['y_eq3']))
+                    y = np.concatenate(
+                        (
+                            split['y_F'], split['y_B'], split['y_eq1'],
+                            split['y_eq2'], split['y_eq3']))
                     y -= X_E.dot(
                         fix_alpha[0][split['ix_from_cal_match_to_glob']])
 
                     # variances are added. weight is the inverse of the variance
                     # of the observations
                     if method == 'wls':
-                        w_ = np.concatenate((split['w_F'],
-                                             split['w_B'],
-                                             split['w_eq1'],
-                                             split['w_eq2'],
-                                             split['w_eq3']))
-                        w = 1 / (1 / w_ + X_E.dot(
-                            fix_alpha[1][split['ix_from_cal_match_to_glob']]))
+                        w_ = np.concatenate(
+                            (
+                                split['w_F'], split['w_B'], split['w_eq1'],
+                                split['w_eq2'], split['w_eq3']))
+                        w = 1 / (
+                            1 / w_ + X_E.dot(
+                                fix_alpha[1][
+                                    split['ix_from_cal_match_to_glob']]))
 
                     else:
                         w = 1.
 
                 if solver == 'sparse':
                     out = wls_sparse(
-                        X, y, w=w, x0=p0_est,
-                        calc_cov=calc_cov,
-                        verbose=False)
+                        X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=False)
 
                 elif solver == 'stats':
                     out = wls_stats(
-                        X, y, w=w,
-                        calc_cov=calc_cov,
-                        verbose=False)
+                        X, y, w=w, calc_cov=calc_cov, verbose=False)
 
                 # Added fixed gamma and its variance to the solution
-                p_val = np.concatenate((out[0][:1 + 2 * nt],
-                                        fix_alpha[0],
-                                        out[0][1 + 2 * nt:]))
-                p_var = np.concatenate((out[1][:1 + 2 * nt],
-                                        fix_alpha[1],
-                                        out[1][1 + 2 * nt:]))
+                p_val = np.concatenate(
+                    (out[0][:1 + 2 * nt], fix_alpha[0], out[0][1 + 2 * nt:]))
+                p_var = np.concatenate(
+                    (out[1][:1 + 2 * nt], fix_alpha[1], out[1][1 + 2 * nt:]))
 
                 if calc_cov:
                     p_cov = np.diag(p_var).copy()
 
                     from_i = np.concatenate(
-                        (np.arange(1 + 2 * nt),
-                         np.arange(1 + 2 * nt + nx,
-                                   1 + 2 * nt + nx + nta * nt * 2)))
+                        (
+                            np.arange(1 + 2 * nt),
+                            np.arange(
+                                1 + 2 * nt + nx,
+                                1 + 2 * nt + nx + nta * nt * 2)))
 
                     iox_sec1, iox_sec2 = np.meshgrid(
                         from_i, from_i, indexing='ij')
@@ -2586,11 +3162,12 @@ class DataStore(xr.Dataset):
 
             if transient_asym_att_x:
                 # neglecting the covariances. Better include them
-                tavar = p_var[2 * nt + 1 + nx:].reshape((nt, 2, nta), order='F')
-                self[store_ta + '_fw' + variance_suffix] = (
-                    (time_dim, ta_dim), tavar[:, 0, :])
-                self[store_ta + '_bw' + variance_suffix] = (
-                    (time_dim, ta_dim), tavar[:, 1, :])
+                tavar = p_var[2 * nt + 1 + nx:].reshape(
+                    (nt, 2, nta), order='F')
+                self[store_ta + '_fw'
+                     + variance_suffix] = ((time_dim, ta_dim), tavar[:, 0, :])
+                self[store_ta + '_bw'
+                     + variance_suffix] = ((time_dim, ta_dim), tavar[:, 1, :])
 
         # deal with FW
         if store_tmpf or (store_tmpw and method == 'ols'):
@@ -2602,8 +3179,8 @@ class DataStore(xr.Dataset):
                         ta_arr[self.x.values >= taxi] + tai
 
             tempF_data = gamma / (
-                np.log(self.st.data / self.ast.data) + d_fw +
-                alpha[:, None] + ta_arr) - 273.15
+                np.log(self.st.data / self.ast.data) + d_fw + alpha[:, None]
+                + ta_arr) - 273.15
             self[store_tmpf] = (('x', time_dim), tempF_data)
 
         # deal with BW
@@ -2615,8 +3192,8 @@ class DataStore(xr.Dataset):
                     ta_arr[self.x.values < taxi] = \
                         ta_arr[self.x.values < taxi] + tai
             tempB_data = gamma / (
-                np.log(self.rst.data / self.rast.data) + d_bw -
-                alpha[:, None] + ta_arr) - 273.15
+                np.log(self.rst.data / self.rast.data) + d_bw - alpha[:, None]
+                + ta_arr) - 273.15
             self[store_tmpb] = (('x', time_dim), tempB_data)
 
         if store_tmpw and method == 'wls':
@@ -2691,23 +3268,46 @@ class DataStore(xr.Dataset):
             reduce_memory_usage=False,
             **kwargs):
         """
+        Estimation of the confidence intervals for the temperatures measured
+        with a single-ended setup. It consists of five steps. First, the variances
+        of the Stokes and anti-Stokes intensity measurements are estimated
+        following the steps in Section 4 [1]_. A Normal
+        distribution is assigned to each intensity measurement that is centered
+        at the measurement and using the estimated variance. Second, a multi-
+        variate Normal distribution is assigned to the estimated parameters
+        using the covariance matrix from the calibration procedure presented in
+        Section 5 [1]_. Third, the distributions are sampled, and the
+        temperature is computed with Equation 12 [1]_. Fourth, step
+        three is repeated, e.g., 10,000 times for each location and for each
+        time. The resulting 10,000 realizations of the temperatures
+        approximate the probability density functions of the estimated
+        temperature at that location and time. Fifth, the standard uncertainties
+        are computed with the standard deviations of the realizations of the
+        temperatures, and the 95\% confidence intervals are computed from the
+        2.5\% and 97.5\% percentiles of the realizations of the temperatures.
+
 
         Parameters
         ----------
-        p_val : array-like or string
-            parameter solution directly from calibration_double_ended_wls
-        p_cov : array-like or string or bool
-            parameter covariance at p_val directly from
-            calibration_double_ended_wls. If set to False, no uncertainty in
-            the parameters is propagated into the confidence intervals.
-            Similar to the spec sheets of the DTS manufacturers. And similar to
-            passing an array filled with zeros. If set to string, the p_cov
-            is retreived by accessing ds[p_cov] . See p_cov keyword argument in
-            the calibration routine.
-        st_var : float
-            Float of the variance of the Stokes signal
-        ast_var : float
-            Float of the variance of the anti-Stokes signal
+        p_val : array-like, optional
+            Define `p_val`, `p_var`, `p_cov` if you used an external function
+            for calibration. Has size 2 + `nt`. First value is :math:`\gamma`,
+            second is :math:`\Delta \\alpha`, others are :math:`C` for each
+            timestep.
+            If set to False, no uncertainty in the parameters is propagated
+            into the confidence intervals. Similar to the spec sheets of the DTS
+            manufacturers. And similar to passing an array filled with zeros
+        p_cov : array-like, optional
+            The covariances of `p_val`.
+        st_var, ast_var : float, callable, array-like, optional
+            The variance of the measurement noise of the Stokes signals in the
+            forward direction. If `float` the variance of the noise from the
+            Stokes detector is described with a single value.
+            If `callable` the variance of the noise from the Stokes detector is
+            a function of the intensity, as defined in the callable function.
+            Or manually define a variance with a DataArray of the shape
+            `ds.st.shape`, where the variance can be a function of time and/or
+            x. Required if method is wls.
         store_tmpf : str
             Key of how to store the Forward calculated temperature. Is
             calculated using the
@@ -2732,6 +3332,14 @@ class DataStore(xr.Dataset):
             variance are calculated.
         reduce_memory_usage : bool
             Use less memory but at the expense of longer computation time
+
+
+        References
+        ----------
+        .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
+            of Temperature and Associated Uncertainty from Fiber-Optic Raman-
+            Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
+            https://doi.org/10.3390/s20082235
         """
         self.check_deprecated_kwargs(kwargs)
 
@@ -2770,13 +3378,13 @@ class DataStore(xr.Dataset):
             gamma = p_val[0]
             dalpha = p_val[1]
             c = p_val[2:nt + 2]
-            ta = p_val[nt+2:nt*nta+nt+2]
+            ta = p_val[nt + 2:nt * nta + nt + 2]
 
             self['gamma_mc'] = (tuple(), gamma)
             self['dalpha_mc'] = (tuple(), dalpha)
             self['c_mc'] = ((time_dim,), c)
-            self['ta_mc'] = (('trans_att', time_dim),
-                             np.reshape(ta.values, (nta, nt)))
+            self['ta_mc'] = (
+                ('trans_att', time_dim), np.reshape(ta.values, (nta, nt)))
 
         elif isinstance(p_cov, bool) and p_cov:
             raise NotImplementedError(
@@ -2794,28 +3402,33 @@ class DataStore(xr.Dataset):
             gamma = p_mc[:, 0]
             dalpha = p_mc[:, 1]
             c = p_mc[:, 2:nt + 2]
-            ta = p_mc[:, nt+2:nt*nta+nt+2]
+            ta = p_mc[:, nt + 2:nt * nta + nt + 2]
 
             self['gamma_mc'] = (('mc',), gamma)
             self['dalpha_mc'] = (('mc',), dalpha)
             self['c_mc'] = (('mc', time_dim), c)
-            self['ta_mc'] = (('mc', 'trans_att', time_dim),
-                             np.reshape(ta, (mc_sample_size, nta, nt)))
+            self['ta_mc'] = (
+                ('mc', 'trans_att', time_dim),
+                np.reshape(ta, (mc_sample_size, nta, nt)))
 
         rsize = (self.mc.size, self.x.size, self.time.size)
 
         if reduce_memory_usage:
-            memchunk = da.ones((mc_sample_size, no, nt),
-                               chunks={0: -1, 1: 1, 2: 'auto'}).chunks
+            memchunk = da.ones(
+                (mc_sample_size, no, nt), chunks={
+                    0: -1,
+                    1: 1,
+                    2: 'auto'}).chunks
         else:
-            memchunk = da.ones((mc_sample_size, no, nt),
-                               chunks={0: -1, 1: 'auto', 2: 'auto'}).chunks
+            memchunk = da.ones(
+                (mc_sample_size, no, nt), chunks={
+                    0: -1,
+                    1: 'auto',
+                    2: 'auto'}).chunks
 
         # Draw from the normal distributions for the Stokes intensities
-        for k, st_labeli, st_vari in zip(
-                ['r_st', 'r_ast'],
-                ['st', 'ast'],
-                [st_var, ast_var]):
+        for k, st_labeli, st_vari in zip(['r_st', 'r_ast'], ['st', 'ast'],
+                                         [st_var, ast_var]):
 
             # Load the mean as chunked Dask array, otherwise eats memory
             if type(self[st_labeli].data) == da.core.Array:
@@ -2837,16 +3450,14 @@ class DataStore(xr.Dataset):
                 st_vari_da = da.asarray(st_vari, chunks=memchunk[1:])
 
             elif (callable(st_vari) and
-                    type(self[st_labeli].data) == da.core.Array):
+                  type(self[st_labeli].data) == da.core.Array):
                 st_vari_da = da.asarray(
-                    st_vari(self[st_labeli]).data,
-                    chunks=memchunk[1:])
+                    st_vari(self[st_labeli]).data, chunks=memchunk[1:])
 
             elif (callable(st_vari) and
-                    type(self[st_labeli].data) != da.core.Array):
+                  type(self[st_labeli].data) != da.core.Array):
                 st_vari_da = da.from_array(
-                    st_vari(self[st_labeli]).data,
-                    chunks=memchunk[1:])
+                    st_vari(self[st_labeli]).data, chunks=memchunk[1:])
 
             else:
                 st_vari_da = da.from_array(st_vari, chunks=memchunk[1:])
@@ -2855,7 +3466,7 @@ class DataStore(xr.Dataset):
                 ('mc', 'x', time_dim),
                 state.normal(
                     loc=loc,  # has chunks=memchunk[1:]
-                    scale=st_vari_da ** 0.5,
+                    scale=st_vari_da**0.5,
                     size=rsize,
                     chunks=memchunk))
 
@@ -2870,10 +3481,10 @@ class DataStore(xr.Dataset):
         self['ta_mc_arr'] = (('mc', 'x', time_dim), ta_arr)
 
         self[store_tmpf + '_mc_set'] = self['gamma_mc'] / (
-            (np.log(self['r_st']) - np.log(self['r_ast'])
-                + (self['c_mc'] + self['ta_mc_arr'])) +
-            (self['dalpha_mc'] * self.x)
-            ) - 273.15
+            (
+                np.log(self['r_st']) - np.log(self['r_ast']) +
+                (self['c_mc'] + self['ta_mc_arr'])) +
+            (self['dalpha_mc'] * self.x)) - 273.15
 
         avg_dims = ['mc']
 
@@ -2930,25 +3541,32 @@ class DataStore(xr.Dataset):
             reduce_memory_usage=False,
             **kwargs):
         """
-        See Example Notebook 16.
+        Average temperatures from single-ended setups.
+
+        Four types of averaging are implemented. Please see Example Notebook 16.
 
 
         Parameters
         ----------
-        p_val : array-like or string
-            parameter solution directly from calibration_double_ended_wls
-        p_cov : array-like or string
-            parameter covariance at the solution directly from
-            calibration_double_ended_wls
+        p_val : array-like, optional
+            Define `p_val`, `p_var`, `p_cov` if you used an external function
+            for calibration. Has size 2 + `nt`. First value is :math:`\gamma`,
+            second is :math:`\Delta \\alpha`, others are :math:`C` for each
+            timestep.
             If set to False, no uncertainty in the parameters is propagated
-            into the confidence
-            intervals. Similar to the spec sheets of the DTS manufacturers.
-            And similar to
-            passing an array filled with zeros
-        st_var : float
-            Float of the variance of the Stokes signal
-        ast_var : float
-            Float of the variance of the anti-Stokes signal
+            into the confidence intervals. Similar to the spec sheets of the DTS
+            manufacturers. And similar to passing an array filled with zeros
+        p_cov : array-like, optional
+            The covariances of `p_val`.
+        st_var, ast_var : float, callable, array-like, optional
+            The variance of the measurement noise of the Stokes signals in the
+            forward direction. If `float` the variance of the noise from the
+            Stokes detector is described with a single value.
+            If `callable` the variance of the noise from the Stokes detector is
+            a function of the intensity, as defined in the callable function.
+            Or manually define a variance with a DataArray of the shape
+            `ds.st.shape`, where the variance can be a function of time and/or
+            x. Required if method is wls.
         store_tmpf : str
             Key of how to store the Forward calculated temperature. Is
             calculated using the
@@ -3082,39 +3700,41 @@ class DataStore(xr.Dataset):
         if ci_avg_time_sel is not None:
             time_dim2 = time_dim + '_avg'
             x_dim2 = 'x'
-            self.coords[time_dim2] = ((time_dim2,), self[time_dim].sel(
-                **{time_dim: ci_avg_time_sel}))
+            self.coords[time_dim2] = (
+                (time_dim2,),
+                self[time_dim].sel(**{time_dim: ci_avg_time_sel}))
             self[store_tmpf + '_avgsec'] = (
                 ('x', time_dim2),
-                self[store_tmpf].sel(
-                    **{time_dim: ci_avg_time_sel}).data)
+                self[store_tmpf].sel(**{
+                    time_dim: ci_avg_time_sel}).data)
             self[store_tmpf + '_mc_set'] = (
                 ('mc', 'x', time_dim2),
-                self[store_tmpf + '_mc_set'].sel(
-                    **{time_dim: ci_avg_time_sel}).data)
+                self[store_tmpf
+                     + '_mc_set'].sel(**{
+                         time_dim: ci_avg_time_sel}).data)
 
         elif ci_avg_time_isel is not None:
             time_dim2 = time_dim + '_avg'
             x_dim2 = 'x'
-            self.coords[time_dim2] = ((time_dim2,), self[time_dim].isel(
-                **{time_dim: ci_avg_time_isel}))
+            self.coords[time_dim2] = (
+                (time_dim2,),
+                self[time_dim].isel(**{time_dim: ci_avg_time_isel}))
             self[store_tmpf + '_avgsec'] = (
                 ('x', time_dim2),
-                self[store_tmpf].isel(
-                    **{time_dim: ci_avg_time_isel}).data)
+                self[store_tmpf].isel(**{
+                    time_dim: ci_avg_time_isel}).data)
             self[store_tmpf + '_mc_set'] = (
                 ('mc', 'x', time_dim2),
-                self[store_tmpf + '_mc_set'].isel(
-                    **{time_dim: ci_avg_time_isel}).data)
+                self[store_tmpf
+                     + '_mc_set'].isel(**{
+                         time_dim: ci_avg_time_isel}).data)
 
         elif ci_avg_x_sel is not None:
             time_dim2 = time_dim
             x_dim2 = 'x_avg'
-            self.coords[x_dim2] = ((x_dim2,),
-                                   self.x.sel(x=ci_avg_x_sel))
+            self.coords[x_dim2] = ((x_dim2,), self.x.sel(x=ci_avg_x_sel))
             self[store_tmpf + '_avgsec'] = (
-                (x_dim2, time_dim),
-                self[store_tmpf].sel(x=ci_avg_x_sel).data)
+                (x_dim2, time_dim), self[store_tmpf].sel(x=ci_avg_x_sel).data)
             self[store_tmpf + '_mc_set'] = (
                 ('mc', x_dim2, time_dim),
                 self[store_tmpf + '_mc_set'].sel(x=ci_avg_x_sel).data)
@@ -3122,8 +3742,7 @@ class DataStore(xr.Dataset):
         elif ci_avg_x_isel is not None:
             time_dim2 = time_dim
             x_dim2 = 'x_avg'
-            self.coords[x_dim2] = ((x_dim2,),
-                                   self.x.isel(x=ci_avg_x_isel))
+            self.coords[x_dim2] = ((x_dim2,), self.x.isel(x=ci_avg_x_isel))
             self[store_tmpf + '_avgsec'] = (
                 (x_dim2, time_dim2),
                 self[store_tmpf].isel(x=ci_avg_x_isel).data)
@@ -3137,26 +3756,25 @@ class DataStore(xr.Dataset):
 
         # subtract the mean temperature
         q = self[store_tmpf + '_mc_set'] - self[store_tmpf + '_avgsec']
-        self[store_tmpf + '_mc' + '_avgsec' + store_tempvar] = (q.var(
-            dim='mc', ddof=1))
+        self[store_tmpf + '_mc' + '_avgsec' + store_tempvar] = (
+            q.var(dim='mc', ddof=1))
 
         if ci_avg_x_flag1:
             # unweighted mean
-            self[store_tmpf + '_avgx1'] = self[store_tmpf + '_avgsec'].mean(
-                dim=x_dim2)
+            self[store_tmpf + '_avgx1'] = self[store_tmpf
+                                               + '_avgsec'].mean(dim=x_dim2)
 
             q = self[store_tmpf + '_mc_set'] - self[store_tmpf + '_avgsec']
             qvar = q.var(dim=['mc', x_dim2], ddof=1)
             self[store_tmpf + '_mc_avgx1' + store_tempvar] = qvar
 
             if conf_ints:
-                new_chunks = (len(conf_ints),
-                              self[store_tmpf + '_mc_set'].chunks[2])
+                new_chunks = (
+                    len(conf_ints), self[store_tmpf + '_mc_set'].chunks[2])
                 avg_axis = self[store_tmpf + '_mc_set'].get_axis_num(
                     ['mc', x_dim2])
                 q = self[store_tmpf + '_mc_set'].data.map_blocks(
-                    lambda x: np.percentile(x, q=conf_ints,
-                                            axis=avg_axis),
+                    lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
                     chunks=new_chunks,  #
                     drop_axis=avg_axis,
                     # avg dimensions are dropped from input arr
@@ -3174,24 +3792,21 @@ class DataStore(xr.Dataset):
 
             self[store_tmpf + '_mc_avgx2' + store_tempvar] = avg_x_var
 
-            self[store_tmpf + '_mc_avgx2_set'] = (
-                                                self[
-                                                    store_tmpf +
-                                                    '_mc_set'] /
-                                                qvar).sum(
-                dim=x_dim2) * avg_x_var
-            self[store_tmpf + '_avgx2'] = self[store_tmpf + '_mc_avgx2_set'].mean(
-                dim='mc')
+            self[store_tmpf
+                 + '_mc_avgx2_set'] = (self[store_tmpf + '_mc_set']
+                                       / qvar).sum(dim=x_dim2) * avg_x_var
+            self[store_tmpf
+                 + '_avgx2'] = self[store_tmpf
+                                    + '_mc_avgx2_set'].mean(dim='mc')
 
             if conf_ints:
-                new_chunks = (len(conf_ints),
-                              self[store_tmpf + '_mc_set'].chunks[2])
-                avg_axis_avgx = self[store_tmpf + '_mc_set'].get_axis_num(
-                    'mc')
+                new_chunks = (
+                    len(conf_ints), self[store_tmpf + '_mc_set'].chunks[2])
+                avg_axis_avgx = self[store_tmpf + '_mc_set'].get_axis_num('mc')
 
                 qq = self[store_tmpf + '_mc_avgx2_set'].data.map_blocks(
-                    lambda x: np.percentile(x, q=conf_ints,
-                                            axis=avg_axis_avgx),
+                    lambda x: np.percentile(
+                        x, q=conf_ints, axis=avg_axis_avgx),
                     chunks=new_chunks,  #
                     drop_axis=avg_axis_avgx,
                     # avg dimensions are dropped from input arr
@@ -3202,21 +3817,20 @@ class DataStore(xr.Dataset):
 
         if ci_avg_time_flag1 is not None:
             # unweighted mean
-            self[store_tmpf + '_avg1'] = self[store_tmpf + '_avgsec'].mean(
-                dim=time_dim2)
+            self[store_tmpf + '_avg1'] = self[store_tmpf
+                                              + '_avgsec'].mean(dim=time_dim2)
 
             q = self[store_tmpf + '_mc_set'] - self[store_tmpf + '_avgsec']
             qvar = q.var(dim=['mc', time_dim2], ddof=1)
             self[store_tmpf + '_mc_avg1' + store_tempvar] = qvar
 
             if conf_ints:
-                new_chunks = (len(conf_ints),
-                              self[store_tmpf + '_mc_set'].chunks[1])
+                new_chunks = (
+                    len(conf_ints), self[store_tmpf + '_mc_set'].chunks[1])
                 avg_axis = self[store_tmpf + '_mc_set'].get_axis_num(
                     ['mc', time_dim2])
                 q = self[store_tmpf + '_mc_set'].data.map_blocks(
-                    lambda x: np.percentile(x, q=conf_ints,
-                                            axis=avg_axis),
+                    lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
                     chunks=new_chunks,  #
                     drop_axis=avg_axis,
                     # avg dimensions are dropped from input arr
@@ -3234,23 +3848,20 @@ class DataStore(xr.Dataset):
 
             self[store_tmpf + '_mc_avg2' + store_tempvar] = avg_time_var
 
-            self[store_tmpf + '_mc_avg2_set'] = (
-                                               self[
-                                                   store_tmpf + '_mc_set'] /
-                                               qvar).sum(
-                dim=time_dim2) * avg_time_var
-            self[store_tmpf + '_avg2'] = self[store_tmpf + '_mc_avg2_set'].mean(
-                dim='mc')
+            self[store_tmpf
+                 + '_mc_avg2_set'] = (self[store_tmpf + '_mc_set'] / qvar).sum(
+                     dim=time_dim2) * avg_time_var
+            self[store_tmpf + '_avg2'] = self[store_tmpf
+                                              + '_mc_avg2_set'].mean(dim='mc')
 
             if conf_ints:
-                new_chunks = (len(conf_ints),
-                              self[store_tmpf + '_mc_set'].chunks[1])
-                avg_axis_avg2 = self[store_tmpf + '_mc_set'].get_axis_num(
-                    'mc')
+                new_chunks = (
+                    len(conf_ints), self[store_tmpf + '_mc_set'].chunks[1])
+                avg_axis_avg2 = self[store_tmpf + '_mc_set'].get_axis_num('mc')
 
                 qq = self[store_tmpf + '_mc_avg2_set'].data.map_blocks(
-                    lambda x: np.percentile(x, q=conf_ints,
-                                            axis=avg_axis_avg2),
+                    lambda x: np.percentile(
+                        x, q=conf_ints, axis=avg_axis_avg2),
                     chunks=new_chunks,  #
                     drop_axis=avg_axis_avg2,
                     # avg dimensions are dropped from input arr
@@ -3260,8 +3871,9 @@ class DataStore(xr.Dataset):
                 self[store_tmpf + '_mc_avg2'] = (('CI', x_dim2), qq)
         # Clean up the garbage. All arrays with a Monte Carlo dimension.
         if remove_mc_set_flag:
-            remove_mc_set = ['r_st', 'r_ast', 'gamma_mc', 'dalpha_mc',
-                             'c_mc', 'x_avg', 'time_avg', 'mc', 'ta_mc_arr']
+            remove_mc_set = [
+                'r_st', 'r_ast', 'gamma_mc', 'dalpha_mc', 'c_mc', 'x_avg',
+                'time_avg', 'mc', 'ta_mc_arr']
             remove_mc_set.append(store_tmpf + '_avgsec')
             remove_mc_set.append(store_tmpf + '_mc_set')
             remove_mc_set.append(store_tmpf + '_mc_avg2_set')
@@ -3294,27 +3906,91 @@ class DataStore(xr.Dataset):
             reduce_memory_usage=False,
             **kwargs):
         """
+        Estimation of the confidence intervals for the temperatures measured
+        with a double-ended setup.
+        Double-ended setups require four additional steps to estimate the
+        confidence intervals for the temperature. First, the variances of the
+        Stokes and anti-Stokes intensity measurements of the forward and
+        backward channels are estimated following the steps in
+        Section 4 [1]_. See `ds.variance_stokes_constant()`.
+        A Normal distribution is assigned to each
+        intensity measurement that is centered at the measurement and using the
+        estimated variance. Second, a multi-variate Normal distribution is
+        assigned to the estimated parameters using the covariance matrix from
+        the calibration procedure presented in Section 6 [1]_ (`p_cov`). Third,
+        Normal distributions are assigned for :math:`A` (`ds.alpha`)
+        for each location
+        outside of the reference sections. These distributions are centered
+        around :math:`A_p` and have variance :math:`\sigma^2\left[A_p\\right]`
+        given by Equations 44 and 45. Fourth, the distributions are sampled
+        and :math:`T_{\mathrm{F},m,n}` and :math:`T_{\mathrm{B},m,n}` are
+        computed with Equations 16 and 17, respectively. Fifth, step four is repeated to
+        compute, e.g., 10,000 realizations (`mc_sample_size`) of :math:`T_{\mathrm{F},m,n}` and
+        :math:`T_{\mathrm{B},m,n}` to approximate their probability density
+        functions. Sixth, the standard uncertainties of
+        :math:`T_{\mathrm{F},m,n}` and :math:`T_{\mathrm{B},m,n}`
+        (:math:`\sigma\left[T_{\mathrm{F},m,n}\\right]` and
+        :math:`\sigma\left[T_{\mathrm{B},m,n}\\right]`) are estimated with the
+        standard deviation of their realizations. Seventh, for each realization
+        :math:`i` the temperature :math:`T_{m,n,i}` is computed as the weighted
+        average of :math:`T_{\mathrm{F},m,n,i}` and
+        :math:`T_{\mathrm{B},m,n,i}`:
+
+        .. math::
+
+            T_{m,n,i} =\
+            \sigma^2\left[T_{m,n}\\right]\left({\\frac{T_{\mathrm{F},m,n,i}}{\
+            \sigma^2\left[T_{\mathrm{F},m,n}\\right]} +\
+            \\frac{T_{\mathrm{B},m,n,i}}{\
+            \sigma^2\left[T_{\mathrm{B},m,n}\\right]}}\\right)
+
+        where
+
+        .. math::
+
+            \sigma^2\left[T_{m,n}\\right] = \\frac{1}{1 /\
+            \sigma^2\left[T_{\mathrm{F},m,n}\\right] + 1 /\
+            \sigma^2\left[T_{\mathrm{B},m,n}\\right]}
+
+        The best estimate of the temperature :math:`T_{m,n}` is computed
+        directly from the best estimates of :math:`T_{\mathrm{F},m,n}` and
+        :math:`T_{\mathrm{B},m,n}` as:
+
+        .. math::
+            T_{m,n} =\
+            \sigma^2\left[T_{m,n}\\right]\left({\\frac{T_{\mathrm{F},m,n}}{\
+            \sigma^2\left[T_{\mathrm{F},m,n}\\right]} + \\frac{T_{\mathrm{B},m,n}}{\
+            \sigma^2\left[T_{\mathrm{B},m,n}\\right]}}\\right)
+
+        Alternatively, the best estimate of :math:`T_{m,n}` can be approximated
+        with the mean of the :math:`T_{m,n,i}` values. Finally, the 95\%
+        confidence interval for :math:`T_{m,n}` are estimated with the 2.5\% and
+        97.5\% percentiles of :math:`T_{m,n,i}`.
 
         Parameters
         ----------
-        p_val : array-like or string
-            parameter solution directly from calibration_double_ended_wls
-        p_cov : array-like or string
-            parameter covariance at the solution directly from
-            calibration_double_ended_wls
+        p_val : array-like, optional
+            Define `p_val`, `p_var`, `p_cov` if you used an external function
+            for calibration. Has size `1 + 2 * nt + nx + 2 * nt * nta`.
+            First value is :math:`\gamma`, then `nt` times
+            :math:`D_\mathrm{F}`, then `nt` times
+            :math:`D_\mathrm{B}`, then for each location :math:`D_\mathrm{B}`,
+            then for each connector that introduces directional attenuation two
+            parameters per time step.
+        p_cov : array-like, optional
+            The covariances of `p_val`. Square matrix.
             If set to False, no uncertainty in the parameters is propagated
-            into the confidence
-            intervals. Similar to the spec sheets of the DTS manufacturers.
-            And similar to
-            passing an array filled with zeros
-        st_var : float
-            Float of the variance of the Stokes signal
-        ast_var : float
-            Float of the variance of the anti-Stokes signal
-        rst_var : float
-            Float of the variance of the backward Stokes signal
-        rast_var : float
-            Float of the variance of the backward anti-Stokes signal
+            into the confidence intervals. Similar to the spec sheets of the DTS
+            manufacturers. And similar to passing an array filled with zeros.
+        st_var, ast_var, rst_var, rast_var : float, callable, array-like, optional
+            The variance of the measurement noise of the Stokes signals in the
+            forward direction. If `float` the variance of the noise from the
+            Stokes detector is described with a single value.
+            If `callable` the variance of the noise from the Stokes detector is
+            a function of the intensity, as defined in the callable function.
+            Or manually define a variance with a DataArray of the shape
+            `ds.st.shape`, where the variance can be a function of time and/or
+            x. Required if method is wls.
         store_tmpf : str
             Key of how to store the Forward calculated temperature. Is
             calculated using the
@@ -3343,8 +4019,7 @@ class DataStore(xr.Dataset):
             '_fw']` should be ('time', 'trans_att').
         conf_ints : iterable object of float
             A list with the confidence boundaries that are calculated. Valid
-            values are between
-            [0, 1].
+            values are between [0, 1].
         mc_sample_size : int
             Size of the monte carlo parameter set used to calculate the
             confidence interval
@@ -3367,30 +4042,40 @@ class DataStore(xr.Dataset):
         Returns
         -------
 
-        """
+        References
+        ----------
+        .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
+            of Temperature and Associated Uncertainty from Fiber-Optic Raman-
+            Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
+            https://doi.org/10.3390/s20082235
 
+        """
         def create_da_ta2(no, i_splice, direction='fw', chunks=None):
             """create mask array mc, o, nt"""
 
             if direction == 'fw':
                 arr = da.concatenate(
-                    (da.zeros((1, i_splice, 1),
-                              chunks=((1, i_splice, 1)),
-                              dtype=bool),
-                     da.ones((1, no - i_splice, 1),
-                             chunks=(1, no - i_splice, 1),
-                             dtype=bool)),
+                    (
+                        da.zeros(
+                            (1, i_splice, 1),
+                            chunks=((1, i_splice, 1)),
+                            dtype=bool),
+                        da.ones(
+                            (1, no - i_splice, 1),
+                            chunks=(1, no - i_splice, 1),
+                            dtype=bool)),
                     axis=1).rechunk((1, chunks[1], 1))
             else:
                 arr = da.concatenate(
-                    (da.ones(
-                        (1, i_splice, 1),
-                        chunks=(1, i_splice, 1),
-                        dtype=bool),
-                     da.zeros(
-                         (1, no - i_splice, 1),
-                         chunks=((1, no - i_splice, 1)),
-                         dtype=bool)),
+                    (
+                        da.ones(
+                            (1, i_splice, 1),
+                            chunks=(1, i_splice, 1),
+                            dtype=bool),
+                        da.zeros(
+                            (1, no - i_splice, 1),
+                            chunks=((1, no - i_splice, 1)),
+                            dtype=bool)),
                     axis=1).rechunk((1, chunks[1], 1))
             return arr
 
@@ -3436,11 +4121,17 @@ class DataStore(xr.Dataset):
         rsize = (mc_sample_size, no, nt)
 
         if reduce_memory_usage:
-            memchunk = da.ones((mc_sample_size, no, nt),
-                               chunks={0: -1, 1: 1, 2: 'auto'}).chunks
+            memchunk = da.ones(
+                (mc_sample_size, no, nt), chunks={
+                    0: -1,
+                    1: 1,
+                    2: 'auto'}).chunks
         else:
-            memchunk = da.ones((mc_sample_size, no, nt),
-                               chunks={0: -1, 1: 'auto', 2: 'auto'}).chunks
+            memchunk = da.ones(
+                (mc_sample_size, no, nt), chunks={
+                    0: -1,
+                    1: 'auto',
+                    2: 'auto'}).chunks
 
         self.coords['mc'] = range(mc_sample_size)
         if conf_ints:
@@ -3497,12 +4188,12 @@ class DataStore(xr.Dataset):
 
             ix_sec = self.ufunc_per_section(x_indices=True, calc_per='all')
             nx_sec = ix_sec.size
-            from_i = np.concatenate((np.arange(1 + 2 * nt),
-                                     1 + 2 * nt + ix_sec,
-                                     np.arange(1 + 2 * nt + no,
-                                               1 + 2 * nt + no + nt * 2 * nta)))
-            iox_sec1, iox_sec2 = np.meshgrid(
-                from_i, from_i, indexing='ij')
+            from_i = np.concatenate(
+                (
+                    np.arange(1 + 2 * nt), 1 + 2 * nt + ix_sec,
+                    np.arange(1 + 2 * nt + no,
+                              1 + 2 * nt + no + nt * 2 * nta)))
+            iox_sec1, iox_sec2 = np.meshgrid(from_i, from_i, indexing='ij')
             po_val = p_val[from_i]
             po_cov = p_cov[iox_sec1, iox_sec2]
 
@@ -3530,7 +4221,7 @@ class DataStore(xr.Dataset):
 
                 not_alpha_mc = np.random.normal(
                     loc=not_alpha_val,
-                    scale=not_alpha_var ** 0.5,
+                    scale=not_alpha_var**0.5,
                     size=(mc_sample_size, not_alpha_val.size))
 
                 alpha[:, not_ix_sec] = not_alpha_mc
@@ -3543,8 +4234,8 @@ class DataStore(xr.Dataset):
                 ta_fw = ta[:, :, 0, :]
                 ta_bw = ta[:, :, 1, :]
 
-                ta_fw_arr = da.zeros((mc_sample_size, no, nt), chunks=memchunk,
-                                     dtype=float)
+                ta_fw_arr = da.zeros(
+                    (mc_sample_size, no, nt), chunks=memchunk, dtype=float)
                 for tai, taxi in zip(ta_fw.swapaxes(0, 2),
                                      self.coords[ta_dim].values):
                     # iterate over the splices
@@ -3554,8 +4245,8 @@ class DataStore(xr.Dataset):
 
                     ta_fw_arr += mask * tai.T[:, None, :]
 
-                ta_bw_arr = da.zeros((mc_sample_size, no, nt), chunks=memchunk,
-                                     dtype=float)
+                ta_bw_arr = da.zeros(
+                    (mc_sample_size, no, nt), chunks=memchunk, dtype=float)
                 for tai, taxi in zip(ta_bw.swapaxes(0, 2),
                                      self.coords[ta_dim].values):
                     i_splice = sum(self.x.values < taxi)
@@ -3568,10 +4259,9 @@ class DataStore(xr.Dataset):
                 self[store_ta + '_bw_mc'] = (('mc', 'x', time_dim), ta_bw_arr)
 
         # Draw from the normal distributions for the Stokes intensities
-        for k, st_labeli, st_vari in zip(
-                ['r_st', 'r_ast', 'r_rst', 'r_rast'],
-                ['st', 'ast', 'rst', 'rast'],
-                [st_var, ast_var, rst_var, rast_var]):
+        for k, st_labeli, st_vari in zip(['r_st', 'r_ast', 'r_rst', 'r_rast'],
+                                         ['st', 'ast', 'rst', 'rast'],
+                                         [st_var, ast_var, rst_var, rast_var]):
 
             # Load the mean as chunked Dask array, otherwise eats memory
             if type(self[st_labeli].data) == da.core.Array:
@@ -3595,14 +4285,12 @@ class DataStore(xr.Dataset):
             elif (callable(st_vari) and
                   type(self[st_labeli].data) == da.core.Array):
                 st_vari_da = da.asarray(
-                    st_vari(self[st_labeli]).data,
-                    chunks=memchunk[1:])
+                    st_vari(self[st_labeli]).data, chunks=memchunk[1:])
 
             elif (callable(st_vari) and
                   type(self[st_labeli].data) != da.core.Array):
                 st_vari_da = da.from_array(
-                    st_vari(self[st_labeli]).data,
-                    chunks=memchunk[1:])
+                    st_vari(self[st_labeli]).data, chunks=memchunk[1:])
 
             else:
                 st_vari_da = da.from_array(st_vari, chunks=memchunk[1:])
@@ -3611,7 +4299,7 @@ class DataStore(xr.Dataset):
                 ('mc', 'x', time_dim),
                 state.normal(
                     loc=loc,  # has chunks=memchunk[1:]
-                    scale=st_vari_da ** 0.5,
+                    scale=st_vari_da**0.5,
                     size=rsize,
                     chunks=memchunk))
 
@@ -3621,39 +4309,37 @@ class DataStore(xr.Dataset):
                 if label == store_tmpf:
                     if store_ta:
                         self[store_tmpf + '_mc_set'] = self['gamma_mc'] / (
-                            np.log(self['r_st'] / self['r_ast']) +
-                            self['df_mc'] + self['alpha_mc'] +
-                            self[store_ta + '_fw_mc']) - 273.15
+                            np.log(self['r_st'] / self['r_ast'])
+                            + self['df_mc'] + self['alpha_mc']
+                            + self[store_ta + '_fw_mc']) - 273.15
                     else:
                         self[store_tmpf + '_mc_set'] = self['gamma_mc'] / (
-                            np.log(self['r_st'] / self['r_ast']) +
-                            self['df_mc'] + self['alpha_mc']) - 273.15
+                            np.log(self['r_st'] / self['r_ast'])
+                            + self['df_mc'] + self['alpha_mc']) - 273.15
                 else:
                     if store_ta:
                         self[store_tmpb + '_mc_set'] = self['gamma_mc'] / (
-                            np.log(self['r_rst'] / self['r_rast']) +
-                            self['db_mc'] - self['alpha_mc'] +
-                            self[store_ta + '_bw_mc']) - 273.15
+                            np.log(self['r_rst'] / self['r_rast'])
+                            + self['db_mc'] - self['alpha_mc']
+                            + self[store_ta + '_bw_mc']) - 273.15
                     else:
                         self[store_tmpb + '_mc_set'] = self['gamma_mc'] / (
-                            np.log(self['r_rst'] / self['r_rast']) +
-                            self['db_mc'] - self['alpha_mc']) - 273.15
+                            np.log(self['r_rst'] / self['r_rast'])
+                            + self['db_mc'] - self['alpha_mc']) - 273.15
 
                 if var_only_sections:
                     # sets the values outside the reference sections to NaN
-                    xi = self.ufunc_per_section(
-                        x_indices=True, calc_per='all')
+                    xi = self.ufunc_per_section(x_indices=True, calc_per='all')
                     x_mask_ = [
-                        True if ix in xi else False for ix in range(self.x.size)
-                        ]
+                        True if ix in xi else False
+                        for ix in range(self.x.size)]
                     x_mask = np.reshape(x_mask_, (1, -1, 1))
-                    self[label + '_mc_set'] = self[label + '_mc_set'].where(
-                        x_mask)
+                    self[label + '_mc_set'] = self[label
+                                                   + '_mc_set'].where(x_mask)
 
                 # subtract the mean temperature
                 q = self[label + '_mc_set'] - self[label]
-                self[label + '_mc' + store_tempvar] = (q.var(
-                    dim='mc', ddof=1))
+                self[label + '_mc' + store_tempvar] = (q.var(dim='mc', ddof=1))
 
                 if conf_ints and not del_label:
                     new_chunks = list(self[label + '_mc_set'].chunks)
@@ -3670,13 +4356,14 @@ class DataStore(xr.Dataset):
 
         # Weighted mean of the forward and backward
         tmpw_var = 1 / (
-                1 / self[store_tmpf + '_mc' + store_tempvar] +
-                1 / self[store_tmpb + '_mc' + store_tempvar])
+            1 / self[store_tmpf + '_mc' + store_tempvar]
+            + 1 / self[store_tmpb + '_mc' + store_tempvar])
 
-        q = (self[store_tmpf + '_mc_set'] /
-             self[store_tmpf + '_mc' + store_tempvar] +
-             self[store_tmpb + '_mc_set'] /
-             self[store_tmpb + '_mc' + store_tempvar]) * tmpw_var
+        q = (
+            self[store_tmpf + '_mc_set']
+            / self[store_tmpf + '_mc' + store_tempvar]
+            + self[store_tmpb + '_mc_set']
+            / self[store_tmpb + '_mc' + store_tempvar]) * tmpw_var
 
         self[store_tmpw + '_mc_set'] = q  #
 
@@ -3688,8 +4375,7 @@ class DataStore(xr.Dataset):
              ) * tmpw_var
 
         q = self[store_tmpw + '_mc_set'] - self[store_tmpw]
-        self[store_tmpw + '_mc' + store_tempvar] = q.var(
-            dim='mc', ddof=1)
+        self[store_tmpw + '_mc' + store_tempvar] = q.var(dim='mc', ddof=1)
 
         # Calculate the CI of the weighted MC_set
         if conf_ints:
@@ -3754,29 +4440,31 @@ class DataStore(xr.Dataset):
             reduce_memory_usage=False,
             **kwargs):
         """
-        See Example Notebook 16.
+        Average temperatures from double-ended setups.
 
+        Four types of averaging are implemented. Please see Example Notebook 16.
 
         Parameters
         ----------
-        p_val : array-like or string
-            parameter solution directly from calibration_double_ended_wls
-        p_cov : array-like or string
-            parameter covariance at the solution directly from
-            calibration_double_ended_wls
+        p_val : array-like, optional
+            Define `p_val`, `p_var`, `p_cov` if you used an external function
+            for calibration. Has size 2 + `nt`. First value is :math:`\gamma`,
+            second is :math:`\Delta \\alpha`, others are :math:`C` for each
+            timestep.
             If set to False, no uncertainty in the parameters is propagated
-            into the confidence
-            intervals. Similar to the spec sheets of the DTS manufacturers.
-            And similar to
-            passing an array filled with zeros
-        st_var : float
-            Float of the variance of the Stokes signal
-        ast_var : float
-            Float of the variance of the anti-Stokes signal
-        rst_var : float
-            Float of the variance of the backward Stokes signal
-        rast_var : float
-            Float of the variance of the backward anti-Stokes signal
+            into the confidence intervals. Similar to the spec sheets of the DTS
+            manufacturers. And similar to passing an array filled with zeros
+        p_cov : array-like, optional
+            The covariances of `p_val`.
+        st_var, ast_var, rst_var, rast_var : float, callable, array-like, optional
+            The variance of the measurement noise of the Stokes signals in the
+            forward direction. If `float` the variance of the noise from the
+            Stokes detector is described with a single value.
+            If `callable` the variance of the noise from the Stokes detector is
+            a function of the intensity, as defined in the callable function.
+            Or manually define a variance with a DataArray of the shape
+            `ds.st.shape`, where the variance can be a function of time and/or
+            x. Required if method is wls.
         store_tmpf : str
             Key of how to store the Forward calculated temperature. Is
             calculated using the
@@ -3878,12 +4566,6 @@ class DataStore(xr.Dataset):
         ci_avg_x_isel : iterable of int
             Compute ci_avg_time_flag1 and ci_avg_time_flag2 using only a
             selection of the data
-        var_only_sections : bool
-            useful if using the ci_avg_x_flag. Only calculates the var over the
-            sections, so that the values can be compared with accuracy along the
-            reference sections. Where the accuracy is the variance of the
-            residuals between the estimated temperature and temperature of the
-            water baths.
         da_random_state
             For testing purposes. Similar to random seed. The seed for dask.
             Makes random not so random. To produce reproducable results for
@@ -3898,29 +4580,32 @@ class DataStore(xr.Dataset):
         -------
 
         """
-
         def create_da_ta2(no, i_splice, direction='fw', chunks=None):
             """create mask array mc, o, nt"""
 
             if direction == 'fw':
                 arr = da.concatenate(
-                    (da.zeros((1, i_splice, 1),
-                              chunks=((1, i_splice, 1)),
-                              dtype=bool),
-                     da.ones((1, no - i_splice, 1),
-                             chunks=(1, no - i_splice, 1),
-                             dtype=bool)),
+                    (
+                        da.zeros(
+                            (1, i_splice, 1),
+                            chunks=((1, i_splice, 1)),
+                            dtype=bool),
+                        da.ones(
+                            (1, no - i_splice, 1),
+                            chunks=(1, no - i_splice, 1),
+                            dtype=bool)),
                     axis=1).rechunk((1, chunks[1], 1))
             else:
                 arr = da.concatenate(
-                    (da.ones(
-                        (1, i_splice, 1),
-                        chunks=(1, i_splice, 1),
-                        dtype=bool),
-                     da.zeros(
-                         (1, no - i_splice, 1),
-                         chunks=((1, no - i_splice, 1)),
-                         dtype=bool)),
+                    (
+                        da.ones(
+                            (1, i_splice, 1),
+                            chunks=(1, i_splice, 1),
+                            dtype=bool),
+                        da.zeros(
+                            (1, no - i_splice, 1),
+                            chunks=((1, no - i_splice, 1)),
+                            dtype=bool)),
                     axis=1).rechunk((1, chunks[1], 1))
             return arr
 
@@ -3928,8 +4613,9 @@ class DataStore(xr.Dataset):
 
         if (ci_avg_x_flag1 or ci_avg_x_flag2) and (ci_avg_time_flag1 or
                                                    ci_avg_time_flag2):
-            raise NotImplementedError('Incompatible flags. Can not pick '
-                                      'the right chunks')
+            raise NotImplementedError(
+                'Incompatible flags. Can not pick '
+                'the right chunks')
 
         elif not (ci_avg_x_flag1 or ci_avg_x_flag2 or ci_avg_time_flag1 or
                   ci_avg_time_flag2):
@@ -3963,39 +4649,40 @@ class DataStore(xr.Dataset):
             if ci_avg_time_sel is not None:
                 time_dim2 = time_dim + '_avg'
                 x_dim2 = 'x'
-                self.coords[time_dim2] = ((time_dim2,), self[time_dim].sel(
-                    **{time_dim: ci_avg_time_sel}))
+                self.coords[time_dim2] = (
+                    (time_dim2,),
+                    self[time_dim].sel(**{time_dim: ci_avg_time_sel}))
                 self[label + '_avgsec'] = (
                     ('x', time_dim2),
-                    self[label].sel(
-                        **{time_dim: ci_avg_time_sel}).data)
+                    self[label].sel(**{
+                        time_dim: ci_avg_time_sel}).data)
                 self[label + '_mc_set'] = (
                     ('mc', 'x', time_dim2),
-                    self[label + '_mc_set'].sel(
-                        **{time_dim: ci_avg_time_sel}).data)
+                    self[label + '_mc_set'].sel(**{
+                        time_dim: ci_avg_time_sel}).data)
 
             elif ci_avg_time_isel is not None:
                 time_dim2 = time_dim + '_avg'
                 x_dim2 = 'x'
-                self.coords[time_dim2] = ((time_dim2,), self[time_dim].isel(
-                    **{time_dim: ci_avg_time_isel}))
+                self.coords[time_dim2] = (
+                    (time_dim2,),
+                    self[time_dim].isel(**{time_dim: ci_avg_time_isel}))
                 self[label + '_avgsec'] = (
                     ('x', time_dim2),
-                    self[label].isel(
-                        **{time_dim: ci_avg_time_isel}).data)
+                    self[label].isel(**{
+                        time_dim: ci_avg_time_isel}).data)
                 self[label + '_mc_set'] = (
                     ('mc', 'x', time_dim2),
-                    self[label + '_mc_set'].isel(
-                        **{time_dim: ci_avg_time_isel}).data)
+                    self[label
+                         + '_mc_set'].isel(**{
+                             time_dim: ci_avg_time_isel}).data)
 
             elif ci_avg_x_sel is not None:
                 time_dim2 = time_dim
                 x_dim2 = 'x_avg'
-                self.coords[x_dim2] = ((x_dim2,),
-                                       self.x.sel(x=ci_avg_x_sel))
+                self.coords[x_dim2] = ((x_dim2,), self.x.sel(x=ci_avg_x_sel))
                 self[label + '_avgsec'] = (
-                    (x_dim2, time_dim),
-                    self[label].sel(x=ci_avg_x_sel).data)
+                    (x_dim2, time_dim), self[label].sel(x=ci_avg_x_sel).data)
                 self[label + '_mc_set'] = (
                     ('mc', x_dim2, time_dim),
                     self[label + '_mc_set'].sel(x=ci_avg_x_sel).data)
@@ -4003,8 +4690,7 @@ class DataStore(xr.Dataset):
             elif ci_avg_x_isel is not None:
                 time_dim2 = time_dim
                 x_dim2 = 'x_avg'
-                self.coords[x_dim2] = ((x_dim2,),
-                                       self.x.isel(x=ci_avg_x_isel))
+                self.coords[x_dim2] = ((x_dim2,), self.x.isel(x=ci_avg_x_isel))
                 self[label + '_avgsec'] = (
                     (x_dim2, time_dim2),
                     self[label].isel(x=ci_avg_x_isel).data)
@@ -4020,26 +4706,25 @@ class DataStore(xr.Dataset):
 
             # subtract the mean temperature
             q = self[label + '_mc_set'] - self[label + '_avgsec']
-            self[label + '_mc' + '_avgsec' + store_tempvar] = (q.var(
-                dim='mc', ddof=1))
+            self[label + '_mc' + '_avgsec' + store_tempvar] = (
+                q.var(dim='mc', ddof=1))
 
             if ci_avg_x_flag1:
                 # unweighted mean
-                self[label + '_avgx1'] = self[label + '_avgsec'].mean(
-                    dim=x_dim2)
+                self[label + '_avgx1'] = self[label
+                                              + '_avgsec'].mean(dim=x_dim2)
 
                 q = self[label + '_mc_set'] - self[label + '_avgsec']
                 qvar = q.var(dim=['mc', x_dim2], ddof=1)
                 self[label + '_mc_avgx1' + store_tempvar] = qvar
 
                 if conf_ints:
-                    new_chunks = (len(conf_ints),
-                                  self[label + '_mc_set'].chunks[2])
+                    new_chunks = (
+                        len(conf_ints), self[label + '_mc_set'].chunks[2])
                     avg_axis = self[label + '_mc_set'].get_axis_num(
                         ['mc', x_dim2])
                     q = self[label + '_mc_set'].data.map_blocks(
-                        lambda x: np.percentile(x, q=conf_ints,
-                                                axis=avg_axis),
+                        lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
                         chunks=new_chunks,  #
                         drop_axis=avg_axis,
                         # avg dimensions are dropped from input arr
@@ -4057,24 +4742,20 @@ class DataStore(xr.Dataset):
 
                 self[label + '_mc_avgx2' + store_tempvar] = avg_x_var
 
-                self[label + '_mc_avgx2_set'] = (
-                                                    self[
-                                                        label +
-                                                        '_mc_set'] /
-                                                    qvar).sum(
-                    dim=x_dim2) * avg_x_var
+                self[label
+                     + '_mc_avgx2_set'] = (self[label + '_mc_set']
+                                           / qvar).sum(dim=x_dim2) * avg_x_var
                 self[label + '_avgx2'] = self[label + '_mc_avgx2_set'].mean(
                     dim='mc')
 
                 if conf_ints:
-                    new_chunks = (len(conf_ints),
-                                  self[label + '_mc_set'].chunks[2])
-                    avg_axis_avgx = self[label + '_mc_set'].get_axis_num(
-                        'mc')
+                    new_chunks = (
+                        len(conf_ints), self[label + '_mc_set'].chunks[2])
+                    avg_axis_avgx = self[label + '_mc_set'].get_axis_num('mc')
 
                     qq = self[label + '_mc_avgx2_set'].data.map_blocks(
-                        lambda x: np.percentile(x, q=conf_ints,
-                                                axis=avg_axis_avgx),
+                        lambda x: np.percentile(
+                            x, q=conf_ints, axis=avg_axis_avgx),
                         chunks=new_chunks,  #
                         drop_axis=avg_axis_avgx,
                         # avg dimensions are dropped from input arr
@@ -4085,21 +4766,20 @@ class DataStore(xr.Dataset):
 
             if ci_avg_time_flag1 is not None:
                 # unweighted mean
-                self[label + '_avg1'] = self[label + '_avgsec'].mean(
-                    dim=time_dim2)
+                self[label + '_avg1'] = self[label
+                                             + '_avgsec'].mean(dim=time_dim2)
 
                 q = self[label + '_mc_set'] - self[label + '_avgsec']
                 qvar = q.var(dim=['mc', time_dim2], ddof=1)
                 self[label + '_mc_avg1' + store_tempvar] = qvar
 
                 if conf_ints:
-                    new_chunks = (len(conf_ints),
-                                  self[label + '_mc_set'].chunks[1])
+                    new_chunks = (
+                        len(conf_ints), self[label + '_mc_set'].chunks[1])
                     avg_axis = self[label + '_mc_set'].get_axis_num(
                         ['mc', time_dim2])
                     q = self[label + '_mc_set'].data.map_blocks(
-                        lambda x: np.percentile(x, q=conf_ints,
-                                                axis=avg_axis),
+                        lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
                         chunks=new_chunks,  #
                         drop_axis=avg_axis,
                         # avg dimensions are dropped from input arr
@@ -4117,21 +4797,20 @@ class DataStore(xr.Dataset):
 
                 self[label + '_mc_avg2' + store_tempvar] = avg_time_var
 
-                self[label + '_mc_avg2_set'] = (
-                    self[label + '_mc_set'] / qvar).sum(
-                    dim=time_dim2) * avg_time_var
-                self[label + '_avg2'] = self[label + '_mc_avg2_set'].mean(
-                    dim='mc')
+                self[label
+                     + '_mc_avg2_set'] = (self[label + '_mc_set'] / qvar).sum(
+                         dim=time_dim2) * avg_time_var
+                self[label + '_avg2'] = self[label
+                                             + '_mc_avg2_set'].mean(dim='mc')
 
                 if conf_ints:
-                    new_chunks = (len(conf_ints),
-                                  self[label + '_mc_set'].chunks[1])
-                    avg_axis_avg2 = self[label + '_mc_set'].get_axis_num(
-                        'mc')
+                    new_chunks = (
+                        len(conf_ints), self[label + '_mc_set'].chunks[1])
+                    avg_axis_avg2 = self[label + '_mc_set'].get_axis_num('mc')
 
                     qq = self[label + '_mc_avg2_set'].data.map_blocks(
-                        lambda x: np.percentile(x, q=conf_ints,
-                                                axis=avg_axis_avg2),
+                        lambda x: np.percentile(
+                            x, q=conf_ints, axis=avg_axis_avg2),
                         chunks=new_chunks,  #
                         drop_axis=avg_axis_avg2,
                         # avg dimensions are dropped from input arr
@@ -4142,13 +4821,14 @@ class DataStore(xr.Dataset):
 
         # Weighted mean of the forward and backward
         tmpw_var = 1 / (
-                1 / self[store_tmpf + '_mc' + '_avgsec' + store_tempvar] +
-                1 / self[store_tmpb + '_mc' + '_avgsec' + store_tempvar])
+            1 / self[store_tmpf + '_mc' + '_avgsec' + store_tempvar]
+            + 1 / self[store_tmpb + '_mc' + '_avgsec' + store_tempvar])
 
-        q = (self[store_tmpf + '_mc_set'] /
-             self[store_tmpf + '_mc' + '_avgsec' + store_tempvar] +
-             self[store_tmpb + '_mc_set'] /
-             self[store_tmpb + '_mc' + '_avgsec' + store_tempvar]) * tmpw_var
+        q = (
+            self[store_tmpf + '_mc_set']
+            / self[store_tmpf + '_mc' + '_avgsec' + store_tempvar]
+            + self[store_tmpb + '_mc_set']
+            / self[store_tmpb + '_mc' + '_avgsec' + store_tempvar]) * tmpw_var
 
         self[store_tmpw + '_mc_set'] = q  #
 
@@ -4173,8 +4853,8 @@ class DataStore(xr.Dataset):
 
             if conf_ints:
                 new_chunks_weighted = ((len(conf_ints),),) + (memchunk[1],)
-                avg_axis = self[store_tmpw + '_mc_set'
-                                ].get_axis_num(['mc', time_dim2])
+                avg_axis = self[store_tmpw + '_mc_set'].get_axis_num(
+                    ['mc', time_dim2])
                 q2 = self[store_tmpw + '_mc_set'].data.map_blocks(
                     lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
                     chunks=new_chunks_weighted,
@@ -4187,8 +4867,8 @@ class DataStore(xr.Dataset):
 
         if ci_avg_time_flag2:
             tmpw_var_avg2 = 1 / (
-                1 / self[store_tmpf + '_mc_avg2' + store_tempvar] +
-                1 / self[store_tmpb + '_mc_avg2' + store_tempvar])
+                1 / self[store_tmpf + '_mc_avg2' + store_tempvar]
+                + 1 / self[store_tmpb + '_mc_avg2' + store_tempvar])
 
             q = (self[store_tmpf + '_mc_avg2_set'] /
                  self[store_tmpf + '_mc_avg2' + store_tempvar] +
@@ -4210,14 +4890,12 @@ class DataStore(xr.Dataset):
 
             if conf_ints:
                 # We first need to know the x-dim-chunk-size
-                new_chunks_weighted = ((len(conf_ints),),) + (
-                    memchunk[1],)
-                avg_axis_avg2 = self[
-                    store_tmpw + '_mc_avg2_set'].get_axis_num(
-                    'mc')
+                new_chunks_weighted = ((len(conf_ints),),) + (memchunk[1],)
+                avg_axis_avg2 = self[store_tmpw
+                                     + '_mc_avg2_set'].get_axis_num('mc')
                 q2 = self[store_tmpw + '_mc_avg2_set'].data.map_blocks(
-                    lambda x: np.percentile(x, q=conf_ints,
-                                            axis=avg_axis_avg2),
+                    lambda x: np.percentile(
+                        x, q=conf_ints, axis=avg_axis_avg2),
                     chunks=new_chunks_weighted,
                     # Explicitly define output chunks
                     drop_axis=avg_axis_avg2,  # avg dimensions are dropped
@@ -4234,8 +4912,8 @@ class DataStore(xr.Dataset):
 
             if conf_ints:
                 new_chunks_weighted = ((len(conf_ints),),) + (memchunk[2],)
-                avg_axis = self[store_tmpw + '_mc_set'
-                                ].get_axis_num(['mc', x_dim2])
+                avg_axis = self[store_tmpw + '_mc_set'].get_axis_num(
+                    ['mc', x_dim2])
                 q2 = self[store_tmpw + '_mc_set'].data.map_blocks(
                     lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
                     chunks=new_chunks_weighted,
@@ -4248,8 +4926,8 @@ class DataStore(xr.Dataset):
 
         if ci_avg_x_flag2:
             tmpw_var_avgx2 = 1 / (
-                1 / self[store_tmpf + '_mc_avgx2' + store_tempvar] +
-                1 / self[store_tmpb + '_mc_avgx2' + store_tempvar])
+                1 / self[store_tmpf + '_mc_avgx2' + store_tempvar]
+                + 1 / self[store_tmpb + '_mc_avgx2' + store_tempvar])
 
             q = (self[store_tmpf + '_mc_avgx2_set'] /
                  self[store_tmpf + '_mc_avgx2' + store_tempvar] +
@@ -4271,14 +4949,12 @@ class DataStore(xr.Dataset):
 
             if conf_ints:
                 # We first need to know the x-dim-chunk-size
-                new_chunks_weighted = ((len(conf_ints),),) + (
-                    memchunk[2],)
-                avg_axis_avgx2 = self[
-                    store_tmpw + '_mc_avgx2_set'].get_axis_num(
-                    'mc')
+                new_chunks_weighted = ((len(conf_ints),),) + (memchunk[2],)
+                avg_axis_avgx2 = self[store_tmpw
+                                      + '_mc_avgx2_set'].get_axis_num('mc')
                 q2 = self[store_tmpw + '_mc_avgx2_set'].data.map_blocks(
-                    lambda x: np.percentile(x, q=conf_ints,
-                                            axis=avg_axis_avgx2),
+                    lambda x: np.percentile(
+                        x, q=conf_ints, axis=avg_axis_avgx2),
                     chunks=new_chunks_weighted,
                     # Explicitly define output chunks
                     drop_axis=avg_axis_avgx2,  # avg dimensions are dropped
@@ -4308,13 +4984,25 @@ class DataStore(xr.Dataset):
                     del self[k]
         pass
 
-    def temperature_residuals(self, label=None):
+    def temperature_residuals(self, label=None, sections=None):
         """
+        Compute the temperature residuals, between the known temperature of the
+        reference sections and the DTS temperature.
 
         Parameters
         ----------
         label : str
             The key of the temperature DataArray
+        sections : Dict[str, List[slice]], optional
+            If `None` is supplied, `ds.sections` is used. Define calibration
+            sections. Each section requires a reference temperature time series,
+            such as the temperature measured by an external temperature sensor.
+            They should already be part of the DataStore object. `sections`
+            is defined with a dictionary with its keywords of the
+            names of the reference temperature time series. Its values are
+            lists of slice objects, where each slice object is a fiber stretch
+            that has the reference temperature. Afterwards, `sections` is stored
+            under `ds.sections`.
 
         Returns
         -------
@@ -4324,8 +5012,9 @@ class DataStore(xr.Dataset):
         time_dim = self.get_time_dim(data_var_key=label)
 
         resid_temp = self.ufunc_per_section(
-            label=label, temp_err=True, calc_per='all')
-        resid_x = self.ufunc_per_section(label='x', calc_per='all')
+            sections=sections, label=label, temp_err=True, calc_per='all')
+        resid_x = self.ufunc_per_section(
+            sections=sections, label='x', calc_per='all')
 
         resid_ix = np.array(
             [np.argmin(np.abs(ai - self.x.data)) for ai in resid_x])
@@ -4362,7 +5051,16 @@ class DataStore(xr.Dataset):
 
         Parameters
         ----------
-        sections : Dict[str, List[slice]]
+        sections : Dict[str, List[slice]], optional
+            If `None` is supplied, `ds.sections` is used. Define calibration
+            sections. Each section requires a reference temperature time series,
+            such as the temperature measured by an external temperature sensor.
+            They should already be part of the DataStore object. `sections`
+            is defined with a dictionary with its keywords of the
+            names of the reference temperature time series. Its values are
+            lists of slice objects, where each slice object is a fiber stretch
+            that has the reference temperature. Afterwards, `sections` is stored
+            under `ds.sections`.
         func : callable, str
             A numpy function, or lambda function to apple to each 'calc_per'.
         label
@@ -4378,7 +5076,7 @@ class DataStore(xr.Dataset):
         func_kwargs : dict
             Dictionary with options that are passed to func
 
-        TODO: Spend time on creating a slice instead of appendng everything
+        TODO: Spend time on creating a slice instead of appendng everything\
         to a list and concatenating after.
 
 
@@ -4387,67 +5085,71 @@ class DataStore(xr.Dataset):
 
         Examples
         --------
-        # Calculate the variance of the residuals in the along ALL the
-        # reference sections wrt the temperature of the water baths
-        tmpf_var = d.ufunc_per_section(
-            func='var',
-            calc_per='all',
-            label='tmpf',
-            temp_err=True
-            )
 
-        # Calculate the variance of the residuals in the along PER
-        # reference section wrt the temperature of the water baths
-        tmpf_var = d.ufunc_per_section(
-            func='var',
-            calc_per='stretch',
-            label='tmpf',
-            temp_err=True
-            )
+        1. Calculate the variance of the residuals in the along ALL the\
+        reference sections wrt the temperature of the water baths
 
-        # Calculate the variance of the residuals in the along PER
-        # water bath wrt the temperature of the water baths
-        tmpf_var = d.ufunc_per_section(
-            func='var',
-            calc_per='section',
-            label='tmpf',
-            temp_err=True
-            )
+        >>> tmpf_var = d.ufunc_per_section(
+        >>>     func='var',
+        >>>     calc_per='all',
+        >>>     label='tmpf',
+        >>>     temp_err=True)
 
-        # Obtain the coordinates of the measurements per section
-        locs = d.ufunc_per_section(
-            func=None,
-            label='x',
-            temp_err=False,
-            ref_temp_broadcasted=False,
-            calc_per='stretch')
+        2. Calculate the variance of the residuals in the along PER\
+        reference section wrt the temperature of the water baths
 
-        # Number of observations per stretch
-        nlocs = d.ufunc_per_section(
-            func=len,
-            label='x',
-            temp_err=False,
-            ref_temp_broadcasted=False,
-            calc_per='stretch')
+        >>> tmpf_var = d.ufunc_per_section(
+        >>>     func='var'
+        >>>     calc_per='stretch',
+        >>>     label='tmpf',
+        >>>     temp_err=True)
 
-        # broadcast the temperature of the reference sections to
-        stretch/section/all dimensions. The value of the reference
-        temperature (a timeseries) is broadcasted to the shape of self[
+        3. Calculate the variance of the residuals in the along PER\
+        water bath wrt the temperature of the water baths
+
+        >>> tmpf_var = d.ufunc_per_section(
+        >>>     func='var',
+        >>>     calc_per='section',
+        >>>     label='tmpf',
+        >>>     temp_err=True)
+
+        4. Obtain the coordinates of the measurements per section
+
+        >>> locs = d.ufunc_per_section(
+        >>>     func=None,
+        >>>     label='x',
+        >>>     temp_err=False,
+        >>>     ref_temp_broadcasted=False,
+        >>>     calc_per='stretch')
+
+        5. Number of observations per stretch
+
+        >>> nlocs = d.ufunc_per_section(
+        >>>     func=len,
+        >>>     label='x',
+        >>>     temp_err=False,
+        >>>     ref_temp_broadcasted=False,
+        >>>     calc_per='stretch')
+
+        6. broadcast the temperature of the reference sections to\
+        stretch/section/all dimensions. The value of the reference\
+        temperature (a timeseries) is broadcasted to the shape of self[\
         label]. The self[label] is not used for anything else.
-        temp_ref = d.ufunc_per_section(
-            label='st',
-            ref_temp_broadcasted=True,
-            calc_per='all')
 
-        # x-coordinate index
-        ix_loc = d.ufunc_per_section(x_indices=True)
+        >>> temp_ref = d.ufunc_per_section(
+        >>>     label='st',
+        >>>     ref_temp_broadcasted=True,
+        >>>     calc_per='all')
+
+        7. x-coordinate index
+
+        >>> ix_loc = d.ufunc_per_section(x_indices=True)
 
 
         Note
         ----
-        If self[label] or self[subtract_from_label] is a Dask array, a Dask
-        array is returned
-        Else a numpy array is returned
+        If `self[label]` or `self[subtract_from_label]` is a Dask array, a Dask
+        array is returned else a numpy array is returned
         """
         if sections is None:
             sections = self.sections
@@ -4552,8 +5254,10 @@ class DataStore(xr.Dataset):
 
         if calc_per == 'all':
             # flatten the out_dict to sort them
-            start = [item.start for sublist in sections.values()
-                     for item in sublist]
+            start = [
+                item.start
+                for sublist in sections.values()
+                for item in sublist]
             i_sorted = np.argsort(start)
             out_flat = [item for sublist in out.values() for item in sublist]
             out_flat_sort = [out_flat[i] for i in i_sorted]
@@ -4673,17 +5377,10 @@ def open_datastore(
         chunks = {}
 
     with xr.open_dataset(
-            filename_or_obj,
-            group=group,
-            decode_cf=decode_cf,
-            mask_and_scale=mask_and_scale,
-            decode_times=decode_times,
-            concat_characters=concat_characters,
-            decode_coords=decode_coords,
-            engine=engine,
-            chunks=chunks,
-            lock=lock,
-            cache=cache,
+            filename_or_obj, group=group, decode_cf=decode_cf,
+            mask_and_scale=mask_and_scale, decode_times=decode_times,
+            concat_characters=concat_characters, decode_coords=decode_coords,
+            engine=engine, chunks=chunks, lock=lock, cache=cache,
             drop_variables=drop_variables,
             backend_kwargs=backend_kwargs) as ds_xr:
         ds = DataStore(
@@ -4693,7 +5390,7 @@ def open_datastore(
             **ds_kwargs)
 
         # to support deprecated st_labels
-        ds = ds.rename_labels()
+        ds = ds.rename_labels(assertion=False)
 
         if load_in_memory:
             if "cache" in kwargs:
@@ -4704,8 +5401,12 @@ def open_datastore(
             return ds
 
 
-def open_mf_datastore(path, combine='by_coords', load_in_memory=False,
-                      **kwargs):
+def open_mf_datastore(
+        path=None,
+        paths=None,
+        combine='by_coords',
+        load_in_memory=False,
+        **kwargs):
     """
     Open a datastore from multiple netCDF files. This script assumes the
     datastore was split along the time dimension. But only variables with a
@@ -4717,7 +5418,11 @@ def open_mf_datastore(path, combine='by_coords', load_in_memory=False,
     combine : {'by_coords', 'nested'}, optional
         Leave it at by_coords
     path : str
-        A file path to the stored netcdf files.
+        A file path to the stored netcdf files with an asterisk in the
+        filename to list all. Ensure you have leading zeros in the file
+        numbering.
+    paths : list
+        Define you own list of file paths.
     Returns
     -------
     dataset : Dataset
@@ -4725,17 +5430,16 @@ def open_mf_datastore(path, combine='by_coords', load_in_memory=False,
     """
     from xarray.backends.api import open_mfdataset
 
-    paths = sorted(glob.glob(path))
-    assert paths, 'No files match found with: ' + path
+    if paths is None:
+        paths = sorted(glob.glob(path))
+        assert paths, 'No files match found with: ' + path
 
     with open_mfdataset(paths=paths, combine=combine, **kwargs) as xds:
         ds = DataStore(
-            data_vars=xds.data_vars,
-            coords=xds.coords,
-            attrs=xds.attrs)
+            data_vars=xds.data_vars, coords=xds.coords, attrs=xds.attrs)
 
         # to support deprecated st_labels
-        ds = ds.rename_labels()
+        ds = ds.rename_labels(assertion=False)
 
         if load_in_memory:
             if "cache" in kwargs:
@@ -4797,8 +5501,8 @@ def read_silixa_files(
                                 str(directory)
 
     elif filepathlist is None and zip_handle:
-        filepathlist = ziphandle_to_filepathlist(fh=zip_handle,
-                                                 extension=file_ext)
+        filepathlist = ziphandle_to_filepathlist(
+            fh=zip_handle, extension=file_ext)
 
     # Make sure that the list of files contains any files
     assert len(
@@ -4831,10 +5535,7 @@ def read_silixa_files(
 
 
 def read_sensortran_files(
-        directory,
-        timezone_netcdf='UTC',
-        silent=False,
-        **kwargs):
+        directory, timezone_netcdf='UTC', silent=False, **kwargs):
     """Read a folder with measurement files. Each measurement file contains
     values for a
     single timestep. Remember to check which timezone you are working in.
@@ -4858,8 +5559,8 @@ def read_sensortran_files(
         The newly created datastore.
     """
 
-    filepathlist_dts = sorted(glob.glob(os.path.join(directory,
-                                                     '*BinaryRawDTS.dat')))
+    filepathlist_dts = sorted(
+        glob.glob(os.path.join(directory, '*BinaryRawDTS.dat')))
 
     # Make sure that the list of files contains any files
     assert len(
@@ -4872,8 +5573,9 @@ def read_sensortran_files(
     for ii, fname in enumerate(filepathlist_dts):
         # Check if corresponding temperature file exists
         if not os.path.isfile(filepathlist_temp[ii]):
-            raise FileNotFoundError('Could not find BinaryTemp ' +
-                                    'file corresponding to {}'.format(fname))
+            raise FileNotFoundError(
+                'Could not find BinaryTemp '
+                + 'file corresponding to {}'.format(fname))
 
     version = sensortran_binary_version_check(filepathlist_dts)
 
@@ -4885,8 +5587,8 @@ def read_sensortran_files(
             silent=silent)
     else:
         raise NotImplementedError(
-                'Sensortran binary version ' +
-                '{0} not implemented'.format(version))
+            'Sensortran binary version '
+            + '{0} not implemented'.format(version))
 
     ds = DataStore(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
     return ds
@@ -4954,19 +5656,17 @@ def read_apsensing_files(
 
     device = apsensing_xml_version_check(filepathlist)
 
-    valid_devices = [
-        'CP320',
-    ]
+    valid_devices = ['CP320']
 
     if device in valid_devices:
         pass
 
     else:
         warnings.warn(
-            'AP sensing device ' '"{0}"'.format(device) +
-            ' has not been tested.\nPlease open an issue on github' +
-            ' and provide an example file'
-            )
+            'AP sensing device '
+            '"{0}"'.format(device)
+            + ' has not been tested.\nPlease open an issue on github'
+            + ' and provide an example file')
 
     data_vars, coords, attrs = read_apsensing_files_routine(
         filepathlist,
@@ -5047,10 +5747,8 @@ def read_sensornet_files(
     ddf_version = sensornet_ddf_version_check(filepathlist)
 
     valid_versions = [
-        'Halo DTS v1',
-        'ORYX F/W v1,02 Oryx Data Collector v3',
-        'ORYX F/W v4,00 Oryx Data Collector v3',
-    ]
+        'Halo DTS v1', 'ORYX F/W v1,02 Oryx Data Collector v3',
+        'ORYX F/W v4,00 Oryx Data Collector v3']
 
     if ddf_version in valid_versions:
         if ddf_version == 'Halo DTS v1':
@@ -5060,10 +5758,10 @@ def read_sensornet_files(
 
     else:
         warnings.warn(
-            'Sensornet .dff version ' '"{0}"'.format(ddf_version) +
-            ' has not been tested.\nPlease open an issue on github' +
-            ' and provide an example file'
-            )
+            'Sensornet .dff version '
+            '"{0}"'.format(ddf_version)
+            + ' has not been tested.\nPlease open an issue on github'
+            + ' and provide an example file')
 
     data_vars, coords, attrs = read_sensornet_files_routine_v3(
         filepathlist,
@@ -5118,4 +5816,4 @@ def func_fit(p, xs):
 
 def func_cost(p, data, xs):
     fit = func_fit(p, xs)
-    return np.sum((fit - data) ** 2)
+    return np.sum((fit - data)**2)
