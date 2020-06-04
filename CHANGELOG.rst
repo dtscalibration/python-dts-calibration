@@ -1,13 +1,31 @@
 
 Changelog
 =========
+1.0.2 (2020-05-04)
+------------------
+* Same as v1.0.1
+
 1.0.1 (2020-05-04)
 ------------------
-* Variances can now passed as a float, a function, or an array to calibrationroutines
+New features
+
+* st_var can now be array-like. The array-like can vary in x or time, or both.
+* When converting from a xr.Dataset to a DataStore object, the attributes arenow transfered over
+* Added 'verbose' kwarg to shift_double_ended utility function to silence theconsole output
+
+Bug fixes
+
+* If the '_sections' attribute is missing from a DataStore object it is automagically re-added.
+* Assert that stokes variances are passed when running a double-ended WLS calibration
+* Added check for NaN/inf values in wls_sparse solver to avoid unclear error messages
+* Before calibration, the values of the used reference temperatures are checked if they are valid (float dtype, no NaN/inf values, correct time dimension)
+
+Others
+
 * European Geosciences Union conference 2020 presentation added
-* Check for nans from reference temperature in wls_sparse routine
 * Updated documentation with content article
-* Use YAPF formatting of the Python files.
+* Use YAPF formatting of the Python files
+* Travis-CI.org integration in GitHub restored.
 
 1.0.0 (2020-03-30)
 ------------------
