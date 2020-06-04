@@ -2827,10 +2827,8 @@ class DataStore(xr.Dataset):
             if np.size(st_vari) > 1:
                 if st_vari.shape == self[st_labeli].shape:
                     pass
-                elif len(st_vari.shape) == 1:
-                    st_vari = st_vari[np.newaxis, :].repeat(no, axis=0)
                 else:
-                    st_vari = st_vari.repeat(nt, axis=1)
+                    st_vari = np.broadcast_to(st_vari, (no, nt))
             else:
                 pass
 
@@ -3585,10 +3583,8 @@ class DataStore(xr.Dataset):
             if np.size(st_vari) > 1:
                 if st_vari.shape == self[st_labeli].shape:
                     pass
-                elif len(st_vari.shape) == 1:
-                    st_vari = st_vari[np.newaxis, :].repeat(no, axis=0)
                 else:
-                    st_vari = st_vari.repeat(nt, axis=1)
+                    st_vari = np.broadcast_to(st_vari, (no, nt))
             else:
                 pass
 
