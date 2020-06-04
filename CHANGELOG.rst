@@ -8,17 +8,20 @@ Changelog
 1.0.1 (2020-05-04)
 ------------------
 New features
+
 * st_var can now be array-like. The array-like can vary in x or time, or both.
 * When converting from a xr.Dataset to a DataStore object, the attributes arenow transfered over
 * Added 'verbose' kwarg to shift_double_ended utility function to silence theconsole output
 
 Bug fixes
+
 * If the '_sections' attribute is missing from a DataStore object it is automagically re-added.
 * Assert that stokes variances are passed when running a double-ended WLS calibration
 * Added check for NaN/inf values in wls_sparse solver to avoid unclear error messages
 * Before calibration, the values of the used reference temperatures are checked if they are valid (float dtype, no NaN/inf values, correct time dimension)
 
 Others
+
 * European Geosciences Union conference 2020 presentation added
 * Updated documentation with content article
 * Use YAPF formatting of the Python files
