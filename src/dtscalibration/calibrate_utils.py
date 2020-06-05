@@ -1,6 +1,8 @@
 # coding=utf-8
 import numpy as np
 import scipy.sparse as sp
+from scipy.linalg import inv as scipy_inv
+from scipy.linalg import lstsq as scipy_lstsq
 from scipy.sparse import linalg as ln
 
 
@@ -1189,6 +1191,154 @@ def wls_sparse(
             return p_sol, p_var, wresid
         else:
             return p_sol, p_var
+
+
+def wls_sparse2(
+        X,
+        y,
+        w=1.,
+        p_sol_prior=None,
+        p_cov_prior=None,
+        x0=None,
+        adjust_p_cov_flag=False,
+        lapack_driver=None,
+        verbose=False):
+    """
+    Solves the normal equations of X . p_sol = y with weights. Supports a priori
+    information. The parameter estimates from a previous calibration instance
+    and their covariances can be passed to `p_sol_prior` and `p_cov_prior`.
+    Allows for sequential calibration in chunks.
+
+    Normally, the X matrix is very tall (nobs>>npar), more observations than
+    unknowns. By using the normal equations, the coefficient matrix reduces to a
+    square matrix of shape (npar, npar), and the observation matrix to (npar,).
+    This results in a much smaller system to solve.
+
+    Parameters
+    ----------
+    X : array
+        Coefficient matrix of shape (nobs, npar). Sparse or dense.
+    y : array
+        Observation vector of shape (nobs,)
+    w : array
+        Weights. Most commonly, they are the inverse of the expected
+        variance in the observations. Can be a single value, a vector of shape
+        (nobs,) or an array of shape (nobs, nobs) with the covariances.
+    p_sol_prior : array, optional
+        Prior information of p_sol. Of shape (npar,). If `x0` is None,
+        `p_sol_prior` is used as `x0`.
+    p_cov_prior
+        Prior information of the covariance of p_sol_prior. Of shape (npar,npar)
+    x0 : array, optional
+        Starting values in the parameter search.
+    adjust_p_cov_flag : bool
+        Not needed if weights are properly defined. Statsmodels uses it to make
+        it more robust. See `adjust_covariance()` function description.
+    lapack_driver : str, optional
+        Which LAPACK driver is used to solve the least-squares problem.
+        Options are ``'gelsd'``, ``'gelsy'``, ``'gelss'``. Default
+        (``'gelsd'``) is a good choice.  However, ``'gelsy'`` can be slightly
+        faster on many problems.  ``'gelss'`` was used historically.  It is
+        generally slow but uses less memory.
+    verbose : bool
+        Does not do much
+
+    Returns
+    -------
+    p_sol, p_var, p_cov : array
+
+    """
+    def adjust_covariance(p_cov_uncorrected, y, X, p_sol, W):
+        """The assumption of that the variance of the weighted residuals is 1
+        should hold. However, statsmodels corrects for the actual variance in
+        the weighted residuals. It requires the postiori parameters and the full
+        coefficient matrix and the full observations, so only possible if no
+        apriori is given.
+        """
+        nobs, npar = X.shape
+        degrees_of_freedom_err = nobs - npar
+        e = y - X.dot(p_sol)
+        werr_sum = e.T.dot(W).dot(e)
+        werr_var = werr_sum / degrees_of_freedom_err
+        p_cov_corrected = np.array(p_cov_uncorrected * werr_var)
+        return p_cov_corrected
+
+    if sp.issparse(X):
+        assert np.all(np.isfinite(X.data)), 'Nan/inf in X: check ' + \
+                                            'reference temperatures?'
+    else:
+        assert np.all(np.isfinite(X)), 'Nan/inf in X: check ' + \
+                                       'reference temperatures?'
+    assert np.all(np.isfinite(w)), 'Nan/inf in weights'
+    assert np.all(np.isfinite(y)), 'Nan/inf in observations'
+
+    if p_sol_prior is not None:
+        assert np.all(np.isfinite(p_sol_prior)), 'Nan/inf in p_sol_prior'
+        assert np.all(np.isfinite(p_cov_prior)), 'Nan/inf in p_cov_prior'
+
+    if x0 is not None:
+        assert np.all(np.isfinite(x0)), 'Nan/inf in p0 initial estimate'
+    elif p_sol_prior is not None:
+        x0 = p_sol_prior
+    else:
+        pass
+
+    if w is None:  # gracefully default to unweighted
+        W = 1.
+    elif np.ndim(w) == 0:
+        W = w
+    elif np.ndim(w) == 1:
+        # covariances between residuals are neglected
+        W = np.diag(w)
+    elif np.ndim(w) == 2:
+        # w is the inverse of the covariance of the residuals
+        W = w
+
+    # Solving the normal equations instead. wX and wy are always dense.
+    wy = X.T.dot(W).dot(y)
+    wX = X.T.dot(W).dot(X)
+
+    if sp.issparse(wX):
+        wX = wX.toarray()
+
+    if p_sol_prior is not None:
+        # Update the matrices with apriori information
+        Q_inv = scipy_inv(p_cov_prior)
+        wX += Q_inv
+        wy += Q_inv.dot(p_sol_prior)
+
+    p_cov_uncorrected = np.linalg.inv(wX)
+
+    if x0 is not None:
+        # Start lstsq searching at x=0
+        wy -= wX.dot(x0)
+
+    # wX and wy are overwritten during optimization and unusable after.
+    p_sol, _, _, _ = scipy_lstsq(
+        wX,
+        wy,
+        overwrite_a=not verbose,
+        overwrite_b=not verbose,
+        check_finite=False,
+        lapack_driver=lapack_driver)
+
+    if x0 is not None:
+        p_sol += x0
+
+    if p_sol_prior is not None and adjust_p_cov_flag:
+        p_cov = adjust_covariance(p_cov_uncorrected, y, X, p_sol, W)
+
+    else:
+        p_cov = p_cov_uncorrected
+
+    p_var = np.diag(p_cov)
+
+    # # statsmodels comparisson
+    # mod_wls = sm.WLS(y, X, weights=w)
+    # res_wls = mod_wls.fit()
+    # p_sol = res_wls.params
+    # p_cov = res_wls.cov_params()
+    return p_sol, p_var, p_cov
 
 
 def wls_stats(
