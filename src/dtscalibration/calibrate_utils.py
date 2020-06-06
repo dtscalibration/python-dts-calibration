@@ -1301,10 +1301,11 @@ def wls_sparse2(
 
     # Solving the normal equations instead. wX and wy are always dense.
     wy = X.T.dot(W).dot(y)
-    wX = X.T.dot(W).dot(X)
 
-    if sp.issparse(wX):
-        wX = wX.toarray()
+    if sp.issparse(X):
+        wX = X.T * W * X
+    else:
+        wX = X.T.dot(W).dot(X)
 
     if p_sol_prior is not None:
         # Update the matrices with apriori information
@@ -1330,7 +1331,7 @@ def wls_sparse2(
     if x0 is not None:
         p_sol += x0
 
-    if p_sol_prior is not None and adjust_p_cov_flag:
+    if p_sol_prior is None and adjust_p_cov_flag:
         p_cov = adjust_covariance(p_cov_uncorrected, y, X, p_sol, W)
 
     else:
