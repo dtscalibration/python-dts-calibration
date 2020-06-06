@@ -1201,6 +1201,7 @@ def wls_sparse2(
         p_cov_prior=None,
         x0=None,
         adjust_p_cov_flag=False,
+        calc_cov=True,
         lapack_driver=None,
         verbose=False):
     """
@@ -1234,6 +1235,10 @@ def wls_sparse2(
     adjust_p_cov_flag : bool
         Not needed if weights are properly defined. Statsmodels uses it to make
         it more robust. See `adjust_covariance()` function description.
+    calc_cov : bool
+        Will be a depreciated argument in the future because computing
+        covariance is cheap with normal equations, and computed anyways for the
+        `p_var`. Whether or not return p_cov.
     lapack_driver : str, optional
         Which LAPACK driver is used to solve the least-squares problem.
         Options are ``'gelsd'``, ``'gelsy'``, ``'gelss'``. Default
@@ -1338,7 +1343,10 @@ def wls_sparse2(
     # res_wls = mod_wls.fit()
     # p_sol = res_wls.params
     # p_cov = res_wls.cov_params()
-    return p_sol, p_var, p_cov
+    if calc_cov:
+        return p_sol, p_var, p_cov
+    else:
+        return p_sol, p_var
 
 
 def wls_stats(

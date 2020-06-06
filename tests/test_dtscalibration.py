@@ -9,6 +9,7 @@ from scipy import stats
 from dtscalibration import DataStore
 from dtscalibration import read_silixa_files
 from dtscalibration.calibrate_utils import wls_sparse
+from dtscalibration.calibrate_utils import wls_sparse2
 from dtscalibration.calibrate_utils import wls_stats
 from dtscalibration.cli import main
 
@@ -3330,31 +3331,109 @@ def test_calibrate_wls_procedures():
     np.testing.assert_array_almost_equal(beta, beta_numpy, decimal=8)
 
     ps_sol, ps_var = wls_stats(X, y, w=1, calc_cov=0)
-    p_sol, p_var = wls_sparse(X, y, w=1, calc_cov=0, x0=beta_0)
+    p_sol, p_var = wls_sparse(X, y, w=1, calc_cov=0, x0=beta_0 * 1.1)
+    p2_sol, p2_var = wls_sparse2(
+        X,
+        y,
+        w=1,
+        p_sol_prior=None,
+        p_cov_prior=None,
+        x0=beta_0 * 1.1,
+        adjust_p_cov_flag=True,
+        calc_cov=False)
 
     np.testing.assert_array_almost_equal(beta, ps_sol, decimal=8)
     np.testing.assert_array_almost_equal(beta, p_sol, decimal=8)
+    np.testing.assert_array_almost_equal(beta, p2_sol, decimal=8)
 
     # now with weights
     dec = 8
     ps_sol, ps_var, ps_cov = wls_stats(
-        X, y_meas, w=beta_w, calc_cov=True, x0=beta_0)
+        X, y_meas, w=beta_w, calc_cov=True, x0=beta_0 * 1.1)
     p_sol, p_var, p_cov = wls_sparse(
-        X, y_meas, w=beta_w, calc_cov=True, x0=beta_0)
+        X, y_meas, w=beta_w, calc_cov=True, x0=beta_0 * 1.1)
+    p2_sol, p2_var, p2_cov = wls_sparse2(
+        X,
+        y_meas,
+        w=beta_w,
+        calc_cov=True,
+        x0=beta_0 * 1.1,
+        adjust_p_cov_flag=True)
 
     np.testing.assert_array_almost_equal(p_sol, ps_sol, decimal=dec)
     np.testing.assert_array_almost_equal(p_var, ps_var, decimal=dec)
     np.testing.assert_array_almost_equal(p_cov, ps_cov, decimal=dec)
 
+    np.testing.assert_array_almost_equal(p2_sol, ps_sol, decimal=dec)
+    np.testing.assert_array_almost_equal(p2_var, ps_var, decimal=dec)
+    np.testing.assert_array_almost_equal(p2_cov, ps_cov, decimal=dec)
+
     # Test array sparse
     Xsp = sp.coo_matrix(X)
-    psp_sol, psp_var, psp_cov = wls_stats(Xsp, y_meas, w=beta_w, calc_cov=True)
+    psp_sol, psp_var, psp_cov = wls_stats(
+        Xsp, y_meas, w=beta_w * 0.9, calc_cov=True)
+    psp1_sol, psp1_var, psp1_cov = wls_sparse2(
+        Xsp, y_meas, w=beta_w * 0.9, calc_cov=True, adjust_p_cov_flag=True)
+    psp2_sol, psp2_var, psp2_cov = wls_sparse2(
+        Xsp, y_meas, w=beta_w * 0.9, calc_cov=True, adjust_p_cov_flag=True)
 
     np.testing.assert_array_almost_equal(p_sol, psp_sol, decimal=dec)
     np.testing.assert_array_almost_equal(p_var, psp_var, decimal=dec)
     np.testing.assert_array_almost_equal(p_cov, psp_cov, decimal=dec)
 
+    np.testing.assert_array_almost_equal(p_sol, psp1_sol, decimal=dec)
+    np.testing.assert_array_almost_equal(p_var, psp1_var, decimal=dec)
+    np.testing.assert_array_almost_equal(p_cov, psp1_cov, decimal=dec)
+
+    np.testing.assert_array_almost_equal(p_sol, psp2_sol, decimal=dec)
+    np.testing.assert_array_almost_equal(p_var, psp2_var, decimal=dec)
+    np.testing.assert_array_almost_equal(p_cov, psp2_cov, decimal=dec)
     pass
+
+
+def test_calibrate_wls_sequential():
+    """
+    Test wheter solving for all observations at ones leads to the same result as
+    calibrating in two steps.
+    Returns
+    -------
+
+    """
+    dec = 8
+    size_tot = 1000
+    size_1 = 100
+    scale = 3  # standard deviation
+    x_true = np.array([2, 3, 4])
+    H_true = np.random.random((size_tot, 3)) * 10
+    y_true = H_true.dot(x_true)
+    err = np.random.normal(size=size_tot, scale=scale)
+    y_meas = y_true + err
+    x_meas, var_meas, cov_meas = wls_sparse2(
+        H_true,
+        y_meas,
+        x0=x_true * 1.1,
+        w=1 / scale**2,
+        adjust_p_cov_flag=False)
+
+    x1, var1, cov1 = wls_sparse2(
+        H_true[:size_1],
+        y_meas[:size_1],
+        x0=x_true * 1.1,
+        w=1 / scale**2,
+        adjust_p_cov_flag=False)
+
+    x2, var2, cov2 = wls_sparse2(
+        H_true[size_1:],
+        y_meas[size_1:],
+        x0=x_true * 1.1,
+        p_sol_prior=x1,
+        p_cov_prior=cov1,
+        w=1 / scale**2,
+        adjust_p_cov_flag=False)
+
+    assert_almost_equal_verbose(x_meas, x2, decimal=dec, verbose=1)
+    assert_almost_equal_verbose(var_meas, var2, decimal=dec, verbose=1)
+    assert_almost_equal_verbose(cov_meas, cov2, decimal=dec, verbose=1)
 
 
 def test_average_measurements_single_ended():
