@@ -1253,7 +1253,7 @@ def wls_sparse2(
     p_sol, p_var, p_cov : array
 
     """
-    def adjust_covariance(p_cov_uncorrected, y, X, p_sol, W):
+    def adjust_covariance(p_cov_uncorrected, y, X, p_sol, w):
         """The assumption of that the variance of the weighted residuals is 1
         should hold. However, statsmodels corrects for the actual variance in
         the weighted residuals. It requires the postiori parameters and the full
@@ -1262,8 +1262,14 @@ def wls_sparse2(
         """
         nobs, npar = X.shape
         degrees_of_freedom_err = nobs - npar
-        e = y - X.dot(p_sol)
-        werr_sum = e.T.dot(W).dot(e)
+        e = y - X @ p_sol
+        if w is None:
+            werr_sum = e.T @ e
+        elif np.ndim(w) == 0 or np.ndim(w) == 1:
+            werr_sum = e.T @ (e * w)
+        elif np.ndim(w) == 2:
+            werr_sum = e.T @ w @ e
+
         werr_var = werr_sum / degrees_of_freedom_err
         p_cov_corrected = np.array(p_cov_uncorrected * werr_var)
         return p_cov_corrected
@@ -1288,36 +1294,38 @@ def wls_sparse2(
     else:
         pass
 
-    if w is None:  # gracefully default to unweighted
-        W = 1.
-    elif np.ndim(w) == 0:
-        W = w
-    elif np.ndim(w) == 1:
-        # covariances between residuals are neglected
-        W = np.diag(w)
-    elif np.ndim(w) == 2:
-        # w is the inverse of the covariance of the residuals
-        W = w
-
     # Solving the normal equations instead. wX and wy are always dense.
-    wy = X.T.dot(W).dot(y)
+    if w is None:  # gracefully default to unweighted
+        # W = np.atleast_2d(1.)
+        wy = X.T @ y
+        wX = X.T @ X
 
-    if sp.issparse(X):
-        wX = X.T * W * X
-    else:
-        wX = X.T.dot(W).dot(X)
+    elif np.ndim(w) == 0:
+        wy = X.T * w @ y
+        wX = X.T * w @ X
+
+    elif np.ndim(w) == 1:
+        wy = X.T @ (w * y)
+        if sp.issparse(X):
+            wX = (X.T @ (X.multiply(w[:, None]))).todense()
+        else:
+            wX = X.T @ (w[:, None] * X)
+
+    elif np.ndim(w) == 2:
+        wy = X.T @ w @ y
+        wX = X.T @ w @ X
 
     if p_sol_prior is not None:
         # Update the matrices with apriori information
         Q_inv = scipy_inv(p_cov_prior)
         wX += Q_inv
-        wy += Q_inv.dot(p_sol_prior)
+        wy += Q_inv @ p_sol_prior
 
     p_cov_uncorrected = np.linalg.inv(wX)
 
     if x0 is not None:
         # Start lstsq searching at x=0
-        wy -= wX.dot(x0)
+        wy -= wX @ x0
 
     # wX and wy are overwritten during optimization and unusable after.
     p_sol, _, _, _ = scipy_lstsq(
@@ -1332,7 +1340,7 @@ def wls_sparse2(
         p_sol += x0
 
     if p_sol_prior is None and adjust_p_cov_flag:
-        p_cov = adjust_covariance(p_cov_uncorrected, y, X, p_sol, W)
+        p_cov = adjust_covariance(p_cov_uncorrected, y, X, p_sol, w)
 
     else:
         p_cov = p_cov_uncorrected

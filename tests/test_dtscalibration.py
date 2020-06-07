@@ -3393,8 +3393,8 @@ def test_calibrate_wls_procedures():
 
 def test_calibrate_wls_sequential():
     """
-    Test wheter solving for all observations at ones leads to the same result as
-    calibrating in two steps.
+    Test wls_sparse2 whether solving for all observations at ones leads to the
+    same result as calibrating in two steps.
     Returns
     -------
 
@@ -3431,9 +3431,9 @@ def test_calibrate_wls_sequential():
         w=1 / scale**2,
         adjust_p_cov_flag=False)
 
-    assert_almost_equal_verbose(x_meas, x2, decimal=dec, verbose=1)
-    assert_almost_equal_verbose(var_meas, var2, decimal=dec, verbose=1)
-    assert_almost_equal_verbose(cov_meas, cov2, decimal=dec, verbose=1)
+    np.testing.assert_array_almost_equal(x_meas, x2, decimal=dec)
+    np.testing.assert_array_almost_equal(var_meas, var2, decimal=dec)
+    np.testing.assert_array_almost_equal(cov_meas, cov2, decimal=dec)
 
 
 def test_average_measurements_single_ended():
