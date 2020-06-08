@@ -75,6 +75,8 @@ def calibration_single_ended_solver(
     Parameters
     ----------
     ds : DataStore
+        Should have sections and reference temperature timeseries already
+        configured.
     st_var : float, array-like, optional
         If `None` use ols calibration. If `float` the variance of the noise
         from the Stokes detector is described with a single value. Or when the
@@ -90,7 +92,7 @@ def calibration_single_ended_solver(
     calc_cov : bool
         whether to calculate the covariance matrix. Required for calculation
         of confidence boundaries. But uses a lot of memory.
-    solver : {'sparse', 'stats', 'external', 'external_split'}
+    solver : {'sparse', 'sparse2', 'stats', 'external', 'external_split'}
         Always use sparse to save memory. The statsmodel can be used to validate
         sparse solver. `external` returns the matrices that would enter the
         matrix solver (Eq.37). `external_split` returns a dictionary with
@@ -293,6 +295,14 @@ def calibration_single_ended_solver(
             p_sol, p_var = wls_sparse(
                 X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=verbose)
 
+    elif solver == 'sparse2':
+        if calc_cov:
+            p_sol, p_var, p_cov = wls_sparse2(
+                X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=verbose)
+        else:
+            p_sol, p_var = wls_sparse2(
+                X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=verbose)
+
     elif solver == 'stats':
         if calc_cov:
             p_sol, p_var, p_cov = wls_stats(
@@ -346,6 +356,8 @@ def calibration_double_ended_solver(
     Parameters
     ----------
     ds : DataStore
+        Should have sections and reference temperature timeseries already
+        configured.
     st_var : float, array-like, optional
         If `None` use ols calibration. If `float` the variance of the noise
         from the Stokes detector is described with a single value. Or when the
@@ -373,7 +385,7 @@ def calibration_double_ended_solver(
     calc_cov : bool
         whether to calculate the covariance matrix. Required for calculation
         of confidence boundaries. But uses a lot of memory.
-    solver : {'sparse', 'stats', 'external', 'external_split'}
+    solver : {'sparse', 'sparse2', 'stats', 'external', 'external_split'}
         Always use sparse to save memory. The statsmodel can be used to validate
         sparse solver. `external` returns the matrices that would enter the
         matrix solver (Eq.37). `external_split` returns a dictionary with
@@ -562,6 +574,8 @@ def calibration_double_ended_solver(
 
     if solver == 'sparse':
         solver_fun = wls_sparse
+    elif solver == 'sparse2':
+        solver_fun = wls_sparse2
     elif solver == 'stats':
         solver_fun = wls_stats
     elif solver == 'external':
