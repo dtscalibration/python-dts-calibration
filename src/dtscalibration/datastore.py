@@ -21,6 +21,7 @@ from .calibrate_utils import calibration_double_ended_solver
 from .calibrate_utils import calibration_single_ended_solver
 from .calibrate_utils import match_sections
 from .calibrate_utils import wls_sparse
+from .calibrate_utils import wls_sparse2
 from .calibrate_utils import wls_stats
 from .datastore_utils import check_timestep_allclose
 from .io import apsensing_xml_version_check
@@ -1894,7 +1895,7 @@ class DataStore(xr.Dataset):
             Use `'ols'` for ordinary least squares and `'wls'` for weighted least
             squares. `'wls'` is the default, and there is currently no reason to
             use `'ols'`.
-        solver : {'sparse', 'stats'}
+        solver : {'sparse', 'sparse2', 'stats'}
             Either use the homemade weighted sparse solver or the weighted
             dense matrix solver of statsmodels. The sparse solver uses much less
             memory, is faster, and gives the same result as the statsmodels
@@ -2038,6 +2039,10 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                     out = wls_sparse(
                         X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=False)
 
+                elif solver == 'sparse2':
+                    out = wls_sparse2(
+                        X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=False)
+
                 elif solver == 'stats':
                     out = wls_stats(
                         X, y, w=w, calc_cov=calc_cov, verbose=False)
@@ -2090,6 +2095,10 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
 
                 if solver == 'sparse':
                     out = wls_sparse(
+                        X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=False)
+
+                elif solver == 'sparse2':
+                    out = wls_sparse2(
                         X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=False)
 
                 elif solver == 'stats':
@@ -2147,6 +2156,10 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
 
                 if solver == 'sparse':
                     out = wls_sparse(
+                        X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=False)
+
+                elif solver == 'sparse2':
+                    out = wls_sparse2(
                         X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=False)
 
                 elif solver == 'stats':
@@ -2465,7 +2478,7 @@ C_\mathrm{B}(t) + \int_x^L{\Delta\\alpha(x')\,\mathrm{d}x'}}
             Use `'ols'` for ordinary least squares and `'wls'` for weighted least
             squares. `'wls'` is the default, and there is currently no reason to
             use `'ols'`.
-        solver : {'sparse', 'stats'}
+        solver : {'sparse', 'sparse2', 'stats'}
             Either use the homemade weighted sparse solver or the weighted
             dense matrix solver of statsmodels. The sparse solver uses much less
             memory, is faster, and gives the same result as the statsmodels
@@ -2750,6 +2763,10 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                     out = wls_sparse(
                         X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=False)
 
+                elif solver == 'sparse2':
+                    out = wls_sparse2(
+                        X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=False)
+
                 elif solver == 'stats':
                     out = wls_stats(
                         X, y, w=w, calc_cov=calc_cov, verbose=False)
@@ -2864,6 +2881,10 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
 
                 if solver == 'sparse':
                     out = wls_sparse(
+                        X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=False)
+
+                elif solver == 'sparse2':
+                    out = wls_sparse2(
                         X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=False)
 
                 elif solver == 'stats':
@@ -3086,6 +3107,10 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
 
                 if solver == 'sparse':
                     out = wls_sparse(
+                        X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=False)
+
+                elif solver == 'sparse2':
+                    out = wls_sparse2(
                         X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=False)
 
                 elif solver == 'stats':
@@ -5100,7 +5125,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
         reference section wrt the temperature of the water baths
 
         >>> tmpf_var = d.ufunc_per_section(
-        >>>     func='var'
+        >>>     func='var',
         >>>     calc_per='stretch',
         >>>     label='tmpf',
         >>>     temp_err=True)
