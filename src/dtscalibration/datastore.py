@@ -5125,7 +5125,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
         reference section wrt the temperature of the water baths
 
         >>> tmpf_var = d.ufunc_per_section(
-        >>>     func='var'
+        >>>     func='var',
         >>>     calc_per='stretch',
         >>>     label='tmpf',
         >>>     temp_err=True)
