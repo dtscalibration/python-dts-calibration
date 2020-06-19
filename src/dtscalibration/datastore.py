@@ -111,7 +111,7 @@ class DataStore(xr.Dataset):
                     self._variables[name] = var.transpose(*var_dims)
 
         if 'trans_att' not in self.coords:
-            self.trans_att = []
+            self.set_trans_att(trans_att=[])
 
         # Get attributes from dataset
         for arg in args:
@@ -1796,7 +1796,7 @@ class DataStore(xr.Dataset):
         if trans_att is None:
             trans_att = []
 
-        self.trans_att = trans_att
+        self['trans_att'] = trans_att
         self.trans_att.attrs = dim_attrs['trans_att']
         pass
 
@@ -3257,7 +3257,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             self.conf_int_double_ended(
                 p_val=p_val,
                 p_cov=p_cov,
-                store_ta=store_ta if self.trans_att.values else None,
+                store_ta=store_ta if self.trans_att.size > 0 else None,
                 st_var=st_var,
                 ast_var=ast_var,
                 rst_var=rst_var,
