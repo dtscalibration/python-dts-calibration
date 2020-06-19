@@ -23,6 +23,7 @@ from .calibrate_utils import match_sections
 from .calibrate_utils import wls_sparse
 from .calibrate_utils import wls_stats
 from .datastore_utils import check_timestep_allclose
+from .io import _dim_attrs
 from .io import apsensing_xml_version_check
 from .io import read_apsensing_files_routine
 from .io import read_sensornet_files_routine_v3
@@ -35,7 +36,7 @@ from .io import silixa_xml_version_check
 from .io import ziphandle_to_filepathlist
 
 dtsattr_namelist = ['double_ended_flag']
-
+dim_attrs = {k: v for kl, v in _dim_attrs.items() for k in kl}
 
 class DataStore(xr.Dataset):
     """The data class that stores the measurements, contains calibration
@@ -83,7 +84,7 @@ class DataStore(xr.Dataset):
         dtscalibration.open_datastore : Load (calibrated) measurements from
         netCDF-like file
         """
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, autofill_dim_attrs=True, **kwargs):
         super().__init__(*args, **kwargs)
 
         # check order of the dimensions of the data_vars
@@ -109,16 +110,27 @@ class DataStore(xr.Dataset):
                         dim for dim in ideal_dim if dim in (var.dims + (...,)))
                     self._variables[name] = var.transpose(*var_dims)
 
+        if 'trans_att' not in self.coords:
+            self.trans_att = []
+
         # Get attributes from dataset
         for arg in args:
             if isinstance(arg, xr.Dataset):
                 self.attrs = arg.attrs
+
+        # Add attributes to loaded dimensions
+        if autofill_dim_attrs:
+            for name, data_arri in self.coords.items():
+                if name in dim_attrs and not self.coords[name].attrs:
+                    self.coords[name].attrs = dim_attrs[name]
 
         if '_sections' not in self.attrs:
             self.attrs['_sections'] = yaml.dump(None)
 
         if 'sections' in kwargs:
             self.sections = kwargs['sections']
+
+        pass
 
     def __repr__(self):
         # __repr__ from xarray is used and edited.
@@ -822,7 +834,11 @@ class DataStore(xr.Dataset):
 
     def check_deprecated_kwargs(self, kwargs):
         """
-        Internal function that parses the `kwargs` for depreciated keyword arguments
+        Internal function that parses the `kwargs` for depreciated keyword
+        arguments.
+
+        Depreciated keywords raise an error, pending to be depreciated do not.
+        But this requires that the code currently deals with those arguments.
 
         Parameters
         ----------
@@ -859,6 +875,11 @@ class DataStore(xr.Dataset):
         ds.tmpw.plot()
         """
         list_of_depr = ['st_label', 'ast_label', 'rst_label', 'rast_label']
+        list_of_pending_depr = ['transient_asym_att_x', 'transient_att_x']
+
+        kwargs = {k: v for k, v in kwargs.items()
+                  if k not in list_of_pending_depr}
+
         for k in kwargs:
             if k in list_of_depr:
                 raise NotImplementedError(msg)
@@ -1731,6 +1752,54 @@ class DataStore(xr.Dataset):
 
         return np.logical_and(mask_dn, mask_up)
 
+    def set_trans_att(self, trans_att=None, **kwargs):
+        """Gracefully set the locations that introduce directional differential
+        attenuation
+
+        Parameters
+        ----------
+        trans_att : iterable, optional
+            Splices can cause jumps in differential attenuation. Normal single
+            ended calibration assumes these are not present. An additional loss
+            term is added in the 'shadow' of the splice. Each location
+            introduces an additional nt parameters to solve for. Requiring
+            either an additional calibration section or matching sections.
+            If multiple locations are defined, the losses are added.
+
+        """
+
+        if 'transient_att_x' in kwargs:
+            warnings.warn(
+                "transient_att_x argument will be deprecated in version 2, "
+                "use trans_att", PendingDeprecationWarning)
+            trans_att = kwargs['transient_att_x']
+
+        if 'transient_asym_att_x' in kwargs:
+            warnings.warn(
+                "transient_asym_att_x arg will be deprecated in version 2, "
+                "use trans_att", PendingDeprecationWarning)
+            trans_att = kwargs['transient_asym_att_x']
+
+        if 'trans_att' in self.coords and self.trans_att.size > 0:
+            raise_warning = 0
+
+            for k, v in self.data_vars.items():
+                if 'trans_att' in v.dims:
+                    del self[k]
+                    raise_warning += 1
+
+            if raise_warning:
+                m = 'trans_att was set before. All `data_vars` that make use ' \
+                    'of the `trans_att` coordinates were deleted'
+                warnings.warn(m)
+
+        if trans_att is None:
+            trans_att = []
+
+        self.trans_att = trans_att
+        self.trans_att.attrs = dim_attrs['trans_att']
+        pass
+
     def check_reference_section_values(self):
         """
         Checks if the values of the used sections are of the right datatype
@@ -1785,7 +1854,7 @@ class DataStore(xr.Dataset):
             p_var=None,
             p_cov=None,
             matching_sections=None,
-            transient_att_x=None,
+            trans_att=None,
             fix_gamma=None,
             fix_dalpha=None,
             **kwargs):
@@ -1905,7 +1974,9 @@ class DataStore(xr.Dataset):
             has three items. The first two items are the slices of the sections
             that are matched. The third item is a boolean and is True if the two
             sections have a reverse direction ("J-configuration").
-        transient_att_x : iterable, optional
+        transient_att_x, transient_asym_att_x : iterable, optional
+            Depreciated. See trans_att
+        trans_att : iterable, optional
             Splices can cause jumps in differential attenuation. Normal single
             ended calibration assumes these are not present. An additional loss
             term is added in the 'shadow' of the splice. Each location
@@ -1944,6 +2015,8 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
         """
         self.check_deprecated_kwargs(kwargs)
 
+        self.set_trans_att(trans_att=trans_att)
+
         if sections:
             self.sections = sections
         else:
@@ -1951,10 +2024,10 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
 
         self.check_reference_section_values()
 
+        nx = self.x.size
         time_dim = self.get_time_dim()
         nt = self[time_dim].size
-        nx = self.x.size
-        nta = len(transient_att_x) if transient_att_x else 0
+        nta = self.trans_att.size
 
         assert self.st.dims[0] == 'x', 'Stokes are transposed'
         assert self.ast.dims[0] == 'x', 'Stokes are transposed'
@@ -1963,13 +2036,6 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             matching_indices = match_sections(self, matching_sections)
         else:
             matching_indices = None
-
-        if transient_att_x:
-            ta_dim = 'trans_att'
-            err = 'This ds has been calibrated before. Remove trans_att.. ' \
-                  'coordinates'
-            assert ta_dim not in self.coords, err
-            self.coords[ta_dim] = transient_att_x
 
         ix_sec = self.ufunc_per_section(x_indices=True, calc_per='all')
         assert not np.any(
@@ -2001,8 +2067,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                     ast_var,
                     calc_cov=calc_cov,
                     solver='external_split',
-                    matching_indices=matching_indices,
-                    transient_att_x=transient_att_x)
+                    matching_indices=matching_indices)
 
                 # Move the coefficients times the fixed gamma to the
                 # observations
@@ -2058,8 +2123,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                     ast_var,
                     calc_cov=calc_cov,
                     solver='external_split',
-                    matching_indices=matching_indices,
-                    transient_att_x=transient_att_x)
+                    matching_indices=matching_indices)
 
                 # Move the coefficients times the fixed gamma to the
                 # observations
@@ -2111,8 +2175,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                     ast_var,
                     calc_cov=calc_cov,
                     solver='external_split',
-                    matching_indices=matching_indices,
-                    transient_att_x=transient_att_x)
+                    matching_indices=matching_indices)
 
                 # Move the coefficients times the fixed dalpha to the
                 # observations
@@ -2173,8 +2236,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                     ast_var,
                     calc_cov=calc_cov,
                     solver=solver,
-                    matching_indices=matching_indices,
-                    transient_att_x=transient_att_x)
+                    matching_indices=matching_indices)
 
                 if calc_cov:
                     p_val, p_var, p_cov = out
@@ -2197,9 +2259,9 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
         dalpha = p_val[1]
         c = p_val[2:nt + 2]
 
-        if transient_att_x:
+        if nta > 0:
             ta = p_val[nt + 2:].reshape((nt, nta), order='F')
-            self[store_ta] = ((time_dim, ta_dim), ta[:, :])
+            self[store_ta] = ((time_dim, 'trans_att'), ta[:, :])
 
         self[store_gamma] = (tuple(), gamma)
         self[store_dalpha] = (tuple(), dalpha)
@@ -2216,17 +2278,17 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             self[store_dalpha + variance_suffix] = (tuple(), dalphavar)
             self[store_c + variance_suffix] = ((time_dim,), cvar)
 
-            if transient_att_x:
+            if nta > 0:
                 tavar = p_var[nt + 2:].reshape((nt, nta), order='F')
                 self[store_ta
-                     + variance_suffix] = ((time_dim, ta_dim), tavar[:, :])
+                     + variance_suffix] = ((time_dim, 'trans_att'), tavar[:, :])
 
         # deal with FW
         if store_tmpf:
             ta_arr = np.zeros((nx, nt))
-            if transient_att_x:
+            if nta > 0:
                 for tai, taxi in zip(self[store_ta].values.T,
-                                     self.coords[ta_dim].values):
+                                     self.trans_att.values):
                     ta_arr[self.x.values >= taxi] = \
                         ta_arr[self.x.values >= taxi] + tai
 
@@ -2276,7 +2338,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             p_cov=None,
             remove_mc_set_flag=True,
             reduce_memory_usage=False,
-            transient_asym_att_x=None,
+            trans_att=None,
             fix_gamma=None,
             fix_alpha=None,
             matching_sections=None,
@@ -2471,15 +2533,15 @@ C_\mathrm{B}(t) + \int_x^L{\Delta\\alpha(x')\,\mathrm{d}x'}}
             memory, is faster, and gives the same result as the statsmodels
             solver. The statsmodels solver is mostly used to check the sparse
             solver. `'stats'` is the default.
-        transient_asym_att_x : iterable of float, optional
-            Connectors cause assymetrical attenuation. Normal double ended
-            calibration assumes symmetrical attenuation. An additional loss
-            term is added in the 'shadow' of the forward and backward
-            measurements. This loss term varies over time. Provide a list
-            containing the x locations of the connectors along the fiber.
-            Each location introduces an additional 2*nt parameters to solve
-            for. Requiering either an additional calibration section or
-            matching sections.
+        transient_att_x, transient_asym_att_x : iterable, optional
+            Depreciated. See trans_att
+        trans_att : iterable, optional
+            Splices can cause jumps in differential attenuation. Normal single
+            ended calibration assumes these are not present. An additional loss
+            term is added in the 'shadow' of the splice. Each location
+            introduces an additional nt parameters to solve for. Requiring
+            either an additional calibration section or matching sections.
+            If multiple locations are defined, the losses are added.
         fix_gamma : Tuple[float, float], optional
             A tuple containing two floats. The first float is the value of
             gamma, and the second item is the variance of the estimate of gamma.
@@ -2523,6 +2585,8 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
         """
         self.check_deprecated_kwargs(kwargs)
 
+        self.set_trans_att(trans_att=trans_att)
+
         if sections:
             self.sections = sections
         else:
@@ -2533,7 +2597,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
         nx = self.x.size
         time_dim = self.get_time_dim()
         nt = self[time_dim].size
-        nta = len(transient_asym_att_x) if transient_asym_att_x else 0
+        nta = self.trans_att.size
         ix_sec = self.ufunc_per_section(x_indices=True, calc_per='all')
         nx_sec = ix_sec.size
 
@@ -2574,13 +2638,6 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                 'Either define `matching_sections` or `matching_indices'
             matching_indices = match_sections(self, matching_sections)
 
-        if transient_asym_att_x:
-            ta_dim = 'trans_att'
-            err = 'This ds has been calibrated before. Remove trans_att.. ' \
-                  'coordinates'
-            assert ta_dim not in self.coords, err
-            self.coords[ta_dim] = transient_asym_att_x
-
         if method == 'ols' or method == 'wls':
             if method == 'ols':
                 calc_cov = False
@@ -2596,7 +2653,6 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                     rast_var,
                     calc_cov=calc_cov,
                     solver='external_split',
-                    transient_asym_att_x=transient_asym_att_x,
                     matching_indices=matching_indices,
                     verbose=verbose)
             else:
@@ -2608,7 +2664,6 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                     rast_var,
                     calc_cov=calc_cov,
                     solver=solver,
-                    transient_asym_att_x=transient_asym_att_x,
                     matching_indices=matching_indices,
                     verbose=verbose)
 
@@ -2873,13 +2928,13 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                 # put E outside of reference section in solution
                 # concatenating makes a copy of the data instead of using a
                 # pointer
-                ds_sub = self[['st', 'ast', 'rst', 'rast']]
+                ds_sub = self[['st', 'ast', 'rst', 'rast', 'trans_att']]
                 ds_sub['df'] = (('time',), out[0][:nt])
                 ds_sub['df_var'] = (('time',), out[1][:nt])
                 ds_sub['db'] = (('time',), out[0][nt:2 * nt])
                 ds_sub['db_var'] = (('time',), out[1][nt:2 * nt])
 
-                if transient_asym_att_x:
+                if nta > 0:
                     if np.any(matching_indices):
                         n_E_in_cal = split['ix_from_cal_match_to_glob'].size
                         ta = out[0][2 * nt + n_E_in_cal:].reshape(
@@ -2915,7 +2970,6 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                     'df_var',
                     'db_var',
                     ix_alpha_is_zero=ix_sec[0],
-                    transient_asym_att_x=transient_asym_att_x,
                     talpha_fw=talpha_fw,
                     talpha_bw=talpha_bw,
                     talpha_fw_var=talpha_fw_var,
@@ -3143,10 +3197,10 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
         self[store_df] = ((time_dim,), d_fw)
         self[store_db] = ((time_dim,), d_bw)
 
-        if transient_asym_att_x:
+        if nta > 0:
             ta = p_val[1 + 2 * nt + nx:].reshape((nt, 2, nta), order='F')
-            self[store_ta + '_fw'] = ((time_dim, ta_dim), ta[:, 0, :])
-            self[store_ta + '_bw'] = ((time_dim, ta_dim), ta[:, 1, :])
+            self[store_ta + '_fw'] = ((time_dim, 'trans_att'), ta[:, 0, :])
+            self[store_ta + '_bw'] = ((time_dim, 'trans_att'), ta[:, 1, :])
 
         # store variances in DataStore
         if method == 'wls' or method == 'external':
@@ -3161,21 +3215,23 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             self[store_df + variance_suffix] = ((time_dim,), dfvar)
             self[store_db + variance_suffix] = ((time_dim,), dbvar)
 
-            if transient_asym_att_x:
+            if nta > 0:
                 # neglecting the covariances. Better include them
                 tavar = p_var[2 * nt + 1 + nx:].reshape(
                     (nt, 2, nta), order='F')
                 self[store_ta + '_fw'
-                     + variance_suffix] = ((time_dim, ta_dim), tavar[:, 0, :])
+                     + variance_suffix] = ((time_dim, 'trans_att'),
+                                           tavar[:, 0, :])
                 self[store_ta + '_bw'
-                     + variance_suffix] = ((time_dim, ta_dim), tavar[:, 1, :])
+                     + variance_suffix] = ((time_dim, 'trans_att'),
+                                           tavar[:, 1, :])
 
         # deal with FW
         if store_tmpf or (store_tmpw and method == 'ols'):
             ta_arr = np.zeros((nx, nt))
-            if transient_asym_att_x:
+            if nta > 0:
                 for tai, taxi in zip(self[store_ta + '_fw'].values.T,
-                                     self.coords[ta_dim].values):
+                                     self.trans_att.values):
                     ta_arr[self.x.values >= taxi] = \
                         ta_arr[self.x.values >= taxi] + tai
 
@@ -3187,9 +3243,9 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
         # deal with BW
         if store_tmpb or (store_tmpw and method == 'ols'):
             ta_arr = np.zeros((nx, nt))
-            if transient_asym_att_x:
+            if nta > 0:
                 for tai, taxi in zip(self[store_ta + '_bw'].values.T,
-                                     self.coords[ta_dim].values):
+                                     self.trans_att.values):
                     ta_arr[self.x.values < taxi] = \
                         ta_arr[self.x.values < taxi] + tai
             tempB_data = gamma / (
@@ -3201,7 +3257,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             self.conf_int_double_ended(
                 p_val=p_val,
                 p_cov=p_cov,
-                store_ta=store_ta if transient_asym_att_x else None,
+                store_ta=store_ta if self.trans_att.values else None,
                 st_var=st_var,
                 ast_var=ast_var,
                 rst_var=rst_var,
@@ -3476,7 +3532,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
         if 'trans_att' in self.keys():
             for ii, ta in enumerate(self['ta_mc']):
                 for tai, taxi in zip(ta.values,
-                                     self.coords['trans_att'].values):
+                                     self.trans_att.values):
                     ta_arr[ii, self.x.values >= taxi] = \
                         ta_arr[ii, self.x.values >= taxi] + tai
         self['ta_mc_arr'] = (('mc', 'x', time_dim), ta_arr)
@@ -5100,7 +5156,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
         reference section wrt the temperature of the water baths
 
         >>> tmpf_var = d.ufunc_per_section(
-        >>>     func='var'
+        >>>     func='var',
         >>>     calc_per='stretch',
         >>>     label='tmpf',
         >>>     temp_err=True)

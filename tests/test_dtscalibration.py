@@ -14,6 +14,23 @@ from dtscalibration.cli import main
 
 np.random.seed(0)
 
+def assert_almost_equal_verbose(actual, desired, verbose=False, **kwargs):
+    """Print the actual precision decimals"""
+    err = np.abs(actual - desired).max()
+    dec = -np.ceil(np.log10(err))
+
+    if not (np.isfinite(dec)):
+        dec = 18.
+
+    m = "\n>>>>>The actual precision is: " + str(float(dec))
+
+    if verbose:
+        print(m)
+
+    desired2 = np.broadcast_to(desired, actual.shape)
+    np.testing.assert_almost_equal(actual, desired2, err_msg=m, **kwargs)
+    pass
+
 fn = [
     "channel 1_20170921112245510.xml", "channel 1_20170921112746818.xml",
     "channel 1_20170921112746818.xml"]
@@ -1339,7 +1356,7 @@ def test_double_ended_asymmetrical_attenuation():
         solver='sparse',
         tmpw_mc_size=1000,
         remove_mc_set_flag=True,
-        transient_asym_att_x=[50.])
+        trans_att=[50.])
 
     assert_almost_equal_verbose(temp_real_celsius, ds.tmpf.values, decimal=7)
     assert_almost_equal_verbose(temp_real_celsius, ds.tmpb.values, decimal=7)
@@ -1430,7 +1447,7 @@ def test_double_ended_one_matching_section_and_one_asym_att():
         solver='sparse',
         tmpw_mc_size=3,
         remove_mc_set_flag=True,
-        transient_asym_att_x=[50.],
+        trans_att=[50.],
         matching_sections=[
             (
                 slice(x[3 * nx_per_sec], x[4 * nx_per_sec - 1]),
@@ -1539,7 +1556,7 @@ def test_double_ended_two_matching_sections_and_two_asym_atts():
         solver='sparse',
         tmpw_mc_size=3,
         remove_mc_set_flag=True,
-        transient_asym_att_x=[x[3 * nx_per_sec], x[6 * nx_per_sec]],
+        trans_att=[x[3 * nx_per_sec], x[6 * nx_per_sec]],
         matching_sections=ms)
 
     assert_almost_equal_verbose(temp_real_celsius, ds.tmpf.values, decimal=7)
@@ -1927,7 +1944,7 @@ def test_double_ended_fix_alpha_matching_sections_and_one_asym_att():
         solver='sparse',
         tmpw_mc_size=3,
         remove_mc_set_flag=True,
-        transient_asym_att_x=[50.],
+        trans_att=[50.],
         matching_sections=[
             (
                 slice(x[3 * nx_per_sec], x[4 * nx_per_sec - 1]),
@@ -1953,7 +1970,7 @@ def test_double_ended_fix_alpha_matching_sections_and_one_asym_att():
         tmpw_mc_size=3,
         remove_mc_set_flag=True,
         fix_alpha=(alpha_adj, alpha_var_adj),
-        transient_asym_att_x=[50.],
+        trans_att=[50.],
         matching_sections=[
             (
                 slice(x[3 * nx_per_sec], x[4 * nx_per_sec - 1]),
@@ -2048,7 +2065,7 @@ def test_double_ended_fix_alpha_gamma_matching_sections_and_one_asym_att():
         solver='sparse',
         tmpw_mc_size=3,
         remove_mc_set_flag=True,
-        transient_asym_att_x=[50.],
+        trans_att=[50.],
         matching_sections=[
             (
                 slice(x[3 * nx_per_sec], x[4 * nx_per_sec - 1]),
@@ -2075,7 +2092,7 @@ def test_double_ended_fix_alpha_gamma_matching_sections_and_one_asym_att():
         remove_mc_set_flag=True,
         fix_alpha=(alpha_adj, alpha_var_adj),
         fix_gamma=(gamma, 0.),
-        transient_asym_att_x=[50.],
+        trans_att=[50.],
         matching_sections=[
             (
                 slice(x[3 * nx_per_sec], x[4 * nx_per_sec - 1]),
@@ -2171,7 +2188,7 @@ def test_double_ended_fix_gamma_matching_sections_and_one_asym_att():
         tmpw_mc_size=3,
         fix_gamma=(gamma, 0.),
         remove_mc_set_flag=True,
-        transient_asym_att_x=[50.],
+        trans_att=[50.],
         matching_sections=[
             (
                 slice(x[3 * nx_per_sec], x[4 * nx_per_sec - 1]),
@@ -2903,7 +2920,7 @@ def test_single_ended_trans_att_synthetic():
     ds_test.calibration_single_ended(
         sections=sections,
         method='ols',
-        transient_att_x=[40, 60],
+        trans_att=[40, 60],
         solver='sparse')
 
     assert_almost_equal_verbose(ds_test.gamma.values, gamma, decimal=8)
@@ -2922,7 +2939,7 @@ def test_single_ended_trans_att_synthetic():
         st_var=1.0,
         ast_var=1.0,
         method='wls',
-        transient_att_x=[40, 60],
+        trans_att=[40, 60],
         solver='sparse')
 
     assert_almost_equal_verbose(ds_test.gamma.values, gamma, decimal=8)
@@ -2942,7 +2959,7 @@ def test_single_ended_trans_att_synthetic():
         ast_var=1.0,
         method='wls',
         fix_gamma=(482.6, 0),
-        transient_att_x=[40, 60],
+        trans_att=[40, 60],
         solver='sparse')
 
     assert_almost_equal_verbose(ds_test.gamma.values, gamma, decimal=10)
@@ -2962,7 +2979,7 @@ def test_single_ended_trans_att_synthetic():
         ast_var=1.0,
         method='wls',
         fix_dalpha=(6.46e-05, 0),
-        transient_att_x=[40, 60],
+        trans_att=[40, 60],
         solver='sparse')
 
     assert_almost_equal_verbose(ds_test.gamma.values, gamma, decimal=8)
@@ -3054,7 +3071,7 @@ def test_single_ended_matching_sections_synthetic():
         sections=sections,
         method='ols',
         matching_sections=matching_sections,
-        transient_att_x=[40, 60],
+        trans_att=[40, 60],
         solver='sparse')
 
     assert_almost_equal_verbose(ds_test.gamma.values, gamma, decimal=8)
@@ -3074,7 +3091,7 @@ def test_single_ended_matching_sections_synthetic():
         ast_var=1.0,
         method='wls',
         matching_sections=matching_sections,
-        transient_att_x=[40, 60],
+        trans_att=[40, 60],
         solver='sparse')
 
     assert_almost_equal_verbose(ds_test.gamma.values, gamma, decimal=8)
@@ -3095,7 +3112,7 @@ def test_single_ended_matching_sections_synthetic():
         method='wls',
         fix_gamma=(482.6, 0),
         matching_sections=matching_sections,
-        transient_att_x=[40, 60],
+        trans_att=[40, 60],
         solver='sparse')
 
     assert_almost_equal_verbose(ds_test.gamma.values, gamma, decimal=10)
@@ -3116,7 +3133,7 @@ def test_single_ended_matching_sections_synthetic():
         method='wls',
         fix_dalpha=(6.46e-05, 0),
         matching_sections=matching_sections,
-        transient_att_x=[40, 60],
+        trans_att=[40, 60],
         solver='sparse')
 
     assert_almost_equal_verbose(ds_test.gamma.values, gamma, decimal=10)
@@ -3138,7 +3155,7 @@ def test_single_ended_matching_sections_synthetic():
         fix_gamma=(482.6, 0),
         fix_dalpha=(6.46e-05, 0),
         matching_sections=matching_sections,
-        transient_att_x=[40, 60],
+        trans_att=[40, 60],
         solver='sparse')
 
     assert_almost_equal_verbose(ds_test.gamma.values, gamma, decimal=10)
