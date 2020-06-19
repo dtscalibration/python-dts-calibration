@@ -49,7 +49,17 @@ _dim_attrs = {
             description='Measurement duration of backward channel',
             long_description='Desired measurement duration of backward '
             'channel',
-            units='seconds')}
+            units='seconds'),
+    ('trans_att',):
+        dict(
+            name='Locations introducing transient directional differential '
+                 'attenuation',
+            description='Locations along the x-dimension introducing transient '
+                        'directional differential attenuation',
+            long_description='Connectors introduce additional differential '
+                             'attenuation that is different for the forward '
+                             'and backward direction, and varies over time.',
+            units='m')}
 
 # Because variations in the names exist between the different file formats. The
 #   tuple as key contains the possible keys, which is expanded below.

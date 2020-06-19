@@ -67,9 +67,11 @@ def calibration_single_ended_solver(
         calc_cov=True,
         solver='sparse',
         matching_indices=None,
-        transient_att_x=None,
         verbose=False):
     """
+    The solver for single-ended setups. Assumes `ds` is pre-configured with
+    `sections` and `trans_att`.
+
     Parameters
     ----------
     ds : DataStore
@@ -97,13 +99,6 @@ def calibration_single_ended_solver(
     matching_indices : array-like
         Is an array of size (np, 2), where np is the number of paired
         locations. This array is produced by `matching_sections()`.
-    transient_att_x : iterable, optional
-        Splices can cause jumps in differential attenuation. Normal single
-        ended calibration assumes these are not present. An additional loss term
-        is added in the 'shadow' of the splice. Each location introduces an
-        additional nt parameters to solve for. Requiring either an additional
-        calibration section or matching sections. If multiple locations are
-        defined, the losses are added.
 
     verbose : bool
 
@@ -119,7 +114,7 @@ def calibration_single_ended_solver(
     x_all = ds['x'].values
     nx = x_sec.size
     nt = ds.time.size
-    nta = len(transient_att_x) if transient_att_x else 0
+    nta = ds.trans_att.size
     nm = matching_indices.shape[0] if np.any(matching_indices) else 0
 
     if np.any(matching_indices):
@@ -158,10 +153,10 @@ def calibration_single_ended_solver(
         (data_c, (coord_c_row, coord_c_col)), shape=(nt * nx, nt), copy=False)
 
     # X ta #not documented
-    if transient_att_x:
+    if ds.trans_att.size > 0:
         TA_list = list()
 
-        for transient_att_xi in transient_att_x:
+        for transient_att_xi in ds.trans_att.values:
             # first index on the right hand side a the difficult splice
             # Deal with connector outside of fiber
             if transient_att_xi >= x_sec[-1]:
@@ -210,10 +205,10 @@ def calibration_single_ended_solver(
             copy=False)
 
         # make TA matrix
-        if transient_att_x:
+        if ds.trans_att.size > 0:
             transient_m_data = np.zeros((nm, nta))
             for ii, row in enumerate(matching_indices):
-                for jj, transient_att_xi in enumerate(transient_att_x):
+                for jj, transient_att_xi in enumerate(ds.trans_att.values):
                     transient_m_data[ii, jj] = np.logical_and(
                         transient_att_xi > x_all[row[0]],
                         transient_att_xi < x_all[row[1]]).astype(int)
@@ -331,9 +326,11 @@ def calibration_double_ended_solver(
         calc_cov=True,
         solver='sparse',
         matching_indices=None,
-        transient_asym_att_x=None,
         verbose=False):
     """
+    The solver for double-ended setups. Assumes `ds` is pre-configured with
+    `sections` and `trans_att`.
+
     The construction of X differs a bit from what is presented in the
     article. The choice to divert from the article is made because
     then remaining modular is easier.
@@ -380,16 +377,6 @@ def calibration_double_ended_solver(
     matching_indices : array-like
         Is an array of size (np, 2), where np is the number of paired
         locations. This array is produced by `matching_sections()`.
-    transient_asym_att_x : iterable, optional
-        Connectors cause assymetrical attenuation. Normal double ended
-        calibration assumes symmetrical attenuation. An additional loss
-        term is added in the 'shadow' of the forward and backward
-        measurements. This loss term varies over time. Provide a list
-        containing the x locations of the connectors along the fiber.
-        Each location introduces an additional 2*nt parameters to solve
-        for. Requiering either an additional calibration section or
-        matching sections. If multiple locations are defined, the losses are
-        added.
     verbose : bool
 
     Returns
@@ -403,7 +390,7 @@ def calibration_double_ended_solver(
     x_sec = ds_sec['x'].values
     nx_sec = x_sec.size
     nt = ds.time.size
-    nta = len(transient_asym_att_x) if transient_asym_att_x else 0
+    nta = ds.trans_att.size
 
     # Calculate E as initial estimate for the E calibration.
     # Does not require ta to be passed on
@@ -418,7 +405,7 @@ def calibration_double_ended_solver(
     df_est, db_est = calc_df_db_double_est(ds, ix_alpha_is_zero, 485.)
 
     E, Z_D, Z_gamma, Zero_d, Z_TA_fw, Z_TA_bw, = \
-        construct_submatrices(nt, nx_sec, ds, transient_asym_att_x, x_sec)
+        construct_submatrices(nt, nx_sec, ds, ds.trans_att.values, x_sec)
 
     # y  # Eq.41--45
     y_F = np.log(ds_sec.st / ds_sec.ast).values.ravel()
@@ -463,7 +450,7 @@ def calibration_double_ended_solver(
             Zero_eq12_gamma, Zero_eq3_gamma, Zero_d_eq12 = \
             construct_submatrices_matching_sections(
                 ds.x.values, ix_sec, matching_indices[:, 0],
-                matching_indices[:, 1], nt, transient_asym_att_x)
+                matching_indices[:, 1], nt, ds.trans_att.values)
 
         p0_est = np.concatenate(
             (
@@ -631,7 +618,7 @@ def calibration_double_ended_solver(
     # the int diff att for outside the reference sections.
 
     # calculate talpha_fw and bw for attenuation
-    if transient_asym_att_x:
+    if ds.trans_att.size > 0:
         if np.any(matching_indices):
             ta = p_sol[1 + 2 * nt + ix_from_cal_match_to_glob.size:].reshape(
                 (nt, 2, nta), order='F')
@@ -655,7 +642,7 @@ def calibration_double_ended_solver(
 
     # put E outside of reference section in solution
     # concatenating makes a copy of the data instead of using a pointer
-    ds_sub = ds[['st', 'ast', 'rst', 'rast']]
+    ds_sub = ds[['st', 'ast', 'rst', 'rast', 'trans_att']]
     time_dim = ds_sub.get_time_dim()
     ds_sub['df'] = ((time_dim,), p_sol[1:1 + nt])
     ds_sub['df_var'] = ((time_dim,), p_var[1:1 + nt])
@@ -673,7 +660,6 @@ def calibration_double_ended_solver(
         'df_var',
         'db_var',
         ix_alpha_is_zero=ix_alpha_is_zero,
-        transient_asym_att_x=transient_asym_att_x,
         talpha_fw=talpha_fw,
         talpha_bw=talpha_bw,
         talpha_fw_var=talpha_fw_var,
@@ -763,7 +749,7 @@ def matching_section_location_indices(ix_sec, hix, tix):
 
 
 def construct_submatrices_matching_sections(
-        x, ix_sec, hix, tix, nt, transient_asym_att_x):
+        x, ix_sec, hix, tix, nt, trans_att):
     """
     For all matching indices, where subscript 1 refers to the indices in
     `hix` and subscript 2 refers to the indices in `tix`.
@@ -880,23 +866,23 @@ def construct_submatrices_matching_sections(
     Zero_eq3_gamma = sp.coo_matrix(([], ([], [])), shape=(nt * nx_nm, 1))
 
     # TA
-    if transient_asym_att_x:
+    if trans_att.size > 0:
         # unpublished BdT
 
         TA_eq1_list = list()
         TA_eq2_list = list()
         TA_eq3_list = list()
 
-        for transient_asym_att_xi in transient_asym_att_x:
+        for trans_atti in trans_att:
             """For forward direction."""
             # first index on the right hand side a the difficult splice
             # Deal with connector outside of fiber
-            if transient_asym_att_xi >= x[-1]:
+            if trans_atti >= x[-1]:
                 ix_ta_ix0 = x.size
-            elif transient_asym_att_xi <= x[0]:
+            elif trans_atti <= x[0]:
                 ix_ta_ix0 = 0
             else:
-                ix_ta_ix0 = np.flatnonzero(x >= transient_asym_att_xi)[0]
+                ix_ta_ix0 = np.flatnonzero(x >= trans_atti)[0]
 
             # TAF1 and TAF2 in EQ1
             data_taf = np.repeat(
@@ -968,7 +954,7 @@ def construct_submatrices_matching_sections(
         Zero_eq3_gamma, Zero_d_eq12)
 
 
-def construct_submatrices(nt, nx, ds, transient_asym_att_x, x_sec):
+def construct_submatrices(nt, nx, ds, trans_att, x_sec):
     """Wrapped in a function to reduce memory usage.
     E is zero at the first index of the reference section (ds_sec)
     Constructing:
@@ -1014,23 +1000,23 @@ def construct_submatrices(nt, nx, ds, transient_asym_att_x, x_sec):
     # Zero  # Eq.45
     Zero_d = sp.coo_matrix(([], ([], [])), shape=(nt * nx, nt))
     # Zero_E = sp.coo_matrix(([], ([], [])), shape=(nt * nx, (nx - 1)))
-    if transient_asym_att_x:
+    if trans_att.size > 0:
         # unpublished BdT
 
         TA_fw_list = list()
         TA_bw_list = list()
 
-        for transient_asym_att_xi in transient_asym_att_x:
+        for trans_atti in trans_att:
             """For forward direction. """
             # first index on the right hand side a the difficult splice
             # Deal with connector outside of fiber
-            if transient_asym_att_xi >= x_sec[-1]:
+            if trans_atti >= x_sec[-1]:
                 ix_sec_ta_ix0 = nx
-            elif transient_asym_att_xi <= x_sec[0]:
+            elif trans_atti <= x_sec[0]:
                 ix_sec_ta_ix0 = 0
             else:
                 ix_sec_ta_ix0 = np.flatnonzero(
-                    x_sec >= transient_asym_att_xi)[0]
+                    x_sec >= trans_atti)[0]
 
             # Data is -1 for both forward and backward
             # I_fw = 1/Tref*gamma - D_fw - E - TA_fw. Eq40
@@ -1258,12 +1244,13 @@ def calc_alpha_double(
         D_F_var_label=None,
         D_B_var_label=None,
         ix_alpha_is_zero=-1,
-        transient_asym_att_x=None,
         talpha_fw=None,
         talpha_bw=None,
         talpha_fw_var=None,
         talpha_bw_var=None):
-    """Eq.50 if weighted least squares"""
+    """Eq.50 if weighted least squares. Assumes ds has `trans_att`
+    pre-configured."""
+
     assert ix_alpha_is_zero >= 0, 'Define ix_alpha_is_zero' + \
                                   str(ix_alpha_is_zero)
 
@@ -1305,14 +1292,14 @@ def calc_alpha_double(
             D_F_var = ds[D_F_var_label]
             D_B_var = ds[D_B_var_label]
 
-            if transient_asym_att_x:
+            if ds.trans_att.size > 0:
                 # Can be improved by including covariances. That reduces the
                 # uncert.
 
                 ta_arr_fw = np.zeros((ds.x.size, ds[time_dim].size))
                 ta_arr_fw_var = np.zeros((ds.x.size, ds[time_dim].size))
                 for tai, taxi, tai_var in zip(
-                        talpha_fw.T, transient_asym_att_x, talpha_fw_var.T):
+                        talpha_fw.T, ds.trans_att.values, talpha_fw_var.T):
                     ta_arr_fw[ds.x.values >= taxi] = \
                         ta_arr_fw[ds.x.values >= taxi] + tai
                     ta_arr_fw_var[ds.x.values >= taxi] = \
@@ -1321,7 +1308,7 @@ def calc_alpha_double(
                 ta_arr_bw = np.zeros((ds.x.size, ds[time_dim].size))
                 ta_arr_bw_var = np.zeros((ds.x.size, ds[time_dim].size))
                 for tai, taxi, tai_var in zip(
-                        talpha_bw.T, transient_asym_att_x, talpha_bw_var.T):
+                        talpha_bw.T, ds.trans_att.values, talpha_bw_var.T):
                     ta_arr_bw[ds.x.values < taxi] = \
                         ta_arr_bw[ds.x.values < taxi] + tai
                     ta_arr_bw_var[ds.x.values < taxi] = \
