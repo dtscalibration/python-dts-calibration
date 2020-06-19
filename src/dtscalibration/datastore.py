@@ -1771,13 +1771,13 @@ class DataStore(xr.Dataset):
         if 'transient_att_x' in kwargs:
             warnings.warn(
                 "transient_att_x argument will be deprecated in version 2, "
-                "use trans_att", PendingDeprecationWarning)
+                "use trans_att", DeprecationWarning)
             trans_att = kwargs['transient_att_x']
 
         if 'transient_asym_att_x' in kwargs:
             warnings.warn(
                 "transient_asym_att_x arg will be deprecated in version 2, "
-                "use trans_att", PendingDeprecationWarning)
+                "use trans_att", DeprecationWarning)
             trans_att = kwargs['transient_asym_att_x']
 
         if 'trans_att' in self.coords and self.trans_att.size > 0:
