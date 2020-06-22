@@ -25,17 +25,14 @@ https://doi.org/10.3390/s20082235
 .. code:: ipython3
 
     import os
+    import warnings
+    
+    warnings.simplefilter('ignore')  # Hide warnings to avoid clutter in the notebook
+    
     
     from dtscalibration import read_silixa_files
     import matplotlib.pyplot as plt
     %matplotlib inline
-
-
-.. parsed-literal::
-
-    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:847: FutureWarning: xarray subclass DataStore should explicitly define __slots__
-      super().__init_subclass__(*args, **kwargs)
-
 
 .. code:: ipython3
 
@@ -74,10 +71,10 @@ as an estimate of the variance in measured signals.
 
 .. code:: ipython3
 
-    st_var, resid = ds.variance_stokes(st_label='st')
-    ast_var, _ = ds.variance_stokes(st_label='ast')
-    rst_var, _ = ds.variance_stokes(st_label='rst')
-    rast_var, _ = ds.variance_stokes(st_label='rast')
+    st_var, resid = ds.variance_stokes_constant(st_label='st')
+    ast_var, _ = ds.variance_stokes_constant(st_label='ast')
+    rst_var, _ = ds.variance_stokes_constant(st_label='rst')
+    rast_var, _ = ds.variance_stokes_constant(st_label='rast')
 
 .. code:: ipython3
 
@@ -114,7 +111,7 @@ solver because it saves us memory.
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x12847c190>
+    <matplotlib.collections.QuadMesh at 0x7f8257e8b2d0>
 
 
 
@@ -169,7 +166,7 @@ sections see notebook 16.
 
 The DataArrays ``tmpf_mc`` and ``tmpb_mc`` and the dimension ``CI`` are
 added. ``MC`` stands for monte carlo and the ``CI`` dimension holds the
-confidence interval ‘coordinates’.
+confidence interval 'coordinates'.
 
 .. code:: ipython3
 
@@ -179,5 +176,4 @@ confidence interval ‘coordinates’.
 
 
 .. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_15_0.png
-
 

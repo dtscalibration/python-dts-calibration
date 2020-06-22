@@ -25,17 +25,14 @@ https://doi.org/10.3390/s20082235
 .. code:: ipython3
 
     import os
+    import warnings
+    
+    warnings.simplefilter('ignore')  # Hide warnings to avoid clutter in the notebook
+    
     
     from dtscalibration import read_silixa_files
     import matplotlib.pyplot as plt
     %matplotlib inline
-
-
-.. parsed-literal::
-
-    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:847: FutureWarning: xarray subclass DataStore should explicitly define __slots__
-      super().__init_subclass__(*args, **kwargs)
-
 
 .. code:: ipython3
 
@@ -234,8 +231,8 @@ as an estimate of the variance in measured signals.
 
 .. code:: ipython3
 
-    st_var, resid = ds.variance_stokes(st_label='st')
-    ast_var, _ = ds.variance_stokes(st_label='ast')
+    st_var, resid = ds.variance_stokes_constant(st_label='st')
+    ast_var, _ = ds.variance_stokes_constant(st_label='ast')
 
 Similar to the ols procedure, we make a single function call to
 calibrate the temperature. If the method is ``wls`` and confidence
@@ -261,13 +258,6 @@ fiber sections see notebook 16.
                                 st_var=st_var,
                                 ast_var=ast_var,
                                 method='wls')
-
-
-.. parsed-literal::
-
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/dask/array/core.py:1355: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
-      FutureWarning,
-
 
 .. code:: ipython3
 
@@ -352,4 +342,3 @@ Lets have a look at the Stokes and anti-Stokes signal.
 Clearly there was a bad splice at 30 m that resulted in the sharp
 increase of measurement uncertainty for the cable section after the bad
 splice.
-
