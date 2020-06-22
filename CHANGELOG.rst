@@ -13,7 +13,8 @@ Bug fixes
 
 Others
 
-*
+* Notebook 04 on Stokes variance has been updated to explain the different estimation methods for the variance, and their importance.
+* Notebook 07 and 08 have been updated to take into account the changes in ds.stokes_variance.
 
 1.0.2 (2020-05-04)
 ------------------
@@ -45,7 +46,7 @@ Others
 ------------------
 * First major release
 * Reduced flexibility in defining names under which the Stokes are stored
-* 4 Averaging functions implemented, with uncertainty estimation. Seenotebook 16 for the various options
+* 4 Averaging functions implemented, with uncertainty estimation. See notebook 16 for the various options
 * Notebook about transient attenuation caused by for example connectors
 * Bug in singel ended transient attenuation
 * Check for consistent number of measurement locations across read files
