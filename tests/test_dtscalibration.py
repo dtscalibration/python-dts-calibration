@@ -14,22 +14,6 @@ from dtscalibration.cli import main
 
 np.random.seed(0)
 
-def assert_almost_equal_verbose(actual, desired, verbose=False, **kwargs):
-    """Print the actual precision decimals"""
-    err = np.abs(actual - desired).max()
-    dec = -np.ceil(np.log10(err))
-
-    if not (np.isfinite(dec)):
-        dec = 18.
-
-    m = "\n>>>>>The actual precision is: " + str(float(dec))
-
-    if verbose:
-        print(m)
-
-    desired2 = np.broadcast_to(desired, actual.shape)
-    np.testing.assert_almost_equal(actual, desired2, err_msg=m, **kwargs)
-    pass
 
 fn = [
     "channel 1_20170921112245510.xml", "channel 1_20170921112746818.xml",
