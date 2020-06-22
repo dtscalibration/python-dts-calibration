@@ -10,18 +10,13 @@ estimate the variance of the noise to: - Perform a weighted calibration
 .. code:: ipython3
 
     import os
+    import warnings
+    
+    warnings.simplefilter('ignore')  # Hide warnings to avoid clutter in the notebook
     
     from dtscalibration import read_silixa_files
     from matplotlib import pyplot as plt
-    
     %matplotlib inline
-
-
-.. parsed-literal::
-
-    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:847: FutureWarning: xarray subclass DataStore should explicitly define __slots__
-      super().__init_subclass__(*args, **kwargs)
-
 
 .. code:: ipython3
 
@@ -53,30 +48,43 @@ Sections are required to calculate the variance in the Stokes.
         }
     ds.sections = sections
 
-Lets first read the documentation about the ``ds.variance_stokes``
-method.
+The variance in the Stokes signal will vary along the length of the
+fiber. There are multiple ways to approach this, each has its own pros
+and cons. **It is important to consider which model you use for your
+setup, as this will impact the calibration weights and predicted
+uncertainty.**
+
+-  In small setups with small variations in Stokes intensity,
+   ``ds.variance_stokes_constant`` can be used. This function determines
+   a single (constant) value for the variance. This method is not
+   recommended for larger setups (e.g., >300 m) due to the signal
+   strength dependency of the variance.
+
+-  For larger setups ``ds.variance_stokes_linear`` should be used. This
+   function assumes a linear relationship between the Stokes signal
+   strength and variance. Tests on Silixa and Sensornet devices indicate
+   this relationship is linear, and (approximately) goes through the
+   origin; i.e. at 0 Stokes intensity, the signal variance is very close
+   to 0.
+
+-  ``variance_stokes_exponential`` can be used for small setups with
+   very few time steps. Too many degrees of freedom results in an under
+   estimation of the noise variance. Almost never the case, but use when
+   calibrating e.g. a single time step.
+
+As the setup we are using is only 100 m in length, we can use
+``ds.variance_stokes_constant``
 
 .. code:: ipython3
 
-    print(ds.variance_stokes.__doc__) 
-
-
-.. parsed-literal::
-
-    Backwards compatibility. See `ds.variance_stokes_constant()`
-            
-
-
-.. code:: ipython3
-
-    I_var, residuals = ds.variance_stokes(st_label='st')
+    I_var, residuals = ds.variance_stokes_constant(st_label='st')
     print("The variance of the Stokes signal along the reference sections "
-          "is approximately {} on a {} sec acquisition time".format(I_var, ds.userAcquisitionTimeFW.data[0]))
+          "is approximately {:.2f} on a {:.1f} sec acquisition time".format(I_var, ds.userAcquisitionTimeFW.data[0]))
 
 
 .. parsed-literal::
 
-    The variance of the Stokes signal along the reference sections is approximately 8.181920419777416 on a 2.0 sec acquisition time
+    The variance of the Stokes signal along the reference sections is approximately 8.18 on a 2.0 sec acquisition time
 
 
 .. code:: ipython3
@@ -94,20 +102,8 @@ method.
             method='single')
 
 
-.. parsed-literal::
 
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/src/dtscalibration/plot.py:316: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
-      if np.issubdtype(resid[time_dim].dtype, np.float) or np.issubdtype(
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/src/dtscalibration/plot.py:317: FutureWarning: Conversion of the second argument of issubdtype from `int` to `np.signedinteger` is deprecated. In future, it will be treated as `np.int64 == np.dtype(int).type`.
-      resid[time_dim].dtype, np.int):
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/numpy/lib/nanfunctions.py:1667: RuntimeWarning: Degrees of freedom <= 0 for slice.
-      keepdims=keepdims)
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev/.tox/docs/lib/python3.7/site-packages/xarray/core/nanops.py:142: RuntimeWarning: Mean of empty slice
-      return np.nanmean(a, axis=axis, dtype=dtype)
-
-
-
-.. image:: 04Calculate_variance_Stokes.ipynb_files/04Calculate_variance_Stokes.ipynb_9_1.png
+.. image:: 04Calculate_variance_Stokes.ipynb_files/04Calculate_variance_Stokes.ipynb_9_0.png
 
 
 The residuals should be normally distributed and independent from
@@ -134,6 +130,5 @@ by coils/sharp bends in cable - Attenuation caused by a splice
 
 
 We can follow the same steps to calculate the variance from the noise in
-the anti-Stokes measurments by setting ``st_label='AST`` and redo the
+the anti-Stokes measurments by setting ``st_label='ast`` and redoing the
 steps.
-
