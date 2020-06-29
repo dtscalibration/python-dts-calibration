@@ -1784,14 +1784,18 @@ class DataStore(xr.Dataset):
         if 'trans_att' in self.coords and self.trans_att.size > 0:
             raise_warning = 0
 
+            del_keys = []
             for k, v in self.data_vars.items():
                 if 'trans_att' in v.dims:
-                    del self[k]
-                    raise_warning += 1
+                    del_keys.append(k)
+
+            for del_key in del_keys:
+                del self[del_key]
 
             if raise_warning:
                 m = 'trans_att was set before. All `data_vars` that make use ' \
-                    'of the `trans_att` coordinates were deleted'
+                    'of the `trans_att` coordinates were deleted: ' + \
+                    str(del_keys)
                 warnings.warn(m)
 
         if trans_att is None:
@@ -2016,7 +2020,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
         """
         self.check_deprecated_kwargs(kwargs)
 
-        self.set_trans_att(trans_att=trans_att)
+        self.set_trans_att(trans_att=trans_att, **kwargs)
 
         if sections:
             self.sections = sections
@@ -2586,7 +2590,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
         """
         self.check_deprecated_kwargs(kwargs)
 
-        self.set_trans_att(trans_att=trans_att)
+        self.set_trans_att(trans_att=trans_att, **kwargs)
 
         if sections:
             self.sections = sections

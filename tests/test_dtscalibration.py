@@ -1345,6 +1345,36 @@ def test_double_ended_asymmetrical_attenuation():
     assert_almost_equal_verbose(temp_real_celsius, ds.tmpf.values, decimal=7)
     assert_almost_equal_verbose(temp_real_celsius, ds.tmpb.values, decimal=7)
     assert_almost_equal_verbose(temp_real_celsius, ds.tmpw.values, decimal=7)
+
+    # test `trans_att` related functions
+
+    # Clear out old results
+    ds.set_trans_att([])
+
+    assert ds.trans_att.size == 0, 'clear out trans_att config'
+
+    del_keys = []
+    for k, v in ds.data_vars.items():
+        if 'trans_att' in v.dims:
+            del_keys.append(k)
+
+    assert len(del_keys) == 0, 'clear out trans_att config'
+
+    # About to be depreciated
+    ds.calibration_double_ended(
+        st_var=1.5,
+        ast_var=1.5,
+        rst_var=1.,
+        rast_var=1.,
+        method='wls',
+        solver='sparse',
+        tmpw_mc_size=1000,
+        remove_mc_set_flag=True,
+        transient_asym_att_x=[50.])
+
+    assert_almost_equal_verbose(temp_real_celsius, ds.tmpf.values, decimal=7)
+    assert_almost_equal_verbose(temp_real_celsius, ds.tmpb.values, decimal=7)
+    assert_almost_equal_verbose(temp_real_celsius, ds.tmpw.values, decimal=7)
     pass
 
 
@@ -2924,6 +2954,35 @@ def test_single_ended_trans_att_synthetic():
         ast_var=1.0,
         method='wls',
         trans_att=[40, 60],
+        solver='sparse')
+
+    assert_almost_equal_verbose(ds_test.gamma.values, gamma, decimal=8)
+    assert_almost_equal_verbose(
+        ds_test.tmpf.values, temp_real - 273.15, decimal=8)
+    assert_almost_equal_verbose(
+        ds_test.isel(trans_att=0).talpha, -np.log(tr_att), decimal=8)
+    assert_almost_equal_verbose(
+        ds_test.isel(trans_att=1).talpha, -np.log(tr_att2), decimal=8)
+
+    # test `trans_att` related functions
+    # Clear out old results
+    ds_test.set_trans_att([])
+
+    assert ds_test.trans_att.size == 0, 'clear out trans_att config'
+
+    del_keys = []
+    for k, v in ds_test.data_vars.items():
+        if 'trans_att' in v.dims:
+            del_keys.append(k)
+
+    assert len(del_keys) == 0, 'clear out trans_att config'
+
+    ds_test.calibration_single_ended(
+        sections=sections,
+        st_var=1.0,
+        ast_var=1.0,
+        method='wls',
+        transient_att_x=[40, 60],
         solver='sparse')
 
     assert_almost_equal_verbose(ds_test.gamma.values, gamma, decimal=8)
