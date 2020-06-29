@@ -23,6 +23,7 @@ from .calibrate_utils import match_sections
 from .calibrate_utils import wls_sparse
 from .calibrate_utils import wls_stats
 from .datastore_utils import check_timestep_allclose
+from .datastore_utils import IndicesDouble
 from .io import _dim_attrs
 from .io import apsensing_xml_version_check
 from .io import read_apsensing_files_routine
@@ -2677,6 +2678,8 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                 else:
                     p_val, p_var = out
 
+            iobj = IndicesDouble(ds=self)
+
             # adjust split to fix parameters
             """Wrapped in a function to reduce memory usage.
             Constructing:
@@ -3185,51 +3188,39 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             raise ValueError('Choose a valid method')
 
         # all below require the following solution sizes
-        npar = 1 + 2 * nt + nx + 2 * nt * nta
-        assert p_val.size == npar
-        assert p_var.size == npar
+        assert p_val.size == iobj.npar
+        assert p_var.size == iobj.npar
         if calc_cov:
-            assert p_cov.shape == (npar, npar)
-
-        gamma = p_val[0]
-        d_fw = p_val[1:nt + 1]
-        d_bw = p_val[1 + nt:1 + 2 * nt]
-        alpha = p_val[1 + 2 * nt:1 + 2 * nt + nx]
+            assert p_cov.shape == (iobj.npar, iobj.npar)
 
         # store calibration parameters in DataStore
-        self[store_gamma] = (tuple(), gamma)
-        self[store_alpha] = (('x',), alpha)
-        self[store_df] = ((time_dim,), d_fw)
-        self[store_db] = ((time_dim,), d_bw)
+        self[store_gamma] = (tuple(), p_val[iobj.igamma])
+        self[store_alpha] = (('x',), p_val[iobj.ialpha])
+        self[store_df] = ((time_dim,), p_val[iobj.idf])
+        self[store_db] = ((time_dim,), p_val[iobj.idb])
 
         if nta > 0:
-            ta = p_val[1 + 2 * nt + nx:].reshape((nt, 2, nta), order='F')
-            self[store_ta + '_fw'] = ((time_dim, 'trans_att'), ta[:, 0, :])
-            self[store_ta + '_bw'] = ((time_dim, 'trans_att'), ta[:, 1, :])
+            self[store_ta + '_fw'] = ((time_dim, 'trans_att'),
+                                      p_val[iobj.itrans_att_fw])
+            self[store_ta + '_bw'] = ((time_dim, 'trans_att'),
+                                      p_val[iobj.itrans_att_bw])
 
         # store variances in DataStore
         if method == 'wls' or method == 'external':
             # the variances only have meaning if the observations are weighted
-            gammavar = p_var[0]
-            dfvar = p_var[1:nt + 1]
-            dbvar = p_var[1 + nt:1 + 2 * nt]
-            alphavar = p_var[2 * nt + 1:2 * nt + 1 + nx]
-
-            self[store_gamma + variance_suffix] = (tuple(), gammavar)
-            self[store_alpha + variance_suffix] = (('x',), alphavar)
-            self[store_df + variance_suffix] = ((time_dim,), dfvar)
-            self[store_db + variance_suffix] = ((time_dim,), dbvar)
+            self[store_gamma + variance_suffix] = (tuple(), p_var[iobj.igamma])
+            self[store_alpha + variance_suffix] = (('x',), p_var[iobj.ialpha])
+            self[store_df + variance_suffix] = ((time_dim,), p_var[iobj.idf])
+            self[store_db + variance_suffix] = ((time_dim,), p_var[iobj.idb])
 
             if nta > 0:
                 # neglecting the covariances. Better include them
-                tavar = p_var[2 * nt + 1 + nx:].reshape(
-                    (nt, 2, nta), order='F')
                 self[store_ta + '_fw'
                      + variance_suffix] = ((time_dim, 'trans_att'),
-                                           tavar[:, 0, :])
+                                           p_var[iobj.itrans_att_bw])
                 self[store_ta + '_bw'
                      + variance_suffix] = ((time_dim, 'trans_att'),
-                                           tavar[:, 1, :])
+                                           p_var[iobj.itrans_att_bw])
 
         # deal with FW
         if store_tmpf or (store_tmpw and method == 'ols'):
@@ -3240,10 +3231,9 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                     ta_arr[self.x.values >= taxi] = \
                         ta_arr[self.x.values >= taxi] + tai
 
-            tempF_data = gamma / (
-                np.log(self.st.data / self.ast.data) + d_fw + alpha[:, None]
-                + ta_arr) - 273.15
-            self[store_tmpf] = (('x', time_dim), tempF_data)
+            self[store_tmpf] = self[store_gamma] / (
+                np.log(self.st / self.ast) + self[store_df] +
+                self[store_alpha] + ta_arr) - 273.15
 
         # deal with BW
         if store_tmpb or (store_tmpw and method == 'ols'):
@@ -3253,10 +3243,10 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                                      self.trans_att.values):
                     ta_arr[self.x.values < taxi] = \
                         ta_arr[self.x.values < taxi] + tai
-            tempB_data = gamma / (
-                np.log(self.rst.data / self.rast.data) + d_bw - alpha[:, None]
-                + ta_arr) - 273.15
-            self[store_tmpb] = (('x', time_dim), tempB_data)
+            self[store_tmpb] = self[store_gamma] / (
+                np.log(self.rst / self.rast) + self[store_db] -
+                self[store_alpha] + ta_arr) - 273.15
+
 
         if store_tmpw and method == 'wls':
             self.conf_int_double_ended(

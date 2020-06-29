@@ -3,6 +3,80 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+class IndicesDouble:
+    """Instances of this class return indices to make your life easy"""
+
+    def __init__(self, ds=None, nt=None, nx=None, nta=None,
+                 matching_indices=None):
+        if ds is not None:
+            self._sections = ds.sections
+
+            time_dim = ds.get_time_dim()
+            self.nt = ds[time_dim].values.size
+
+            self.nx = ds.x.size
+            self.nta = ds.trans_att.size
+
+        else:
+            self.nt = int(nt)
+            self.nx = int(nx)
+            self.nta = int(nta)
+
+        if matching_indices is not None:
+            self._matching_indices = matching_indices
+
+    @property
+    def npar(self):
+        """Returns all indices"""
+        return 1 + 2 * self.nt + self.nx + 2 * self.nt * self.nta
+
+    @property
+    def ix(self):
+        """Returns all indices"""
+        return np.arange(self.nx)
+
+    @property
+    def it(self):
+        """Returns all indices"""
+        return np.arange(self.nt)
+
+    @property
+    def igamma(self):
+        """Returns all indices"""
+        return 0
+
+    @property
+    def idf(self):
+        """Returns all indices"""
+        return np.arange(1, self.nt + 1)
+
+    @property
+    def idb(self):
+        """Returns all indices"""
+        return np.arange(self.nt + 1, 2 * self.nt + 1)
+
+    @property
+    def ialpha(self):
+        """Returns all indices"""
+        return np.arange(1 + 2 * self.nt, 1 + 2 * self.nt + self.nx)
+
+    @property
+    def itrans_att(self):
+        """Returns all indices"""
+        return np.arange(1 + 2 * self.nt + self.nx, self.npar).reshape(
+            (self.nt, 2, self.nta), order='F')
+
+    @property
+    def itrans_att_fw(self):
+        """Returns all indices"""
+        return self.itrans_att[:, 0, :]
+
+    @property
+    def itrans_att_bw(self):
+        """Returns all indices"""
+        return self.itrans_att[:, 1, :]
+
+
 def check_dims(ds, labels, correct_dims=None):
     """
     Compare the dimensions of different labels (e.g., 'st', 'rst').
