@@ -9,7 +9,7 @@ New features
 
 Bug fixes
 
-*
+* Loading in untested sensornet files will not give a UnboundLocalError error anymore
 
 Others
 

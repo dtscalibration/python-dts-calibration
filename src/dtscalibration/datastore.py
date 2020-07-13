@@ -5819,6 +5819,7 @@ def read_sensornet_files(
             flip_reverse_measurements = False
 
     else:
+        flip_reverse_measurements = False
         warnings.warn(
             'Sensornet .dff version '
             '"{0}"'.format(ddf_version)
