@@ -10,6 +10,7 @@ New features
 Bug fixes
 
 * Loading in untested sensornet files will not give a UnboundLocalError error anymore
+* Sensornet .ddf file version check is now more robust (commas are replaced to periods)
 
 Others
 

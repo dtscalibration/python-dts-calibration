@@ -3,6 +3,7 @@ import glob
 import inspect
 import os
 import warnings
+import fnmatch
 from typing import Dict
 from typing import List
 
@@ -5809,11 +5810,15 @@ def read_sensornet_files(
     ddf_version = sensornet_ddf_version_check(filepathlist)
 
     valid_versions = [
-        'Halo DTS v1', 'ORYX F/W v1,02 Oryx Data Collector v3',
-        'ORYX F/W v4,00 Oryx Data Collector v3']
+        'Halo DTS v1*',
+        'ORYX F/W v1.02 Oryx Data Collector v3*',
+        'ORYX F/W v4.00 Oryx Data Collector v3*'
+    ]
 
-    if ddf_version in valid_versions:
-        if ddf_version == 'Halo DTS v1':
+    valid = any([fnmatch.fnmatch(ddf_version, v_) for v_ in valid_versions])
+
+    if valid:
+        if fnmatch.fnmatch(ddf_version, 'Halo DTS v1*'):
             flip_reverse_measurements = True
         else:
             flip_reverse_measurements = False

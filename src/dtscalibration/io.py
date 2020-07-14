@@ -154,7 +154,7 @@ def sensornet_ddf_version_check(filepathlist):
             'Software version number could not be detected in .ddf file'
             + 'Either file is corrupted or not supported')
 
-    ddf_version = version_string.split('.')[0]
+    ddf_version = version_string.replace(',', '.')
 
     return ddf_version
 
