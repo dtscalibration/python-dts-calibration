@@ -85,7 +85,8 @@ setup(
         # https://github.com/pydata/xarray/issues/3401 cloud pickle should be
         # possible to remove from requirements soon. 2019/10/31
         'cloudpickle',
-        'nbformat'  # Needed to run the tests
+        'nbformat',  # Needed to run the tests
+        'pypandoc'
     ],
     extras_require={
         # eg:
