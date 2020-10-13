@@ -14,7 +14,6 @@ from dtscalibration.cli import main
 
 np.random.seed(0)
 
-
 fn = [
     "channel 1_20170921112245510.xml", "channel 1_20170921112746818.xml",
     "channel 1_20170921112746818.xml"]
@@ -63,9 +62,9 @@ def test_main():
 
 def test_variance_input_types_single():
     import dask.array as da
-    from src.dtscalibration import DataStore
-    import numpy as np
     from scipy import stats
+
+    from src.dtscalibration import DataStore
 
     np.random.seed(0)
     state = da.random.RandomState(0)
@@ -235,9 +234,9 @@ def test_variance_input_types_single():
 
 def test_variance_input_types_double():
     import dask.array as da
-    from src.dtscalibration import DataStore
-    import numpy as np
     from scipy import stats
+
+    from src.dtscalibration import DataStore
 
     np.random.seed(0)
     state = da.random.RandomState(0)
@@ -443,9 +442,9 @@ def test_variance_input_types_double():
 
 def test_double_ended_variance_estimate_synthetic():
     import dask.array as da
-    from dtscalibration import DataStore
-    import numpy as np
     from scipy import stats
+
+    from src.dtscalibration import DataStore
 
     np.random.seed(0)
     state = da.random.RandomState(0)
@@ -578,9 +577,9 @@ def test_double_ended_variance_estimate_synthetic():
 
 def test_single_ended_variance_estimate_synthetic():
     import dask.array as da
-    from dtscalibration import DataStore
-    import numpy as np
     from scipy import stats
+
+    from src.dtscalibration import DataStore
 
     np.random.seed(0)
     state = da.random.RandomState(0)
@@ -875,7 +874,6 @@ def test_double_ended_ols_wls_estimate_synthetic():
     They should be the same as the parameters used to create the synthetic
     measurment set"""
     from dtscalibration import DataStore
-    import numpy as np
 
     np.random.seed(0)
 
@@ -966,7 +964,6 @@ def test_double_ended_ols_wls_estimate_synthetic_df_and_db_are_different():
     measurment set. This one has a different D for the forward channel than
     for the backward channel."""
     from dtscalibration import DataStore
-    import numpy as np
 
     np.random.seed(0)
 
@@ -1070,7 +1067,6 @@ def test_reneaming_old_default_labels_to_new_fixed_labels():
     `test_double_ended_ols_wls_estimate_synthetic_df_and_db_are_different`
     Which runs fast, but using the renaming function."""
     from dtscalibration import DataStore
-    import numpy as np
 
     np.random.seed(0)
 
@@ -1176,8 +1172,6 @@ def test_fail_if_st_labels_are_passed_to_calibration_function():
     `test_double_ended_ols_wls_estimate_synthetic_df_and_db_are_different`
     Which runs fast."""
     from dtscalibration import DataStore
-    import numpy as np
-
     np.random.seed(0)
 
     cable_len = 100.
@@ -1255,8 +1249,6 @@ def test_fail_if_st_labels_are_passed_to_calibration_function():
 
 def test_double_ended_asymmetrical_attenuation():
     from dtscalibration import DataStore
-    import numpy as np
-
     np.random.seed(0)
 
     cable_len = 100.
@@ -1380,8 +1372,6 @@ def test_double_ended_asymmetrical_attenuation():
 
 def test_double_ended_one_matching_section_and_one_asym_att():
     from dtscalibration import DataStore
-    import numpy as np
-
     np.random.seed(0)
 
     cable_len = 100.
@@ -1476,8 +1466,6 @@ def test_double_ended_two_matching_sections_and_two_asym_atts():
     """Setup contains two matching sections and two connectors that introduce
     asymmetrical attenuation. Solves beautifully."""
     from dtscalibration import DataStore
-    import numpy as np
-
     np.random.seed(0)
 
     cable_len = 100.
@@ -1586,8 +1574,6 @@ def test_double_ended_ols_wls_fix_gamma_estimate_synthetic():
     They should be the same as the parameters used to create the synthetic
     measurment set"""
     from dtscalibration import DataStore
-    import numpy as np
-
     np.random.seed(0)
 
     cable_len = 100.
@@ -1687,8 +1673,6 @@ def test_double_ended_ols_wls_fix_alpha_estimate_synthetic():
     They should be the same as the parameters used to create the synthetic
     measurment set"""
     from dtscalibration import DataStore
-    import numpy as np
-
     np.random.seed(0)
 
     cable_len = 100.
@@ -1785,8 +1769,6 @@ def test_double_ended_ols_wls_fix_alpha_fix_gamma_estimate_synthetic():
     They should be the same as the parameters used to create the synthetic
     measurment set"""
     from dtscalibration import DataStore
-    import numpy as np
-
     np.random.seed(0)
 
     cable_len = 100.
@@ -1877,8 +1859,6 @@ def test_double_ended_ols_wls_fix_alpha_fix_gamma_estimate_synthetic():
 
 def test_double_ended_fix_alpha_matching_sections_and_one_asym_att():
     from dtscalibration import DataStore
-    import numpy as np
-
     np.random.seed(0)
 
     cable_len = 100.
@@ -1998,8 +1978,6 @@ def test_double_ended_fix_alpha_matching_sections_and_one_asym_att():
 
 def test_double_ended_fix_alpha_gamma_matching_sections_and_one_asym_att():
     from dtscalibration import DataStore
-    import numpy as np
-
     np.random.seed(0)
 
     cable_len = 100.
@@ -2120,8 +2098,6 @@ def test_double_ended_fix_alpha_gamma_matching_sections_and_one_asym_att():
 
 def test_double_ended_fix_gamma_matching_sections_and_one_asym_att():
     from dtscalibration import DataStore
-    import numpy as np
-
     np.random.seed(0)
 
     cable_len = 100.
@@ -2220,7 +2196,6 @@ def test_double_ended_fix_gamma_matching_sections_and_one_asym_att():
 def test_double_ended_exponential_variance_estimate_synthetic():
     import dask.array as da
     from dtscalibration import DataStore
-    import numpy as np
     from scipy import stats
 
     np.random.seed(0)
@@ -2362,7 +2337,6 @@ def test_double_ended_exponential_variance_estimate_synthetic():
 def test_estimate_variance_of_temperature_estimate():
     import dask.array as da
     from dtscalibration import DataStore
-    import numpy as np
     from scipy import stats
 
     np.random.seed(0)
@@ -2522,8 +2496,6 @@ def test_single_ended_ols_wls_estimate_synthetic():
     measurment set"""
 
     from dtscalibration import DataStore
-    import numpy as np
-
     np.random.seed(0)
 
     cable_len = 100.
@@ -2605,8 +2577,6 @@ def test_single_ended_ols_wls_fix_dalpha_synthetic():
     measurment set"""
 
     from dtscalibration import DataStore
-    import numpy as np
-
     np.random.seed(0)
 
     cable_len = 100.
@@ -2692,8 +2662,6 @@ def test_single_ended_ols_wls_fix_gamma_synthetic():
     measurment set"""
 
     from dtscalibration import DataStore
-    import numpy as np
-
     np.random.seed(0)
 
     cable_len = 100.
@@ -2779,8 +2747,6 @@ def test_single_ended_ols_wls_fix_gamma_fix_dalpha_synthetic():
     measurment set"""
 
     from dtscalibration import DataStore
-    import numpy as np
-
     np.random.seed(0)
 
     cable_len = 100.
@@ -2865,8 +2831,6 @@ def test_single_ended_trans_att_synthetic():
     """Checks whether the transient attenuation routines perform as intended,
     and calibrate to the correct temperature"""
     from dtscalibration import DataStore
-    import numpy as np
-
     np.random.seed(0)
 
     cable_len = 100.
@@ -3038,8 +3002,6 @@ def test_single_ended_matching_sections_synthetic():
     """Checks whether the matching sections routines perform as intended,
     and calibrate to the correct temperature"""
     from dtscalibration import DataStore
-    import numpy as np
-
     np.random.seed(0)
 
     cable_len = 100.
@@ -3242,7 +3204,6 @@ def test_single_ended_exponential_variance_estimate_synthetic():
     measurment set"""
     import dask.array as da
     from dtscalibration import DataStore
-    import numpy as np
     from scipy import stats
 
     np.random.seed(0)
