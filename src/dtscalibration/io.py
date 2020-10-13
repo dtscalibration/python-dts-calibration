@@ -204,8 +204,9 @@ def read_silixa_files_routine_v6(
     -------
 
     """
-    import dask
     from xml.etree import ElementTree
+
+    import dask
 
     # translate names
     tld = {
@@ -509,8 +510,9 @@ def read_silixa_files_routine_v4(
     -------
 
     """
-    import dask
     from xml.etree import ElementTree
+
+    import dask
 
     # translate names
     tld = {
@@ -1276,7 +1278,6 @@ def read_sensortran_single(fname):
     """
     import struct
     from datetime import datetime
-    import numpy as np
 
     meta = {}
     data = {}
@@ -1345,8 +1346,9 @@ def read_apsensing_files_routine(
     -------
 
     """
-    import dask
     from xml.etree import ElementTree
+
+    import dask
 
     # translate names
     tld = {
@@ -1548,8 +1550,9 @@ def read_apsensing_attrs_singlefile(filename, sep):
     -------
 
     """
-    import xmltodict
     from xml.parsers.expat import ExpatError
+
+    import xmltodict
 
     def metakey(meta, dict_to_parse, prefix):
         """

@@ -1,9 +1,9 @@
 # coding=utf-8
+import fnmatch
 import glob
 import inspect
 import os
 import warnings
-import fnmatch
 from typing import Dict
 from typing import List
 
@@ -413,9 +413,8 @@ class DataStore(xr.Dataset):
         resampled : same type as caller
             This object resampled.
             """
-
-        from xarray.core.dataarray import DataArray
         import pandas as pd
+        from xarray.core.dataarray import DataArray
 
         RESAMPLE_DIM = '__resample_dim__'
 
@@ -5842,40 +5841,6 @@ def read_sensornet_files(
 
     ds = DataStore(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
     return ds
-
-
-def plot_dask(arr, file_path=None):
-    """
-    For debugging the scheduling of the calculation of dask arrays. Requires
-    additional libraries
-    to be installed.
-
-    Parameters
-    ----------
-    arr : Dask-Array
-        An uncomputed dask array
-    file_path : Path-like, str, optional
-        Path to save graph
-
-    Returns
-    -------
-    out : array-like
-        The calculated array
-
-    """
-    from dask.diagnostics import Profiler, ResourceProfiler, CacheProfiler, \
-        visualize
-
-    with Profiler() as prof, ResourceProfiler(
-            dt=0.25) as rprof, CacheProfiler() as cprof:
-        out = arr.compute()
-
-    if file_path:
-        arr.visualize(file_path)
-
-    visualize([prof, rprof, cprof], show=True)
-
-    return out
 
 
 def func_fit(p, xs):
