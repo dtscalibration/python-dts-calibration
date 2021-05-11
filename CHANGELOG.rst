@@ -12,6 +12,7 @@ Bug fixes
 * Loading in untested sensornet files will not give a UnboundLocalError error anymore
 * Sensornet .ddf file version check is now more robust (commas are replaced to periods)
 * Changed matplotlib's deprecated DivergingNorm to TwoSlopeNorm
+* Updated the stokes_variance_linear docstring to remove incorrect and duplicate information
 
 Others
 
