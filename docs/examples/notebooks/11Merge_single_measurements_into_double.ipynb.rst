@@ -16,13 +16,6 @@ to be merged into a single datastore and aligned.
     import matplotlib.pyplot as plt
     %matplotlib inline
 
-
-.. parsed-literal::
-
-    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:847: FutureWarning: xarray subclass DataStore should explicitly define __slots__
-      super().__init_subclass__(*args, **kwargs)
-
-
 We load in both channels into seperate datastores
 
 .. code:: ipython3
@@ -69,7 +62,7 @@ is a duplex measurement.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x7f9096c583d0>
+    <matplotlib.legend.Legend at 0x7f62f5ec5cd0>
 
 
 

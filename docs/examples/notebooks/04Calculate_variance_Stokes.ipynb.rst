@@ -129,7 +129,7 @@ by coils/sharp bends in cable - Attenuation caused by a splice
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x7fee09a0fdd0>]
+    [<matplotlib.lines.Line2D at 0x7f423fdf93d0>]
 
 
 

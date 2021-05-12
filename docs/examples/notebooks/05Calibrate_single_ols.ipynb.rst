@@ -24,13 +24,6 @@ anymore.
     
     %matplotlib inline
 
-
-.. parsed-literal::
-
-    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:847: FutureWarning: xarray subclass DataStore should explicitly define __slots__
-      super().__init_subclass__(*args, **kwargs)
-
-
 .. code:: ipython3
 
     filepath = os.path.join('..', '..', 'tests', 'data', 'single_ended')
@@ -226,7 +219,7 @@ anymore.
 
 .. parsed-literal::
 
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev2/.tox/docs/lib/python3.7/site-packages/dask/array/core.py:1395: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
+    /home/bart/git/python-dts-calibration/.tox/docs/lib/python3.7/site-packages/dask/array/core.py:1495: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
       FutureWarning,
 
 
@@ -246,7 +239,7 @@ Lets compare our calibrated values with the device calibration
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x7fd34bf13290>
+    <matplotlib.legend.Legend at 0x7f9721a25390>
 
 
 

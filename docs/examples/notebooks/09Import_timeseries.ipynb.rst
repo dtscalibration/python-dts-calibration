@@ -16,13 +16,6 @@ DTS measurement (required for calibration)
     
     from dtscalibration import read_silixa_files
 
-
-.. parsed-literal::
-
-    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:847: FutureWarning: xarray subclass DataStore should explicitly define __slots__
-      super().__init_subclass__(*args, **kwargs)
-
-
 Step 1: load the measurement files
 ----------------------------------
 
@@ -128,17 +121,14 @@ times we have DTS measurements
 
 .. parsed-literal::
 
-    Data variables:
+    Data variables: (12/16)
         st                     (x, time) float64 1.281 -0.5321 ... -43.44 -41.08
         ast                    (x, time) float64 0.4917 1.243 ... -30.14 -32.09
         rst                    (x, time) float64 0.4086 -0.568 ... 4.822e+03
         rast                   (x, time) float64 2.569 -1.603 ... 4.224e+03
         tmp                    (x, time) float64 196.1 639.1 218.7 ... 8.442 18.47
         acquisitionTime        (time) float32 2.098 2.075 2.076 2.133 2.085 2.062
-        referenceTemperature   (time) float32 21.0536 21.054 ... 21.0531 21.057
-        probe1Temperature      (time) float32 4.36149 4.36025 ... 4.36021 4.36118
-        probe2Temperature      (time) float32 18.5792 18.5785 ... 18.5805 18.5723
-        referenceProbeVoltage  (time) float32 0.121704 0.121704 ... 0.121705
+        ...                     ...
         probe1Voltage          (time) float32 0.114 0.114 0.114 0.114 0.114 0.114
         probe2Voltage          (time) float32 0.121 0.121 0.121 0.121 0.121 0.121
         userAcquisitionTimeFW  (time) float32 2.0 2.0 2.0 2.0 2.0 2.0

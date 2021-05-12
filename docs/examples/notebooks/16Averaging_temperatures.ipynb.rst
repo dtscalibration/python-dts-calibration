@@ -16,13 +16,6 @@ Calibration procedure
     import matplotlib.pyplot as plt
     %matplotlib inline
 
-
-.. parsed-literal::
-
-    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:847: FutureWarning: xarray subclass DataStore should explicitly define __slots__
-      super().__init_subclass__(*args, **kwargs)
-
-
 .. code:: ipython3
 
     filepath = os.path.join('..', '..', 'tests', 'data', 'double_ended2')
@@ -160,8 +153,8 @@ to the DataStore:
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x7fdeba8bdbd0>,
-     <matplotlib.lines.Line2D at 0x7fdeba888d10>]
+    [<matplotlib.lines.Line2D at 0x7f02f8acafd0>,
+     <matplotlib.lines.Line2D at 0x7f02f8ac0fd0>]
 
 
 
@@ -217,8 +210,8 @@ Note that this average has much less uncertainty that averaging option
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x7fdea1056d10>,
-     <matplotlib.lines.Line2D at 0x7fdea6816ad0>]
+    [<matplotlib.lines.Line2D at 0x7f02fa5a3e10>,
+     <matplotlib.lines.Line2D at 0x7f02fa5a3e50>]
 
 
 
@@ -274,8 +267,8 @@ specific fiber sections.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x7fdea14dca90>,
-     <matplotlib.lines.Line2D at 0x7fdea107df10>]
+    [<matplotlib.lines.Line2D at 0x7f02fa57da50>,
+     <matplotlib.lines.Line2D at 0x7f02f815da50>]
 
 
 
@@ -331,8 +324,8 @@ Select the part of the fiber that is in the water with ``ci_avg_x_sel``.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x7fdea13a1890>,
-     <matplotlib.lines.Line2D at 0x7fdea116acd0>]
+    [<matplotlib.lines.Line2D at 0x7f02f802a550>,
+     <matplotlib.lines.Line2D at 0x7f02e9fc9090>]
 
 
 

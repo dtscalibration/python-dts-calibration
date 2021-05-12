@@ -15,13 +15,6 @@ library in your current routine.
     
     from dtscalibration import DataStore, read_silixa_files
 
-
-.. parsed-literal::
-
-    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:847: FutureWarning: xarray subclass DataStore should explicitly define __slots__
-      super().__init_subclass__(*args, **kwargs)
-
-
 For a ``DataStore`` object, a few things are needed:
 
 -  timestamps
@@ -122,7 +115,7 @@ example).
 
 .. parsed-literal::
 
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev2/.tox/docs/lib/python3.7/site-packages/dask/array/core.py:1395: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
+    /home/bart/git/python-dts-calibration/.tox/docs/lib/python3.7/site-packages/dask/array/core.py:1495: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
       FutureWarning,
 
 
@@ -130,6 +123,6 @@ example).
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x7ff1ba153d10>]
+    [<matplotlib.lines.Line2D at 0x7efffbe90dd0>]
 
 
