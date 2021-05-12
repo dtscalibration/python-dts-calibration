@@ -338,11 +338,11 @@ def read_silixa_files_routine_v6(
             # split the string on the comma
             arr_str = [arr_eli.text[1:-1].split(',') for arr_eli in arr_el]
 
-        return np.array(arr_str, dtype=np.float)
+        return np.array(arr_str, dtype=float)
 
     data_lst_dly = [grab_data_per_file(fp) for fp in filepathlist]
     data_lst = [
-        da.from_delayed(x, shape=(nx, nitem), dtype=np.float)
+        da.from_delayed(x, shape=(nx, nitem), dtype=float)
         for x in data_lst_dly]
     data_arr = da.stack(data_lst).T  # .compute()
 
@@ -647,7 +647,7 @@ def read_silixa_files_routine_v4(
 
     data_lst_dly = [grab_data_per_file(fp) for fp in filepathlist]
     data_lst = [
-        da.from_delayed(x, shape=(nx, nitem), dtype=np.float)
+        da.from_delayed(x, shape=(nx, nitem), dtype=float)
         for x in data_lst_dly]
     data_arr = da.stack(data_lst).T  # .compute()
 
@@ -1447,7 +1447,7 @@ def read_apsensing_files_routine(
     data_lst_dly = [grab_data_per_file(fp) for fp in filepathlist]
 
     data_lst = [
-        da.from_delayed(x, shape=(nx, nitem), dtype=np.float)
+        da.from_delayed(x, shape=(nx, nitem), dtype=float)
         for x in data_lst_dly]
     data_arr = da.stack(data_lst).T  # .compute()
 

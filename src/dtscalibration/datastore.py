@@ -382,7 +382,7 @@ class DataStore(xr.Dataset):
             closed=None,
             label=None,
             origin='start_day',
-            offset='None',
+            offset=None,
             keep_attrs=True,
             **indexer):
         """Returns a resampled DataStore. Always define the how.
