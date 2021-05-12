@@ -85,7 +85,7 @@ as an estimate of the variance in measured signals.
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x7fdc7fa06a90>
+    <matplotlib.collections.QuadMesh at 0x7f5d7363a990>
 
 
 
@@ -119,7 +119,7 @@ solver because it saves us memory.
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x7fdc7fe3dd50>
+    <matplotlib.collections.QuadMesh at 0x7f5d71c36510>
 
 
 
@@ -172,7 +172,7 @@ sections see notebook 16.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x7fdc7f2ebf50>
+    <matplotlib.legend.Legend at 0x7f5d71c7db50>
 
 
 

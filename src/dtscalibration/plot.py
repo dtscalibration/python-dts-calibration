@@ -169,7 +169,7 @@ def plot_residuals_reference_sections(
         vmax = maxv
 
         # Normalize the color scale to have 0 be the center
-        divnorm = colors.DivergingNorm(vmin=vmin, vcenter=0, vmax=vmax)
+        divnorm = colors.TwoSlopeNorm(vmin=vmin, vcenter=0, vmax=vmax)
 
         # Plot the data
         for ii in range(nsections):

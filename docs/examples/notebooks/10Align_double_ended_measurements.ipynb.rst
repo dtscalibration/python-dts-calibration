@@ -17,13 +17,6 @@ measurements. Do this before the calibration steps.
     import matplotlib.pyplot as plt
     %matplotlib inline
 
-
-.. parsed-literal::
-
-    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:847: FutureWarning: xarray subclass DataStore should explicitly define __slots__
-      super().__init_subclass__(*args, **kwargs)
-
-
 .. code:: ipython3
 
     suggest_cable_shift_double_ended?
@@ -74,9 +67,9 @@ and is dropped
 
 .. parsed-literal::
 
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev2/src/dtscalibration/datastore_utils.py:308: RuntimeWarning: invalid value encountered in log
+    /home/bart/git/python-dts-calibration/src/dtscalibration/datastore_utils.py:308: RuntimeWarning: invalid value encountered in log
       i_f = np.log(st / ast)
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev2/src/dtscalibration/datastore_utils.py:309: RuntimeWarning: invalid value encountered in log
+    /home/bart/git/python-dts-calibration/src/dtscalibration/datastore_utils.py:309: RuntimeWarning: invalid value encountered in log
       i_b = np.log(rst / rast)
 
 

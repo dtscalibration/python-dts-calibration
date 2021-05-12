@@ -21,13 +21,6 @@ channel should be aligned.
     import matplotlib.pyplot as plt
     %matplotlib inline
 
-
-.. parsed-literal::
-
-    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:847: FutureWarning: xarray subclass DataStore should explicitly define __slots__
-      super().__init_subclass__(*args, **kwargs)
-
-
 .. code:: ipython3
 
     filepath = os.path.join('..', '..', 'tests', 'data', 'double_ended2')
@@ -323,7 +316,7 @@ the other, as we do not have more information about the weighing.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x7fb0c7279650>
+    <matplotlib.legend.Legend at 0x7efcb60d6350>
 
 
 
@@ -347,7 +340,7 @@ first.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x7fb0c7340210>]
+    [<matplotlib.lines.Line2D at 0x7efcb5f0a250>]
 
 
 

@@ -12,13 +12,6 @@ timeseries is already part of the ``DataStore`` object.
     
     from dtscalibration import read_silixa_files
 
-
-.. parsed-literal::
-
-    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:847: FutureWarning: xarray subclass DataStore should explicitly define __slots__
-      super().__init_subclass__(*args, **kwargs)
-
-
 .. code:: ipython3
 
     filepath = os.path.join('..', '..', 'tests', 'data', 'double_ended2')
@@ -61,7 +54,7 @@ all timeseries that can be used for calibration.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x7ff565a4ad50>]
+    [<matplotlib.lines.Line2D at 0x7fa2a0670fd0>]
 
 
 

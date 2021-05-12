@@ -42,12 +42,6 @@ single-ended measurement with OLS
     Reading the data from disk
 
 
-.. parsed-literal::
-
-    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:847: FutureWarning: xarray subclass DataStore should explicitly define __slots__
-      super().__init_subclass__(*args, **kwargs)
-
-
 From the previous calibration we know that the :math:`\gamma` parameter
 value was 481.9 and the :math:`\alpha` value was -2.014e-05. We define
 these, along with their variance. In this case we do not know what the
@@ -69,7 +63,7 @@ between the parameters are not taken into account in the uncertainty.
 
 .. parsed-literal::
 
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev2/.tox/docs/lib/python3.7/site-packages/dask/array/core.py:1395: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
+    /home/bart/git/python-dts-calibration/.tox/docs/lib/python3.7/site-packages/dask/array/core.py:1495: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
       FutureWarning,
 
 
@@ -104,7 +98,7 @@ same result as in notebook 05.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x7f9f6fb2c850>
+    <matplotlib.legend.Legend at 0x7f6b8cee1f50>
 
 
 

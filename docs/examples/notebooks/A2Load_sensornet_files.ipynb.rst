@@ -11,13 +11,6 @@ measurements are supported.
     
     from dtscalibration import read_sensornet_files
 
-
-.. parsed-literal::
-
-    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:847: FutureWarning: xarray subclass DataStore should explicitly define __slots__
-      super().__init_subclass__(*args, **kwargs)
-
-
 The example data files are located in
 ``./python-dts-calibration/tests/data``.
 
@@ -103,16 +96,16 @@ the first files and stored as attributes of the ``DataStore``.
         k_external             (time) float64 0.2786 0.2787 0.2786 ... 0.2785 0.2785
         userAcquisitionTimeFW  (time) float64 30.0 30.0 30.0 30.0 30.0 30.0 30.0
         userAcquisitionTimeBW  (time) float64 0.0 0.0 0.0 0.0 0.0 0.0 0.0
-    Attributes:
+    Attributes: (12/21)
         DTS Sentinel unit serial number::  SN409017\n
         Multiplexer serial number::        ORYX\n
         Hardware model number::            OX4\n
         Software version number::          ORYX F/W v1,02 Oryx Data Collector v3....
         data status:                       ok\n
         installation:                      speulderbos2017nov21\n
-        differential loss correction:      single-ended
-        forward channel:                   channel 1
-        reverse channel:                   N/A
+        ...                                ...
+        multiplexer slope coefficient:     1.0000
+        fibre end:                         0.00
     
     .. and many more attributes. See: ds.attrs
 
@@ -135,45 +128,44 @@ REV-AST data variables.
     <dtscalibration.DataStore>
     Sections:                  ()
     Dimensions:                (time: 5, trans_att: 0, x: 712)
-    Coordinates:
+    Coordinates: (12/14)
       * x                      (x) float64 -49.28 -47.25 ... 1.391e+03 1.393e+03
         filename               (time) <U32 'channel 1 20030111 002 00001.ddf' ......
         timeFWstart            (time) datetime64[ns] 2003-01-11T03:05:09 ... 2003...
         timeFWend              (time) datetime64[ns] 2003-01-11T03:06:09 ... 2003...
         timeFW                 (time) datetime64[ns] 2003-01-11T03:05:39 ... 2003...
         timeBWstart            (time) datetime64[ns] 2003-01-11T03:06:09 ... 2003...
-        timeBWend              (time) datetime64[ns] 2003-01-11T03:07:09 ... 2003...
-        timeBW                 (time) datetime64[ns] 2003-01-11T03:06:39 ... 2003...
+        ...                     ...
         timestart              (time) datetime64[ns] 2003-01-11T03:05:09 ... 2003...
         timeend                (time) datetime64[ns] 2003-01-11T03:07:09 ... 2003...
       * time                   (time) datetime64[ns] 2003-01-11T03:06:09 ... 2003...
         acquisitiontimeFW      (time) timedelta64[ns] 00:01:00 00:01:00 ... 00:01:00
         acquisitiontimeBW      (time) timedelta64[ns] 00:01:00 00:01:00 ... 00:01:00
       * trans_att              (trans_att) float64 
-    Data variables:
+    Data variables: (12/13)
         st                     (x, time) float64 1.882e+03 1.876e+03 ... -0.54
         ast                    (x, time) float64 2.137e+03 2.135e+03 ... -0.681
         tmp                    (x, time) float64 84.19 71.0 81.6 ... -44.31 -200.0
         probe1Temperature      (time) float64 nan nan nan nan nan
         probe2Temperature      (time) float64 nan nan nan nan nan
         referenceTemperature   (time) float64 34.42 34.31 34.25 34.25 34.25
-        gamma_ddf              (time) float64 510.4 510.4 510.4 510.4 510.4
+        ...                     ...
         k_internal             (time) float64 0.1902 0.1898 0.1898 0.1898 0.1898
         k_external             (time) float64 0.1902 0.1898 0.1898 0.1898 0.1898
         userAcquisitionTimeFW  (time) float64 60.05 60.05 60.05 60.05 60.05
         userAcquisitionTimeBW  (time) float64 60.08 60.06 60.05 60.05 60.05
         rst                    (x, time) float64 -0.384 -0.36 ... 1.76e+03 1.759e+03
         rast                   (x, time) float64 -0.535 -0.633 ... 2.241e+03
-    Attributes:
+    Attributes: (12/21)
         DTS Sentinel unit serial number::  SN307009\n
         Multiplexer serial number::        multiplexer serial number\n
         Hardware model number::            HL4\n
         Software version number::          Halo DTS v1.0\n
         data status:                       ok\n
         installation:                      NYAN30AUG2019\n
-        differential loss correction:      combined
-        forward channel:                   channel 1
-        reverse channel:                   channel 1 reverse
+        ...                                ...
+        multiplexer slope coefficient:     1.0000
+        fibre end:                         1298.10
     
     .. and many more attributes. See: ds.attrs
 

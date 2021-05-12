@@ -26,13 +26,6 @@ splice, just as in notebook 14.
     import matplotlib.pyplot as plt
     %matplotlib inline
 
-
-.. parsed-literal::
-
-    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:847: FutureWarning: xarray subclass DataStore should explicitly define __slots__
-      super().__init_subclass__(*args, **kwargs)
-
-
 .. code:: ipython3
 
     filepath = os.path.join('..', '..', 'tests', 'data', 'double_ended2')
@@ -106,7 +99,7 @@ calibrated correctly.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x7fcf85182150>]
+    [<matplotlib.lines.Line2D at 0x7fddd7ef86d0>]
 
 
 
@@ -162,7 +155,7 @@ temperature, without the big jump.
 
 .. parsed-literal::
 
-    /Users/bfdestombe/Projects/dts-calibration/python-dts-calibration-dev2/.tox/docs/lib/python3.7/site-packages/scipy/sparse/_index.py:116: SparseEfficiencyWarning: Changing the sparsity structure of a csr_matrix is expensive. lil_matrix is more efficient.
+    /home/bart/git/python-dts-calibration/.tox/docs/lib/python3.7/site-packages/scipy/sparse/_index.py:116: SparseEfficiencyWarning: Changing the sparsity structure of a csr_matrix is expensive. lil_matrix is more efficient.
       self._set_arrayXarray_sparse(i, j, x)
 
 
@@ -170,7 +163,7 @@ temperature, without the big jump.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x7fcf84f95910>
+    <matplotlib.legend.Legend at 0x7fdde6445050>
 
 
 

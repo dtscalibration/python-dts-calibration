@@ -38,6 +38,10 @@ from .io import ziphandle_to_filepathlist
 
 dtsattr_namelist = ['double_ended_flag']
 dim_attrs = {k: v for kl, v in _dim_attrs.items() for k in kl}
+warnings.filterwarnings(
+    'ignore',
+    message='xarray subclass DataStore should explicitly define __slots__'
+)
 
 
 class DataStore(xr.Dataset):
@@ -377,7 +381,8 @@ class DataStore(xr.Dataset):
             skipna=None,
             closed=None,
             label=None,
-            base=0,
+            origin='start_day',
+            offset=None,
             keep_attrs=True,
             **indexer):
         """Returns a resampled DataStore. Always define the how.
@@ -438,7 +443,8 @@ class DataStore(xr.Dataset):
 
         group = DataArray(dim, [(dim.dims, dim)], name=RESAMPLE_DIM)
         grouper = pd.Grouper(
-            freq=freq, how=how, closed=closed, label=label, base=base)
+            freq=freq, how=how, closed=closed, label=label,
+            origin=origin, offset=offset)
         gb = self._groupby_cls(self, group, grouper=grouper)
         if isinstance(how, str):
             f = getattr(gb, how)
@@ -1447,30 +1453,6 @@ class DataStore(xr.Dataset):
         variance estimate because all temperature variation is attributed to
         the noise.
 
-        Parameters
-        ----------
-        reshape_residuals
-        st_label : str
-            label of the Stokes, anti-Stokes measurement.
-            E.g., st, ast, rst, rast
-        sections : Dict[str, List[slice]], optional
-            If `None` is supplied, `ds.sections` is used. Define calibration
-            sections. Each section requires a reference temperature time series,
-            such as the temperature measured by an external temperature sensor.
-            They should already be part of the DataStore object. `sections`
-            is defined with a dictionary with its keywords of the
-            names of the reference temperature time series. Its values are
-            lists of slice objects, where each slice object is a fiber stretch
-            that has the reference temperature. Afterwards, `sections` is stored
-            under `ds.sections`.
-
-        Returns
-        -------
-        I_var : float
-            Variance of the residuals between measured and best fit
-        resid : array_like
-            Residuals between measured and best fit
-
         Notes
         -----
 
@@ -1478,8 +1460,8 @@ class DataStore(xr.Dataset):
         calculating an initial estimate. Can be turned off by setting to False.
 
         * It is often not needed to use measurements from all time steps. If\
-        your variance estimate does not change when including measurements from\
-        more time steps, you have included enough measurements.
+        your variance estimate does not change when including measurements \
+        from more time steps, you have included enough measurements.
 
         References
         ----------
@@ -1490,8 +1472,8 @@ class DataStore(xr.Dataset):
 
         Examples
         --------
-        - `Example notebook 4: Calculate variance Stokes intensity measurements\
-        <https://github.com/\
+        - `Example notebook 4: Calculate variance Stokes intensity \
+        measurements <https://github.com/\
         dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
         04Calculate_variance_Stokes.ipynb>`_
 
@@ -1502,15 +1484,18 @@ class DataStore(xr.Dataset):
         sections : dict, optional
             Define sections. See documentation
         nbin : int
-            Number of bins to compute the variance for, through which the linear
-            function is fitted. Make sure that that are at least 50 residuals
-            per
-            bin to compute the variance from.
+            Number of bins to compute the variance for, through which the
+            linear function is fitted. Make sure that that are at least 50
+            residuals per bin to compute the variance from.
         through_zero : bool
             If True, the variance is computed as: VAR(Stokes) = slope * Stokes
             If False, VAR(Stokes) = slope * Stokes + offset.
             From what we can tell from our inital trails, is that the offset
-            seems very small, so that True seems a better option.
+            seems relatively small, so that True seems a better option for
+            setups where a reference section with very low Stokes intensities
+            is missing. If data with low Stokes intensities available, it is
+            better to not fit through zero, but determine the offset from
+            the data.
         plot_fit : bool
             If True plot the variances for each bin and plot the fitted
             linear function

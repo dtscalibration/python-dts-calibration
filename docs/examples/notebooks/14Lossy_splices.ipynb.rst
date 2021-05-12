@@ -36,13 +36,6 @@ lossy splice.
     import matplotlib.pyplot as plt
     %matplotlib inline
 
-
-.. parsed-literal::
-
-    /Users/bfdestombe/anaconda3/envs/dts/lib/python3.7/typing.py:847: FutureWarning: xarray subclass DataStore should explicitly define __slots__
-      super().__init_subclass__(*args, **kwargs)
-
-
 .. code:: ipython3
 
     filepath = os.path.join('..', '..', 'tests', 'data', 'double_ended2')
@@ -101,7 +94,7 @@ clearly visible.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x7f990a80d5d0>
+    <matplotlib.legend.Legend at 0x7f3d3b7f0ad0>
 
 
 
@@ -139,7 +132,7 @@ after the jump are too high.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x7f990a99c3d0>]
+    [<matplotlib.lines.Line2D at 0x7f3d3b86fbd0>]
 
 
 
@@ -182,7 +175,7 @@ big jump.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x7f990ac1f910>
+    <matplotlib.legend.Legend at 0x7f3d3bd56fd0>
 
 
 

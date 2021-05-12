@@ -3,6 +3,7 @@ import hashlib
 import os
 import tempfile
 import time
+import warnings
 from zipfile import ZipFile as zipf
 
 import dask.array as da
@@ -220,7 +221,14 @@ def test_io_sections_property():
     # Write the datastore to the temp file
     ds.to_netcdf(path=temppath)
 
-    ds2 = open_datastore(temppath)
+    try:
+        ds2 = open_datastore(temppath)
+    except ValueError as e:
+        if str(e) != 'cannot guess the engine, try passing one explicitly':
+            raise
+        else:
+            warnings.warn('Could not guess engine, defaulted to netcdf4')
+            ds2 = open_datastore(temppath, engine='netcdf4')
 
     assert ds.sections == ds2.sections
 
