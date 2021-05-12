@@ -38,6 +38,10 @@ from .io import ziphandle_to_filepathlist
 
 dtsattr_namelist = ['double_ended_flag']
 dim_attrs = {k: v for kl, v in _dim_attrs.items() for k in kl}
+warnings.filterwarnings(
+    'ignore',
+    message='xarray subclass DataStore should explicitly define __slots__'
+)
 
 
 class DataStore(xr.Dataset):

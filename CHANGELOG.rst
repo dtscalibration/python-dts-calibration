@@ -18,6 +18,7 @@ Others
 
 * Notebook 04 on Stokes variance has been updated to explain the different estimation methods for the variance, and their importance.
 * Notebook 07 and 08 have been updated to take into account the changes in ds.stokes_variance.
+* Silenced xarray's __slots__ warning
 
 1.0.2 (2020-05-04)
 ------------------
