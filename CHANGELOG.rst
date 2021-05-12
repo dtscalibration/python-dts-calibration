@@ -13,6 +13,7 @@ Bug fixes
 * Sensornet .ddf file version check is now more robust (commas are replaced to periods)
 * Changed matplotlib's deprecated DivergingNorm to TwoSlopeNorm
 * Updated the stokes_variance_linear docstring to remove incorrect and duplicate information
+* Adjusted resample_datastore to avoid using deprecated 'base' kwarg, instead using the new arguments 'origin' and 'offset'. See http://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.resample.html
 
 Others
 

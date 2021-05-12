@@ -381,7 +381,8 @@ class DataStore(xr.Dataset):
             skipna=None,
             closed=None,
             label=None,
-            base=0,
+            origin='start_day',
+            offset='None',
             keep_attrs=True,
             **indexer):
         """Returns a resampled DataStore. Always define the how.
@@ -442,7 +443,8 @@ class DataStore(xr.Dataset):
 
         group = DataArray(dim, [(dim.dims, dim)], name=RESAMPLE_DIM)
         grouper = pd.Grouper(
-            freq=freq, how=how, closed=closed, label=label, base=base)
+            freq=freq, how=how, closed=closed, label=label,
+            origin=origin, offset=offset)
         gb = self._groupby_cls(self, group, grouper=grouper)
         if isinstance(how, str):
             f = getattr(gb, how)
