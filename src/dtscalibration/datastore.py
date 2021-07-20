@@ -5778,7 +5778,8 @@ def read_sensornet_files(
         The newly created datastore.
     """
     if filepathlist is None:
-        filepathlist = sorted(glob.glob(os.path.join(directory, file_ext)))
+        # Also look for files in sub-folders
+        filepathlist = sorted(glob.glob(os.path.join(directory, '**', file_ext), recursive=True))
 
         # Make sure that the list of files contains any files
         assert len(
