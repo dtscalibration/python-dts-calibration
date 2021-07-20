@@ -5779,13 +5779,24 @@ def read_sensornet_files(
     """
     if filepathlist is None:
         # Also look for files in sub-folders
-        filepathlist = sorted(glob.glob(os.path.join(directory, '**', file_ext), recursive=True))
+        filepathlist_unsorted = glob.glob(os.path.join(directory, '**', file_ext), recursive=True)
 
         # Make sure that the list of files contains any files
         assert len(
-            filepathlist) >= 1, 'No measurement files found in provided ' \
+            filepathlist_unsorted) >= 1, 'No measurement files found in provided ' \
                                 'directory: \n' + \
                                 str(directory)
+
+        # sort based on dates in filesname. A simple sorted() is not sufficient 
+        # as month folders do not sort well
+        basenames = [os.path.basename(fp) for fp in filepathlist_unsorted]
+        dates = [''.join(bn.split(' ')[2:4]) for bn in basenames]
+        i_sort = np.argsort(dates)
+        filepathlist = [filepathlist_unsorted[i] for i in i_sort]
+
+        # Check measurements are all from same channel
+        chno = [bn.split(' ')[1] for bn in basenames]
+        assert len(set(chno)) == 1, 'Folder contains measurements from multiple channels'
 
     # Make sure that the list of files contains any files
     assert len(
