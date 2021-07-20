@@ -147,8 +147,8 @@ def sensornet_ddf_version_check(filepathlist):
     # Obtain metadata fro mthe first file
     _, meta = read_sensornet_single(filepathlist[0])
 
-    if 'Software version number:' in meta.keys():
-        version_string = meta['Software version number:']
+    if 'Software version number' in meta.keys():
+        version_string = meta['Software version number']
     else:
         raise ValueError(
             'Software version number could not be detected in .ddf file'
@@ -1637,11 +1637,11 @@ def read_sensornet_single(filename):
 
     meta = {}
     with open_file(filename, encoding='windows-1252') as fileobject:
-        for ii in range(0, 6):
-            fileline = fileobject.readline().split('\t')
-            meta[fileline[0]] = fileline[1]
+        for ii in range(0, 4):
+            fileline = fileobject.readline().split(':\t')
+            meta[fileline[0]] = fileline[1].replace('\n', '')
 
-        for ii in range(6, headerlength - 1):
+        for ii in range(4, headerlength - 1):
             fileline = fileobject.readline().split('\t')
             meta[fileline[0]] = fileline[1].replace('\n', '').replace(',', '.')
 
@@ -1686,6 +1686,10 @@ def read_sensornet_single(filename):
             raise ValueError(
                 'unknown differential loss correction: "'
                 + meta['differential loss correction'] + '"')
+
+    meta['default loss term dB per km'] = meta['default loss term (dB/km)']
+    del meta['default loss term (dB/km)']
+
 
     return data, meta
 
