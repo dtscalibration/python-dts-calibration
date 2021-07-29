@@ -21,9 +21,9 @@ Overview
     :target: https://python-dts-calibration.readthedocs.io/en/latest/
     :alt: Documentation Status
 
-.. |travis| image:: https://travis-ci.org/dtscalibration/python-dts-calibration.svg?branch=master
+.. |travis| image:: https://travis-ci.com/dtscalibration/python-dts-calibration.svg?branch=master
     :alt: Travis-CI Build Status
-    :target: https://travis-ci.org/dtscalibration/python-dts-calibration
+    :target: https://travis-ci.com/dtscalibration/python-dts-calibration
 
 .. |appveyor| image:: https://ci.appveyor.com/api/projects/status/we2caropyby30nd1?svg=true
     :alt: AppVeyor Build Status
