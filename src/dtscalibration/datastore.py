@@ -2171,6 +2171,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
 
             if method == 'wls' or method == 'external':
                 tavar = p_var[-nt * nta:].reshape((nt, nta), order='F')
+                self[store_ta + variance_suffix] = ((time_dim, 'trans_att'), tavar[:, :])
 
         if fix_alpha:
             ic_start = 1 + nx
