@@ -1690,7 +1690,6 @@ def read_sensornet_single(filename):
     meta['default loss term dB per km'] = meta['default loss term (dB/km)']
     del meta['default loss term (dB/km)']
 
-
     return data, meta
 
 

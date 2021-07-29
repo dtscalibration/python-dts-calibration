@@ -1833,30 +1833,30 @@ class DataStore(xr.Dataset):
                     + 'Import_timeseries.ipynb for more info')
 
     def calibration_single_ended(
-        self,
-        sections=None,
-        st_var=None,
-        ast_var=None,
-        store_c='c',
-        store_gamma='gamma',
-        store_dalpha='dalpha',
-        store_alpha='alpha',
-        store_ta='talpha',
-        store_tmpf='tmpf',
-        store_p_cov='p_cov',
-        store_p_val='p_val',
-        variance_suffix='_var',
-        method='wls',
-        solver='sparse',
-        p_val=None,
-        p_var=None,
-        p_cov=None,
-        matching_sections=None,
-        trans_att=None,
-        fix_gamma=None,
-        fix_dalpha=None,
-        fix_alpha=None,
-        **kwargs):
+            self,
+            sections=None,
+            st_var=None,
+            ast_var=None,
+            store_c='c',
+            store_gamma='gamma',
+            store_dalpha='dalpha',
+            store_alpha='alpha',
+            store_ta='talpha',
+            store_tmpf='tmpf',
+            store_p_cov='p_cov',
+            store_p_val='p_val',
+            variance_suffix='_var',
+            method='wls',
+            solver='sparse',
+            p_val=None,
+            p_var=None,
+            p_cov=None,
+            matching_sections=None,
+            trans_att=None,
+            fix_gamma=None,
+            fix_dalpha=None,
+            fix_alpha=None,
+            **kwargs):
         """
         Calibrate the Stokes (`ds.st`) and anti-Stokes (`ds.ast`) data to
         temperature using fiber sections with a known temperature
@@ -2010,7 +2010,6 @@ class DataStore(xr.Dataset):
 dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
 07Calibrate_single_wls.ipynb>`_
 
-
         """
         self.check_deprecated_kwargs(kwargs)
         self.set_trans_att(trans_att=trans_att, **kwargs)
@@ -2070,7 +2069,6 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                 solver='external_split',
                 matching_indices=matching_indices)
 
-
             y = split['y']
             w = split['w']
 
@@ -2104,14 +2102,14 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                 p_val[ip_remove] = fix_gamma[0]
                 p_var[ip_remove] = fix_gamma[1]
 
-                X_gamma = sp.vstack((split['X_gamma'], split['X_m'].tocsr()[:, 0].
-                         tocoo())).toarray().flatten()
+                X_gamma = sp.vstack((split['X_gamma'], split['X_m'].tocsr()[:, 0].tocoo())
+                                    ).toarray().flatten()
 
                 y -= fix_gamma[0] * X_gamma
                 w = 1 / (1 / w + fix_gamma[1] * X_gamma)
 
             if fix_alpha:
-                ip_remove = list(range(1, nx + 1))  # (1 + ix_sec).tolist()  # list(range(1, ix_sec.size + 1))
+                ip_remove = list(range(1, nx + 1))
                 ip_use = [i for i in ip_use if i not in ip_remove]
                 p_val[ip_remove] = fix_alpha[0]
                 p_var[ip_remove] = fix_alpha[1]
