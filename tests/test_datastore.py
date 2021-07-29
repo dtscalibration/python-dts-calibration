@@ -510,28 +510,29 @@ def test_to_mf_netcdf_open_mf_datastore():
 
         # work around the effects of deafault encoding.
         path = os.path.join(tmpdirname, 'ds_merged.nc')
-        ds.to_netcdf(path)
-        ds.close()
-        time.sleep(2)  # to ensure all is written on Windows and file released
-        ds1 = open_datastore(path, load_in_memory=True)
 
-        # Test saving
-        ds1 = ds1.chunk({'time': 1})
-        ds1.to_mf_netcdf(
-            folder_path=tmpdirname,
-            filename_preamble='file_',
-            filename_extension='.nc')
-        correct_val = float(ds1.st.sum())
-        ds1.close()
+        with read_silixa_files(directory=filepath, file_ext='*.xml') as ds:
+            ds.to_netcdf(path)
+
+        time.sleep(5)  # to ensure all is written on Windows and file released
+
+        with open_datastore(path, load_in_memory=True) as ds1:
+            # Test saving
+            ds1 = ds1.chunk({'time': 1})
+            ds1.to_mf_netcdf(
+                folder_path=tmpdirname,
+                filename_preamble='file_',
+                filename_extension='.nc')
+            correct_val = float(ds1.st.sum())
+
         time.sleep(2)  # to ensure all is written on Windows and file released
 
         # Test loading
         path = os.path.join(tmpdirname, 'file_*.nc')
-        ds2 = open_mf_datastore(path=path, load_in_memory=True)
-        test_val = float(ds1.st.sum())
 
-        np.testing.assert_equal(correct_val, test_val)
-        ds2.close()
+        with open_mf_datastore(path=path, load_in_memory=True) as ds2:
+            test_val = float(ds2.st.sum())
+            np.testing.assert_equal(correct_val, test_val)
 
     pass
 
