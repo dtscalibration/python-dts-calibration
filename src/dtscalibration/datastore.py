@@ -40,8 +40,7 @@ dtsattr_namelist = ['double_ended_flag']
 dim_attrs = {k: v for kl, v in _dim_attrs.items() for k in kl}
 warnings.filterwarnings(
     'ignore',
-    message='xarray subclass DataStore should explicitly define __slots__'
-)
+    message='xarray subclass DataStore should explicitly define __slots__')
 
 
 class DataStore(xr.Dataset):
@@ -443,8 +442,12 @@ class DataStore(xr.Dataset):
 
         group = DataArray(dim.data, [(dim.dims, dim.data)], name=RESAMPLE_DIM)
         grouper = pd.Grouper(
-            freq=freq, how=how, closed=closed, label=label,
-            origin=origin, offset=offset)
+            freq=freq,
+            how=how,
+            closed=closed,
+            label=label,
+            origin=origin,
+            offset=offset)
         gb = self._groupby_cls(self, group, grouper=grouper)
         if isinstance(how, str):
             f = getattr(gb, how)
@@ -884,8 +887,10 @@ class DataStore(xr.Dataset):
         list_of_depr = ['st_label', 'ast_label', 'rst_label', 'rast_label']
         list_of_pending_depr = ['transient_asym_att_x', 'transient_att_x']
 
-        kwargs = {k: v for k, v in kwargs.items()
-                  if k not in list_of_pending_depr}
+        kwargs = {
+            k: v
+            for k, v in kwargs.items()
+            if k not in list_of_pending_depr}
 
         for k in kwargs:
             if k in list_of_depr:
@@ -1543,12 +1548,13 @@ class DataStore(xr.Dataset):
                 rcond=None)[0]
 
             if offset < 0:
-                warnings.warn(f"Warning! Offset of variance_stokes_linear() "
-                              f"of {st_label} is negative. This is phisically "
-                              f"not possible. Most likely, your {st_label} do "
-                              f"not vary enough to fit a linear curve. Either "
-                              f"use `through_zero` option or use "
-                              f"`ds.variance_stokes_constant()`")
+                warnings.warn(
+                    f"Warning! Offset of variance_stokes_linear() "
+                    f"of {st_label} is negative. This is phisically "
+                    f"not possible. Most likely, your {st_label} do "
+                    f"not vary enough to fit a linear curve. Either "
+                    f"use `through_zero` option or use "
+                    f"`ds.variance_stokes_constant()`")
 
         def var_fun(stokes):
             return slope * stokes + offset
@@ -2082,14 +2088,24 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                 p_val = split['p0_est_alpha'].copy()
 
                 if np.any(matching_indices):
-                    raise NotImplementedError("Configuring fix_alpha and matching sections requires extra code")
+                    raise NotImplementedError(
+                        "Configuring fix_alpha and matching sections requires extra code"
+                    )
 
-                X = sp.hstack((split['X_gamma'], split['X_alpha'], split['X_c'], split['X_TA'])).tocsr()
+                X = sp.hstack(
+                    (
+                        split['X_gamma'], split['X_alpha'], split['X_c'],
+                        split['X_TA'])).tocsr()
                 ip_use = list(range(1 + nx + nt + nta * nt))
 
             else:
-                X = sp.vstack((sp.hstack((split['X_gamma'], split['X_dalpha'], split['X_c'], split['X_TA'])),
-                               split['X_m'])).tocsr()
+                X = sp.vstack(
+                    (
+                        sp.hstack(
+                            (
+                                split['X_gamma'], split['X_dalpha'],
+                                split['X_c'], split['X_TA'])),
+                        split['X_m'])).tocsr()
                 p_val = split['p0_est_dalpha'].copy()
                 ip_use = list(range(1 + 1 + nt + nta * nt))
 
@@ -2102,8 +2118,9 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                 p_val[ip_remove] = fix_gamma[0]
                 p_var[ip_remove] = fix_gamma[1]
 
-                X_gamma = sp.vstack((split['X_gamma'], split['X_m'].tocsr()[:, 0].tocoo())
-                                    ).toarray().flatten()
+                X_gamma = sp.vstack(
+                    (split['X_gamma'],
+                     split['X_m'].tocsr()[:, 0].tocoo())).toarray().flatten()
 
                 y -= fix_gamma[0] * X_gamma
                 w = 1 / (1 / w + fix_gamma[1] * X_gamma)
@@ -2124,18 +2141,28 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                 p_val[ip_remove] = fix_dalpha[0]
                 p_var[ip_remove] = fix_dalpha[1]
 
-                y -= np.hstack((
+                y -= np.hstack(
+                    (
                         fix_dalpha[0] * split['X_dalpha'].toarray().flatten(),
-                        (fix_dalpha[0] * split['X_m'].tocsr()[:, 1].
-                         tocoo().toarray().flatten())))
+                        (
+                            fix_dalpha[0] * split['X_m'].tocsr()
+                            [:, 1].tocoo().toarray().flatten())))
                 w = 1 / (
                     1 / w + np.hstack(
-                    (fix_dalpha[1] * split['X_dalpha'].toarray().flatten(),
-                     (fix_dalpha[1] * split['X_m'].tocsr()[:, 1].tocoo().toarray().flatten()))))
+                        (
+                            fix_dalpha[1]
+                            * split['X_dalpha'].toarray().flatten(), (
+                                fix_dalpha[1] * split['X_m'].tocsr()
+                                [:, 1].tocoo().toarray().flatten()))))
 
             if solver == 'sparse':
                 out = wls_sparse(
-                    X[:, ip_use], y, w=w, x0=p_val[ip_use], calc_cov=calc_cov, verbose=False)
+                    X[:, ip_use],
+                    y,
+                    w=w,
+                    x0=p_val[ip_use],
+                    calc_cov=calc_cov,
+                    verbose=False)
 
             elif solver == 'stats':
                 out = wls_stats(
@@ -2145,7 +2172,8 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             p_var[ip_use] = out[1]
 
             if calc_cov:
-                np.fill_diagonal(p_cov, p_var)  # set variance of all fixed params
+                np.fill_diagonal(
+                    p_cov, p_var)  # set variance of all fixed params
                 p_cov[np.ix_(ip_use, ip_use)] = out[2]
 
         elif method == 'external':
@@ -2171,7 +2199,8 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
 
             if method == 'wls' or method == 'external':
                 tavar = p_var[-nt * nta:].reshape((nt, nta), order='F')
-                self[store_ta + variance_suffix] = ((time_dim, 'trans_att'), tavar[:, :])
+                self[store_ta + variance_suffix] = (
+                    (time_dim, 'trans_att'), tavar[:, :])
 
         if fix_alpha:
             ic_start = 1 + nx
@@ -2179,7 +2208,8 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             self[store_alpha] = (('x',), fix_alpha[0])
 
             if method == 'wls' or method == 'external':
-                self[store_c + variance_suffix] = ((time_dim,), p_var[ic_start:nt + ic_start])
+                self[store_c + variance_suffix] = (
+                    (time_dim,), p_var[ic_start:nt + ic_start])
                 self[store_alpha + variance_suffix] = (('x',), fix_alpha[1])
         else:
             self[store_c] = ((time_dim,), p_val[2:nt + 2])
@@ -2188,10 +2218,12 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             self[store_alpha] = (('x',), dalpha * self.x.data)
 
             if method == 'wls' or method == 'external':
-                self[store_c + variance_suffix] = ((time_dim,), p_var[2:nt + 2])
+                self[store_c
+                     + variance_suffix] = ((time_dim,), p_var[2:nt + 2])
                 dalpha_var = p_var[1]
                 self[store_dalpha + variance_suffix] = (tuple(), dalpha_var)
-                self[store_alpha + variance_suffix] = (('x',), dalpha_var * self.x.data)
+                self[store_alpha
+                     + variance_suffix] = (('x',), dalpha_var * self.x.data)
 
         # deal with FW
         if store_tmpf:
@@ -2203,12 +2235,16 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                         ta_arr[self.x.values >= taxi] + tai
 
             tempF_data = self.gamma.data / (
-                (np.log(self.st.data) - np.log(self.ast.data) + (self.c.data[None, :] + ta_arr)) +
+                (
+                    np.log(self.st.data) - np.log(self.ast.data) +
+                    (self.c.data[None, :] + ta_arr)) +
                 (self.alpha.data[:, None])) - 273.15
             self[store_tmpf] = (('x', time_dim), tempF_data)
 
         if store_p_val:
-            drop_vars = [k for k, v in self.items() if {'params1', 'params2'}.intersection(v.dims)]
+            drop_vars = [
+                k for k, v in self.items()
+                if {'params1', 'params2'}.intersection(v.dims)]
 
             for k in drop_vars:
                 del self[k]
@@ -3131,12 +3167,10 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                 # neglecting the covariances. Better include them
                 tavar = p_var[2 * nt + 1 + nx:].reshape(
                     (nt, 2, nta), order='F')
-                self[store_ta + '_fw'
-                     + variance_suffix] = ((time_dim, 'trans_att'),
-                                           tavar[:, 0, :])
-                self[store_ta + '_bw'
-                     + variance_suffix] = ((time_dim, 'trans_att'),
-                                           tavar[:, 1, :])
+                self[store_ta + '_fw' + variance_suffix] = (
+                    (time_dim, 'trans_att'), tavar[:, 0, :])
+                self[store_ta + '_bw' + variance_suffix] = (
+                    (time_dim, 'trans_att'), tavar[:, 1, :])
 
         # deal with FW
         if store_tmpf or (store_tmpw and method == 'ols'):
@@ -3190,7 +3224,9 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             pass
 
         if store_p_val:
-            drop_vars = [k for k, v in self.items() if {'params1', 'params2'}.intersection(v.dims)]
+            drop_vars = [
+                k for k, v in self.items()
+                if {'params1', 'params2'}.intersection(v.dims)]
 
             for k in drop_vars:
                 del self[k]
@@ -3204,19 +3240,19 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
         pass
 
     def conf_int_single_ended(
-        self,
-        p_val='p_val',
-        p_cov='p_cov',
-        st_var=None,
-        ast_var=None,
-        store_tmpf='tmpf',
-        store_tempvar='_var',
-        conf_ints=None,
-        mc_sample_size=100,
-        da_random_state=None,
-        remove_mc_set_flag=True,
-        reduce_memory_usage=False,
-        **kwargs):
+            self,
+            p_val='p_val',
+            p_cov='p_cov',
+            st_var=None,
+            ast_var=None,
+            store_tmpf='tmpf',
+            store_tempvar='_var',
+            conf_ints=None,
+            mc_sample_size=100,
+            da_random_state=None,
+            remove_mc_set_flag=True,
+            reduce_memory_usage=False,
+            **kwargs):
         """
         Estimation of the confidence intervals for the temperatures measured
         with a single-ended setup. It consists of five steps. First, the variances
@@ -3401,7 +3437,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                 ('mc', 'x', time_dim),
                 state.normal(
                     loc=loc,  # has chunks=memchunk[1:]
-                    scale=st_vari_da ** 0.5,
+                    scale=st_vari_da**0.5,
                     size=rsize,
                     chunks=memchunk))
 
@@ -3409,8 +3445,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
 
         if nta:
             for ii, ta in enumerate(self['ta_mc']):
-                for tai, taxi in zip(ta.values,
-                                     self.trans_att.values):
+                for tai, taxi in zip(ta.values, self.trans_att.values):
                     ta_arr[ii, self.x.values >= taxi] = \
                         ta_arr[ii, self.x.values >= taxi] + tai
         self['ta_mc_arr'] = (('mc', 'x', time_dim), ta_arr)
@@ -3419,8 +3454,8 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             self[store_tmpf + '_mc_set'] = self['gamma_mc'] / (
                 (
                     np.log(self['r_st']) - np.log(self['r_ast']) +
-                    (self['c_mc'] + self['ta_mc_arr'])) +
-                self['alpha_mc']) - 273.15
+                    (self['c_mc'] + self['ta_mc_arr']))
+                + self['alpha_mc']) - 273.15
         else:
             self[store_tmpf + '_mc_set'] = self['gamma_mc'] / (
                 (
@@ -3434,11 +3469,11 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
 
         self[store_tmpf + '_mc' + store_tempvar] = (
             self[store_tmpf + '_mc_set'] - self[store_tmpf]).var(
-            dim=avg_dims, ddof=1)
+                dim=avg_dims, ddof=1)
 
         if conf_ints:
             new_chunks = (
-                             (len(conf_ints),),) + self[store_tmpf + '_mc_set'].chunks[1:]
+                (len(conf_ints),),) + self[store_tmpf + '_mc_set'].chunks[1:]
 
             qq = self[store_tmpf + '_mc_set']
 
@@ -3452,8 +3487,8 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
 
         if remove_mc_set_flag:
             drop_var = [
-                'gamma_mc', 'dalpha_mc', 'alpha_mc', 'c_mc', 'mc', 'r_st', 'r_ast',
-                store_tmpf + '_mc_set', 'ta_mc_arr']
+                'gamma_mc', 'dalpha_mc', 'alpha_mc', 'c_mc', 'mc', 'r_st',
+                'r_ast', store_tmpf + '_mc_set', 'ta_mc_arr']
             for k in drop_var:
                 if k in self:
                     del self[k]
@@ -3645,7 +3680,8 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             x_dim2 = 'x'
             self.coords[time_dim2] = (
                 (time_dim2,),
-                self[time_dim].sel(**{time_dim: ci_avg_time_sel}).data)
+                self[time_dim].sel(**{
+                    time_dim: ci_avg_time_sel}).data)
             self[store_tmpf + '_avgsec'] = (
                 ('x', time_dim2),
                 self[store_tmpf].sel(**{
@@ -3661,7 +3697,8 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             x_dim2 = 'x'
             self.coords[time_dim2] = (
                 (time_dim2,),
-                self[time_dim].isel(**{time_dim: ci_avg_time_isel}).data)
+                self[time_dim].isel(**{
+                    time_dim: ci_avg_time_isel}).data)
             self[store_tmpf + '_avgsec'] = (
                 ('x', time_dim2),
                 self[store_tmpf].isel(**{
@@ -3685,7 +3722,8 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
         elif ci_avg_x_isel is not None:
             time_dim2 = time_dim
             x_dim2 = 'x_avg'
-            self.coords[x_dim2] = ((x_dim2,), self.x.isel(x=ci_avg_x_isel).data)
+            self.coords[x_dim2] = (
+                (x_dim2,), self.x.isel(x=ci_avg_x_isel).data)
             self[store_tmpf + '_avgsec'] = (
                 (x_dim2, time_dim2),
                 self[store_tmpf].isel(x=ci_avg_x_isel).data)
@@ -4594,7 +4632,8 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                 x_dim2 = 'x'
                 self.coords[time_dim2] = (
                     (time_dim2,),
-                    self[time_dim].sel(**{time_dim: ci_avg_time_sel}).data)
+                    self[time_dim].sel(**{
+                        time_dim: ci_avg_time_sel}).data)
                 self[label + '_avgsec'] = (
                     ('x', time_dim2),
                     self[label].sel(**{
@@ -4609,7 +4648,8 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                 x_dim2 = 'x'
                 self.coords[time_dim2] = (
                     (time_dim2,),
-                    self[time_dim].isel(**{time_dim: ci_avg_time_isel}).data)
+                    self[time_dim].isel(**{
+                        time_dim: ci_avg_time_isel}).data)
                 self[label + '_avgsec'] = (
                     ('x', time_dim2),
                     self[label].isel(**{
@@ -4623,7 +4663,8 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             elif ci_avg_x_sel is not None:
                 time_dim2 = time_dim
                 x_dim2 = 'x_avg'
-                self.coords[x_dim2] = ((x_dim2,), self.x.sel(x=ci_avg_x_sel).data)
+                self.coords[x_dim2] = (
+                    (x_dim2,), self.x.sel(x=ci_avg_x_sel).data)
                 self[label + '_avgsec'] = (
                     (x_dim2, time_dim), self[label].sel(x=ci_avg_x_sel).data)
                 self[label + '_mc_set'] = (
@@ -4633,7 +4674,8 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             elif ci_avg_x_isel is not None:
                 time_dim2 = time_dim
                 x_dim2 = 'x_avg'
-                self.coords[x_dim2] = ((x_dim2,), self.x.isel(x=ci_avg_x_isel).data)
+                self.coords[x_dim2] = (
+                    (x_dim2,), self.x.isel(x=ci_avg_x_isel).data)
                 self[label + '_avgsec'] = (
                     (x_dim2, time_dim2),
                     self[label].isel(x=ci_avg_x_isel).data)
@@ -5675,13 +5717,13 @@ def read_sensornet_files(
     """
     if filepathlist is None:
         # Also look for files in sub-folders
-        filepathlist_unsorted = glob.glob(os.path.join(directory, '**', file_ext), recursive=True)
+        filepathlist_unsorted = glob.glob(
+            os.path.join(directory, '**', file_ext), recursive=True)
 
         # Make sure that the list of files contains any files
-        assert len(
-            filepathlist_unsorted) >= 1, 'No measurement files found in provided ' \
-                                'directory: \n' + \
-                                str(directory)
+        msg = 'No measurement files found in provided directory: \n' + str(
+            directory)
+        assert len(filepathlist_unsorted) >= 1, msg
 
         # sort based on dates in filesname. A simple sorted() is not sufficient
         # as month folders do not sort well
@@ -5692,7 +5734,9 @@ def read_sensornet_files(
 
         # Check measurements are all from same channel
         chno = [bn.split(' ')[1] for bn in basenames]
-        assert len(set(chno)) == 1, 'Folder contains measurements from multiple channels'
+        assert len(
+            set(chno)
+        ) == 1, 'Folder contains measurements from multiple channels'
 
     # Make sure that the list of files contains any files
     assert len(
@@ -5702,10 +5746,8 @@ def read_sensornet_files(
     ddf_version = sensornet_ddf_version_check(filepathlist)
 
     valid_versions = [
-        'Halo DTS v1*',
-        'ORYX F/W v1.02 Oryx Data Collector v3*',
-        'ORYX F/W v4.00 Oryx Data Collector v3*'
-    ]
+        'Halo DTS v1*', 'ORYX F/W v1.02 Oryx Data Collector v3*',
+        'ORYX F/W v4.00 Oryx Data Collector v3*']
 
     valid = any([fnmatch.fnmatch(ddf_version, v_) for v_ in valid_versions])
 
