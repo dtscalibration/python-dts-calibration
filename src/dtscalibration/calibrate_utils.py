@@ -114,6 +114,7 @@ def calibration_single_ended_solver(
     x_all = ds['x'].values
     nx = x_sec.size
     nt = ds.time.size
+    no = ds.x.size
     nta = ds.trans_att.size
     nm = matching_indices.shape[0] if np.any(matching_indices) else 0
 
@@ -121,7 +122,8 @@ def calibration_single_ended_solver(
         ds_ms0 = ds.isel(x=matching_indices[:, 0])
         ds_ms1 = ds.isel(x=matching_indices[:, 1])
 
-    p0_est = np.asarray([485., 0.1] + nt * [1.4] + nta * nt * [0.])
+    p0_est_dalpha = np.asarray([485., 0.1] + nt * [1.4] + nta * nt * [0.])
+    p0_est_alpha = np.asarray([485.] + no * [0.] + nt * [1.4] + nta * nt * [0.])
 
     # X \gamma  # Eq.34
     cal_ref = ds.ufunc_per_section(
@@ -281,10 +283,10 @@ def calibration_single_ended_solver(
     if solver == 'sparse':
         if calc_cov:
             p_sol, p_var, p_cov = wls_sparse(
-                X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=verbose)
+                X, y, w=w, x0=p0_est_dalpha, calc_cov=calc_cov, verbose=verbose)
         else:
             p_sol, p_var = wls_sparse(
-                X, y, w=w, x0=p0_est, calc_cov=calc_cov, verbose=verbose)
+                X, y, w=w, x0=p0_est_dalpha, calc_cov=calc_cov, verbose=verbose)
 
     elif solver == 'stats':
         if calc_cov:
@@ -295,18 +297,29 @@ def calibration_single_ended_solver(
                 X, y, w=w, calc_cov=calc_cov, verbose=verbose)
 
     elif solver == 'external':
-        return X, y, w, p0_est
+        return X, y, w, p0_est_dalpha
 
     elif solver == 'external_split':
+        # Only with external split, alpha can be estimated with double ended setup
+        data_alpha = -np.ones(nt * nx, dtype=int)  # np.tile(-x_sec, nt)  # dalpha
+        coord_alpha_row = np.arange(nt * nx, dtype=int)
+        coord_alpha_col = np.tile(ix_sec, nt)  # np.zeros(nt * nx, dtype=int)
+        X_alpha = sp.coo_matrix(
+            (data_alpha, (coord_alpha_row, coord_alpha_col)),
+            shape=(nt * nx, no),
+            copy=False)
+
         return dict(
             y=y,
             w=w,
             X_gamma=X_gamma,
             X_dalpha=X_dalpha,
+            X_alpha=X_alpha,
             X_c=X_c,
             X_m=X_m,
             X_TA=X_TA,
-            p0_est=p0_est)
+            p0_est_dalpha=p0_est_dalpha,
+            p0_est_alpha=p0_est_alpha)
 
     else:
         raise ValueError("Choose a valid solver")
