@@ -3121,6 +3121,8 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             for input_item in [p_val, p_var, p_cov]:
                 assert input_item is not None
 
+            calc_cov = True
+
         elif method == 'external_split':
             raise ValueError('Not implemented yet')
 
@@ -3199,7 +3201,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                 + ta_arr) - 273.15
             self[store_tmpb] = (('x', time_dim), tempB_data)
 
-        if store_tmpw and method == 'wls':
+        if store_tmpw and (method == 'wls' or method == 'external'):
             self.conf_int_double_ended(
                 p_val=p_val,
                 p_cov=p_cov,
