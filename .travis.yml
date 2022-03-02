@@ -12,19 +12,19 @@ env:
 matrix:
   include:
     - python: '3.8'
-      dist: xenial
+      dist: bionic
       env:
         - TOXENV=py38
       services:
         - xvfb
     - python: '3.9'
-      dist: xenial
+      dist: bionic
       env:
         - TOXENV=py39,report,codecov,check
       services:
         - xvfb
     - python: '3.10'
-      dist: xenial
+      dist: bionic
       env:
         - TOXENV=py310
       services:
