@@ -35,12 +35,11 @@ before_install:
 #  - "sh -e /etc/init.d/xvfb start"
   - sleep 3 # give xvfb some time to start
 install:
-  - pip install setuptools
   - pip install pypandoc
   - sudo apt-get install pandoc
   - pip install tox
   - virtualenv --version
-  - easy_install --version
+  - python -m easy_install --version
   - pip --version
   - tox --version
 script:
