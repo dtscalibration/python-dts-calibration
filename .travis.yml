@@ -11,15 +11,6 @@ env:
     - TOXENV=docs
 matrix:
   include:
-    - python: '3.6'
-      env:
-        - TOXENV=py36
-    - python: '3.7'
-      dist: xenial
-      env:
-        - TOXENV=py37
-      services:
-        - xvfb
     - python: '3.8'
       dist: xenial
       env:
@@ -32,7 +23,12 @@ matrix:
         - TOXENV=py39,report,codecov,check
       services:
         - xvfb
-
+    - python: '3.10'
+      dist: xenial
+      env:
+        - TOXENV=py310
+      services:
+        - xvfb
 before_install:
   - python --version
   - uname -a
