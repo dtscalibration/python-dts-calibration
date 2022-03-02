@@ -39,7 +39,7 @@ install:
   - sudo apt-get install pandoc
   - pip install tox
   - virtualenv --version
-  - python -m easy_install --version
+#  - easy_install --version
   - pip --version
   - tox --version
 script:
