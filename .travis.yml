@@ -1,3 +1,4 @@
+dist: bionic
 language: python
 python:
     - "3.9"
@@ -12,19 +13,16 @@ env:
 matrix:
   include:
     - python: '3.8'
-      dist: bionic
       env:
         - TOXENV=py38
       services:
         - xvfb
     - python: '3.9'
-      dist: bionic
       env:
         - TOXENV=py39,report,codecov,check
       services:
         - xvfb
     - python: '3.10'
-      dist: bionic
       env:
         - TOXENV=py310
       services:
@@ -41,7 +39,7 @@ install:
   - sudo apt-get install pandoc
   - pip install tox
   - virtualenv --version
-#  - easy_install --version
+  - easy_install --version
   - pip --version
   - tox --version
 script:
