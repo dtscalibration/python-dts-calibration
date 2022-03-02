@@ -1,6 +1,6 @@
 language: python
 python:
-    - "3.7"
+    - "3.9"
 cache: pip
 env:
   global:
@@ -17,13 +17,19 @@ matrix:
     - python: '3.7'
       dist: xenial
       env:
-        - TOXENV=py37,report,codecov,check
+        - TOXENV=py37
       services:
         - xvfb
     - python: '3.8'
       dist: xenial
       env:
         - TOXENV=py38
+      services:
+        - xvfb
+    - python: '3.9'
+      dist: xenial
+      env:
+        - TOXENV=py39,report,codecov,check
       services:
         - xvfb
 
