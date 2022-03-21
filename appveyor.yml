@@ -1,5 +1,8 @@
+image:
+  - Visual Studio 2022
+
 version: '{branch}-{build}'
-build: off
+build: false
 cache:
   - '%LOCALAPPDATA%\pip\Cache'
 environment:
@@ -7,8 +10,8 @@ environment:
     WITH_COMPILER: 'cmd /E:ON /V:ON /C .\ci\appveyor-with-compiler.cmd'
   matrix:
     - TOXENV: 'py37'
-      TOXPYTHON: C:\Python37\python.exe
-      PYTHON_HOME: C:\Python37
+      TOXPYTHON: C:\Python37-x64\python.exe
+      PYTHON_HOME: C:\Python37-x64
       PYTHON_VERSION: '3.7'
       PYTHON_ARCH: '64'
     - TOXENV: 'py38'
