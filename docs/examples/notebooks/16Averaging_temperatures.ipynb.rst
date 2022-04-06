@@ -42,6 +42,12 @@ Calibration procedure
     Reading the data from disk
 
 
+.. parsed-literal::
+
+    /home/bart/git/travis_fix/python-dts-calibration/src/dtscalibration/io.py:1843: FutureWarning: Using .astype to convert from timezone-aware dtype to timezone-naive dtype is deprecated and will raise in a future version.  Use obj.tz_localize(None) or obj.tz_convert('UTC').tz_localize(None) instead
+      'time', pd.DatetimeIndex(v).tz_convert(timezone_netcdf).astype(
+
+
 .. code:: ipython3
 
     st_var, resid = ds.variance_stokes(st_label='st')
@@ -150,16 +156,7 @@ to the DataStore:
 
 
 
-
-.. parsed-literal::
-
-    [<matplotlib.lines.Line2D at 0x7f02f8acafd0>,
-     <matplotlib.lines.Line2D at 0x7f02f8ac0fd0>]
-
-
-
-
-.. image:: 16Averaging_temperatures.ipynb_files/16Averaging_temperatures.ipynb_10_1.png
+.. image:: 16Averaging_temperatures.ipynb_files/16Averaging_temperatures.ipynb_10_0.png
 
 
 2. Averaging over time while assuming the temperature remains constant over time but varies along the fiber
@@ -207,16 +204,7 @@ Note that this average has much less uncertainty that averaging option
 
 
 
-
-.. parsed-literal::
-
-    [<matplotlib.lines.Line2D at 0x7f02fa5a3e10>,
-     <matplotlib.lines.Line2D at 0x7f02fa5a3e50>]
-
-
-
-
-.. image:: 16Averaging_temperatures.ipynb_files/16Averaging_temperatures.ipynb_13_1.png
+.. image:: 16Averaging_temperatures.ipynb_files/16Averaging_temperatures.ipynb_13_0.png
 
 
 3. Averaging along the fiber while the temperature varies along the cable and over time
@@ -264,16 +252,7 @@ specific fiber sections.
 
 
 
-
-.. parsed-literal::
-
-    [<matplotlib.lines.Line2D at 0x7f02fa57da50>,
-     <matplotlib.lines.Line2D at 0x7f02f815da50>]
-
-
-
-
-.. image:: 16Averaging_temperatures.ipynb_files/16Averaging_temperatures.ipynb_16_1.png
+.. image:: 16Averaging_temperatures.ipynb_files/16Averaging_temperatures.ipynb_16_0.png
 
 
 4. Averaging along the fiber while assuming the temperature is same along the fiber but varies over time
@@ -321,15 +300,6 @@ Select the part of the fiber that is in the water with ``ci_avg_x_sel``.
 
 
 
-
-.. parsed-literal::
-
-    [<matplotlib.lines.Line2D at 0x7f02f802a550>,
-     <matplotlib.lines.Line2D at 0x7f02e9fc9090>]
-
-
-
-
-.. image:: 16Averaging_temperatures.ipynb_files/16Averaging_temperatures.ipynb_19_1.png
+.. image:: 16Averaging_temperatures.ipynb_files/16Averaging_temperatures.ipynb_19_0.png
 
 

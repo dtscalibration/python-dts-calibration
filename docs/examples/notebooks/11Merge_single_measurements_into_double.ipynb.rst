@@ -41,11 +41,27 @@ We load in both channels into seperate datastores
     Recorded at 8936 points along the cable
     The measurement is single ended
     Reading the data from disk
+
+
+.. parsed-literal::
+
+    /home/bart/git/travis_fix/python-dts-calibration/src/dtscalibration/io.py:1843: FutureWarning: Using .astype to convert from timezone-aware dtype to timezone-naive dtype is deprecated and will raise in a future version.  Use obj.tz_localize(None) or obj.tz_convert('UTC').tz_localize(None) instead
+      'time', pd.DatetimeIndex(v).tz_convert(timezone_netcdf).astype(
+
+
+.. parsed-literal::
+
     6 files were found, each representing a single timestep
     4 recorded vars were found: LAF, ST, AST, TMP
     Recorded at 8936 points along the cable
     The measurement is single ended
     Reading the data from disk
+
+
+.. parsed-literal::
+
+    /home/bart/git/travis_fix/python-dts-calibration/src/dtscalibration/io.py:1843: FutureWarning: Using .astype to convert from timezone-aware dtype to timezone-naive dtype is deprecated and will raise in a future version.  Use obj.tz_localize(None) or obj.tz_convert('UTC').tz_localize(None) instead
+      'time', pd.DatetimeIndex(v).tz_convert(timezone_netcdf).astype(
 
 
 When plotting the data the two datasets already look quite similar as it
@@ -62,7 +78,7 @@ is a duplex measurement.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x7f62f5ec5cd0>
+    <matplotlib.legend.Legend at 0x7f27ae5cab20>
 
 
 

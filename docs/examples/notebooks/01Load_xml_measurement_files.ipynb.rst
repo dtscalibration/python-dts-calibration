@@ -80,6 +80,12 @@ polluted with files other than measurement files.
     Reading the data from disk
 
 
+.. parsed-literal::
+
+    /home/bart/git/travis_fix/python-dts-calibration/src/dtscalibration/io.py:1843: FutureWarning: Using .astype to convert from timezone-aware dtype to timezone-naive dtype is deprecated and will raise in a future version.  Use obj.tz_localize(None) or obj.tz_convert('UTC').tz_localize(None) instead
+      'time', pd.DatetimeIndex(v).tz_convert(timezone_netcdf).astype(
+
+
 The object tries to gather as much metadata from the measurement files
 as possible (temporal and spatial coordinates, filenames, temperature
 probes measurements). All other configuration settings are loaded from
@@ -94,7 +100,7 @@ the first files and stored as attributes of the ``DataStore``.
 
     <dtscalibration.DataStore>
     Sections:                  ()
-    Dimensions:                (time: 6, trans_att: 0, x: 1693)
+    Dimensions:                (x: 1693, time: 6, trans_att: 0)
     Coordinates: (12/15)
       * x                      (x) float64 -80.5 -80.38 -80.25 ... 134.3 134.4 134.5
         filename               (time) <U31 'channel 1_20180328014052498.xml' ... ...

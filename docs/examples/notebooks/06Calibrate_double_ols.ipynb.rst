@@ -46,6 +46,12 @@ channel should be aligned.
     Reading the data from disk
 
 
+.. parsed-literal::
+
+    /home/bart/git/travis_fix/python-dts-calibration/src/dtscalibration/io.py:1843: FutureWarning: Using .astype to convert from timezone-aware dtype to timezone-naive dtype is deprecated and will raise in a future version.  Use obj.tz_localize(None) or obj.tz_convert('UTC').tz_localize(None) instead
+      'time', pd.DatetimeIndex(v).tz_convert(timezone_netcdf).astype(
+
+
 .. code:: ipython3
 
     print(ds100.calibration_double_ended.__doc__)
@@ -313,15 +319,7 @@ the other, as we do not have more information about the weighing.
 
 
 
-
-.. parsed-literal::
-
-    <matplotlib.legend.Legend at 0x7efcb60d6350>
-
-
-
-
-.. image:: 06Calibrate_double_ols.ipynb_files/06Calibrate_double_ols.ipynb_7_1.png
+.. image:: 06Calibrate_double_ols.ipynb_files/06Calibrate_double_ols.ipynb_7_0.png
 
 
 Lets compare our calibrated values with the device calibration. Lets
@@ -337,15 +335,7 @@ first.
 
 
 
-
-.. parsed-literal::
-
-    [<matplotlib.lines.Line2D at 0x7efcb5f0a250>]
-
-
-
-
-.. image:: 06Calibrate_double_ols.ipynb_files/06Calibrate_double_ols.ipynb_9_1.png
+.. image:: 06Calibrate_double_ols.ipynb_files/06Calibrate_double_ols.ipynb_9_0.png
 
 
 The device calibration sections and calibration sections defined by us

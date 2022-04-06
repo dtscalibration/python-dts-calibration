@@ -54,6 +54,12 @@ splice, just as in notebook 14.
     Reading the data from disk
 
 
+.. parsed-literal::
+
+    /home/bart/git/travis_fix/python-dts-calibration/src/dtscalibration/io.py:1843: FutureWarning: Using .astype to convert from timezone-aware dtype to timezone-naive dtype is deprecated and will raise in a future version.  Use obj.tz_localize(None) or obj.tz_convert('UTC').tz_localize(None) instead
+      'time', pd.DatetimeIndex(v).tz_convert(timezone_netcdf).astype(
+
+
 Again, we introduce a step loss in the signal strength at x = 50 m. For
 the forward channel, this means all data beyond 50 meters is reduced
 with a ‘random’ factor. For the backward channel, this means all data up
@@ -99,7 +105,7 @@ calibrated correctly.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x7fddd7ef86d0>]
+    [<matplotlib.lines.Line2D at 0x7f4a93d2e4f0>]
 
 
 
@@ -155,7 +161,7 @@ temperature, without the big jump.
 
 .. parsed-literal::
 
-    /home/bart/git/python-dts-calibration/.tox/docs/lib/python3.7/site-packages/scipy/sparse/_index.py:116: SparseEfficiencyWarning: Changing the sparsity structure of a csr_matrix is expensive. lil_matrix is more efficient.
+    /home/bart/git/travis_fix/python-dts-calibration/.tox/docs/lib/python3.9/site-packages/scipy/sparse/_index.py:137: SparseEfficiencyWarning: Changing the sparsity structure of a csr_matrix is expensive. lil_matrix is more efficient.
       self._set_arrayXarray_sparse(i, j, x)
 
 
@@ -163,7 +169,7 @@ temperature, without the big jump.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x7fdde6445050>
+    <matplotlib.legend.Legend at 0x7f4a9171aa00>
 
 
 

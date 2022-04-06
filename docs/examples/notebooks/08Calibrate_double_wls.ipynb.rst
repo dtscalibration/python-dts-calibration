@@ -82,15 +82,7 @@ as an estimate of the variance in measured signals.
 
 
 
-
-.. parsed-literal::
-
-    <matplotlib.collections.QuadMesh at 0x7f5d7363a990>
-
-
-
-
-.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_6_1.png
+.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_6_0.png
 
 
 We calibrate the measurement with a single method call. The labels refer
@@ -119,7 +111,7 @@ solver because it saves us memory.
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x7f5d71c36510>
+    <matplotlib.collections.QuadMesh at 0x7fdc4cc7ee50>
 
 
 
@@ -169,15 +161,7 @@ sections see notebook 16.
 
 
 
-
-.. parsed-literal::
-
-    <matplotlib.legend.Legend at 0x7f5d71c7db50>
-
-
-
-
-.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_13_1.png
+.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_13_0.png
 
 
 The DataArrays ``tmpf_mc`` and ``tmpb_mc`` and the dimension ``CI`` are
@@ -191,13 +175,5 @@ confidence interval ‘coordinates’.
 
 
 
-
-.. parsed-literal::
-
-    Text(0, 0.5, '$\\sigma$ ($^\\circ$C)')
-
-
-
-
-.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_15_1.png
+.. image:: 08Calibrate_double_wls.ipynb_files/08Calibrate_double_wls.ipynb_15_0.png
 
