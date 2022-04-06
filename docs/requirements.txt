@@ -2,6 +2,6 @@ IPython
 matplotlib>=3.0.0
 nbsphinx
 recommonmark
-sphinx<4
+sphinx<6
 sphinx-automodapi
 -e .
