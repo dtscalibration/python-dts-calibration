@@ -2112,7 +2112,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             p_var = np.zeros_like(p_val)
             p_cov = np.zeros((p_val.size, p_val.size), dtype=np.float)
 
-            if fix_gamma:
+            if fix_gamma is not None:
                 ip_remove = [0]
                 ip_use = [i for i in ip_use if i not in ip_remove]
                 p_val[ip_remove] = fix_gamma[0]
@@ -2135,7 +2135,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                 y -= split['X_alpha'].dot(fix_alpha[0])
                 w = 1 / (1 / w + split['X_alpha'].dot(fix_alpha[1]))
 
-            if fix_dalpha:
+            if fix_dalpha is not None:
                 ip_remove = [1]
                 ip_use = [i for i in ip_use if i not in ip_remove]
                 p_val[ip_remove] = fix_dalpha[0]
