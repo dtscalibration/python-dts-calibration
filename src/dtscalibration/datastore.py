@@ -5505,7 +5505,7 @@ def read_silixa_files(
             silent=silent,
             load_in_memory=load_in_memory)
 
-    elif xml_version == 6 or 7:
+    elif xml_version in (6, 7, 8):
         data_vars, coords, attrs = read_silixa_files_routine_v6(
             filepathlist,
             xml_version=xml_version,
