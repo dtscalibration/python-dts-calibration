@@ -434,6 +434,11 @@ def read_silixa_files_routine_v6(
                 tstamp = np.int64(file_name[10:27])
             elif xml_version == 7:
                 tstamp = np.int64(file_name[15:27])
+            elif xml_version == 8:  # need slightly more complex handling here
+                try:
+                    tstamp = np.int64(file_name[15:27])
+                except ValueError:
+                    tstamp = np.int64(file_name[-22:-10])
             else:
                 raise ValueError(
                     'Unknown version number: {}'.format(xml_version))
