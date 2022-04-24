@@ -61,6 +61,12 @@ dask is not supported.
     The measurement is single ended
 
 
+.. parsed-literal::
+
+    /home/bart/git/travis_fix/python-dts-calibration/src/dtscalibration/io.py:1835: FutureWarning: Using .astype to convert from timezone-aware dtype to timezone-naive dtype is deprecated and will raise in a future version.  Use obj.tz_localize(None) or obj.tz_convert('UTC').tz_localize(None) instead
+      'time', pd.DatetimeIndex(v).tz_localize(
+
+
 The object tries to gather as much metadata from the measurement files
 as possible (temporal and spatial coordinates, filenames, temperature
 probes measurements). All other configuration settings are loaded from
@@ -75,7 +81,7 @@ the first files and stored as attributes of the ``DataStore``.
 
     <dtscalibration.DataStore>
     Sections:                  ()
-    Dimensions:                (time: 7, trans_att: 0, x: 1380)
+    Dimensions:                (x: 1380, time: 7, trans_att: 0)
     Coordinates:
       * x                      (x) float64 -49.97 -48.96 ... 1.348e+03 1.349e+03
         filename               (time) <U35 'channel 1 20180107 202119 00001.ddf' ...
@@ -97,15 +103,15 @@ the first files and stored as attributes of the ``DataStore``.
         userAcquisitionTimeFW  (time) float64 30.0 30.0 30.0 30.0 30.0 30.0 30.0
         userAcquisitionTimeBW  (time) float64 0.0 0.0 0.0 0.0 0.0 0.0 0.0
     Attributes: (12/21)
-        DTS Sentinel unit serial number::  SN409017\n
-        Multiplexer serial number::        ORYX\n
-        Hardware model number::            OX4\n
-        Software version number::          ORYX F/W v1,02 Oryx Data Collector v3....
-        data status:                       ok\n
-        installation:                      speulderbos2017nov21\n
-        ...                                ...
-        multiplexer slope coefficient:     1.0000
-        fibre end:                         0.00
+        DTS Sentinel unit serial number:  SN409017
+        Multiplexer serial number:        ORYX
+        Hardware model number:            OX4
+        Software version number:          ORYX F/W v1,02 Oryx Data Collector v3.7...
+        data status:                      ok
+        installation:                     speulderbos2017nov21
+        ...                               ...
+        fibre end:                        0.00
+        default loss term dB per km:      0.3730
     
     .. and many more attributes. See: ds.attrs
 
@@ -127,45 +133,45 @@ REV-AST data variables.
     The measurement is double ended
     <dtscalibration.DataStore>
     Sections:                  ()
-    Dimensions:                (time: 5, trans_att: 0, x: 712)
+    Dimensions:                (x: 712, time: 5, trans_att: 0)
     Coordinates: (12/14)
       * x                      (x) float64 -49.28 -47.25 ... 1.391e+03 1.393e+03
-        filename               (time) <U32 'channel 1 20030111 002 00001.ddf' ......
-        timeFWstart            (time) datetime64[ns] 2003-01-11T03:05:09 ... 2003...
-        timeFWend              (time) datetime64[ns] 2003-01-11T03:06:09 ... 2003...
-        timeFW                 (time) datetime64[ns] 2003-01-11T03:05:39 ... 2003...
-        timeBWstart            (time) datetime64[ns] 2003-01-11T03:06:09 ... 2003...
+        filename               (time) <U32 'channel 1 20030111 002 00003.ddf' ......
+        timeFWstart            (time) datetime64[ns] 2003-01-11T03:13:10 ... 2003...
+        timeFWend              (time) datetime64[ns] 2003-01-11T03:14:10 ... 2003...
+        timeFW                 (time) datetime64[ns] 2003-01-11T03:13:40 ... 2003...
+        timeBWstart            (time) datetime64[ns] 2003-01-11T03:14:10 ... 2003...
         ...                     ...
-        timestart              (time) datetime64[ns] 2003-01-11T03:05:09 ... 2003...
-        timeend                (time) datetime64[ns] 2003-01-11T03:07:09 ... 2003...
-      * time                   (time) datetime64[ns] 2003-01-11T03:06:09 ... 2003...
+        timestart              (time) datetime64[ns] 2003-01-11T03:13:10 ... 2003...
+        timeend                (time) datetime64[ns] 2003-01-11T03:15:10 ... 2003...
+      * time                   (time) datetime64[ns] 2003-01-11T03:14:10 ... 2003...
         acquisitiontimeFW      (time) timedelta64[ns] 00:01:00 00:01:00 ... 00:01:00
         acquisitiontimeBW      (time) timedelta64[ns] 00:01:00 00:01:00 ... 00:01:00
       * trans_att              (trans_att) float64 
     Data variables: (12/13)
-        st                     (x, time) float64 1.882e+03 1.876e+03 ... -0.54
-        ast                    (x, time) float64 2.137e+03 2.135e+03 ... -0.681
-        tmp                    (x, time) float64 84.19 71.0 81.6 ... -44.31 -200.0
+        st                     (x, time) float64 1.877e+03 1.876e+03 ... -0.54
+        ast                    (x, time) float64 2.139e+03 2.138e+03 ... -0.681
+        tmp                    (x, time) float64 81.6 60.57 71.0 ... -47.22 -200.0
         probe1Temperature      (time) float64 nan nan nan nan nan
         probe2Temperature      (time) float64 nan nan nan nan nan
-        referenceTemperature   (time) float64 34.42 34.31 34.25 34.25 34.25
+        referenceTemperature   (time) float64 34.25 34.25 34.31 34.42 34.25
         ...                     ...
-        k_internal             (time) float64 0.1902 0.1898 0.1898 0.1898 0.1898
-        k_external             (time) float64 0.1902 0.1898 0.1898 0.1898 0.1898
+        k_internal             (time) float64 0.1898 0.1898 0.1898 0.1902 0.1898
+        k_external             (time) float64 0.1898 0.1898 0.1898 0.1902 0.1898
         userAcquisitionTimeFW  (time) float64 60.05 60.05 60.05 60.05 60.05
-        userAcquisitionTimeBW  (time) float64 60.08 60.06 60.05 60.05 60.05
-        rst                    (x, time) float64 -0.384 -0.36 ... 1.76e+03 1.759e+03
-        rast                   (x, time) float64 -0.535 -0.633 ... 2.241e+03
+        userAcquisitionTimeBW  (time) float64 60.05 60.05 60.06 60.08 60.05
+        rst                    (x, time) float64 -0.504 -0.459 ... 1.759e+03
+        rast                   (x, time) float64 -0.622 -0.663 ... 2.241e+03
     Attributes: (12/21)
-        DTS Sentinel unit serial number::  SN307009\n
-        Multiplexer serial number::        multiplexer serial number\n
-        Hardware model number::            HL4\n
-        Software version number::          Halo DTS v1.0\n
-        data status:                       ok\n
-        installation:                      NYAN30AUG2019\n
-        ...                                ...
-        multiplexer slope coefficient:     1.0000
-        fibre end:                         1298.10
+        DTS Sentinel unit serial number:  SN307009
+        Multiplexer serial number:        multiplexer serial number
+        Hardware model number:            HL4
+        Software version number:          Halo DTS v1.0
+        data status:                      ok
+        installation:                     NYAN30AUG2019
+        ...                               ...
+        fibre end:                        1298.10
+        default loss term dB per km:      0.3938
     
     .. and many more attributes. See: ds.attrs
 

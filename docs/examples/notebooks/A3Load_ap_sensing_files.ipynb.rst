@@ -74,7 +74,7 @@ Calibration follows as usual (see the other notebooks).
 
     <dtscalibration.DataStore>
     Sections:                  ()
-    Dimensions:       (time: 3, trans_att: 0, x: 7101)
+    Dimensions:       (x: 7101, time: 3, trans_att: 0)
     Coordinates:
       * x             (x) float64 0.0 0.5 1.0 1.5 ... 3.549e+03 3.55e+03 3.55e+03
         filename      (time) <U39 '_AP Sensing_N4386B_3_20180118201727.xml' ... '...

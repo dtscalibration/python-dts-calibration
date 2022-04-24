@@ -126,15 +126,7 @@ by coils/sharp bends in cable - Attenuation caused by a splice
 
 
 
-
-.. parsed-literal::
-
-    [<matplotlib.lines.Line2D at 0x7f423fdf93d0>]
-
-
-
-
-.. image:: 04Calculate_variance_Stokes.ipynb_files/04Calculate_variance_Stokes.ipynb_11_1.png
+.. image:: 04Calculate_variance_Stokes.ipynb_files/04Calculate_variance_Stokes.ipynb_11_0.png
 
 
 We can follow the same steps to calculate the variance from the noise in

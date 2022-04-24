@@ -64,6 +64,12 @@ lossy splice.
     Reading the data from disk
 
 
+.. parsed-literal::
+
+    /home/bart/git/travis_fix/python-dts-calibration/src/dtscalibration/io.py:1843: FutureWarning: Using .astype to convert from timezone-aware dtype to timezone-naive dtype is deprecated and will raise in a future version.  Use obj.tz_localize(None) or obj.tz_convert('UTC').tz_localize(None) instead
+      'time', pd.DatetimeIndex(v).tz_convert(timezone_netcdf).astype(
+
+
 To simulate the lossy splice, we introduce a step loss in the signal
 strength at x = 50 m. For the forward channel, this means all data
 beyond 50 meters is reduced with a ‘random’ factor. For the backward
@@ -94,7 +100,7 @@ clearly visible.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x7f3d3b7f0ad0>
+    <matplotlib.legend.Legend at 0x7f6936047f10>
 
 
 
@@ -132,7 +138,7 @@ after the jump are too high.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x7f3d3b86fbd0>]
+    [<matplotlib.lines.Line2D at 0x7f6927f35af0>]
 
 
 
@@ -175,7 +181,7 @@ big jump.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x7f3d3bd56fd0>
+    <matplotlib.legend.Legend at 0x7f69384b5a90>
 
 
 

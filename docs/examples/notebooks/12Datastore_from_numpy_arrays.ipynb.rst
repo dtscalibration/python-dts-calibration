@@ -34,6 +34,13 @@ Let’s grab the data from an existing silixa dataset:
     ds_silixa = read_silixa_files(directory=filepath,
                                   silent=True)
 
+
+.. parsed-literal::
+
+    /home/bart/git/travis_fix/python-dts-calibration/src/dtscalibration/io.py:1843: FutureWarning: Using .astype to convert from timezone-aware dtype to timezone-naive dtype is deprecated and will raise in a future version.  Use obj.tz_localize(None) or obj.tz_convert('UTC').tz_localize(None) instead
+      'time', pd.DatetimeIndex(v).tz_convert(timezone_netcdf).astype(
+
+
 We will get all the numpy arrays from this ``DataStore`` to create a new
 one from ‘scratch’.
 
@@ -66,7 +73,7 @@ Now this data has to be inserted into an xarray ``Dataset``
 
     <dtscalibration.DataStore>
     Sections:                  ()
-    Dimensions:    (time: 3, trans_att: 0, x: 1461)
+    Dimensions:    (x: 1461, time: 3, trans_att: 0)
     Coordinates:
       * x          (x) float64 -80.74 -80.62 -80.49 -80.36 ... 104.6 104.7 104.8
       * time       (time) datetime64[ns] 2018-05-04T12:22:17.710000 ... 2018-05-0...
@@ -113,16 +120,10 @@ example).
     ds.isel(time=0).tmpf.plot()
 
 
-.. parsed-literal::
-
-    /home/bart/git/python-dts-calibration/.tox/docs/lib/python3.7/site-packages/dask/array/core.py:1495: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
-      FutureWarning,
-
-
 
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x7efffbe90dd0>]
+    [<matplotlib.lines.Line2D at 0x7f813e235df0>]
 
 

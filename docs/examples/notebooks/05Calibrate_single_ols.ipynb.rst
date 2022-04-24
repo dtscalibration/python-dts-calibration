@@ -50,6 +50,12 @@ anymore.
     Reading the data from disk
 
 
+.. parsed-literal::
+
+    /home/bart/git/travis_fix/python-dts-calibration/src/dtscalibration/io.py:1843: FutureWarning: Using .astype to convert from timezone-aware dtype to timezone-naive dtype is deprecated and will raise in a future version.  Use obj.tz_localize(None) or obj.tz_convert('UTC').tz_localize(None) instead
+      'time', pd.DatetimeIndex(v).tz_convert(timezone_netcdf).astype(
+
+
 .. code:: ipython3
 
     print(ds100.calibration_single_ended.__doc__)
@@ -208,20 +214,12 @@ anymore.
             --------
             - `Example notebook 7: Calibrate single ended <https://github.com/dtscalibration/python-dts-calibration/blob/master/examples/notebooks/07Calibrate_single_wls.ipynb>`_
     
-    
             
 
 
 .. code:: ipython3
 
     ds100.calibration_single_ended(method='ols')
-
-
-.. parsed-literal::
-
-    /home/bart/git/python-dts-calibration/.tox/docs/lib/python3.7/site-packages/dask/array/core.py:1495: FutureWarning: The `numpy.ndim` function is not implemented by Dask array. You may want to use the da.map_blocks function or something similar to silence this warning. Your code may stop working in a future release.
-      FutureWarning,
-
 
 Lets compare our calibrated values with the device calibration
 
@@ -236,14 +234,6 @@ Lets compare our calibrated values with the device calibration
 
 
 
-
-.. parsed-literal::
-
-    <matplotlib.legend.Legend at 0x7f9721a25390>
-
-
-
-
-.. image:: 05Calibrate_single_ols.ipynb_files/05Calibrate_single_ols.ipynb_7_1.png
+.. image:: 05Calibrate_single_ols.ipynb_files/05Calibrate_single_ols.ipynb_7_0.png
 
 

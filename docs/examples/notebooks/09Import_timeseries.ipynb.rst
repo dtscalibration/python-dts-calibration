@@ -50,6 +50,15 @@ Step 1: load the measurement files
                      squeeze=True, engine='python')  # the latter 2 kwargs are to ensure a pd.Series is returned
     ts = ts.tz_localize('Europe/Amsterdam')  # set the timezone
 
+
+.. parsed-literal::
+
+    /tmp/ipykernel_51613/3231285201.py:1: FutureWarning: The squeeze argument has been deprecated and will be removed in a future version. Append .squeeze("columns") to the call to squeeze.
+    
+    
+      ts = pd.read_csv(filepath, sep=',', index_col=0, parse_dates=True,
+
+
 .. code:: ipython3
 
     ts.head()  # Double check the timezone
@@ -78,6 +87,12 @@ measurements to add the external timeseries to
     ds = read_silixa_files(directory=filepath_ds,
                            timezone_netcdf='UTC',
                            file_ext='*.xml')
+
+
+.. parsed-literal::
+
+    /home/bart/git/travis_fix/python-dts-calibration/src/dtscalibration/io.py:1843: FutureWarning: Using .astype to convert from timezone-aware dtype to timezone-naive dtype is deprecated and will raise in a future version.  Use obj.tz_localize(None) or obj.tz_convert('UTC').tz_localize(None) instead
+      'time', pd.DatetimeIndex(v).tz_convert(timezone_netcdf).astype(
 
 
 .. parsed-literal::
@@ -121,14 +136,17 @@ times we have DTS measurements
 
 .. parsed-literal::
 
-    Data variables: (12/16)
+    Data variables:
         st                     (x, time) float64 1.281 -0.5321 ... -43.44 -41.08
         ast                    (x, time) float64 0.4917 1.243 ... -30.14 -32.09
         rst                    (x, time) float64 0.4086 -0.568 ... 4.822e+03
         rast                   (x, time) float64 2.569 -1.603 ... 4.224e+03
         tmp                    (x, time) float64 196.1 639.1 218.7 ... 8.442 18.47
         acquisitionTime        (time) float32 2.098 2.075 2.076 2.133 2.085 2.062
-        ...                     ...
+        referenceTemperature   (time) float32 21.05 21.05 21.05 21.05 21.05 21.06
+        probe1Temperature      (time) float32 4.361 4.36 4.359 4.36 4.36 4.361
+        probe2Temperature      (time) float32 18.58 18.58 18.58 18.58 18.58 18.57
+        referenceProbeVoltage  (time) float32 0.1217 0.1217 0.1217 ... 0.1217 0.1217
         probe1Voltage          (time) float32 0.114 0.114 0.114 0.114 0.114 0.114
         probe2Voltage          (time) float32 0.121 0.121 0.121 0.121 0.121 0.121
         userAcquisitionTimeFW  (time) float32 2.0 2.0 2.0 2.0 2.0 2.0

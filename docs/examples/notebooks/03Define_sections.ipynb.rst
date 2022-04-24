@@ -30,6 +30,12 @@ timeseries is already part of the ``DataStore`` object.
     Reading the data from disk
 
 
+.. parsed-literal::
+
+    /home/bart/git/travis_fix/python-dts-calibration/src/dtscalibration/io.py:1843: FutureWarning: Using .astype to convert from timezone-aware dtype to timezone-naive dtype is deprecated and will raise in a future version.  Use obj.tz_localize(None) or obj.tz_convert('UTC').tz_localize(None) instead
+      'time', pd.DatetimeIndex(v).tz_convert(timezone_netcdf).astype(
+
+
 First we have a look at which temperature timeseries are available for
 calibration. Therefore we access ``ds.data_vars`` and we find
 ``probe1Temperature`` and ``probe2Temperature`` that refer to the
@@ -48,14 +54,6 @@ all timeseries that can be used for calibration.
 .. parsed-literal::
 
     ['acquisitionTime', 'referenceTemperature', 'probe1Temperature', 'probe2Temperature', 'referenceProbeVoltage', 'probe1Voltage', 'probe2Voltage', 'userAcquisitionTimeFW', 'userAcquisitionTimeBW']
-
-
-
-
-.. parsed-literal::
-
-    [<matplotlib.lines.Line2D at 0x7fa2a0670fd0>]
-
 
 
 A calibration is needed to estimate temperature from Stokes and

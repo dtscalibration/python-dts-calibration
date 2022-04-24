@@ -218,7 +218,6 @@ https://doi.org/10.3390/s20082235
             --------
             - `Example notebook 7: Calibrate single ended <https://github.com/dtscalibration/python-dts-calibration/blob/master/examples/notebooks/07Calibrate_single_wls.ipynb>`_
     
-    
             
 
 
@@ -282,15 +281,7 @@ Lets compare our calibrated values with the device calibration
 
 
 
-
-.. parsed-literal::
-
-    <matplotlib.legend.Legend at 0x7f6af10c5290>
-
-
-
-
-.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_11_1.png
+.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_11_0.png
 
 
 .. code:: ipython3
@@ -299,15 +290,7 @@ Lets compare our calibrated values with the device calibration
 
 
 
-
-.. parsed-literal::
-
-    <matplotlib.collections.QuadMesh at 0x7f6ae85e94d0>
-
-
-
-
-.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_12_1.png
+.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_12_0.png
 
 
 .. code:: ipython3
@@ -320,15 +303,7 @@ Lets compare our calibrated values with the device calibration
 
 
 
-
-.. parsed-literal::
-
-    <matplotlib.legend.Legend at 0x7f6ae8515cd0>
-
-
-
-
-.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_13_1.png
+.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_13_0.png
 
 
 We can tell from the graph above that the 95% confidence interval widens
@@ -342,15 +317,7 @@ this should be around 0.0059 degC.
 
 
 
-
-.. parsed-literal::
-
-    [<matplotlib.lines.Line2D at 0x7f6ae843cf10>]
-
-
-
-
-.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_15_1.png
+.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_15_0.png
 
 
 The variance of the temperature measurement appears to be larger than
@@ -370,15 +337,7 @@ Lets have a look at the Stokes and anti-Stokes signal.
 
 
 
-
-.. parsed-literal::
-
-    [<matplotlib.lines.Line2D at 0x7f6ae8353650>]
-
-
-
-
-.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_17_1.png
+.. image:: 07Calibrate_single_wls.ipynb_files/07Calibrate_single_wls.ipynb_17_0.png
 
 
 Clearly there was a bad splice at 30 m that resulted in the sharp

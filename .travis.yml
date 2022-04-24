@@ -1,6 +1,7 @@
+dist: bionic
 language: python
 python:
-    - "3.7"
+    - "3.9"
 cache: pip
 env:
   global:
@@ -11,22 +12,26 @@ env:
     - TOXENV=docs
 matrix:
   include:
-    - python: '3.6'
-      env:
-        - TOXENV=py36
     - python: '3.7'
-      dist: xenial
       env:
-        - TOXENV=py37,report,codecov,check
+        - TOXENV=py37
       services:
         - xvfb
     - python: '3.8'
-      dist: xenial
       env:
         - TOXENV=py38
       services:
         - xvfb
-
+    - python: '3.9'
+      env:
+        - TOXENV=py39,report,codecov,check
+      services:
+        - xvfb
+    - python: '3.10'
+      env:
+        - TOXENV=py310
+      services:
+        - xvfb
 before_install:
   - python --version
   - uname -a
@@ -39,7 +44,7 @@ install:
   - sudo apt-get install pandoc
   - pip install tox
   - virtualenv --version
-  - easy_install --version
+#  - easy_install --version  # This does not work on py37 and py38, therefore skip
   - pip --version
   - tox --version
 script:
