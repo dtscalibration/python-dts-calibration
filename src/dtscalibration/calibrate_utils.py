@@ -1245,6 +1245,47 @@ def wls_stats(
             return p_sol, p_var
 
 
+def quantile_stats(X, y, w=1., q=0.5, x0=None, return_werr=False, verbose=False):
+    from statsmodels.regression.quantile_regression import QuantReg
+
+    y = np.asarray(y)
+    w = np.asarray(w)
+    q = np.asarray(q).reshape(-1)
+
+    if sp.issparse(X):
+        X = X.toarray()
+
+    w_std = np.full_like(y, fill_value=np.sqrt(w))
+    wy = w_std * y
+    wX = w_std[:, None] * X
+
+    if x0 is not None:
+        # Initial values not supported by statsmodels
+        print('Initial values are not supported with quantile stats')
+        pass
+
+    mod_quantile = QuantReg(wy, wX)
+    res_quantiles = [mod_quantile.fit(q=qi) for qi in q]
+
+    if verbose:
+        for rq in res_quantiles:
+            print(rq.summary())
+
+    p_sol = np.stack([rq.params for rq in res_quantiles])
+    p_cov = np.stack([rq.cov_params() for rq in res_quantiles])
+    p_var = np.stack([rq.bse ** 2 for rq in res_quantiles])
+
+    if return_werr:
+        werr = np.stack([rq.wresid for rq in res_quantiles])
+
+    out = [p_sol, p_var, p_cov]
+
+    if return_werr:
+        out.append(werr)
+
+    return out
+
+
 def calc_alpha_double(
         mode,
         ds,
