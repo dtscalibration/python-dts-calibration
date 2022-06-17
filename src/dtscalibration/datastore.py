@@ -1839,7 +1839,7 @@ class DataStore(xr.Dataset):
                     + ' of the Stokes measurement. See examples/notebooks/09'
                     + 'Import_timeseries.ipynb for more info')
 
-    def calibration_single_ended(
+    def calibration_single_ended_old(
             self,
             sections=None,
             st_var=None,
@@ -2233,7 +2233,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                 dalpha_var = p_var[1]
                 self[store_dalpha + variance_suffix] = (tuple(), dalpha_var)
                 self[store_alpha
-                     + variance_suffix] = (('x',), dalpha_var * self.x.data)
+                     + variance_suffix] = (('x',), dalpha_var * self.x.data ** 2)
 
         # deal with FW
         if store_tmpf:
@@ -2267,7 +2267,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
 
         pass
 
-    def calibration_single_ended_linear(
+    def calibration_single_ended(
         self,
         sections=None,
         st_var=None,
@@ -2517,7 +2517,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             X = sp.hstack(
                 (
                     split['X_gamma'], split['X_alpha'], split['X_c'],
-                    split['X_TA'])).tocsr()
+                    split['X_TA'], split['X_m'])).tocsr()
             ip_use = list(range(1 + nx + nt + nta * nt))
 
         else:
@@ -2586,12 +2586,39 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             out = wls_stats(
                 X[:, ip_use], y, w=w, verbose=False)
 
-        p_val[ip_use] = out[0]
-        p_var[ip_use] = out[1]
+        # expand dalpha to alpha so that the code further done is more simple
+        if fix_alpha:
+            p_val[ip_use] = out[0]
+            p_var[ip_use] = out[1]
 
-        ixgrid = np.ix_(ip_use, ip_use)
-        p_cov[ixgrid] = out[2]
-        p_cov[np.arange(p_val.size), np.arange(p_val.size)] = p_var
+            ixgrid = np.ix_(ip_use, ip_use)
+            p_cov[ixgrid] = out[2]
+            p_cov[np.arange(p_val.size), np.arange(p_val.size)] = p_var
+
+        else:
+            ip_use_expandfrom_dalpha = [0] + ip_use[2:]  # skip dalpha
+            ip_use_expandto_dalpha = [0] + [i + nx - 1 for i in ip_use[2:]]
+
+            p_val[ip_use_expandto_dalpha] = out[0][ip_use_expandfrom_dalpha]
+            p_var[ip_use_expandto_dalpha] = out[1][ip_use_expandfrom_dalpha]
+
+            p_cov[np.ix_(ip_use_expandto_dalpha,
+                         ip_use_expandto_dalpha)] = out[2][np.ix_(ip_use_expandfrom_dalpha,
+                                                                    ip_use_expandfrom_dalpha)]
+            p_cov[np.arange(p_val.size), np.arange(p_val.size)] = p_var
+
+            ip_alpha = range(1, nx + 1)
+            ip_alpha_not = [i for i in range(p_val.size) if i not in ip_alpha]
+            ip_dalpha_not = [0] + list(range(2, out[2].shape[0]))
+
+            deriv_alpha_dalpha = self.x.values
+
+            p_val[1:nx + 1] = deriv_alpha_dalpha * out[0][1]
+            p_var[1:nx + 1] = deriv_alpha_dalpha ** 2 * out[1][1]
+
+            p_cov[np.ix_(ip_alpha_not, ip_alpha)] = deriv_alpha_dalpha[None, :] * out[2][ip_dalpha_not, 1, None]
+            p_cov[np.ix_(ip_alpha, ip_alpha_not)] = p_cov[np.ix_(ip_alpha_not, ip_alpha)].T
+            p_cov[ip_alpha, ip_alpha] = deriv_alpha_dalpha ** 2 * out[1][1]
 
         drop_vars = [
             k for k, v in self.items()
@@ -2608,476 +2635,90 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
         self[store_gamma] = (tuple(), p_val[0])
         self[store_gamma + variance_suffix] = (tuple(), p_var[0])
 
+        if not fix_alpha:
+            self[store_dalpha] = (tuple(), out[0][1])
+            self[store_dalpha + variance_suffix] = (tuple(), out[1][1])
+
+        self[store_alpha] = (('x',), p_val[1:nx + 1])
+        self[store_alpha + variance_suffix] = (('x',), p_var[1:nx + 1])
+
+        # ic_start = 1 + nx
+        self[store_c] = ((time_dim,), p_val[1 + nx:nt + 1 + nx])
+        self[store_c + variance_suffix] = ((time_dim,), p_var[1 + nx:nt + 1 + nx])
+
         if nta > 0:
-            ta = p_val[-nt * nta:].reshape((nq, nt, nta), order='F')
+            def ta_to_full_array(ta_values):
+                ta_arr = np.zeros((nx, nt))
+                for tai, taxi in zip(ta_values.T, self.trans_att.values):
+                    ta_arr[self.x.values >= taxi] = ta_arr[self.x.values >= taxi] + tai
+
+                return (('x', time_dim), ta_arr)
+
+            ta = p_val[-nt * nta:].reshape((nt, nta), order='F')
             self[store_ta] = ((time_dim, 'trans_att'), ta)
+            self[store_ta + '_full'] = ta_to_full_array(ta)
 
-            tavar = p_var[-nt * nta:].reshape((nq, nt, nta), order='F')
-            self[store_ta + variance_suffix] = (
-                (time_dim, 'trans_att'), tavar[:])
+            tavar = p_var[-nt * nta:].reshape((nt, nta), order='F')
+            self[store_ta + variance_suffix] = ((time_dim, 'trans_att'), tavar)
+            self[store_ta + '_full' + variance_suffix] = ta_to_full_array(tavar)
 
-        if fix_alpha:
-            ic_start = 1 + nx
-            self[store_c] = ((time_dim,), p_val[ic_start:nt + ic_start])
-            self[store_alpha] = (('x',), fix_alpha[0])
+            sigma2_ta_gamma = ta_to_full_array(p_cov[0, -nt * nta:].reshape((nt, nta), order='F'))[1]
+            sigma2_ta_c = np.stack(
+                [ta_to_full_array(
+                    p_cov[it, -nt * nta:].reshape((nt, nta), order='F'))[1]
+                 for it in range(1 + nx, 1 + nx + nt)]).sum(axis=0)
 
-            self[store_c + variance_suffix] = (
-                (time_dim,), p_var[ic_start:nt + ic_start])
-            self[store_alpha + variance_suffix] = (('x',), fix_alpha[1])
+            # All covariances are summed before propagating the variance, as they use the same deriv
+            tai = p_cov[nt + nx + 1:, nt + nx + 1:].sum(axis=0) - np.diag(p_cov[nt + nx + 1:, nt + nx + 1:])
+            sigma2_ta_ta = ta_to_full_array(tai)[1]
 
-            sigma2_gamma_c = p_cov[None, 0, ic_start:nt + ic_start]
-            sigma2_dalpha_c = 0.
+            sigma2_ta_alpha = np.zeros((self.x.size, nt))
+
+            for it in range(nt):
+                for ita, taxi in enumerate(self.trans_att.values):
+                    tai = p_cov[1:nx + 1, nt + nx + 1 + nta * ita:nt + nt + nx + 1 + nta * ita]
+                    sigma2_ta_alpha[self.x.values >= taxi] += tai[self.x.values >= taxi]
 
         else:
-            self[store_c] = ((time_dim,), p_val[2:nt + 2])
-            self[store_dalpha] = (tuple(), p_val[1])
-            self[store_alpha] = (('x',), (self[store_dalpha] * self.x).data)
+            self[store_ta] = ((time_dim, 'trans_att'), np.zeros((nt, nta)))
+            self[store_ta + variance_suffix] = ((time_dim, 'trans_att'), np.zeros((nt, nta)))
+            self[store_ta + '_full'] = (('x', time_dim), np.zeros((nx, nt)))
+            self[store_ta + '_full' + variance_suffix] = (('x', time_dim), np.zeros((nx, nt)))
+            sigma2_ta_gamma = 0.
+            sigma2_ta_c = 0.
+            sigma2_ta_ta = 0.
+            sigma2_ta_alpha = 0.
 
-            self[store_c
-                 + variance_suffix] = ((time_dim,), p_var[2:nt + 2])
-            self[store_dalpha + variance_suffix] = (tuple(), p_var[1])
-            self[store_alpha
-                 + variance_suffix] = (('x',), (self[store_dalpha + variance_suffix] * self.x).data)
+        sigma2_gamma_alpha = p_cov[0, 1:nx + 1][:, None]
+        sigma2_gamma_c = p_cov[None, 0, 1 + nx:nt + 1 + nx]
+        sigma2_alpha_c = p_cov[1:nx + 1, nx + 1:nt + nx + 1]
 
-            sigma2_gamma_c = p_cov[None, 0, 2:nt + 2]
-            sigma2_dalpha_c = p_cov[None, 1, 2:nt + 2]
+        self[store_tmpf] = self[store_gamma] / (np.log(self.st / self.ast) + self[store_c] + self[store_alpha] + self[store_ta + '_full']) - 273.15
 
-        sigma2_gamma_dalpha = p_cov[0, 1]
+        deriv_T_gamma = 1. / (np.log(self.st / self.ast) + self[store_c] + self[store_alpha] + self[store_ta + '_full'])
+        deriv_T_st = -self[store_gamma] / (self.st * (np.log(self.st / self.ast) + self[store_c] + self[store_alpha] + self[store_ta + '_full']) ** 2)
+        deriv_T_ast = self[store_gamma] / (self.ast * (np.log(self.st / self.ast) + self[store_c] + self[store_alpha] + self[store_ta + '_full']) ** 2)
+        deriv_T_c = -self[store_gamma] / (np.log(self.st / self.ast) + self[store_c] + self[store_alpha] + self[store_ta + '_full']) ** 2
+        deriv_T_alpha = -self[store_gamma] / (np.log(self.st / self.ast) + self[store_c] + self[store_alpha] + self[store_ta + '_full']) ** 2
+        deriv_T_ta = -self[store_gamma] / (np.log(self.st / self.ast) + self[store_c] + self[store_alpha] + self[store_ta + '_full']) ** 2
 
-        self[store_tmpf] = self[store_gamma] / ( np.log(self.st / self.ast) + self[store_c] + self[store_alpha]) - 273.15
-
-        deriv_T_gamma = 1. / (np.log(self.st / self.ast) + self[store_c] + self[store_alpha])
-        deriv_T_st = -self[store_gamma] / (self.st * (np.log(self.st / self.ast) + self[store_c] + self[store_alpha]) ** 2)
-        deriv_T_ast = self[store_gamma] / (self.ast * (np.log(self.st / self.ast) + self[store_c] + self[store_alpha]) ** 2)
-        deriv_T_c = -self[store_gamma] / (np.log(self.st / self.ast) + self[store_c] + self[store_alpha]) ** 2
-        deriv_T_dalpha = -self[store_gamma] * self.x / (np.log(self.st / self.ast) + self[store_c] + self[store_alpha]) ** 2
-
+        # currently we are neglecting covariances between ta;s
         self[store_tmpf + variance_suffix] = (
-            deriv_T_st ** 2 * st_var +
-            deriv_T_ast ** 2 * ast_var +
-            deriv_T_gamma ** 2 * self[store_gamma + variance_suffix] +
-            deriv_T_c ** 2 * self[store_c + variance_suffix] +
-            deriv_T_dalpha ** 2 * self[store_dalpha + variance_suffix] +
-            2 * deriv_T_gamma * deriv_T_c * sigma2_gamma_c +
-            2 * deriv_T_gamma * deriv_T_dalpha * sigma2_gamma_dalpha +
-            2 * deriv_T_dalpha * deriv_T_c * sigma2_dalpha_c
+            + deriv_T_st ** 2 * st_var
+            + deriv_T_ast ** 2 * ast_var
+            + deriv_T_gamma ** 2 * self[store_gamma + variance_suffix]
+            + deriv_T_c ** 2 * self[store_c + variance_suffix]
+            + deriv_T_alpha ** 2 * self[store_alpha + variance_suffix]
+            + deriv_T_ta ** 2 * self[store_ta + '_full' + variance_suffix]
+            + (2 * deriv_T_gamma * deriv_T_c * sigma2_gamma_c)
+            + (2 * deriv_T_gamma * deriv_T_alpha * sigma2_gamma_alpha)
+            + (2 * deriv_T_alpha * deriv_T_c * sigma2_alpha_c)
+            + (2 * deriv_T_ta * deriv_T_gamma * sigma2_ta_gamma)
+            + (2 * deriv_T_ta * deriv_T_c * sigma2_ta_c)
+            + (2 * deriv_T_ta * deriv_T_alpha * sigma2_ta_alpha)
+            + (2 * deriv_T_ta ** 2 * sigma2_ta_ta)
         )
 
-        pass
-
-    def calibration_single_ended_quantile(
-        self,
-        sections=None,
-        st_var=None,
-        ast_var=None,
-        q=None,
-        store_c='c',
-        store_gamma='gamma',
-        store_dalpha='dalpha',
-        store_alpha='alpha',
-        store_ta='talpha',
-        store_tmpf='tmpf',
-        store_p_cov='p_cov',
-        store_p_val='p_val',
-        variance_suffix='_var',
-        method='wls',
-        solver='sparse',
-        p_val=None,
-        p_var=None,
-        p_cov=None,
-        matching_sections=None,
-        trans_att=None,
-        fix_gamma=None,
-        fix_dalpha=None,
-        fix_alpha=None,
-        **kwargs):
-        """
-        Calibrate the Stokes (`ds.st`) and anti-Stokes (`ds.ast`) data to
-        temperature using fiber sections with a known temperature
-        (`ds.sections`) for single-ended setups. The calibrated temperature is
-        stored under `ds.tmpf` and its variance under `ds.tmpf_var`.
-
-        In single-ended setups, Stokes and anti-Stokes intensity is measured
-        from a single end of the fiber. The differential attenuation is assumed
-        constant along the fiber so that the integrated differential attenuation
-        may be written as (Hausner et al, 2011):
-
-        .. math::
-
-            \int_0^x{\Delta\\alpha(x')\,\mathrm{d}x'} \\approx \Delta\\alpha x
-
-        The temperature can now be written from Equation 10 [1]_ as:
-
-        .. math::
-
-            T(x,t)  \\approx \\frac{\gamma}{I(x,t) + C(t) + \Delta\\alpha x}
-
-        where
-
-        .. math::
-
-            I(x,t) = \ln{\left(\\frac{P_+(x,t)}{P_-(x,t)}\\right)}
-
-
-        .. math::
-
-            C(t) = \ln{\left(\\frac{\eta_-(t)K_-/\lambda_-^4}{\eta_+(t)K_+/\lambda_+^4}\\right)}
-
-        where :math:`C` is the lumped effect of the difference in gain at
-        :math:`x=0` between Stokes and anti-Stokes intensity measurements and
-        the dependence of the scattering intensity on the wavelength. The
-        parameters :math:`P_+` and :math:`P_-` are the Stokes and anti-Stokes
-        intensity measurements, respectively.
-        The parameters :math:`\gamma`, :math:`C(t)`, and :math:`\Delta\\alpha`
-        must be estimated from calibration to reference sections, as discussed
-        in Section 5 [1]_. The parameter :math:`C` must be estimated
-        for each time and is constant along the fiber. :math:`T` in the listed
-        equations is in Kelvin, but is converted to Celsius after calibration.
-
-        Parameters
-        ----------
-        store_p_cov : str
-            Key to store the covariance matrix of the calibrated parameters
-        store_p_val : str
-            Key to store the values of the calibrated parameters
-        p_val : array-like, optional
-            Define `p_val`, `p_var`, `p_cov` if you used an external function
-            for calibration. Has size 2 + `nt`. First value is :math:`\gamma`,
-            second is :math:`\Delta \\alpha`, others are :math:`C` for each
-            timestep.
-        p_var : array-like, optional
-            Define `p_val`, `p_var`, `p_cov` if you used an external function
-            for calibration. Has size 2 + `nt`. First value is :math:`\gamma`,
-            second is :math:`\Delta \\alpha`, others are :math:`C` for each
-            timestep.
-        p_cov : array-like, optional
-            The covariances of `p_val`.
-            If set to False, no uncertainty in the parameters is propagated
-            into the confidence intervals. Similar to the spec sheets of the DTS
-            manufacturers. And similar to passing an array filled with zeros.
-        sections : Dict[str, List[slice]], optional
-            If `None` is supplied, `ds.sections` is used. Define calibration
-            sections. Each section requires a reference temperature time series,
-            such as the temperature measured by an external temperature sensor.
-            They should already be part of the DataStore object. `sections`
-            is defined with a dictionary with its keywords of the
-            names of the reference temperature time series. Its values are
-            lists of slice objects, where each slice object is a fiber stretch
-            that has the reference temperature. Afterwards, `sections` is stored
-            under `ds.sections`.
-        st_var, ast_var : float, callable, array-like, optional
-            The variance of the measurement noise of the Stokes signals in the
-            forward direction. If `float` the variance of the noise from the
-            Stokes detector is described with a single value.
-            If `callable` the variance of the noise from the Stokes detector is
-            a function of the intensity, as defined in the callable function.
-            Or manually define a variance with a DataArray of the shape
-            `ds.st.shape`, where the variance can be a function of time and/or
-            x. Required if method is wls.
-        q : List of float
-            In case method == quantile, these are the requested percentiles
-            (between 0 and 1).
-        store_c : str
-            Label of where to store C
-        store_gamma : str
-            Label of where to store gamma
-        store_dalpha : str
-            Label of where to store dalpha; the spatial derivative of alpha.
-        store_alpha : str
-            Label of where to store alpha; The integrated differential
-            attenuation.
-            alpha(x=0) = 0
-        store_ta : str
-            Label of where to store transient alpha's
-        store_tmpf : str
-            Label of where to store the calibrated temperature of the forward
-            direction
-        variance_suffix : str
-            String appended for storing the variance. Only used when method
-            is wls.
-        method : {'ols', 'wls'}
-            Use `'ols'` for ordinary least squares and `'wls'` for weighted least
-            squares. `'wls'` is the default, and there is currently no reason to
-            use `'ols'`.
-        solver : {'sparse', 'stats'}
-            Either use the homemade weighted sparse solver or the weighted
-            dense matrix solver of statsmodels. The sparse solver uses much less
-            memory, is faster, and gives the same result as the statsmodels
-            solver. The statsmodels solver is mostly used to check the sparse
-            solver. `'stats'` is the default.
-        matching_sections : List[Tuple[slice, slice, bool]], optional
-            Provide a list of tuples. A tuple per matching section. Each tuple
-            has three items. The first two items are the slices of the sections
-            that are matched. The third item is a boolean and is True if the two
-            sections have a reverse direction ("J-configuration").
-        transient_att_x, transient_asym_att_x : iterable, optional
-            Depreciated. See trans_att
-        trans_att : iterable, optional
-            Splices can cause jumps in differential attenuation. Normal single
-            ended calibration assumes these are not present. An additional loss
-            term is added in the 'shadow' of the splice. Each location
-            introduces an additional nt parameters to solve for. Requiring
-            either an additional calibration section or matching sections.
-            If multiple locations are defined, the losses are added.
-        fix_gamma : Tuple[float, float], optional
-            A tuple containing two floats. The first float is the value of
-            gamma, and the second item is the variance of the estimate of gamma.
-            Covariances between gamma and other parameters are not accounted
-            for.
-        fix_dalpha : Tuple[float, float], optional
-            A tuple containing two floats. The first float is the value of
-            dalpha (:math:`\Delta \\alpha` in [1]_), and the second item is the
-            variance of the estimate of dalpha.
-            Covariances between alpha and other parameters are not accounted
-            for.
-
-        Returns
-        -------
-
-        References
-        ----------
-        .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
-            of Temperature and Associated Uncertainty from Fiber-Optic Raman-
-            Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
-            https://doi.org/10.3390/s20082235
-
-        Examples
-        --------
-        - `Example notebook 7: Calibrate single ended <https://github.com/\
-dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
-07Calibrate_single_wls.ipynb>`_
-
-        """
-        self.check_deprecated_kwargs(kwargs)
-        self.set_trans_att(trans_att=trans_att, **kwargs)
-
-        if sections:
-            self.sections = sections
-        else:
-            assert self.sections, 'sections are not defined'
-
-        assert st_var is not None and ast_var is not None, 'Set `st_var and ast_var`'
-        assert q is not None, 'assign q'
-        self['q'] = (('CI',), q)
-
-        self.check_reference_section_values()
-
-        nx = self.x.size
-        time_dim = self.get_time_dim()
-        nt = self[time_dim].size
-        nta = self.trans_att.size
-        nq = len(q)
-
-        assert self.st.dims[0] == 'x', 'Stokes are transposed'
-        assert self.ast.dims[0] == 'x', 'Stokes are transposed'
-
-        if matching_sections:
-            matching_indices = match_sections(self, matching_sections)
-        else:
-            matching_indices = None
-
-        ix_sec = self.ufunc_per_section(x_indices=True, calc_per='all')
-
-        assert not np.any(
-            self.st.isel(x=ix_sec) <= 0.), \
-            'There is uncontrolled noise in the ST signal. Are your reference sections' \
-            'correctly defined?'
-        assert not np.any(
-            self.ast.isel(x=ix_sec) <= 0.), \
-            'There is uncontrolled noise in the AST signal. Are your reference sections' \
-            'correctly defined?'
-
-        for input_item in [st_var, ast_var]:
-            assert input_item is not None, 'For wls define all ' \
-                                           'variances (`st_var`, ' \
-                                           '`ast_var`)'
-
-        split = calibration_single_ended_solver(
-            self,
-            st_var,
-            ast_var,
-            calc_cov=True,
-            solver='external_split',
-            matching_indices=matching_indices)
-
-        y = split['y']
-        w = split['w']
-
-        # Stack all X's
-        p_val = np.tile(split['p0_est_alpha'].copy(), (nq, 1))
-        p_var = np.zeros((nq, p_val.size), dtype=float)
-        p_cov = np.zeros((nq, p_val.size, p_val.size), dtype=float)
-
-        if fix_alpha:
-            assert not fix_dalpha, 'Use either `fix_dalpha` or `fix_alpha`'
-            assert fix_alpha[0].size == self.x.size, 'fix_alpha also needs to be defined outside the reference ' \
-                                                     'sections'
-            assert fix_alpha[1].size == self.x.size, 'fix_alpha also needs to be defined outside the reference ' \
-                                                     'sections'
-
-            if np.any(matching_indices):
-                raise NotImplementedError(
-                    "Configuring fix_alpha and matching sections requires extra code"
-                )
-
-            X = sp.hstack(
-                (
-                    split['X_gamma'], split['X_alpha'], split['X_c'],
-                    split['X_TA'])).tocsr()
-            ip_use = list(range(1 + nx + nt + nta * nt))
-
-        else:
-            X = sp.vstack(
-                (
-                    sp.hstack(
-                        (
-                            split['X_gamma'], split['X_dalpha'],
-                            split['X_c'], split['X_TA'])),
-                    split['X_m'])).tocsr()
-            ip_use = list(range(1 + 1 + nt + nta * nt))
-
-        if fix_gamma:
-            ip_remove = [0]
-            ip_use = [i for i in ip_use if i not in ip_remove]
-            p_val[:, ip_remove] = fix_gamma[0]
-            p_var[:, ip_remove] = fix_gamma[1]
-
-            X_gamma = sp.vstack(
-                (split['X_gamma'],
-                 split['X_m'].tocsr()[:, 0].tocoo())).toarray().flatten()
-
-            y -= fix_gamma[0] * X_gamma
-            w = 1 / (1 / w + fix_gamma[1] * X_gamma)
-
-        if fix_alpha:
-            ip_remove = list(range(1, nx + 1))
-            ip_use = [i for i in ip_use if i not in ip_remove]
-            p_val[:, ip_remove] = fix_alpha[0]
-            p_var[:, ip_remove] = fix_alpha[1]
-
-            # X_alpha needs to be vertically extended to support matching sections
-            y -= split['X_alpha'].dot(fix_alpha[0])
-            w = 1 / (1 / w + split['X_alpha'].dot(fix_alpha[1]))
-
-        if fix_dalpha:
-            ip_remove = [1]  # Indices of the parameters that are not used
-            ip_use = [i for i in ip_use if i not in ip_remove]  # indices of the parameters that are used
-            p_val[:, ip_remove] = fix_dalpha[0]
-            p_var[:, ip_remove] = fix_dalpha[1]
-
-            y -= np.hstack(
-                (
-                    fix_dalpha[0] * split['X_dalpha'].toarray().flatten(),
-                    (
-                        fix_dalpha[0] * split['X_m'].tocsr()
-                    [:, 1].tocoo().toarray().flatten())))
-            w = 1 / (
-                1 / w + np.hstack(
-                (
-                    fix_dalpha[1]
-                    * split['X_dalpha'].toarray().flatten(), (
-                        fix_dalpha[1] * split['X_m'].tocsr()
-                    [:, 1].tocoo().toarray().flatten()))))
-
-        out = quantile_stats(X[:, ip_use], y, q=q, w=w, verbose=False)
-        p_val[:, ip_use] = out[0]
-        p_var[:, ip_use] = out[1]
-
-        p_cov[:, np.arange(p_val.size), np.arange(p_val.size)] = p_var
-        ixgrid = np.ix_(np.arange(nq), ip_use, ip_use)
-        p_cov[ixgrid] = out[2]
-
-        # store calibration parameters in DataStore
-        self[store_gamma] = (('CI', ), p_val[:, 0])
-        self[store_gamma + variance_suffix] = (('CI', ), p_var[:, 0])
-
-        if nta > 0:
-            ta = p_val[:, -nt * nta:].reshape((nq, nt, nta), order='F')
-            self[store_ta] = (('CI', time_dim, 'trans_att'), ta)
-
-            tavar = p_var[:, -nt * nta:].reshape((nq, nt, nta), order='F')
-            self[store_ta + variance_suffix] = (
-                ('CI', time_dim, 'trans_att'), tavar[:, :])
-
-        if fix_alpha:
-            ic_start = 1 + nx
-            self[store_c] = (('CI', time_dim,), p_val[:, ic_start:nt + ic_start])
-            self[store_alpha] = (('CI', 'x',), fix_alpha[:, 0])
-
-            self[store_c + variance_suffix] = (
-                ('CI', time_dim,), p_var[:, ic_start:nt + ic_start])
-            self[store_alpha + variance_suffix] = (('CI', 'x',), fix_alpha[:, 1])
-
-        else:
-            self[store_c] = (('CI', time_dim,), p_val[:, 2:nt + 2])
-            self[store_dalpha] = (('CI', ), p_val[:, 1])
-            self[store_alpha] = (('CI', 'x',), (self[store_dalpha] * self.x).data)
-
-            self[store_c
-                 + variance_suffix] = (('CI', time_dim,), p_var[:, 2:nt + 2])
-            self[store_dalpha + variance_suffix] = (('CI', ), p_var[:, 1])
-            self[store_alpha
-                 + variance_suffix] = (('CI', 'x',), (self[store_dalpha + variance_suffix] * self.x).data)
-
-        # The uncertainty of the parameters and of the Stokes measurements are propagated
-        # separately to T. The propagation of the parameter estimation via quantile regression
-        # and the propagation of the Stokes via propagation laws.
-
-        # propagation of parameter uncertainty to temperature
-        lump_term = self[store_c] + self[store_alpha]
-
-        if nta > 0:
-            lump_term += self[store_ta]
-
-        self[store_tmpf] = self['gamma'] / (
-            np.log(self['st'] / self['ast']) + lump_term) - 273.15
-
-        if 0:
-            # Subtract the uncertainty caused by VAR(I) along the
-            ix_sec = self.ufunc_per_section(x_indices=True, calc_per='all')
-            ds_sec = self.isel(x=ix_sec)
-            y_sec = np.log(ds_sec.st / ds_sec.ast).values.T.ravel()
-
-            # Propagation of VAR(I) to VAR(T)
-            dST_over_dTsec = -self['gamma'] / (
-                self['st'] * (y_sec + lump_term) ** 2)
-            dAST_over_dTsec = self['gamma'] / (
-                self['ast'] * (y_sec + lump_term) ** 2)
-
-            VART_from_Isec = dST_over_dTsec ** 2 * st_var + dAST_over_dTsec ** 2 * ast_var
-            STDT_from_Isec = VART_from_Isec ** 0.5
-            import scipy.stats as sps
-
-            # scipy.stats.norm does not support array input..
-            dT_from_Isec = np.zeros_like(VART_from_Isec.data)
-            for iq, qi in enumerate(q):
-                for ix in range(self.x.size):
-                    for it in range(self.time.size):
-                        std = STDT_from_Isec[iq, ix, it]
-                        dT_from_Isec[iq, ix, it] += sps.norm(loc=0, scale=std).ppf(qi)
-
-            self[store_tmpf] -= dT_from_Isec
-
-
-        # Propagation of VAR(I) to VAR(T)
-        dST_over_dT = -self['gamma'] / (
-            self['st'] * (np.log(self['st'] / self['ast']) + lump_term) ** 2)
-        dAST_over_dT = self['gamma'] / (
-            self['ast'] * (np.log(self['st'] / self['ast']) + lump_term) ** 2)
-
-        VART_from_I = dST_over_dT ** 2 * st_var + dAST_over_dT ** 2 * ast_var
-        STDT_from_I = VART_from_I ** 0.5
-        import scipy.stats as sps
-
-        # scipy.stats.norm does not support array input..
-        dT_from_I = np.zeros_like(VART_from_I.data)
-        for iq, qi in enumerate(q):
-            for ix in range(self.x.size):
-                for it in range(self.time.size):
-                    std = STDT_from_I[iq, ix, it]
-                    dT_from_I[iq, ix, it] += sps.norm(loc=0, scale=std).ppf(qi)
-
-        self[store_tmpf] += dT_from_I
         pass
 
     def calibration_double_ended(
@@ -4010,6 +3651,10 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                 np.log(self.st.data / self.ast.data) + d_fw + alpha[:, None]
                 + ta_arr) - 273.15
             self[store_tmpf] = (('x', time_dim), tempF_data)
+
+            # compute tmp_var with linear error propagation
+
+
 
         # deal with BW
         if store_tmpb or (store_tmpw and method == 'ols'):
