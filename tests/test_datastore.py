@@ -46,6 +46,7 @@ if 1:
         wd, 'data', 'sensornet_oryx_v3.7_double')
     data_dir_single_silixa_v45 = os.path.join(wd, 'data', 'silixa_v4.5')
     data_dir_single_silixa_v7 = os.path.join(wd, 'data', 'silixa_v7.0')
+    data_dir_single_silixa_v8 = os.path.join(wd, 'data', 'silixa_v8.0')
     data_dir_ap_sensing = os.path.join(wd, 'data', 'ap_sensing')
     data_dir_sensortran_binary = os.path.join(wd, 'data', 'sensortran_binary')
     data_dir_double_single_ch1 = os.path.join(
@@ -103,7 +104,6 @@ def test_read_data_from_single_file_double_ended():
     desired_hash = '51b94dedd77c83c6cdd9dd132f379a39f742edae'
 
     assert actual_hash == desired_hash, 'The data is not read correctly'
-    pass
 
 
 def test_read_data_from_single_file_single_ended():
@@ -126,26 +126,22 @@ def test_read_data_from_single_file_single_ended():
     desired_hash = '58103e2d79f777f98bf279442eea138065883062'
 
     assert actual_hash == desired_hash, 'The data is not read correctly'
-    pass
 
 
 def test_empty_construction():
     ds = DataStore()  # noqa: F841
-    pass
 
 
 def test_repr():
     ds = DataStore()
-    assert str(ds).find('dtscalibration') != -1
-    assert str(ds).find('Sections') != -1
-    pass
+    assert 'dtscalibration' in str(ds)
+    assert 'Sections' in str(ds)
 
 
 def test_has_sectionattr_upon_creation():
     ds = DataStore()
     assert hasattr(ds, '_sections')
     assert isinstance(ds._sections, str)
-    pass
 
 
 def test_sections_property():
@@ -186,8 +182,6 @@ def test_sections_property():
     # delete property
     del ds.sections
     assert ds.sections is None
-
-    pass
 
 
 def test_io_sections_property():
@@ -240,8 +234,6 @@ def test_io_sections_property():
     if os.path.exists(temppath):
         os.remove(temppath)
 
-    pass
-
 
 def test_read_silixa_files_single_ended():
     filepath = data_dir_single_ended
@@ -250,8 +242,6 @@ def test_read_silixa_files_single_ended():
 
     np.testing.assert_almost_equal(ds.st.sum(), 11387947.857, decimal=3)
 
-    pass
-
 
 def test_read_silixa_files_double_ended():
     filepath = data_dir_double_ended
@@ -259,8 +249,6 @@ def test_read_silixa_files_double_ended():
         directory=filepath, timezone_netcdf='UTC', file_ext='*.xml')
 
     np.testing.assert_almost_equal(ds.st.sum(), 19613502.2617, decimal=3)
-
-    pass
 
 
 def test_read_silixa_files_single_loadinmemory():
@@ -293,8 +281,6 @@ def test_read_silixa_files_single_loadinmemory():
     for k in ['st', 'ast']:
         assert isinstance(ds[k].data, np.ndarray)
 
-    pass
-
 
 def test_read_silixa_files_double_loadinmemory():
     filepath = data_dir_double_ended
@@ -326,8 +312,6 @@ def test_read_silixa_files_double_loadinmemory():
     for k in ['st', 'ast', 'rst', 'rast']:
         assert isinstance(ds[k].data, np.ndarray)
 
-    pass
-
 
 def test_read_single_silixa_v45():
     filepath = data_dir_single_silixa_v45
@@ -348,8 +332,6 @@ def test_read_single_silixa_v45():
 
     for k in ['st', 'ast']:
         assert isinstance(ds[k].data, np.ndarray)
-
-    pass
 
 
 def test_read_single_silixa_v7():
@@ -372,7 +354,26 @@ def test_read_single_silixa_v7():
     for k in ['st', 'ast']:
         assert isinstance(ds[k].data, np.ndarray)
 
-    pass
+
+def test_read_single_silixa_v8():
+    filepath = data_dir_single_silixa_v8
+    ds = read_silixa_files(
+        directory=filepath,
+        timezone_netcdf='UTC',
+        file_ext='*.xml',
+        load_in_memory=False)
+
+    for k in ['st', 'ast']:
+        assert isinstance(ds[k].data, da.Array)
+
+    ds = read_silixa_files(
+        directory=filepath,
+        timezone_netcdf='UTC',
+        file_ext='*.xml',
+        load_in_memory=True)
+
+    for k in ['st', 'ast']:
+        assert isinstance(ds[k].data, np.ndarray)
 
 
 @pytest.mark.skip(
@@ -394,7 +395,6 @@ def test_read_silixa_zipped():
                 load_in_memory=True)
             np.testing.assert_almost_equal(ds.st.sum(), stsum, decimal=0)
             ds.close()
-    pass
 
 
 def test_read_long_silixa_files():
@@ -402,7 +402,6 @@ def test_read_long_silixa_files():
     ds = read_silixa_files(
         directory=filepath, timezone_netcdf='UTC', file_ext='*.xml')
     np.testing.assert_almost_equal(ds.st.sum(), 133223729.17096, decimal=0)
-    pass
 
 
 def test_read_sensornet_files_single_ended():
@@ -415,7 +414,6 @@ def test_read_sensornet_files_single_ended():
         fiber_length=None,
         file_ext='*.ddf')
     np.testing.assert_almost_equal(ds.st.sum(), 2955105.679, decimal=2)
-    pass
 
 
 def test_read_sensornet_halo_files_double_ended():
@@ -429,7 +427,6 @@ def test_read_sensornet_halo_files_double_ended():
         file_ext='*.ddf')
 
     np.testing.assert_almost_equal(ds.st.sum(), 2835988.114, decimal=2)
-    pass
 
 
 def test_read_sensornet_oryx_files_double_ended():
@@ -444,7 +441,6 @@ def test_read_sensornet_oryx_files_double_ended():
 
     np.testing.assert_almost_equal(ds.st.sum(), 2301637.154, decimal=2)
     np.testing.assert_almost_equal(ds.rst.sum(), 1835770.651, decimal=2)
-    pass
 
 
 def test_read_apsensing_files():
@@ -455,7 +451,6 @@ def test_read_apsensing_files():
         timezone_input_files='UTC',
         file_ext='*.xml')
     np.testing.assert_almost_equal(ds.st.sum(), 10415.2837, decimal=2)
-    pass
 
 
 def test_read_apsensing_files_loadinmemory():
@@ -488,8 +483,6 @@ def test_read_apsensing_files_loadinmemory():
     for k in ['st', 'ast']:
         assert isinstance(ds[k].data, np.ndarray)
 
-    pass
-
 
 def test_read_sensortran_files():
     filepath = data_dir_sensortran_binary
@@ -498,7 +491,6 @@ def test_read_sensortran_files():
         ds.st.values.astype(np.int64).sum(),
         np.int64(1432441254828),
         significant=12)
-    pass
 
 
 def test_to_mf_netcdf_open_mf_datastore():
@@ -534,8 +526,6 @@ def test_to_mf_netcdf_open_mf_datastore():
             test_val = float(ds2.st.sum())
             np.testing.assert_equal(correct_val, test_val)
 
-    pass
-
 
 def read_data_from_fp_numpy(fp):
     """
@@ -566,9 +556,7 @@ def read_data_from_fp_numpy(fp):
 
     lssl = slice(i_first + 1, i_last, 3)  # list of strings slice
 
-    data = np.loadtxt(s[lssl], delimiter=',', dtype=float)
-
-    return data
+    return np.loadtxt(s[lssl], delimiter=',', dtype=float)
 
 
 def test_resample_datastore():
@@ -584,8 +572,6 @@ def test_resample_datastore():
                                                   'be manually transposed ' \
                                                   'after resampling. To ' \
                                                   'guarantee the order'
-
-    pass
 
 
 def test_timeseries_keys():
@@ -603,8 +589,6 @@ def test_timeseries_keys():
     k_not = [ki for ki in ds.data_vars if ki not in k]
     for kni in k_not:
         assert ds[kni].dims != ('time',)
-
-    pass
 
 
 def test_shift_double_ended_shift_backforward():
@@ -627,8 +611,6 @@ def test_shift_double_ended_shift_backforward():
 
         np.testing.assert_allclose(old, new)
 
-    pass
-
 
 def test_suggest_cable_shift_double_ended():
     # need more measurements for proper testing. Therefore only checking if
@@ -640,8 +622,6 @@ def test_suggest_cable_shift_double_ended():
 
     irange = np.arange(-4, 4)
     suggest_cable_shift_double_ended(ds, irange, plot_result=True)
-
-    pass
 
 
 def test_merge_double_ended():

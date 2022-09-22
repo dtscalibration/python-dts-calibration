@@ -85,7 +85,6 @@ def open_file(path, **kwargs):
 
     yield the_file
     the_file.close()
-    pass
 
 
 def silixa_xml_version_check(filepathlist):
@@ -434,6 +433,8 @@ def read_silixa_files_routine_v6(
                 tstamp = np.int64(file_name[10:27])
             elif xml_version == 7:
                 tstamp = np.int64(file_name[15:27])
+            elif xml_version == 8:
+                tstamp = np.int64(file_name[-23:-4].replace('.',''))
             else:
                 raise ValueError(
                     'Unknown version number: {}'.format(xml_version))
