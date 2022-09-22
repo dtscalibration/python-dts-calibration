@@ -85,13 +85,28 @@ setup(
         # https://github.com/pydata/xarray/issues/3401 cloud pickle should be
         # possible to remove from requirements soon. 2019/10/31
         'cloudpickle',
-        'nbformat',  # Needed to run the tests
-        'pypandoc'
     ],
     extras_require={
-        # eg:
-        #   'rst': ['docutils>=0.11'],
-        #   ':python_version=="2.6"': ['argparse'],
+        'dev': [
+            'bump2version',
+            'coverage [toml]',
+            'isort',
+            'mypy',
+            'myst_parser',
+            'prospector[with_pyroma]',
+            'pytest',
+            'pytest-cov',
+            'sphinx',
+            'sphinx_rtd_theme',
+            'sphinx-autoapi',
+            'tox',
+            'nbformat',  # Needed to run the tests
+            'pypandoc'
+            ],
+        'publishing': [
+            'twine',
+            'wheel',
+        ]
     },
     entry_points={
         'console_scripts': ['dtscalibration = dtscalibration.cli:main']},
