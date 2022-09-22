@@ -69,7 +69,7 @@ setup(
         'Calibration'],
     install_requires=[
         'numpy',
-        'xarray',
+        'xarray<=2022.03.0',
         'pyyaml',
         'xmltodict',
         'scipy',
