@@ -104,10 +104,20 @@ setup(
             'nbformat',  # Needed to run the tests
             'pypandoc'
         ],
+        'docs': [
+            'IPython',
+            'nbsphinx',
+            'recommonmark',
+            'sphinx<6',
+            'sphinx-automodapi',
+            'pypandoc',
+            'jupyter_client',
+            'ipykernel',
+        ],
         'publishing': [
             'twine',
             'wheel',
-        ]
+        ],
     },
     entry_points={
         'console_scripts': ['dtscalibration = dtscalibration.cli:main']},

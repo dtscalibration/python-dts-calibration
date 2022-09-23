@@ -262,7 +262,7 @@ def read_silixa_files_routine_v6(  # noqa: MC0001
     # print summary
     if not silent:
         print(f'{ntime} files were found, each representing a single timestep')
-        print(f'{nitem} recorded vars were found: ' +\
+        print(f'{nitem} recorded vars were found: ' +
               ', '.join(data_item_names))
         print(f'Recorded at {nx} points along the cable')
 
@@ -561,7 +561,7 @@ def read_silixa_files_routine_v4(  # noqa: MC0001
     # print summary
     if not silent:
         print(f'{ntime} files were found, each representing a single timestep')
-        print(f'{nitem} recorded vars were found: ' +\
+        print(f'{nitem} recorded vars were found: ' +
               ', '.join(data_item_names))
         print(f'Recorded at {nx} points along the cable')
 
