@@ -1,6 +1,7 @@
 # coding=utf-8
 import numpy as np
 import scipy.sparse as sp
+import statsmodels.api as sm
 from scipy.sparse import linalg as ln
 
 
@@ -60,7 +61,8 @@ def parse_st_var(ds, st_var, st_label='st', ix_sel=None):
     return st_var_sec
 
 
-def calibration_single_ended_solver(
+# pylint: disable=too-many-arguments,too-many-locals
+def calibration_single_ended_solver(  # noqa: MC0001
         ds,
         st_var=None,
         ast_var=None,
@@ -128,7 +130,7 @@ def calibration_single_ended_solver(
     # X \gamma  # Eq.34
     cal_ref = ds.ufunc_per_section(
         label='st', ref_temp_broadcasted=True, calc_per='all')
-    cal_ref = cal_ref  # sort by increasing x
+    # cal_ref = cal_ref  # sort by increasing x
     data_gamma = 1 / (cal_ref.T.ravel() + 273.15)  # gamma
     coord_gamma_row = np.arange(nt * nx, dtype=int)
     coord_gamma_col = np.zeros(nt * nx, dtype=int)
@@ -156,7 +158,7 @@ def calibration_single_ended_solver(
 
     # X ta #not documented
     if ds.trans_att.size > 0:
-        TA_list = list()
+        TA_list = []
 
         for transient_att_xi in ds.trans_att.values:
             # first index on the right hand side a the difficult splice
@@ -282,18 +284,18 @@ def calibration_single_ended_solver(
 
     if solver == 'sparse':
         if calc_cov:
-            p_sol, p_var, p_cov = wls_sparse(
+            p_sol, p_var, p_cov = wls_sparse(  # pylint: disable=unbalanced-tuple-unpacking
                 X, y, w=w, x0=p0_est_dalpha, calc_cov=calc_cov, verbose=verbose)
         else:
-            p_sol, p_var = wls_sparse(
+            p_sol, p_var = wls_sparse(  # pylint: disable=unbalanced-tuple-unpacking
                 X, y, w=w, x0=p0_est_dalpha, calc_cov=calc_cov, verbose=verbose)
 
     elif solver == 'stats':
         if calc_cov:
-            p_sol, p_var, p_cov = wls_stats(
+            p_sol, p_var, p_cov = wls_stats(  # pylint: disable=unbalanced-tuple-unpacking
                 X, y, w=w, calc_cov=calc_cov, verbose=verbose)
         else:
-            p_sol, p_var = wls_stats(
+            p_sol, p_var = wls_stats(  # pylint: disable=unbalanced-tuple-unpacking
                 X, y, w=w, calc_cov=calc_cov, verbose=verbose)
 
     elif solver == 'external':
@@ -324,13 +326,10 @@ def calibration_single_ended_solver(
     else:
         raise ValueError("Choose a valid solver")
 
-    if calc_cov:
-        return p_sol, p_var, p_cov
-    else:
-        return p_sol, p_var
+    return (p_sol, p_var, p_cov) if calc_cov else (p_sol, p_var)
 
 
-def calibration_double_ended_solver(
+def calibration_double_ended_solver(  # noqa: MC0001
         ds,
         st_var=None,
         ast_var=None,
@@ -612,9 +611,9 @@ def calibration_double_ended_solver(
         verbose=verbose,
         return_werr=verbose)
     if calc_cov and verbose:
-        p_sol, p_var, p_cov, werr = out
+        p_sol, p_var, p_cov, _ = out
     elif not calc_cov and verbose:
-        p_sol, p_var, werr = out
+        p_sol, p_var, _ = out
     elif calc_cov and not verbose:
         p_sol, p_var, p_cov = out
     elif not calc_cov and not verbose:
@@ -736,9 +735,7 @@ def calibration_double_ended_solver(
         po_cov[iox_sec1, iox_sec2] = p_cov
 
         return po_sol, po_var, po_cov
-
-    else:
-        return po_sol, po_var
+    return po_sol, po_var
 
 
 def matching_section_location_indices(ix_sec, hix, tix):
@@ -761,6 +758,7 @@ def matching_section_location_indices(ix_sec, hix, tix):
     return ix_from_cal_match_to_glob
 
 
+# pylint: disable=too-many-statements
 def construct_submatrices_matching_sections(
         x, ix_sec, hix, tix, nt, trans_att):
     """
@@ -882,12 +880,13 @@ def construct_submatrices_matching_sections(
     if trans_att.size > 0:
         # unpublished BdT
 
-        TA_eq1_list = list()
-        TA_eq2_list = list()
-        TA_eq3_list = list()
+        TA_eq1_list = []
+        TA_eq2_list = []
+        TA_eq3_list = []
 
         for trans_atti in trans_att:
-            """For forward direction."""
+            # For forward direction.
+            #
             # first index on the right hand side a the difficult splice
             # Deal with connector outside of fiber
             if trans_atti >= x[-1]:
@@ -1016,11 +1015,12 @@ def construct_submatrices(nt, nx, ds, trans_att, x_sec):
     if trans_att.size > 0:
         # unpublished BdT
 
-        TA_fw_list = list()
-        TA_bw_list = list()
+        TA_fw_list = []
+        TA_bw_list = []
 
         for trans_atti in trans_att:
-            """For forward direction. """
+            # For forward direction.
+            #
             # first index on the right hand side a the difficult splice
             # Deal with connector outside of fiber
             if trans_atti >= x_sec[-1]:
@@ -1066,6 +1066,7 @@ def construct_submatrices(nt, nx, ds, trans_att, x_sec):
     return E, Z_D, Z_gamma, Zero_d, Z_TA_fw, Z_TA_bw
 
 
+# pylint: disable=too-many-branches
 def wls_sparse(
         X,
         y,
@@ -1178,16 +1179,13 @@ def wls_sparse(
 
         if return_werr:
             return p_sol, p_var, p_cov, wresid
-        else:
-            return p_sol, p_var, p_cov
+        return p_sol, p_var, p_cov
 
-    else:
-        p_var = out_sol[-1] * err_var  # normalized covariance
+    p_var = out_sol[-1] * err_var  # normalized covariance
 
-        if return_werr:
-            return p_sol, p_var, wresid
-        else:
-            return p_sol, p_var
+    if return_werr:
+        return p_sol, p_var, wresid
+    return p_sol, p_var
 
 
 def wls_stats(
@@ -1206,8 +1204,6 @@ def wls_stats(
     -------
 
     """
-    import statsmodels.api as sm
-
     y = np.asarray(y)
     w = np.asarray(w)
 
@@ -1236,13 +1232,10 @@ def wls_stats(
     if calc_cov:
         if return_werr:
             return p_sol, p_var, p_cov, werr
-        else:
-            return p_sol, p_var, p_cov
-    else:
-        if return_werr:
-            return p_sol, p_var, werr
-        else:
-            return p_sol, p_var
+        return p_sol, p_var, p_cov
+    if return_werr:
+        return p_sol, p_var, werr
+    return p_sol, p_var
 
 
 def calc_alpha_double(

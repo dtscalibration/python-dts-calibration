@@ -1,7 +1,10 @@
 # coding=utf-8
 import os
+import struct
 from contextlib import contextmanager
+from xml.etree import ElementTree
 
+import dask
 import dask.array as da
 import numpy as np
 import pandas as pd
@@ -85,7 +88,6 @@ def open_file(path, **kwargs):
 
     yield the_file
     the_file.close()
-    pass
 
 
 def silixa_xml_version_check(filepathlist):
@@ -126,9 +128,7 @@ def apsensing_xml_version_check(filepathlist):
     sep = ':'
     attrs, _ = read_apsensing_attrs_singlefile(filepathlist[0], sep)
 
-    device_string = attrs['wellbore:uid']
-
-    return device_string
+    return attrs['wellbore:uid']
 
 
 def sensornet_ddf_version_check(filepathlist):
@@ -170,8 +170,6 @@ def sensortran_binary_version_check(filepathlist):
     -------
 
     """
-    import struct
-
     fname = filepathlist[0]
 
     with open(fname, 'rb') as f:
@@ -181,7 +179,8 @@ def sensortran_binary_version_check(filepathlist):
     return version
 
 
-def read_silixa_files_routine_v6(
+# pylint: disable=too-many-locals
+def read_silixa_files_routine_v6(  # noqa: MC0001
         filepathlist,
         xml_version=6,
         timezone_netcdf='UTC',
@@ -204,9 +203,6 @@ def read_silixa_files_routine_v6(
     -------
 
     """
-    from xml.etree import ElementTree
-
-    import dask
 
     # translate names
     tld = {
@@ -223,8 +219,8 @@ def read_silixa_files_routine_v6(
 
     namespace = get_xml_namespace(xml_tree.getroot())
 
-    logtree = xml_tree.find('./{0}log'.format(namespace))
-    logdata_tree = logtree.find('./{0}logData'.format(namespace))
+    logtree = xml_tree.find(f'./{namespace}log')
+    logdata_tree = logtree.find(f'./{namespace}logData')
 
     # Amount of datapoints is the size of the logdata tree, corrected for
     #  the mnemonic list and unit list
@@ -266,11 +262,12 @@ def read_silixa_files_routine_v6(
     # print summary
     if not silent:
         print(
-            '%s files were found, each representing a single timestep' % ntime)
+            f'{ntime} files were found, each representing a single timestep')
         print(
-            '%s recorded vars were found: ' % nitem
-            + ', '.join(data_item_names))
-        print('Recorded at %s points along the cable' % nx)
+            f'{nitem} recorded vars were found: '
+            ', '.join(data_item_names)
+        )
+        print('Recorded at {nx} points along the cable')
 
         if double_ended_flag:
             print('The measurement is double ended')
@@ -370,8 +367,8 @@ def read_silixa_files_routine_v6(
                 ['x', 'time'], data_arri, dim_attrs[tld[name]])
         else:
             raise ValueError(
-                'Dont know what to do with the'
-                + ' {} data column'.format(name))
+                f'Dont know what to do with the {name} data column'
+            )
 
     # Obtaining the timeseries data (reference temperature etc)
     _ts_dtype = [(k, np.float32) for k in timeseries]
@@ -396,7 +393,7 @@ def read_silixa_files_routine_v6(
             eltree = ElementTree.parse(f_h)
 
             out = []
-            for k, v in timeseries.items():
+            for _, v in timeseries.items():
                 # Get all the timeseries data
                 if 'userAcquisitionTimeFW' in v['loc']:
                     # requires two namespace searches
@@ -435,8 +432,7 @@ def read_silixa_files_routine_v6(
             elif xml_version == 7:
                 tstamp = np.int64(file_name[15:27])
             else:
-                raise ValueError(
-                    'Unknown version number: {}'.format(xml_version))
+                raise ValueError(f'Unknown version number: {xml_version}')
 
             out += [tstamp, startDateTimeIndex, endDateTimeIndex]
         return np.array(tuple(out), dtype=ts_dtype)
@@ -488,7 +484,7 @@ def read_silixa_files_routine_v6(
     return data_vars, coords, attrs
 
 
-def read_silixa_files_routine_v4(
+def read_silixa_files_routine_v4(  # noqa: MC0001
         filepathlist,
         timezone_netcdf='UTC',
         silent=False,
@@ -510,10 +506,6 @@ def read_silixa_files_routine_v4(
     -------
 
     """
-    from xml.etree import ElementTree
-
-    import dask
-
     # translate names
     tld = {
         'ST': 'st',
@@ -526,8 +518,8 @@ def read_silixa_files_routine_v4(
     xml_tree = ElementTree.parse(filepathlist[0])
     namespace = get_xml_namespace(xml_tree.getroot())
 
-    logtree = xml_tree.find('./{0}wellLog'.format(namespace))
-    logdata_tree = logtree.find('./{0}logData'.format(namespace))
+    logtree = xml_tree.find(f'./{namespace}wellLog')
+    logdata_tree = logtree.find(f'./{namespace}logData')
 
     # Amount of datapoints is the size of the logdata tree
     nx = len(logdata_tree)
@@ -571,12 +563,10 @@ def read_silixa_files_routine_v4(
 
     # print summary
     if not silent:
-        print(
-            '%s files were found, each representing a single timestep' % ntime)
-        print(
-            '%s recorded vars were found: ' % nitem
-            + ', '.join(data_item_names))
-        print('Recorded at %s points along the cable' % nx)
+        print(f'{ntime} files were found, each representing a single timestep')
+        print(f'{nitem} recorded vars were found: '
+              ', '.join(data_item_names))
+        print('Recorded at {nx} points along the cable')
 
         if double_ended_flag:
             print('The measurement is double ended')
@@ -1113,12 +1103,12 @@ def read_silixa_attrs_singlefile(filename, sep):
     with open_file(filename) as fh:
         doc_ = xmltodict.parse(fh.read())
 
-    if u'wellLogs' in doc_.keys():
-        doc = doc_[u'wellLogs'][u'wellLog']
+    if 'wellLogs' in doc_.keys():
+        doc = doc_['wellLogs']['wellLog']
     else:
-        doc = doc_[u'logs'][u'log']
+        doc = doc_['logs']['log']
 
-    return metakey(dict(), doc, '')
+    return metakey({}, doc, '')
 
 
 def read_sensortran_files_routine(
@@ -1612,9 +1602,9 @@ def read_apsensing_attrs_singlefile(filename, sep):
             doc_ = xmltodict.parse(data[3:])
             skip_chars = True
 
-    doc = doc_[u'WITSMLComposite'][u'wellSet'][u'well'][u'wellboreSet']
+    doc = doc_['WITSMLComposite']['wellSet']['well']['wellboreSet']
 
-    return metakey(dict(), doc, ''), skip_chars
+    return metakey({}, doc, ''), skip_chars
 
 
 def read_sensornet_single(filename):

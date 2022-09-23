@@ -1,4 +1,3 @@
-# coding=utf-8
 import fnmatch
 import glob
 import inspect
@@ -43,6 +42,7 @@ warnings.filterwarnings(
     message='xarray subclass DataStore should explicitly define __slots__')
 
 
+# pylint: disable=W605
 class DataStore(xr.Dataset):
     """The data class that stores the measurements, contains calibration
     methods to relate Stokes and anti-Stokes to temperature. The user should
@@ -461,15 +461,9 @@ class DataStore(xr.Dataset):
             result = gb.reduce(how, dim=dim.name, keep_attrs=False)
         result = result.rename({RESAMPLE_DIM: dim.name})
 
-        if keep_attrs:
-            attrs = self.attrs
-        else:
-            attrs = None
-
-        out = DataStore(
+        attrs = self.attrs if keep_attrs else None
+        return DataStore(
             data_vars=result.data_vars, coords=result.coords, attrs=attrs)
-
-        return out
 
     def to_netcdf(
             self,
@@ -2373,7 +2367,7 @@ C_\mathrm{B}(t) + \int_x^L{\Delta\\alpha(x')\,\mathrm{d}x'}}
         location (the smallest x-value of all used reference sections).
 
         .. math::
-            A(x) = \int_{x_1}^x{\Delta\\alpha(x')\,\mathrm{d}x'}
+            A(x) = \\int_{x_1}^x{\\Delta\\alpha(x')\\,\\mathrm{d}x'}
 
         so that the expressions for temperature may be written as:
 
