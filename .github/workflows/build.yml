@@ -9,7 +9,6 @@ on:
     - master
 
 jobs:
-
   lint:
     name: Linting build
     runs-on: ubuntu-latest
