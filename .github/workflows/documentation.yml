@@ -29,6 +29,8 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip setuptools
           python3 -m pip install .[docs]
+      - name: Install pandoc using apt
+        run: sudo apt install pandoc
       - name: Convert the notebook examples to docs
         run: python docs/nb_examples_to_docs.py
       - name: Build documentation
