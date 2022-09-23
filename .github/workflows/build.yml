@@ -58,7 +58,7 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip setuptools
           python3 -m pip install .[dev,publishing]
-      - name: Check style against standards using prospector
-        run: prospector
+      - name: Check style against standards using flake8
+        run: flake8 --ignore=W503,W504,W605,N806,N803 src tests setup.py
       - name: Check import order
         run: isort --check-only dtscalibration --diff

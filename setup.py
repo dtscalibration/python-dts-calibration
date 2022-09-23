@@ -100,9 +100,10 @@ setup(
             'sphinx_rtd_theme',
             'sphinx-autoapi',
             'tox',
+            'jupyter',
             'nbformat',  # Needed to run the tests
             'pypandoc'
-            ],
+        ],
         'publishing': [
             'twine',
             'wheel',
