@@ -79,7 +79,7 @@ setup(
         'dask',
         'toolz',
         'matplotlib',
-        'netCDF4',
+        'netCDF4<=1.5.8',
         'pandas>=0.24.1',
         # eg: 'aspectlib==1.1.1', 'six>=1.7',
         # https://github.com/pydata/xarray/issues/3401 cloud pickle should be

@@ -261,13 +261,10 @@ def read_silixa_files_routine_v6(  # noqa: MC0001
 
     # print summary
     if not silent:
-        print(
-            f'{ntime} files were found, each representing a single timestep')
-        print(
-            f'{nitem} recorded vars were found: '
-            ', '.join(data_item_names)
-        )
-        print('Recorded at {nx} points along the cable')
+        print(f'{ntime} files were found, each representing a single timestep')
+        print(f'{nitem} recorded vars were found: ' +\
+              ', '.join(data_item_names))
+        print(f'Recorded at {nx} points along the cable')
 
         if double_ended_flag:
             print('The measurement is double ended')
@@ -552,10 +549,10 @@ def read_silixa_files_routine_v4(  # noqa: MC0001
     # obtain basic data info
     if double_ended_flag:
         data_item_names = [
-            attrs['logCurveInfo_{0}:mnemonic'.format(x)] for x in range(0, 6)]
+            attrs[f'logCurveInfo_{x}:mnemonic'] for x in range(6)]
     else:
         data_item_names = [
-            attrs['logCurveInfo_{0}:mnemonic'.format(x)] for x in range(0, 4)]
+            attrs[f'logCurveInfo_{x}:mnemonic'] for x in range(4)]
 
     nitem = len(data_item_names)
 
@@ -564,9 +561,9 @@ def read_silixa_files_routine_v4(  # noqa: MC0001
     # print summary
     if not silent:
         print(f'{ntime} files were found, each representing a single timestep')
-        print(f'{nitem} recorded vars were found: '
+        print(f'{nitem} recorded vars were found: ' +\
               ', '.join(data_item_names))
-        print('Recorded at {nx} points along the cable')
+        print(f'Recorded at {nx} points along the cable')
 
         if double_ended_flag:
             print('The measurement is double ended')
@@ -668,7 +665,7 @@ def read_silixa_files_routine_v4(  # noqa: MC0001
         else:
             raise ValueError(
                 'Dont know what to do with the'
-                + ' {} data column'.format(name))
+                ' {name} data column')
 
     # Obtaining the timeseries data (reference temperature etc)
     _ts_dtype = [(k, np.float32) for k in timeseries]
