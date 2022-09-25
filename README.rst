@@ -86,7 +86,7 @@ Package features
 Devices currently supported
 ===========================
 * Silixa Ltd.: **Ultima** & **XT-DTS** .xml files *(up to version 8.1)*
-* Sensornet Ltd.: **Oryx** & **Halo** .ddf files
+* Sensornet Ltd.: **Oryx**, **Halo** & **Sentinel** .ddf files
 * AP Sensing: **CP320** .xml files *(single ended only)*
 * SensorTran: **SensorTran 5100** .dat binary files *(single ended only)*
 
