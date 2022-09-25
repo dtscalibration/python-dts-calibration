@@ -1063,7 +1063,7 @@ class DataStore(xr.Dataset):
         --------
         - `Example notebook 4: Calculate variance Stokes intensity measurements\
         <https://github.com/\
-        dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
+        dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
         04Calculate_variance_Stokes.ipynb>`_
         """
         if sections:
@@ -1238,7 +1238,7 @@ class DataStore(xr.Dataset):
         --------
         - `Example notebook 4: Calculate variance Stokes intensity measurements\
         <https://github.com/\
-        dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
+        dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
         04Calculate_variance_Stokes.ipynb>`_
         """
         if sections:
@@ -1473,7 +1473,7 @@ class DataStore(xr.Dataset):
         --------
         - `Example notebook 4: Calculate variance Stokes intensity \
         measurements <https://github.com/\
-        dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
+        dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
         04Calculate_variance_Stokes.ipynb>`_
 
         Parameters
@@ -2007,7 +2007,7 @@ class DataStore(xr.Dataset):
         Examples
         --------
         - `Example notebook 7: Calibrate single ended <https://github.com/\
-dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
+dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
 07Calibrate_single_wls.ipynb>`_
 
         """
@@ -2518,7 +2518,7 @@ C_\mathrm{B}(t) + \int_x^L{\Delta\\alpha(x')\,\mathrm{d}x'}}
         Examples
         --------
         - `Example notebook 8: Calibrate double ended <https://github.com/\
-dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
+dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
 08Calibrate_double_wls.ipynb>`_
 
         """

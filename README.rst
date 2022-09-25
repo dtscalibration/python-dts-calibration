@@ -31,7 +31,7 @@ Overview
 
 .. |commits-since| image:: https://img.shields.io/github/commits-since/dtscalibration/python-dts-calibration/v1.1.1.svg
     :alt: Commits since latest release
-    :target: https://github.com/dtscalibration/python-dts-calibration/compare/v1.1.1...master
+    :target: https://github.com/dtscalibration/python-dts-calibration/compare/v1.1.1...main
 
 .. |wheel| image:: https://img.shields.io/pypi/wheel/dtscalibration.svg
     :alt: PyPI Wheel
@@ -47,7 +47,7 @@ Overview
 
 .. |example-notebooks| image:: https://mybinder.org/badge.svg
    :alt: Interactively run the example notebooks online
-   :target: https://mybinder.org/v2/gh/dtscalibration/python-dts-calibration/master?filepath=examples%2Fnotebooks
+   :target: https://mybinder.org/v2/gh/dtscalibration/python-dts-calibration/main?filepath=examples%2Fnotebooks
 
 .. end-badges
 
@@ -67,7 +67,7 @@ Or the development version directly from GitHub
 
 .. code-block:: zsh
 
-    pip install https://github.com/dtscalibration/python-dts-calibration/zipball/master --upgrade
+    pip install https://github.com/dtscalibration/python-dts-calibration/zipball/main --upgrade
 
 Package features
 ================
@@ -76,9 +76,9 @@ Package features
    * Confidence intervals of calibrated temperature
    * Time integration of calibration parameters
    * Weighted least-squares calibration
-   * `Fixing parameters to a previously determined value <..//master/examples/notebooks/13Fixed_parameter_calibration.ipynb>`_
-   * `(Asymmetric) step loss correction <../master/examples/notebooks/14Lossy_splices.ipynb>`_
-   * `Matching temperature sections <../master/examples/notebooks/15Matching_sections.ipynb>`_
+   * `Fixing parameters to a previously determined value <..//main/examples/notebooks/13Fixed_parameter_calibration.ipynb>`_
+   * `(Asymmetric) step loss correction <../main/examples/notebooks/14Lossy_splices.ipynb>`_
+   * `Matching temperature sections <../main/examples/notebooks/15Matching_sections.ipynb>`_
 * Dynamic reference section definition
 * Tools for merging and aligning double-ended setups
 * Data formats of most manufacturers are supported
@@ -92,7 +92,7 @@ Devices currently supported
 
 Learn by examples
 =================
-Interactively run the example notebooks online by clicking `here <https://mybinder.org/v2/gh/dtscalibration/python-dts-calibration/master?filepath=examples%2Fnotebooks>`_.
+Interactively run the example notebooks online by clicking `here <https://mybinder.org/v2/gh/dtscalibration/python-dts-calibration/main?filepath=examples%2Fnotebooks>`_.
 
 Documentation
 =============
