@@ -33,7 +33,7 @@ def get_authors(file='AUTHORS.rst'):
 
 setup(
     name='dtscalibration',
-    version='1.1.0',
+    version='1.1.1',
     license='BSD 3-Clause License',
     description='A Python package to load raw DTS files, perform a '
     'calibration, and plot the result',
@@ -48,7 +48,7 @@ setup(
     packages=find_packages('src'),
     package_dir={'': 'src'},
     py_modules=[splitext(basename(path))[0] for path in glob('src/*.py')],
-    python_requires='>= 3.6',  # default dictionary is sorted
+    python_requires='>= 3.8',  # default dictionary is sorted
     include_package_data=True,
     zip_safe=False,
     classifiers=[
@@ -60,9 +60,9 @@ setup(
         'Operating System :: POSIX',
         'Operating System :: Microsoft :: Windows',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
         'Topic :: Utilities'],
     keywords=[
         'DTS',

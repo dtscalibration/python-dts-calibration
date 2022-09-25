@@ -1,6 +1,13 @@
 
 Changelog
 =========
+1.1.1 (2022-09-25)
+------------------
+
+* Deprecated Python 3.7
+* Fixed documention rendering
+* Updated readme badges
+
 1.1.0 (2022-09-25)
 ------------------
 New features
