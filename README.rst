@@ -29,9 +29,9 @@ Overview
     :alt: PyPI Package latest release
     :target: https://pypi.python.org/pypi/dtscalibration
 
-.. |commits-since| image:: https://img.shields.io/github/commits-since/dtscalibration/python-dts-calibration/v1.1.1.svg
+.. |commits-since| image:: https://img.shields.io/github/commits-since/dtscalibration/python-dts-calibration/v1.1.2.svg
     :alt: Commits since latest release
-    :target: https://github.com/dtscalibration/python-dts-calibration/compare/v1.1.1...master
+    :target: https://github.com/dtscalibration/python-dts-calibration/compare/v1.1.2...master
 
 .. |wheel| image:: https://img.shields.io/pypi/wheel/dtscalibration.svg
     :alt: PyPI Wheel
@@ -86,7 +86,7 @@ Package features
 Devices currently supported
 ===========================
 * Silixa Ltd.: **Ultima** & **XT-DTS** .xml files *(up to version 8.1)*
-* Sensornet Ltd.: **Oryx** & **Halo** .ddf files
+* Sensornet Ltd.: **Oryx**, **Halo** & **Sentinel** .ddf files
 * AP Sensing: **CP320** .xml files *(single ended only)*
 * SensorTran: **SensorTran 5100** .dat binary files *(single ended only)*
 

@@ -1,6 +1,12 @@
 
 Changelog
 =========
+1.1.2 (2022-09-25)
+------------------
+
+* Added support for Sensornet Sentinel v5 files.
+
+
 1.1.1 (2022-09-25)
 ------------------
 

@@ -42,6 +42,8 @@ data_dir_sensornet_halo_double_ended = os.path.join(
     wd, 'data', 'sensornet_halo_v1.0')
 data_dir_sensornet_oryx_double_ended = os.path.join(
     wd, 'data', 'sensornet_oryx_v3.7_double')
+data_dir_sensornet_sentinel_double_ended = os.path.join(
+    wd, 'data', 'sensornet_sentinel_v5.1_double')
 data_dir_single_silixa_v45 = os.path.join(wd, 'data', 'silixa_v4.5')
 data_dir_single_silixa_v7 = os.path.join(wd, 'data', 'silixa_v7.0')
 data_dir_single_silixa_v8 = os.path.join(wd, 'data', 'silixa_v8.1')
@@ -421,6 +423,20 @@ def test_read_sensornet_oryx_files_double_ended():
 
     np.testing.assert_almost_equal(ds.st.sum(), 2301637.154, decimal=2)
     np.testing.assert_almost_equal(ds.rst.sum(), 1835770.651, decimal=2)
+
+
+def test_read_sensornet_sentinel_files_double_ended():
+    filepath = data_dir_sensornet_sentinel_double_ended
+    ds = read_sensornet_files(
+        directory=filepath,
+        timezone_netcdf='UTC',
+        timezone_input_files='UTC',
+        add_internal_fiber_length=50.,
+        fiber_length=2100.,
+        file_ext='*.ddf')
+
+    np.testing.assert_almost_equal(ds.st.sum(), 16531426.023, decimal=2)
+    np.testing.assert_almost_equal(ds.rst.sum(), 15545880.215, decimal=2)
 
 
 def test_read_apsensing_files():
