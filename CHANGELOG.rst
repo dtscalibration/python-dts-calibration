@@ -1,7 +1,7 @@
 
 Changelog
 =========
-1.1.0 (UNRELEASED)
+1.1.0 (2022-09-25)
 ------------------
 New features
 
