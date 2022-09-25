@@ -4,4 +4,4 @@ nbsphinx
 recommonmark
 sphinx<6
 sphinx-automodapi
--e .
+-e .[docs]
