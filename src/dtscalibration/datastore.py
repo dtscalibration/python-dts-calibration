@@ -5743,12 +5743,14 @@ def read_sensornet_files(
 
     valid_versions = [
         'Halo DTS v1*', 'ORYX F/W v1.02 Oryx Data Collector v3*',
-        'ORYX F/W v4.00 Oryx Data Collector v3*']
+        'ORYX F/W v4.00 Oryx Data Collector v3*', "Sentinel DTS v5*"]
 
     valid = any([fnmatch.fnmatch(ddf_version, v_) for v_ in valid_versions])
 
     if valid:
         if fnmatch.fnmatch(ddf_version, 'Halo DTS v1*'):
+            flip_reverse_measurements = True
+        elif fnmatch.fnmatch(ddf_version, "Sentinel DTS v5*"):
             flip_reverse_measurements = True
         else:
             flip_reverse_measurements = False
