@@ -44,6 +44,7 @@ data_dir_sensornet_oryx_double_ended = os.path.join(
     wd, 'data', 'sensornet_oryx_v3.7_double')
 data_dir_single_silixa_v45 = os.path.join(wd, 'data', 'silixa_v4.5')
 data_dir_single_silixa_v7 = os.path.join(wd, 'data', 'silixa_v7.0')
+data_dir_single_silixa_v8 = os.path.join(wd, 'data', 'silixa_v8.1')
 data_dir_ap_sensing = os.path.join(wd, 'data', 'ap_sensing')
 data_dir_sensortran_binary = os.path.join(wd, 'data', 'sensortran_binary')
 data_dir_double_single_ch1 = os.path.join(
@@ -315,6 +316,27 @@ def test_read_single_silixa_v45():
 
 def test_read_single_silixa_v7():
     filepath = data_dir_single_silixa_v7
+    ds = read_silixa_files(
+        directory=filepath,
+        timezone_netcdf='UTC',
+        file_ext='*.xml',
+        load_in_memory=False)
+
+    for k in ['st', 'ast']:
+        assert isinstance(ds[k].data, da.Array)
+
+    ds = read_silixa_files(
+        directory=filepath,
+        timezone_netcdf='UTC',
+        file_ext='*.xml',
+        load_in_memory=True)
+
+    for k in ['st', 'ast']:
+        assert isinstance(ds[k].data, np.ndarray)
+
+
+def test_read_single_silixa_v8():
+    filepath = data_dir_single_silixa_v8
     ds = read_silixa_files(
         directory=filepath,
         timezone_netcdf='UTC',

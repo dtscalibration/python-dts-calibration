@@ -1,11 +1,12 @@
 
 Changelog
 =========
-1.0.3 (UNRELEASED)
+1.1.0 (UNRELEASED)
 ------------------
 New features
 
 * Added support for Python 3.9, 3.10.
+* Silixa's xml version 8 is now supported
 
 Bug fixes
 
@@ -14,7 +15,6 @@ Bug fixes
 * Changed matplotlib's deprecated DivergingNorm to TwoSlopeNorm
 * Updated the stokes_variance_linear docstring to remove incorrect and duplicate information
 * Adjusted resample_datastore to avoid using deprecated 'base' kwarg, instead using the new arguments 'origin' and 'offset'. See http://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.resample.html
-* Updated Travis-CI and AppVeyor configurations to restore functionality
 
 Others
 
@@ -22,6 +22,7 @@ Others
 * Notebook 07 and 08 have been updated to take into account the changes in ds.stokes_variance.
 * Silenced xarray's __slots__ warning
 * Deprecated Python 3.6
+* CI has been moved to GitHub Actions. Travis-CI and AppVeyor have been removed.
 
 1.0.2 (2020-05-04)
 ------------------

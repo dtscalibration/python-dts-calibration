@@ -428,6 +428,8 @@ def read_silixa_files_routine_v6(  # noqa: MC0001
                 tstamp = np.int64(file_name[10:27])
             elif xml_version == 7:
                 tstamp = np.int64(file_name[15:27])
+            elif xml_version == 8:
+                tstamp = np.int64(file_name[-23:-4].replace('.',''))
             else:
                 raise ValueError(f'Unknown version number: {xml_version}')
 
