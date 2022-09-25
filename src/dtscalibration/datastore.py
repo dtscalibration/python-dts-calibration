@@ -2106,7 +2106,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             p_var = np.zeros_like(p_val)
             p_cov = np.zeros((p_val.size, p_val.size), dtype=np.float)
 
-            if fix_gamma:
+            if fix_gamma is not None:
                 ip_remove = [0]
                 ip_use = [i for i in ip_use if i not in ip_remove]
                 p_val[ip_remove] = fix_gamma[0]
@@ -2119,7 +2119,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                 y -= fix_gamma[0] * X_gamma
                 w = 1 / (1 / w + fix_gamma[1] * X_gamma)
 
-            if fix_alpha:
+            if fix_alpha is not None:
                 ip_remove = list(range(1, nx + 1))
                 ip_use = [i for i in ip_use if i not in ip_remove]
                 p_val[ip_remove] = fix_alpha[0]
@@ -2129,7 +2129,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                 y -= split['X_alpha'].dot(fix_alpha[0])
                 w = 1 / (1 / w + split['X_alpha'].dot(fix_alpha[1]))
 
-            if fix_dalpha:
+            if fix_dalpha is not None:
                 ip_remove = [1]
                 ip_use = [i for i in ip_use if i not in ip_remove]
                 p_val[ip_remove] = fix_dalpha[0]
@@ -5499,7 +5499,7 @@ def read_silixa_files(
             silent=silent,
             load_in_memory=load_in_memory)
 
-    elif xml_version == 6 or 7:
+    elif xml_version in (6, 7, 8):
         data_vars, coords, attrs = read_silixa_files_routine_v6(
             filepathlist,
             xml_version=xml_version,
