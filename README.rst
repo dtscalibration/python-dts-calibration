@@ -9,7 +9,7 @@ Overview
     * - Docs
       - |docs|
     * - Tests
-      - | |travis| |appveyor| |codecov|
+      - |tests|
     * - Package
       - | |version| |supported-versions| |commits-since|
     * - Citable
@@ -21,17 +21,9 @@ Overview
     :target: https://python-dts-calibration.readthedocs.io/en/latest/
     :alt: Documentation Status
 
-.. |travis| image:: https://api.travis-ci.com/dtscalibration/python-dts-calibration.svg?branch=master
-    :alt: Travis-CI Build Status
-    :target: https://app.travis-ci.com/github/dtscalibration/python-dts-calibration
-
-.. |appveyor| image:: https://ci.appveyor.com/api/projects/status/we2caropyby30nd1?svg=true
-    :alt: AppVeyor Build Status
-    :target: https://ci.appveyor.com/project/bdestombe/python-dts-calibration
-
-.. |codecov| image:: https://codecov.io/github/dtscalibration/python-dts-calibration/coverage.svg?branch=master
-    :alt: Coverage Status
-    :target: https://codecov.io/github/dtscalibration/python-dts-calibration
+.. |tests| image:: https://github.com/dtscalibration/python-dts-calibration/actions/workflows/build.yml/badge.svg
+    :target: https://github.com/dtscalibration/python-dts-calibration/actions/workflows/build.yml
+    :alt: Test Status
 
 .. |version| image:: https://img.shields.io/pypi/v/dtscalibration.svg
     :alt: PyPI Package latest release
@@ -93,7 +85,7 @@ Package features
 
 Devices currently supported
 ===========================
-* Silixa Ltd.: **Ultima** & **XT-DTS** .xml files *(up to version 7.0)*
+* Silixa Ltd.: **Ultima** & **XT-DTS** .xml files *(up to version 8.1)*
 * Sensornet Ltd.: **Oryx** & **Halo** .ddf files
 * AP Sensing: **CP320** .xml files *(single ended only)*
 * SensorTran: **SensorTran 5100** .dat binary files *(single ended only)*
