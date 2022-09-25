@@ -47,7 +47,5 @@ def test_ipynb():
     filepathlist = glob.glob(nb_dir)
 
     for fp in filepathlist:
-        nb, errors = _notebook_run(fp)
+        _, errors = _notebook_run(fp)
         assert errors == []
-
-    pass

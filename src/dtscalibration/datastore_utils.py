@@ -33,8 +33,6 @@ def check_dims(ds, labels, correct_dims=None):
             assert ds[li].dims == correct_dims, li + ' doesnot have the correct dimensions. ' \
                                                      'Should be ' + str(correct_dims)
 
-    pass
-
 
 def get_netcdf_encoding(ds, zlib=True, complevel=5, **kwargs):
     """Get default netcdf compression parameters. The same for each data variable.
@@ -152,7 +150,7 @@ def merge_double_ended(ds_fw, ds_bw, cable_length, plot_result=True):
         'time', ds_bw['userAcquisitionTimeFW'].values)
 
     if plot_result:
-        fig, ax = plt.subplots()
+        _, ax = plt.subplots()
         ds['st'].isel(time=0).plot(ax=ax, label='Stokes forward')
         ds['rst'].isel(time=0).plot(ax=ax, label='Stokes backward')
         ax.legend()
@@ -160,6 +158,7 @@ def merge_double_ended(ds_fw, ds_bw, cable_length, plot_result=True):
     return ds
 
 
+# pylint: disable=too-many-locals
 def shift_double_ended(ds, i_shift, verbose=True):
     """
     The cable length was initially configured during the DTS measurement. For double ended
@@ -193,7 +192,8 @@ def shift_double_ended(ds, i_shift, verbose=True):
     ds2 : DataStore oobject
         With a shifted x-axis
     """
-    from dtscalibration import DataStore
+    # pylint: disable=import-outside-toplevel
+    from . import DataStore
 
     assert isinstance(i_shift, (int, np.integer))
 
@@ -239,6 +239,7 @@ def shift_double_ended(ds, i_shift, verbose=True):
     return DataStore(data_vars=d2_data, coords=d2_coords, attrs=ds.attrs)
 
 
+# pylint: disable=too-many-locals
 def suggest_cable_shift_double_ended(
         ds, irange, plot_result=True, **fig_kwargs):
     """The cable length was initially configured during the DTS measurement.
@@ -325,10 +326,10 @@ def suggest_cable_shift_double_ended(
 
     if plot_result:
         if fig_kwargs is None:
-            fig_kwargs = dict()
+            fig_kwargs = {}
 
         f, (ax0, ax1) = plt.subplots(2, 1, sharex=False, **fig_kwargs)
-        f.suptitle('best shift is {} or {}'.format(ishift1, ishift2))
+        f.suptitle(f'best shift is {ishift1} or {ishift2}')
 
         dt = ds.isel(time=0)
         x = dt.x.data
@@ -343,8 +344,8 @@ def suggest_cable_shift_double_ended(
         x2 = dtsh2.x.data
         y1 = dtsh1.rst.data
         y2 = dtsh2.rst.data
-        ax0.plot(x1, y1, label='ST i_shift={}'.format(ishift1))
-        ax0.plot(x2, y2, label='ST i_shift={}'.format(ishift2))
+        ax0.plot(x1, y1, label=f'ST i_shift={ishift1}')
+        ax0.plot(x2, y2, label=f'ST i_shift={ishift2}')
         ax0.set_xlabel('x (m)')
         ax0.legend()
 
@@ -352,15 +353,9 @@ def suggest_cable_shift_double_ended(
         ax1.plot(irange, err1, c='red', label='1 deriv')
         ax2.plot(irange, err2, c='blue', label='2 deriv')
         ax1.axvline(
-            ishift1,
-            c='red',
-            linewidth=0.8,
-            label='1 deriv. i_shift={}'.format(ishift1))
+            ishift1, c='red', linewidth=0.8, label=f'1 deriv. i_shift={ishift1}')
         ax2.axvline(
-            ishift2,
-            c='blue',
-            linewidth=0.8,
-            label='2 deriv. i_shift={}'.format(ishift1))
+            ishift2, c='blue', linewidth=0.8, label=f'2 deriv. i_shift={ishift1}')
         ax1.set_xlabel('i_shift')
         ax1.legend(loc=2)  # left axis
         ax2.legend(loc=1)  # right axis

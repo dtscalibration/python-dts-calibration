@@ -69,7 +69,7 @@ setup(
         'Calibration'],
     install_requires=[
         'numpy',
-        'xarray',
+        'xarray<=2022.03.0',
         'pyyaml',
         'xmltodict',
         'scipy',
@@ -79,19 +79,45 @@ setup(
         'dask',
         'toolz',
         'matplotlib',
-        'netCDF4',
+        'netCDF4<=1.5.8',
         'pandas>=0.24.1',
         # eg: 'aspectlib==1.1.1', 'six>=1.7',
         # https://github.com/pydata/xarray/issues/3401 cloud pickle should be
         # possible to remove from requirements soon. 2019/10/31
         'cloudpickle',
-        'nbformat',  # Needed to run the tests
-        'pypandoc'
     ],
     extras_require={
-        # eg:
-        #   'rst': ['docutils>=0.11'],
-        #   ':python_version=="2.6"': ['argparse'],
+        'dev': [
+            'bump2version',
+            'coverage [toml]',
+            'isort',
+            'mypy',
+            'myst_parser',
+            'prospector[with_pyroma]',
+            'pytest',
+            'pytest-cov',
+            'sphinx',
+            'sphinx_rtd_theme',
+            'sphinx-autoapi',
+            'tox',
+            'jupyter',
+            'nbformat',  # Needed to run the tests
+            'pypandoc'
+        ],
+        'docs': [
+            'IPython',
+            'nbsphinx',
+            'recommonmark',
+            'sphinx<6',
+            'sphinx-automodapi',
+            'pypandoc',
+            'jupyter_client',
+            'ipykernel',
+        ],
+        'publishing': [
+            'twine',
+            'wheel',
+        ],
     },
     entry_points={
         'console_scripts': ['dtscalibration = dtscalibration.cli:main']},
