@@ -111,7 +111,7 @@ solver because it saves us memory.
 
 .. parsed-literal::
 
-    <matplotlib.collections.QuadMesh at 0x7fdc4cc7ee50>
+    <matplotlib.collections.QuadMesh at 0x17c9ec640>
 
 
 

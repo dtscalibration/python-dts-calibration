@@ -42,7 +42,7 @@ measurements. Do this before the calibration steps.
 
 .. parsed-literal::
 
-    /home/bart/git/travis_fix/python-dts-calibration/src/dtscalibration/io.py:1843: FutureWarning: Using .astype to convert from timezone-aware dtype to timezone-naive dtype is deprecated and will raise in a future version.  Use obj.tz_localize(None) or obj.tz_convert('UTC').tz_localize(None) instead
+    /Volumes/GoogleDrive/My Drive/Projects/python-dts-calibration/src/dtscalibration/io.py:1843: FutureWarning: Using .astype to convert from timezone-aware dtype to timezone-naive dtype is deprecated and will raise in a future version.  Use obj.tz_localize(None) or obj.tz_convert('UTC').tz_localize(None) instead
       'time', pd.DatetimeIndex(v).tz_convert(timezone_netcdf).astype(
 
 
@@ -73,9 +73,9 @@ and is dropped
 
 .. parsed-literal::
 
-    /home/bart/git/travis_fix/python-dts-calibration/src/dtscalibration/datastore_utils.py:308: RuntimeWarning: invalid value encountered in log
+    /Volumes/GoogleDrive/My Drive/Projects/python-dts-calibration/src/dtscalibration/datastore_utils.py:308: RuntimeWarning: invalid value encountered in log
       i_f = np.log(st / ast)
-    /home/bart/git/travis_fix/python-dts-calibration/src/dtscalibration/datastore_utils.py:309: RuntimeWarning: invalid value encountered in log
+    /Volumes/GoogleDrive/My Drive/Projects/python-dts-calibration/src/dtscalibration/datastore_utils.py:309: RuntimeWarning: invalid value encountered in log
       i_b = np.log(rst / rast)
 
 

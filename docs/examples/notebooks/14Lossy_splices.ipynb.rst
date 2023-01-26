@@ -66,7 +66,7 @@ lossy splice.
 
 .. parsed-literal::
 
-    /home/bart/git/travis_fix/python-dts-calibration/src/dtscalibration/io.py:1843: FutureWarning: Using .astype to convert from timezone-aware dtype to timezone-naive dtype is deprecated and will raise in a future version.  Use obj.tz_localize(None) or obj.tz_convert('UTC').tz_localize(None) instead
+    /Volumes/GoogleDrive/My Drive/Projects/python-dts-calibration/src/dtscalibration/io.py:1843: FutureWarning: Using .astype to convert from timezone-aware dtype to timezone-naive dtype is deprecated and will raise in a future version.  Use obj.tz_localize(None) or obj.tz_convert('UTC').tz_localize(None) instead
       'time', pd.DatetimeIndex(v).tz_convert(timezone_netcdf).astype(
 
 
@@ -100,7 +100,7 @@ clearly visible.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x7f6936047f10>
+    <matplotlib.legend.Legend at 0x13f7b8e50>
 
 
 
@@ -138,7 +138,7 @@ after the jump are too high.
 
 .. parsed-literal::
 
-    [<matplotlib.lines.Line2D at 0x7f6927f35af0>]
+    [<matplotlib.lines.Line2D at 0x13f9c62e0>]
 
 
 
@@ -181,7 +181,7 @@ big jump.
 
 .. parsed-literal::
 
-    <matplotlib.legend.Legend at 0x7f69384b5a90>
+    <matplotlib.legend.Legend at 0x13f933fa0>
 
 
 

@@ -53,7 +53,7 @@ Step 1: load the measurement files
 
 .. parsed-literal::
 
-    /tmp/ipykernel_51613/3231285201.py:1: FutureWarning: The squeeze argument has been deprecated and will be removed in a future version. Append .squeeze("columns") to the call to squeeze.
+    /var/folders/q1/1zxwdlz92ld7b5drvjrsq7fc0000gn/T/ipykernel_52781/3231285201.py:1: FutureWarning: The squeeze argument has been deprecated and will be removed in a future version. Append .squeeze("columns") to the call to squeeze.
     
     
       ts = pd.read_csv(filepath, sep=',', index_col=0, parse_dates=True,
@@ -91,17 +91,17 @@ measurements to add the external timeseries to
 
 .. parsed-literal::
 
-    /home/bart/git/travis_fix/python-dts-calibration/src/dtscalibration/io.py:1843: FutureWarning: Using .astype to convert from timezone-aware dtype to timezone-naive dtype is deprecated and will raise in a future version.  Use obj.tz_localize(None) or obj.tz_convert('UTC').tz_localize(None) instead
-      'time', pd.DatetimeIndex(v).tz_convert(timezone_netcdf).astype(
-
-
-.. parsed-literal::
-
     6 files were found, each representing a single timestep
     6 recorded vars were found: LAF, ST, AST, REV-ST, REV-AST, TMP
     Recorded at 1693 points along the cable
     The measurement is double ended
     Reading the data from disk
+
+
+.. parsed-literal::
+
+    /Volumes/GoogleDrive/My Drive/Projects/python-dts-calibration/src/dtscalibration/io.py:1843: FutureWarning: Using .astype to convert from timezone-aware dtype to timezone-naive dtype is deprecated and will raise in a future version.  Use obj.tz_localize(None) or obj.tz_convert('UTC').tz_localize(None) instead
+      'time', pd.DatetimeIndex(v).tz_convert(timezone_netcdf).astype(
 
 
 Step 2: Add the temperature measurements of the external probe to the DataStore.
