@@ -1076,12 +1076,7 @@ def wls_sparse(
         return_werr=False,
         **solver_kwargs):
     """
-    If some initial estimate x0 is known and if damp == 0, one could proceed as follows:
-    - Compute a residual vector r0 = b - A*x0.
-    - Use LSQR to solve the system A*dx = r0.
-    - Add the correction dx to obtain a final solution x = x0 + dx.
-    from: https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.
-      linalg.lsqr.html
+    Sparse implementation of an inverse variance weighted least squares solver.
 
     Parameters
     ----------
@@ -1135,6 +1130,14 @@ def wls_sparse(
     else:
         wX = X.multiply(w_std)
 
+    """
+    If some initial estimate x0 is known and if damp == 0, one could proceed as follows:
+    - Compute a residual vector r0 = b - A*x0.
+    - Use LSQR to solve the system A*dx = r0.
+    - Add the correction dx to obtain a final solution x = x0 + dx.
+    from: https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.
+      linalg.lsqr.html
+    """
     if x0 is None:
         # noinspection PyTypeChecker
         out_sol = ln.lsqr(wX, wy, show=verbose, calc_var=True, **solver_kwargs)
@@ -1144,8 +1147,7 @@ def wls_sparse(
         wr0 = wy - wX.dot(x0)
 
         # noinspection PyTypeChecker
-        out_sol = ln.lsqr(
-            wX, wr0, show=verbose, calc_var=True, **solver_kwargs)
+        out_sol = ln.lsqr(wX, wr0, show=verbose, calc_var=True, **solver_kwargs)
 
         p_sol = x0 + out_sol[0]
 
