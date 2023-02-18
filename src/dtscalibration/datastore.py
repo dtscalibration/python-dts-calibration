@@ -5257,6 +5257,222 @@ dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
         return out
 
 
+class ParameterIndexDoubleEnded:
+    """
+    npar = 1 + 2 * nt + nx + 2 * nt * nta
+    assert pval.size == npar
+    assert p_var.size == npar
+    if calc_cov:
+        assert p_cov.shape == (npar, npar)
+    gamma = pval[0]
+    d_fw = pval[1:nt + 1]
+    d_bw = pval[1 + nt:1 + 2 * nt]
+    alpha = pval[1 + 2 * nt:1 + 2 * nt + nx]
+    # store calibration parameters in DataStore
+    self[store_gamma] = (tuple(), gamma)
+    self[store_alpha] = (('x',), alpha)
+    self[store_df] = ((time_dim,), d_fw)
+    self[store_db] = ((time_dim,), d_bw)
+    if nta > 0:
+        ta = pval[1 + 2 * nt + nx:].reshape((nt, 2, nta), order='F')
+        self[store_ta + '_fw'] = ((time_dim, 'trans_att'), ta[:, 0, :])
+        self[store_ta + '_bw'] = ((time_dim, 'trans_att'), ta[:, 1, :])
+    """
+
+    def __init__(self, nt, nx, nta, fix_gamma=False, fix_alpha=False):
+        self.nt = nt
+        self.nx = nx
+        self.nta = nta
+        self.fix_gamma = fix_gamma
+        self.fix_alpha = fix_alpha
+
+    @property
+    def all(self):
+        return np.concatenate((
+            self.gamma,
+            self.df,
+            self.db,
+            self.alpha,
+            self.ta.flatten(order='F')
+        ))
+
+    @property
+    def npar(self):
+        if not self.fix_gamma and not self.fix_alpha:
+            return 1 + 2 * self.nt + self.nx + 2 * self.nt * self.nta
+        elif self.fix_gamma and not self.fix_alpha:
+            return 2 * self.nt + self.nx + 2 * self.nt * self.nta
+        elif not self.fix_gamma and self.fix_alpha:
+            return 1 + 2 * self.nt + 2 * self.nt * self.nta
+        elif self.fix_gamma and self.fix_alpha:
+            return 2 * self.nt + 2 * self.nt * self.nta
+
+    @property
+    def gamma(self):
+        if self.fix_gamma:
+            return []
+        else:
+            return [0]
+
+    @property
+    def df(self):
+        if self.fix_gamma:
+            return list(range(self.nt))
+        else:
+            return list(range(1, self.nt + 1))
+
+    @property
+    def db(self):
+        if self.fix_gamma:
+            return list(range(self.nt, 2 * self.nt))
+        else:
+            return list(range(1 + self.nt, 1 + 2 * self.nt))
+
+    @property
+    def alpha(self):
+        if self.fix_alpha:
+            return []
+        elif self.fix_gamma:
+            return list(range(2 * self.nt, 1 + 2 * self.nt + self.nx))
+        elif not self.fix_gamma:
+            return list(range(1 + 2 * self.nt, 1 + 2 * self.nt + self.nx))
+
+    @property
+    def ta(self):
+        if self.nta == 0:
+            return np.zeros((self.nt, 2, 0))
+        elif not self.fix_gamma and not self.fix_alpha:
+            arr = np.arange(1 + 2 * self.nt + self.nx, self.npar)
+        elif self.fix_gamma and not self.fix_alpha:
+            arr = np.arange(2 * self.nt + self.nx, self.npar)
+        elif not self.fix_gamma and self.fix_alpha:
+            arr = np.arange(1 + 2 * self.nt, self.npar)
+        elif self.fix_gamma and self.fix_alpha:
+            arr = np.arange(2 * self.nt, self.npar)
+
+        return arr.reshape((self.nt, 2, self.nta), order="F")
+
+    @property
+    def taf(self):
+        """
+        Use `.reshape((nt, nta))` to convert array to (time-dim and transatt-dim). Order is the default C order.
+        ta = pval[1 + 2 * nt + nx:].reshape((nt, 2, nta), order='F')
+        self[store_ta + '_fw'] = ((time_dim, 'trans_att'), ta[:, 0, :])
+        """
+        return self.ta[:, 0, :].flatten(order="C")
+
+    @property
+    def tab(self):
+        """
+        Use `.reshape((nt, nta))` to convert array to (time-dim and transatt-dim). Order is the default C order.
+        ta = pval[1 + 2 * nt + nx:].reshape((nt, 2, nta), order='F')
+        self[store_ta + '_bw'] = ((time_dim, 'trans_att'), ta[:, 1, :])
+        """
+        return self.ta[:, 1, :].flatten(order="C")
+
+    def get_ta_pars(self, pval):
+        if self.nta > 0:
+            if pval.ndim == 1:
+                return np.take_along_axis(pval[None, None], self.ta, axis=-1)
+
+            else:
+                # assume shape is (a, npar) and returns shape (nt, 2, nta, a)
+                assert pval.shape[1] == self.npar and pval.ndim == 2
+                return np.stack([self.get_ta_pars(v) for v in pval], axis=-1)
+
+        else:
+            return np.zeros(shape=(self.nt, 2, 0))
+
+    def get_taf_pars(self, pval):
+        """returns taf parameters of shape (nt, nta) or (nt, nta, a)"""
+        return self.get_ta_pars(pval=pval)[:, 0, :]
+
+    def get_tab_pars(self, pval):
+        """returns taf parameters of shape (nt, nta) or (nt, nta, a)"""
+        return self.get_ta_pars(pval=pval)[:, 1, :]
+
+    def get_taf_values(self, pval, x, trans_att, axis=""):
+        """returns taf parameters of shape (nx, nt)"""
+        pval = np.atleast_2d(pval)
+
+        assert pval.ndim == 2 and pval.shape[1] == self.npar
+
+        arr_out = np.zeros((self.nx, self.nt))
+
+        if self.nta == 0:
+            pass
+
+        elif axis == "":
+            assert pval.shape[0] == 1
+
+            arr = np.transpose(self.get_taf_pars(pval), axes=(1, 2, 0))  # (nta, 1, nt)
+
+            for tai, taxi in zip(arr, trans_att):
+                arr_out[x >= taxi] += tai
+
+        elif axis == "x":
+            assert pval.shape[0] == self.nx
+
+            arr = np.transpose(self.get_taf_pars(pval), axes=(1, 2, 0))  # (nta, nx, nt)
+
+            for tai, taxi in zip(arr, trans_att):
+                # loop over nta, tai has shape (x, t)
+                arr_out[x >= taxi] += tai[x >= taxi]
+
+        elif axis == "time":
+            assert pval.shape[0] == self.nt
+
+            # arr (nt, nta, nt) to have shape (nta, nt, nt)
+            arr = np.transpose(self.get_taf_pars(pval), axes=(1, 2, 0))
+
+            for tai, taxi in zip(arr, trans_att):
+                # loop over nta, tai has shape (t, t)
+                arr_out[x >= taxi] += np.diag(tai)[None]
+
+        return arr_out
+
+    def get_tab_values(self, pval, x, trans_att, axis=""):
+        """returns tab parameters of shape (nx, nt)"""
+        assert pval.shape[-1] == self.npar
+
+        arr_out = np.zeros((self.nx, self.nt))
+
+        if self.nta == 0:
+            pass
+
+        elif axis == "":
+            # assert pval.ndim <= 2
+            # if pval.ndim == 2:
+            #     assert 1 in pval.shape
+            pval = np.squeeze(pval)
+            assert pval.ndim == 1
+            arr = np.transpose(self.get_tab_pars(pval), axes=(1, 0))
+
+            for tai, taxi in zip(arr, trans_att):
+                arr_out[x < taxi] += tai
+
+        elif axis == "x":
+            assert pval.ndim == 2 and pval.shape[0] == self.nx
+
+            arr = np.transpose(self.get_tab_pars(pval), axes=(1, 2, 0))
+
+            for tai, taxi in zip(arr, trans_att):
+                # loop over nta, tai has shape (x, t)
+                arr_out[x < taxi] += tai[x < taxi]
+
+        elif axis == "time":
+            assert pval.ndim == 2 and pval.shape[0] == self.nt
+
+            # arr (nt, nta, nt) to have shape (nta, nt, nt)
+            arr = np.transpose(self.get_tab_pars(pval), axes=(1, 2, 0))
+
+            for tai, taxi in zip(arr, trans_att):
+                # loop over nta, tai has shape (t, t)
+                arr_out[x < taxi] += np.diag(tai)
+
+        return arr_out
+
+    
 def open_datastore(
         filename_or_obj,
         group=None,
