@@ -2252,6 +2252,1118 @@ dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
         pass
 
     def calibration_double_ended(
+        self,
+        sections=None,
+        st_var=None,
+        ast_var=None,
+        rst_var=None,
+        rast_var=None,
+        conf_ints=None,
+        store_df="df",
+        store_db="db",
+        store_gamma="gamma",
+        store_alpha="alpha",
+        store_ta="talpha",
+        store_tmpf="tmpf",
+        store_tmpb="tmpb",
+        store_tmpw="tmpw",
+        mc_sample_size=None,
+        mc_da_random_state=None,
+        mc_remove_mc_set_flag=True,
+        mc_reduce_memory_usage=False,
+        store_p_cov="p_cov",
+        store_p_val="p_val",
+        variance_suffix="_var",
+        method="wls",
+        solver="sparse",
+        p_val=None,
+        p_var=None,
+        p_cov=None,
+        trans_att=None,
+        fix_gamma=None,
+        fix_alpha=None,
+        matching_sections=None,
+        matching_indices=None,
+        verbose=False,
+        **kwargs,
+    ):
+        """
+        See example notebook 8 for an explanation on how to use this function.
+        Calibrate the Stokes (`ds.st`) and anti-Stokes (`ds.ast`) of the forward
+        channel and from the backward channel (`ds.rst`, `ds.rast`) data to
+        temperature using fiber sections with a known temperature
+        (`ds.sections`) for double-ended setups. The calibrated temperature of
+        the forward channel is stored under `ds.tmpf` and its variance under
+        `ds.tmpf_var`, and that of the backward channel under `ds.tmpb` and
+        `ds.tmpb_var`. The inverse-variance weighted average of the forward and
+        backward channel is stored under `ds.tmpw` and `ds.tmpw_var`.
+        In double-ended setups, Stokes and anti-Stokes intensity is measured in
+        two directions from both ends of the fiber. The forward-channel
+        measurements are denoted with subscript F, and the backward-channel
+        measurements are denoted with subscript B. Both measurement channels
+        start at a different end of the fiber and have opposite directions, and
+        therefore have different spatial coordinates.
+        The first processing step
+        with double-ended measurements is to align the measurements of the two
+        measurement channels so that they have the same spatial coordinates. The
+        spatial coordinate :math:`x` (m) is defined here positive in the forward
+        direction, starting at 0 where the fiber is connected to the forward
+        channel of the DTS system; the length of the fiber is :math:`L`.
+        Consequently, the backward-channel measurements are flipped and shifted
+        to align with the forward-channel measurements. Alignment of the
+        measurements of the two channels is prone to error because it requires
+        the exact fiber length (McDaniel et al., 2018). Depending on the DTS system
+        used, the forward channel and backward channel are measured one after
+        another by making use of an optical switch, so that only a single
+        detector is needed. However, it is assumed in this package that the
+        forward channel and backward channel are measured simultaneously, so
+        that the temperature of both measurements is the same. This assumption
+        holds better for short acquisition times with respect to the timescale
+        of the temperature variation, and when there is no systematic difference
+        in temperature between the two channels. The temperature may be computed
+        from the forward-channel measurements (Equation 10 [1]_) with:
+        .. math::
+            T_\mathrm{F} (x,t)  = \\frac{\gamma}{I_\mathrm{F}(x,t) + \
+C_\mathrm{F}(t) + \int_0^x{\Delta\\alpha(x')\,\mathrm{d}x'}}
+        and from the backward-channel measurements with:
+        .. math::
+            T_\mathrm{B} (x,t)  = \\frac{\gamma}{I_\mathrm{B}(x,t) + \
+C_\mathrm{B}(t) + \int_x^L{\Delta\\alpha(x')\,\mathrm{d}x'}}
+        with
+        .. math::
+            I(x,t) = \ln{\left(\\frac{P_+(x,t)}{P_-(x,t)}\\right)}
+        .. math::
+            C(t) = \ln{\left(\\frac{\eta_-(t)K_-/\lambda_-^4}{\eta_+(t)K_+/\lambda_+^4}\\right)}
+        where :math:`C` is the lumped effect of the difference in gain at
+        :param mc_conf_ints:
+        :math:`x=0` between Stokes and anti-Stokes intensity measurements and
+        the dependence of the scattering intensity on the wavelength. The
+        parameters :math:`P_+` and :math:`P_-` are the Stokes and anti-Stokes
+        intensity measurements, respectively.
+        :math:`C_\mathrm{F}(t)` and :math:`C_\mathrm{B}(t)` are the
+        parameter :math:`C(t)` for the forward-channel and backward-channel
+        measurements, respectively. :math:`C_\mathrm{B}(t)` may be different
+        from :math:`C_\mathrm{F}(t)` due to differences in gain, and difference
+        in the attenuation between the detectors and the point the fiber end is
+        connected to the DTS system (:math:`\eta_+` and :math:`\eta_-` in
+        Equation~\\ref{eqn:c}). :math:`T` in the listed
+        equations is in Kelvin, but is converted to Celsius after calibration.
+        The calibration procedure presented in van de
+        Giesen et al. 2012 approximates :math:`C(t)` to be
+        the same for the forward and backward-channel measurements, but this
+        approximation is not made here.
+        Parameter :math:`A(x)` (`ds.alpha`) is introduced to simplify the notation of the
+        double-ended calibration procedure and represents the integrated
+        differential attenuation between locations :math:`x_1` and :math:`x`
+        along the fiber. Location :math:`x_1` is the first reference section
+        location (the smallest x-value of all used reference sections).
+        .. math::
+            A(x) = \int_{x_1}^x{\Delta\\alpha(x')\,\mathrm{d}x'}
+        so that the expressions for temperature may be written as:
+        .. math::
+            T_\mathrm{F} (x,t) = \\frac{\gamma}{I_\mathrm{F}(x,t) + D_\mathrm{F}(t) + A(x)},
+            T_\mathrm{B} (x,t) = \\frac{\gamma}{I_\mathrm{B}(x,t) + D_\mathrm{B}(t) - A(x)}
+        where
+        .. math::
+            D_{\mathrm{F}}(t) = C_{\mathrm{F}}(t) + \int_0^{x_1}{\Delta\\alpha(x')\,\mathrm{d}x'},
+            D_{\mathrm{B}}(t) = C_{\mathrm{B}}(t) + \int_{x_1}^L{\Delta\\alpha(x')\,\mathrm{d}x'}
+        Parameters :math:`D_\mathrm{F}` (`ds.df`) and :math:`D_\mathrm{B}`
+        (`ds.db`) must be estimated for each time and are constant along the fiber, and parameter
+        :math:`A` must be estimated for each location and is constant over time.
+        The calibration procedure is discussed in Section 6.
+        :math:`T_\mathrm{F}` (`ds.tmpf`) and :math:`T_\mathrm{B}` (`ds.tmpb`)
+        are separate
+        approximations of the same temperature at the same time. The estimated
+        :math:`T_\mathrm{F}` is more accurate near :math:`x=0` because that is
+        where the signal is strongest. Similarly, the estimated
+        :math:`T_\mathrm{B}` is more accurate near :math:`x=L`. A single best
+        estimate of the temperature is obtained from the weighted average of
+        :math:`T_\mathrm{F}` and :math:`T_\mathrm{B}` as discussed in
+        Section 7.2 [1]_ .
+        Parameters
+        ----------
+        store_p_cov : str
+            Key to store the covariance matrix of the calibrated parameters
+        store_p_val : str
+            Key to store the values of the calibrated parameters
+        p_val : array-like, optional
+            Define `p_val`, `p_var`, `p_cov` if you used an external function
+            for calibration. Has size `1 + 2 * nt + nx + 2 * nt * nta`.
+            First value is :math:`\gamma`, then `nt` times
+            :math:`D_\mathrm{F}`, then `nt` times
+            :math:`D_\mathrm{B}`, then for each location :math:`D_\mathrm{B}`,
+            then for each connector that introduces directional attenuation two
+            parameters per time step.
+        p_var : array-like, optional
+            Define `p_val`, `p_var`, `p_cov` if you used an external function
+            for calibration. Has size `1 + 2 * nt + nx + 2 * nt * nta`.
+            Is the variance of `p_val`.
+        p_cov : array-like, optional
+            The covariances of `p_val`. Square matrix.
+            If set to False, no uncertainty in the parameters is propagated
+            into the confidence intervals. Similar to the spec sheets of the DTS
+            manufacturers. And similar to passing an array filled with zeros.
+        sections : Dict[str, List[slice]], optional
+            If `None` is supplied, `ds.sections` is used. Define calibration
+            sections. Each section requires a reference temperature time series,
+            such as the temperature measured by an external temperature sensor.
+            They should already be part of the DataStore object. `sections`
+            is defined with a dictionary with its keywords of the
+            names of the reference temperature time series. Its values are
+            lists of slice objects, where each slice object is a fiber stretch
+            that has the reference temperature. Afterwards, `sections` is stored
+            under `ds.sections`.
+        st_var, ast_var, rst_var, rast_var : float, callable, array-like, optional
+            The variance of the measurement noise of the Stokes signals in the
+            forward direction. If `float` the variance of the noise from the
+            Stokes detector is described with a single value.
+            If `callable` the variance of the noise from the Stokes detector is
+            a function of the intensity, as defined in the callable function.
+            Or manually define a variance with a DataArray of the shape
+            `ds.st.shape`, where the variance can be a function of time and/or
+            x. Required if method is wls.
+        store_df, store_db : str
+            Label of where to store D. D is different for the forward channel
+            and the backward channel
+        store_gamma : str
+            Label of where to store gamma
+        store_alpha : str
+            Label of where to store alpha
+        store_ta : str
+            Label of where to store transient alpha's
+        store_tmpf : str
+            Label of where to store the calibrated temperature of the forward
+            direction
+        store_tmpb : str
+            Label of where to store the calibrated temperature of the
+            backward direction
+        store_tmpw : str
+            Label of where to store the inverse-variance weighted average
+            temperature of the forward and backward channel measurements.
+        mc_sample_size : int, optional
+            If set, the variance is also computed using Monte Carlo sampling.
+            The number of Monte Carlo samples drawn used to estimate the
+            variance of the forward and backward channel temperature estimates
+            and estimate the inverse-variance weighted average temperature.
+        conf_ints : iterable object of float
+            A list with the confidence boundaries that are calculated. Valid
+            values are between [0, 1].
+        mc_da_random_state
+            For testing purposes. Similar to random seed. The seed for dask.
+            Makes random not so random. To produce reproducable results for
+            testing environments.
+        mc_remove_mc_set_flag : bool
+            Remove the monte carlo data set, from which the CI and the
+            variance are calculated.
+        variance_suffix : str, optional
+            String appended for storing the variance. Only used when method
+            is wls.
+        method : {'ols', 'wls', 'external'}
+            Use `'ols'` for ordinary least squares and `'wls'` for weighted least
+            squares. `'wls'` is the default, and there is currently no reason to
+            use `'ols'`.
+        solver : {'sparse', 'stats'}
+            Either use the homemade weighted sparse solver or the weighted
+            dense matrix solver of statsmodels. The sparse solver uses much less
+            memory, is faster, and gives the same result as the statsmodels
+            solver. The statsmodels solver is mostly used to check the sparse
+            solver. `'stats'` is the default.
+        transient_att_x, transient_asym_att_x : iterable, optional
+            Depreciated. See trans_att
+        trans_att : iterable, optional
+            Splices can cause jumps in differential attenuation. Normal single
+            ended calibration assumes these are not present. An additional loss
+            term is added in the 'shadow' of the splice. Each location
+            introduces an additional nt parameters to solve for. Requiring
+            either an additional calibration section or matching sections.
+            If multiple locations are defined, the losses are added.
+        fix_gamma : Tuple[float, float], optional
+            A tuple containing two floats. The first float is the value of
+            gamma, and the second item is the variance of the estimate of gamma.
+            Covariances between gamma and other parameters are not accounted
+            for.
+        fix_alpha : Tuple[array-like, array-like], optional
+            A tuple containing two arrays. The first array contains the
+            values of integrated differential att (:math:`A` in paper), and the
+            second array contains the variance of the estimate of alpha.
+            Covariances (in-) between alpha and other parameters are not
+            accounted for.
+        matching_sections : List[Tuple[slice, slice, bool]]
+            Provide a list of tuples. A tuple per matching section. Each tuple
+            has three items. The first two items are the slices of the sections
+            that are matched. The third item is a boolean and is True if the two
+            sections have a reverse direction ("J-configuration").
+        matching_indices : array
+            Provide an array of x-indices of size (npair, 2), where each pair
+            has the same temperature. Used to improve the estimate of the
+            integrated differential attenuation.
+        verbose : bool
+            Show additional calibration information
+        Returns
+        -------
+        References
+        ----------
+        .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
+            of Temperature and Associated Uncertainty from Fiber-Optic Raman-
+            Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
+            https://doi.org/10.3390/s20082235
+        Examples
+        --------
+        - `Example notebook 8: Calibrate double ended <https://github.com/\
+dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
+08Calibrate_double_wls.ipynb>`_
+        """
+        self.check_deprecated_kwargs(kwargs)
+
+        self.set_trans_att(trans_att=trans_att, **kwargs)
+
+        if sections:
+            self.sections = sections
+        else:
+            assert self.sections, "sections are not defined"
+
+        self.check_reference_section_values()
+
+        nx = self.x.size
+        time_dim = self.get_time_dim()
+        nt = self[time_dim].size
+        nta = self.trans_att.size
+        ix_sec = self.ufunc_per_section(x_indices=True, calc_per="all")
+        nx_sec = ix_sec.size
+
+        assert self.st.dims[0] == "x", "Stokes are transposed"
+        assert self.ast.dims[0] == "x", "Stokes are transposed"
+        assert self.rst.dims[0] == "x", "Stokes are transposed"
+        assert self.rast.dims[0] == "x", "Stokes are transposed"
+
+        assert not np.any(self.st.isel(x=ix_sec) <= 0.0), (
+            "There is uncontrolled noise in the ST signal. Are your sections" "correctly defined?"
+        )
+        assert not np.any(self.ast.isel(x=ix_sec) <= 0.0), (
+            "There is uncontrolled noise in the AST signal. Are your sections" "correctly defined?"
+        )
+        assert not np.any(self.rst.isel(x=ix_sec) <= 0.0), (
+            "There is uncontrolled noise in the REV-ST signal. Are your " "sections correctly defined?"
+        )
+        assert not np.any(self.rast.isel(x=ix_sec) <= 0.0), (
+            "There is uncontrolled noise in the REV-AST signal. Are your " "sections correctly defined?"
+        )
+
+        if method == "wls":
+            for input_item in [st_var, ast_var, rst_var, rast_var]:
+                assert input_item is not None, (
+                    "For wls define all variances (`st_var`, `ast_var`," + " `rst_var`, `rast_var`)"
+                )
+
+        if np.any(matching_indices):
+            assert not matching_sections, "Either define `matching_sections` or `matching_indices`"
+
+        if matching_sections:
+            assert not matching_indices, "Either define `matching_sections` or `matching_indices"
+            matching_indices = match_sections(self, matching_sections)
+
+        if method == "wls":
+            if fix_alpha or fix_gamma:
+                split = calibration_double_ended_solver(
+                    self,
+                    st_var,
+                    ast_var,
+                    rst_var,
+                    rast_var,
+                    calc_cov=True,
+                    solver="external_split",
+                    matching_indices=matching_indices,
+                    verbose=verbose,
+                )
+            else:
+                out = calibration_double_ended_solver(
+                    self,
+                    st_var,
+                    ast_var,
+                    rst_var,
+                    rast_var,
+                    calc_cov=True,
+                    solver=solver,
+                    matching_indices=matching_indices,
+                    verbose=verbose,
+                )
+
+                p_val, p_var, p_cov = out
+
+            # adjust split to fix parameters
+            """Wrapped in a function to reduce memory usage.
+            Constructing:
+            Z_gamma (nt * nx, 1). Data: positive 1/temp
+            Z_D (nt * nx, nt). Data: ones
+            E (nt * nx, nx). Data: ones
+            Zero_gamma (nt * nx, 1)
+            zero_d (nt * nx, nt)
+            Z_TA_fw (nt * nx, nta * 2 * nt) minus ones
+            Z_TA_bw (nt * nx, nta * 2 * nt) minus ones
+            Z_TA_E (nt * nx, nta * 2 * nt)
+            I_fw = 1/Tref*gamma - D_fw - E - TA_fw
+            I_bw = 1/Tref*gamma - D_bw + E - TA_bw
+            (I_bw - I_fw) / 2 = D_fw/2 - D_bw/2 + E + TA_fw/2 - TA_bw/2 Eq42
+            """
+            if fix_alpha and fix_gamma:
+                assert np.size(fix_alpha[0]) == self.x.size, "define alpha for each location"
+                assert np.size(fix_alpha[1]) == self.x.size, "define var alpha for each location"
+                m = "The integrated differential attenuation is zero at the " "first index of the reference sections."
+                assert np.abs(fix_alpha[0][ix_sec[0]]) < 1e-8, m
+                # The array with the integrated differential att is termed E
+
+                if np.any(matching_indices):
+                    n_E_in_cal = split["ix_from_cal_match_to_glob"].size
+                    p0_est = np.concatenate(
+                        (
+                            split["p0_est"][1: 1 + 2 * nt],
+                            split["p0_est"][1 + 2 * nt + n_E_in_cal:],
+                        )
+                    )
+                    X_E1 = sp.csr_matrix(([], ([], [])), shape=(nt * nx_sec, self.x.size))
+                    X_E1[:, ix_sec[1:]] = split["E"]
+                    X_E2 = X_E1[:, split["ix_from_cal_match_to_glob"]]
+                    X_E = sp.vstack(
+                        (
+                            -X_E2,
+                            X_E2,
+                            split["E_match_F"],
+                            split["E_match_B"],
+                            split["E_match_no_cal"],
+                        )
+                    )
+
+                    X_gamma = (
+                        sp.vstack(
+                            (
+                                split["Z_gamma"],
+                                split["Z_gamma"],
+                                split["Zero_eq12_gamma"],
+                                split["Zero_eq12_gamma"],
+                                split["Zero_eq3_gamma"],
+                            )
+                        )
+                        .toarray()
+                        .flatten()
+                    )
+
+                    X = sp.vstack(
+                        (
+                            sp.hstack((-split["Z_D"], split["Zero_d"], split["Z_TA_fw"])),
+                            sp.hstack((split["Zero_d"], -split["Z_D"], split["Z_TA_bw"])),
+                            sp.hstack((split["Zero_d_eq12"], split["Z_TA_eq1"])),
+                            sp.hstack((split["Zero_d_eq12"], split["Z_TA_eq2"])),
+                            sp.hstack((split["d_no_cal"], split["Z_TA_eq3"])),
+                        )
+                    )
+
+                    y = np.concatenate(
+                        (
+                            split["y_F"],
+                            split["y_B"],
+                            split["y_eq1"],
+                            split["y_eq2"],
+                            split["y_eq3"],
+                        )
+                    )
+                    y -= X_E.dot(fix_alpha[0][split["ix_from_cal_match_to_glob"]])
+                    y -= fix_gamma[0] * X_gamma
+
+                    # variances are added. weight is the inverse of the variance
+                    # of the observations
+                    w_ = np.concatenate(
+                        (
+                            split["w_F"],
+                            split["w_B"],
+                            split["w_eq1"],
+                            split["w_eq2"],
+                            split["w_eq3"],
+                        )
+                    )
+                    w = 1 / (
+                        1 / w_ + X_E.dot(fix_alpha[1][split["ix_from_cal_match_to_glob"]]) + fix_gamma[1] * X_gamma
+                    )
+
+                else:
+                    # X_gamma
+                    X_E = sp.vstack((-split["E"], split["E"]))
+                    X_gamma = sp.vstack((split["Z_gamma"], split["Z_gamma"])).toarray().flatten()
+                    # Use only the remaining coefficients
+                    # Stack all X's
+                    X = sp.vstack(
+                        (
+                            sp.hstack((-split["Z_D"], split["Zero_d"], split["Z_TA_fw"])),
+                            sp.hstack((split["Zero_d"], -split["Z_D"], split["Z_TA_bw"])),
+                        )
+                    )
+
+                    # Move the coefficients times the fixed gamma to the
+                    # observations
+                    y = np.concatenate((split["y_F"], split["y_B"]))
+                    y -= X_E.dot(fix_alpha[0][ix_sec[1:]])
+                    y -= fix_gamma[0] * X_gamma
+                    # variances are added. weight is the inverse of the variance
+                    # of the observations
+                    w_ = np.concatenate((split["w_F"], split["w_B"]))
+                    w = 1 / (1 / w_ + X_E.dot(fix_alpha[1][ix_sec[1:]]) + fix_gamma[1] * X_gamma)
+
+                    # [C_1, C_2, .., C_nt, TA_fw_a_1, TA_fw_a_2, TA_fw_a_nt,
+                    # TA_bw_a_1, TA_bw_a_2, TA_bw_a_nt] Then continues with
+                    # TA for connector b.
+                    p0_est = np.concatenate(
+                        (
+                            split["p0_est"][1: 1 + 2 * nt],
+                            split["p0_est"][1 + 2 * nt + nx_sec - 1:],
+                        )
+                    )
+
+                if solver == "sparse":
+                    out = wls_sparse(X, y, w=w, x0=p0_est, calc_cov=True, verbose=False)
+
+                elif solver == "stats":
+                    out = wls_stats(X, y, w=w, calc_cov=True, verbose=False)
+
+                # Added fixed gamma and its variance to the solution
+                p_val = np.concatenate(([fix_gamma[0]], out[0][: 2 * nt], fix_alpha[0], out[0][2 * nt:]))
+                p_var = np.concatenate(([fix_gamma[1]], out[1][: 2 * nt], fix_alpha[1], out[1][2 * nt:]))
+
+                # whether it returns a copy or a view depends on what
+                # version of numpy you are using
+                p_cov = np.diag(p_var).copy()
+                from_i = np.concatenate(
+                    (
+                        np.arange(1, 2 * nt + 1),
+                        np.arange(1 + 2 * nt + nx, 1 + 2 * nt + nx + nta * nt * 2),
+                    )
+                )
+                iox_sec1, iox_sec2 = np.meshgrid(from_i, from_i, indexing="ij")
+                p_cov[iox_sec1, iox_sec2] = out[2]
+
+            elif fix_gamma:
+                if np.any(matching_indices):
+                    # n_E_in_cal = split['ix_from_cal_match_to_glob'].size
+                    p0_est = split["p0_est"][1:]
+                    X_E1 = sp.csr_matrix(([], ([], [])), shape=(nt * nx_sec, self.x.size))
+                    from_i = ix_sec[1:]
+                    X_E1[:, from_i] = split["E"]
+                    X_E2 = X_E1[:, split["ix_from_cal_match_to_glob"]]
+                    X = sp.vstack(
+                        (
+                            sp.hstack(
+                                (
+                                    -split["Z_D"],
+                                    split["Zero_d"],
+                                    -X_E2,
+                                    split["Z_TA_fw"],
+                                )
+                            ),
+                            sp.hstack((split["Zero_d"], -split["Z_D"], X_E2, split["Z_TA_bw"])),
+                            sp.hstack(
+                                (
+                                    split["Zero_d_eq12"],
+                                    split["E_match_F"],
+                                    split["Z_TA_eq1"],
+                                )
+                            ),
+                            sp.hstack(
+                                (
+                                    split["Zero_d_eq12"],
+                                    split["E_match_B"],
+                                    split["Z_TA_eq2"],
+                                )
+                            ),
+                            sp.hstack(
+                                (
+                                    split["d_no_cal"],
+                                    split["E_match_no_cal"],
+                                    split["Z_TA_eq3"],
+                                )
+                            ),
+                        )
+                    )
+                    X_gamma = (
+                        sp.vstack(
+                            (
+                                split["Z_gamma"],
+                                split["Z_gamma"],
+                                split["Zero_eq12_gamma"],
+                                split["Zero_eq12_gamma"],
+                                split["Zero_eq3_gamma"],
+                            )
+                        )
+                        .toarray()
+                        .flatten()
+                    )
+
+                    y = np.concatenate(
+                        (
+                            split["y_F"],
+                            split["y_B"],
+                            split["y_eq1"],
+                            split["y_eq2"],
+                            split["y_eq3"],
+                        )
+                    )
+                    y -= fix_gamma[0] * X_gamma
+
+                    # variances are added. weight is the inverse of the variance
+                    # of the observations
+                    w_ = np.concatenate(
+                        (
+                            split["w_F"],
+                            split["w_B"],
+                            split["w_eq1"],
+                            split["w_eq2"],
+                            split["w_eq3"],
+                        )
+                    )
+                    w = 1 / (1 / w_ + fix_gamma[1] * X_gamma)
+
+                else:
+                    X_gamma = sp.vstack((split["Z_gamma"], split["Z_gamma"])).toarray().flatten()
+                    # Use only the remaining coefficients
+                    X = sp.vstack(
+                        (
+                            sp.hstack(
+                                (
+                                    -split["Z_D"],
+                                    split["Zero_d"],
+                                    -split["E"],
+                                    split["Z_TA_fw"],
+                                )
+                            ),
+                            sp.hstack(
+                                (
+                                    split["Zero_d"],
+                                    -split["Z_D"],
+                                    split["E"],
+                                    split["Z_TA_bw"],
+                                )
+                            ),
+                        )
+                    )
+                    # Move the coefficients times the fixed gamma to the
+                    # observations
+                    y = np.concatenate((split["y_F"], split["y_B"]))
+                    y -= fix_gamma[0] * X_gamma
+                    # variances are added. weight is the inverse of the variance
+                    # of the observations
+                    w_ = np.concatenate((split["w_F"], split["w_B"]))
+                    w = 1 / (1 / w_ + fix_gamma[1] * X_gamma)
+
+                    p0_est = split["p0_est"][1:]
+
+                if solver == "sparse":
+                    out = wls_sparse(X, y, w=w, x0=p0_est, calc_cov=True, verbose=False)
+
+                elif solver == "stats":
+                    out = wls_stats(X, y, w=w, calc_cov=True, verbose=False)
+
+                # put E outside of reference section in solution
+                # concatenating makes a copy of the data instead of using a
+                # pointer
+                ds_sub = self[["st", "ast", "rst", "rast", "trans_att"]]
+                ds_sub["df"] = (("time",), out[0][:nt])
+                ds_sub["df_var"] = (("time",), out[1][:nt])
+                ds_sub["db"] = (("time",), out[0][nt: 2 * nt])
+                ds_sub["db_var"] = (("time",), out[1][nt: 2 * nt])
+
+                if nta > 0:
+                    if np.any(matching_indices):
+                        n_E_in_cal = split["ix_from_cal_match_to_glob"].size
+                        ta = out[0][2 * nt + n_E_in_cal:].reshape((nt, 2, nta), order="F")
+                        ta_var = out[1][2 * nt + n_E_in_cal:].reshape((nt, 2, nta), order="F")
+
+                    else:
+                        ta = out[0][2 * nt + nx_sec - 1:].reshape((nt, 2, nta), order="F")
+                        ta_var = out[1][2 * nt + nx_sec - 1:].reshape((nt, 2, nta), order="F")
+
+                    talpha_fw = ta[:, 0, :]
+                    talpha_bw = ta[:, 1, :]
+                    talpha_fw_var = ta_var[:, 0, :]
+                    talpha_bw_var = ta_var[:, 1, :]
+                else:
+                    talpha_fw = None
+                    talpha_bw = None
+                    talpha_fw_var = None
+                    talpha_bw_var = None
+
+                E_all_exact, E_all_var_exact = calc_alpha_double(
+                    "exact",
+                    ds_sub,
+                    st_var,
+                    ast_var,
+                    rst_var,
+                    rast_var,
+                    "df",
+                    "db",
+                    "df_var",
+                    "db_var",
+                    ix_alpha_is_zero=ix_sec[0],
+                    talpha_fw=talpha_fw,
+                    talpha_bw=talpha_bw,
+                    talpha_fw_var=talpha_fw_var,
+                    talpha_bw_var=talpha_bw_var,
+                )
+
+                if not np.any(matching_indices):
+                    # Added fixed gamma and its variance to the solution. And
+                    # expand to include locations outside reference sections.
+                    p_val = np.concatenate(
+                        (
+                            [fix_gamma[0]],
+                            out[0][: 2 * nt],
+                            E_all_exact,
+                            out[0][2 * nt + nx_sec - 1:],
+                        )
+                    )
+                    p_val[1 + 2 * nt + ix_sec[1:]] = out[0][2 * nt: 2 * nt + nx_sec - 1]
+                    p_val[1 + 2 * nt + ix_sec[0]] = 0.0
+                    p_var = np.concatenate(
+                        (
+                            [fix_gamma[1]],
+                            out[1][: 2 * nt],
+                            E_all_var_exact,
+                            out[1][2 * nt + nx_sec - 1:],
+                        )
+                    )
+                    p_var[1 + 2 * nt + ix_sec[1:]] = out[1][2 * nt: 2 * nt + nx_sec - 1]
+                else:
+                    n_E_in_cal = split["ix_from_cal_match_to_glob"].size
+
+                    # Added fixed gamma and its variance to the solution. And
+                    # expand to include locations outside reference sections.
+                    p_val = np.concatenate(
+                        (
+                            [fix_gamma[0]],
+                            out[0][: 2 * nt],
+                            E_all_exact,
+                            out[0][2 * nt + n_E_in_cal:],
+                        )
+                    )
+                    p_val[1 + 2 * nt + split["ix_from_cal_match_to_glob"]] = out[0][2 * nt: 2 * nt + n_E_in_cal]
+                    p_val[1 + 2 * nt + ix_sec[0]] = 0.0
+                    p_var = np.concatenate(
+                        (
+                            [fix_gamma[1]],
+                            out[1][: 2 * nt],
+                            E_all_var_exact,
+                            out[1][2 * nt + n_E_in_cal:],
+                        )
+                    )
+                    p_var[1 + 2 * nt + split["ix_from_cal_match_to_glob"]] = out[1][2 * nt: 2 * nt + n_E_in_cal]
+
+                p_cov = np.diag(p_var).copy()
+
+                if not np.any(matching_indices):
+                    from_i = np.concatenate(
+                        (
+                            np.arange(1, 2 * nt + 1),
+                            2 * nt + 1 + ix_sec[1:],
+                            np.arange(1 + 2 * nt + nx, 1 + 2 * nt + nx + nta * nt * 2),
+                        )
+                    )
+                else:
+                    from_i = np.concatenate(
+                        (
+                            np.arange(1, 2 * nt + 1),
+                            2 * nt + 1 + split["ix_from_cal_match_to_glob"],
+                            np.arange(1 + 2 * nt + nx, 1 + 2 * nt + nx + nta * nt * 2),
+                        )
+                    )
+
+                iox_sec1, iox_sec2 = np.meshgrid(from_i, from_i, indexing="ij")
+                p_cov[iox_sec1, iox_sec2] = out[2]
+
+            elif fix_alpha:
+                assert np.size(fix_alpha[0]) == self.x.size, "define alpha for each location"
+                assert np.size(fix_alpha[1]) == self.x.size, "define var alpha for each location"
+                m = "The integrated differential attenuation is zero at the " "first index of the reference sections."
+                assert np.abs(fix_alpha[0][ix_sec[0]]) < 1e-6, m
+                # The array with the integrated differential att is termed E
+
+                if not np.any(matching_indices):
+                    # X_gamma
+                    X_E = sp.vstack((-split["E"], split["E"]))
+                    # Use only the remaining coefficients
+                    # Stack all X's
+                    X = sp.vstack(
+                        (
+                            sp.hstack(
+                                (
+                                    split["Z_gamma"],
+                                    -split["Z_D"],
+                                    split["Zero_d"],
+                                    split["Z_TA_fw"],
+                                )
+                            ),
+                            sp.hstack(
+                                (
+                                    split["Z_gamma"],
+                                    split["Zero_d"],
+                                    -split["Z_D"],
+                                    split["Z_TA_bw"],
+                                )
+                            ),
+                        )
+                    )
+                    # Move the coefficients times the fixed gamma to the
+                    # observations
+                    y = np.concatenate((split["y_F"], split["y_B"]))
+                    y -= X_E.dot(fix_alpha[0][ix_sec[1:]])
+
+                    # variances are added. weight is the inverse of the variance
+                    # of the observations
+                    w_ = np.concatenate((split["w_F"], split["w_B"]))
+                    w = 1 / (1 / w_ + X_E.dot(fix_alpha[1][ix_sec[1:]]))
+
+                    p0_est = np.concatenate(
+                        (
+                            split["p0_est"][: 1 + 2 * nt],
+                            split["p0_est"][1 + 2 * nt + nx_sec - 1:],
+                        )
+                    )
+
+                else:
+                    n_E_in_cal = split["ix_from_cal_match_to_glob"].size
+                    p0_est = np.concatenate(
+                        (
+                            split["p0_est"][: 1 + 2 * nt],
+                            split["p0_est"][1 + 2 * nt + n_E_in_cal:],
+                        )
+                    )
+                    X_E1 = sp.csr_matrix(([], ([], [])), shape=(nt * nx_sec, self.x.size))
+                    X_E1[:, ix_sec[1:]] = split["E"]
+                    X_E2 = X_E1[:, split["ix_from_cal_match_to_glob"]]
+                    X_E = sp.vstack(
+                        (
+                            -X_E2,
+                            X_E2,
+                            split["E_match_F"],
+                            split["E_match_B"],
+                            split["E_match_no_cal"],
+                        )
+                    )
+
+                    X = sp.vstack(
+                        (
+                            sp.hstack(
+                                (
+                                    split["Z_gamma"],
+                                    -split["Z_D"],
+                                    split["Zero_d"],
+                                    split["Z_TA_fw"],
+                                )
+                            ),
+                            sp.hstack(
+                                (
+                                    split["Z_gamma"],
+                                    split["Zero_d"],
+                                    -split["Z_D"],
+                                    split["Z_TA_bw"],
+                                )
+                            ),
+                            sp.hstack(
+                                (
+                                    split["Zero_eq12_gamma"],
+                                    split["Zero_d_eq12"],
+                                    split["Z_TA_eq1"],
+                                )
+                            ),
+                            sp.hstack(
+                                (
+                                    split["Zero_eq12_gamma"],
+                                    split["Zero_d_eq12"],
+                                    split["Z_TA_eq2"],
+                                )
+                            ),
+                            sp.hstack(
+                                (
+                                    split["Zero_eq3_gamma"],
+                                    split["d_no_cal"],
+                                    split["Z_TA_eq3"],
+                                )
+                            ),
+                        )
+                    )
+
+                    y = np.concatenate(
+                        (
+                            split["y_F"],
+                            split["y_B"],
+                            split["y_eq1"],
+                            split["y_eq2"],
+                            split["y_eq3"],
+                        )
+                    )
+                    y -= X_E.dot(fix_alpha[0][split["ix_from_cal_match_to_glob"]])
+
+                    # variances are added. weight is the inverse of the variance
+                    # of the observations
+                    w_ = np.concatenate(
+                        (
+                            split["w_F"],
+                            split["w_B"],
+                            split["w_eq1"],
+                            split["w_eq2"],
+                            split["w_eq3"],
+                        )
+                    )
+                    w = 1 / (1 / w_ + X_E.dot(fix_alpha[1][split["ix_from_cal_match_to_glob"]]))
+
+                if solver == "sparse":
+                    out = wls_sparse(X, y, w=w, x0=p0_est, calc_cov=True, verbose=False)
+
+                elif solver == "stats":
+                    out = wls_stats(X, y, w=w, calc_cov=True, verbose=False)
+
+                # Added fixed gamma and its variance to the solution
+                p_val = np.concatenate((out[0][: 1 + 2 * nt], fix_alpha[0], out[0][1 + 2 * nt:]))
+                p_var = np.concatenate((out[1][: 1 + 2 * nt], fix_alpha[1], out[1][1 + 2 * nt:]))
+
+                p_cov = np.diag(p_var).copy()
+
+                from_i = np.concatenate(
+                    (
+                        np.arange(1 + 2 * nt),
+                        np.arange(1 + 2 * nt + nx, 1 + 2 * nt + nx + nta * nt * 2),
+                    )
+                )
+
+                iox_sec1, iox_sec2 = np.meshgrid(from_i, from_i, indexing="ij")
+                p_cov[iox_sec1, iox_sec2] = out[2]
+
+            else:
+                pass
+
+        elif method == "external":
+            for input_item in [p_val, p_var, p_cov]:
+                assert input_item is not None
+
+        elif method == "external_split":
+            raise ValueError("Not implemented yet")
+
+        else:
+            raise ValueError("Choose a valid method")
+
+        # all below require the following solution sizes
+        ip = ParameterIndexDoubleEnded(nt, nx, nta)
+
+        # npar = 1 + 2 * nt + nx + 2 * nt * nta
+        assert p_val.size == ip.npar
+        assert p_var.size == ip.npar
+        assert p_cov.shape == (ip.npar, ip.npar)
+
+        # save estimates and variances to datastore, skip covariances
+        self[store_gamma] = (tuple(), p_val[ip.gamma].item())
+        self[store_alpha] = (("x",), p_val[ip.alpha])
+        self[store_df] = ((time_dim,), p_val[ip.df])
+        self[store_db] = ((time_dim,), p_val[ip.db])
+        self[store_ta + "_fw_full"] = (
+            ("x", time_dim),
+            ip.get_taf_values(pval=p_val, x=self.x.values, trans_att=self.trans_att.values, axis=""),
+        )
+        self[store_ta + "_bw_full"] = (
+            ("x", time_dim),
+            ip.get_tab_values(pval=p_val, x=self.x.values, trans_att=self.trans_att.values, axis=""),
+        )
+
+        self[store_tmpf] = (
+            self[store_gamma]
+            / (np.log(self.st / self.ast) + self[store_df] + self[store_alpha] + self[store_ta + "_fw_full"])
+            - 273.15
+        )
+
+        self[store_tmpb] = (
+            self[store_gamma]
+            / (np.log(self.rst / self.rast) + self[store_db] - self[store_alpha] + self[store_ta + "_bw_full"])
+            - 273.15
+        )
+
+        self[store_gamma + variance_suffix] = (tuple(), p_var[ip.gamma].item())
+        self[store_alpha + variance_suffix] = (("x",), p_var[ip.alpha])
+        self[store_df + variance_suffix] = ((time_dim,), p_var[ip.df])
+        self[store_db + variance_suffix] = ((time_dim,), p_var[ip.db])
+        self[store_ta + "_fw_full" + variance_suffix] = (
+            ("x", time_dim),
+            ip.get_taf_values(pval=p_var, x=self.x.values, trans_att=self.trans_att.values, axis=""),
+        )
+        self[store_ta + "_bw_full" + variance_suffix] = (
+            ("x", time_dim),
+            ip.get_tab_values(pval=p_var, x=self.x.values, trans_att=self.trans_att.values, axis=""),
+        )
+
+        p_cov_test = np.array([[f"({irow},{icol})" for icol in range(ip.npar)] for irow in range(ip.npar)])
+        # extract covariances and ensure broadcastable to (nx, nt)
+        sigma2_gamma_df = p_cov[np.meshgrid(ip.gamma, ip.df, indexing="ij")]
+        sigma2_gamma_db = p_cov[np.meshgrid(ip.gamma, ip.db, indexing="ij")]
+        sigma2_gamma_alpha = p_cov[np.meshgrid(ip.alpha, ip.gamma, indexing="ij")]
+        sigma2_alpha_df = p_cov[np.meshgrid(ip.alpha, ip.df, indexing="ij")]
+        sigma2_alpha_db = p_cov[np.meshgrid(ip.alpha, ip.db, indexing="ij")]
+        sigma2_tafw_gamma = ip.get_taf_values(
+            pval=p_cov[ip.gamma],
+            x=self.x.values,
+            trans_att=self.trans_att.values,
+            axis="",
+        )
+        sigma2_tabw_gamma = ip.get_tab_values(
+            pval=p_cov[ip.gamma],
+            x=self.x.values,
+            trans_att=self.trans_att.values,
+            axis="",
+        )
+        sigma2_tafw_alpha = ip.get_taf_values(
+            pval=p_cov[ip.alpha],
+            x=self.x.values,
+            trans_att=self.trans_att.values,
+            axis="x",
+        )
+        sigma2_tabw_alpha = ip.get_tab_values(
+            pval=p_cov[ip.alpha],
+            x=self.x.values,
+            trans_att=self.trans_att.values,
+            axis="x",
+        )
+        sigma2_tafw_df = ip.get_taf_values(
+            pval=p_cov[ip.df],
+            x=self.x.values,
+            trans_att=self.trans_att.values,
+            axis="time",
+        )
+        sigma2_tabw_db = ip.get_tab_values(
+            pval=p_cov[ip.db],
+            x=self.x.values,
+            trans_att=self.trans_att.values,
+            axis="time",
+        )
+
+        tmpf = self[store_tmpf] + 273.15
+        tmpb = self[store_tmpb] + 273.15
+
+        deriv_dict = dict(
+            T_gamma_fw=tmpf / self[store_gamma],
+            T_st_fw=- tmpf ** 2 / (self[store_gamma] * self.st),
+            T_ast_fw=tmpf ** 2 / (self[store_gamma] * self.ast),
+            T_df_fw=- tmpf ** 2 / self[store_gamma],
+            T_alpha_fw=- tmpf ** 2 / self[store_gamma],
+            T_ta_fw=- tmpf ** 2 / self[store_gamma],
+
+            T_gamma_bw=tmpb / self[store_gamma],
+            T_rst_bw=- tmpb ** 2 / (self[store_gamma] * self.rst),
+            T_rast_bw=tmpb ** 2 / (self[store_gamma] * self.rast),
+            T_db_bw=- tmpb ** 2 / self[store_gamma],
+            T_alpha_bw=tmpb ** 2 / self[store_gamma],
+            T_ta_bw=- tmpb ** 2 / self[store_gamma],
+        )
+        deriv_ds = xr.Dataset(deriv_dict)
+        self['deriv'] = deriv_ds.to_array(dim='com2')
+
+        var_fw_dict = dict(
+            dT_dst=deriv_ds.T_st_fw ** 2 * st_var,
+            dT_dast=deriv_ds.T_ast_fw ** 2 * ast_var,
+            dT_gamma=deriv_ds.T_gamma_fw ** 2 * self[store_gamma + variance_suffix],
+            dT_ddf=deriv_ds.T_df_fw ** 2 * self[store_df + variance_suffix],
+            dT_dalpha=deriv_ds.T_alpha_fw ** 2 * self[store_alpha + variance_suffix],
+            dT_dta=deriv_ds.T_ta_fw ** 2 * self[store_ta + "_fw_full" + variance_suffix],
+            dgamma_ddf=(2 * deriv_ds.T_gamma_fw * deriv_ds.T_df_fw * sigma2_gamma_df),
+            dgamma_dalpha=(2 * deriv_ds.T_gamma_fw * deriv_ds.T_alpha_fw * sigma2_gamma_alpha),
+            dalpha_ddf=(2 * deriv_ds.T_alpha_fw * deriv_ds.T_df_fw * sigma2_alpha_df),  # <<<==== TODO
+            dta_dgamma=(2 * deriv_ds.T_ta_fw * deriv_ds.T_gamma_fw * sigma2_tafw_gamma),
+            dta_ddf=(2 * deriv_ds.T_ta_fw * deriv_ds.T_df_fw * sigma2_tafw_df),
+            dta_dalpha=(2 * deriv_ds.T_ta_fw * deriv_ds.T_alpha_fw * sigma2_tafw_alpha),
+        )
+        var_bw_dict = dict(
+            dT_drst=deriv_ds.T_rst_bw ** 2 * rst_var,
+            dT_drast=deriv_ds.T_rast_bw ** 2 * rast_var,
+            dT_gamma=deriv_ds.T_gamma_bw ** 2 * self[store_gamma + variance_suffix],
+            dT_ddb=deriv_ds.T_db_bw ** 2 * self[store_db + variance_suffix],
+            dT_dalpha=deriv_ds.T_alpha_bw ** 2 * self[store_alpha + variance_suffix],
+            dT_dta=deriv_ds.T_ta_bw ** 2 * self[store_ta + "_bw_full" + variance_suffix],
+            dgamma_ddb=(2 * deriv_ds.T_gamma_bw * deriv_ds.T_db_bw * sigma2_gamma_db),
+            dgamma_dalpha=(2 * deriv_ds.T_gamma_bw * deriv_ds.T_alpha_bw * sigma2_gamma_alpha),
+            dalpha_ddb=(2 * deriv_ds.T_alpha_bw * deriv_ds.T_db_bw * sigma2_alpha_db),
+            dta_dgamma=(2 * deriv_ds.T_ta_bw * deriv_ds.T_gamma_bw * sigma2_tabw_gamma),
+            dta_ddb=(2 * deriv_ds.T_ta_bw * deriv_ds.T_db_bw * sigma2_tabw_db),
+            dta_dalpha=(2 * deriv_ds.T_ta_bw * deriv_ds.T_alpha_bw * sigma2_tabw_alpha),
+        )
+        var_fw_da = xr.Dataset(var_fw_dict).to_array(dim="com")
+        var_bw_da = xr.Dataset(var_bw_dict).to_array(dim="com")
+        self['var_fw_da'] = var_fw_da
+        self['var_bw_da'] = var_bw_da
+
+        self[store_tmpf + variance_suffix] = var_fw_da.sum(dim="com")
+        self[store_tmpb + variance_suffix] = var_bw_da.sum(dim="com")
+
+        self[store_tmpw + variance_suffix + '_upper'] = 1 / (
+            1 / self[store_tmpf + variance_suffix] +
+            1 / self[store_tmpb + variance_suffix])
+        self[store_tmpw] = (
+                               (tmpf / self[store_tmpf + variance_suffix] + tmpb / self[
+                                   store_tmpb + variance_suffix])
+                               * self[store_tmpw + variance_suffix + '_upper']) - 273.15
+
+        tmpf_var_excl_par = var_fw_da.sel(com=['dT_dst', 'dT_dast']).sum(dim="com")
+        tmpb_var_excl_par = var_bw_da.sel(com=['dT_drst', 'dT_drast']).sum(dim="com")
+        self[store_tmpw + variance_suffix + '_lower'] = 1 / (1 / tmpf_var_excl_par + 1 / tmpb_var_excl_par)
+
+        self[store_tmpf].attrs.update(_dim_attrs[('tmpf',)])
+        self[store_tmpb].attrs.update(_dim_attrs[('tmpb',)])
+        self[store_tmpw].attrs.update(_dim_attrs[('tmpw',)])
+        self[store_tmpf + variance_suffix].attrs.update(_dim_attrs[('tmpf_var',)])
+        self[store_tmpb + variance_suffix].attrs.update(_dim_attrs[('tmpb_var',)])
+        self[store_tmpw + variance_suffix + '_upper'].attrs.update(_dim_attrs[('tmpw_var_upper',)])
+        self[store_tmpw + variance_suffix + '_lower'].attrs.update(_dim_attrs[('tmpw_var_lower',)])
+
+        """
+        The linear-error-propagation estimation of tmpf_var and tmpb_var are spot on.
+        But tmpw_var_upper is slightly overestimated, great
+        for most of your analysis. Use the more computational expensive Monte Carlo
+        procedure, by setting mc_sample_size, to achieve the best estimate of the
+        variance in tmpw (tmpw_mc_var). tmpf_var_lower and tmpb_var_upper are the
+        lower and upper bounds of tmpw_mc_var. The differences between tmpw and tmpw_mc
+        negligible.
+        The _lower linear-error-propagation estimation of the variance of tmpw
+        includes only the uncertainty from the noise in the Stokes and anti-Stokes
+        measurements and does not include any uncertainty from parameter estimation.
+        The _upper estimation includes also an overestimation of the parameter
+        uncertainty. This is an overestimation because it is assumed that
+        tmpf_var_lower and tmpb_var_upper are estimated independent, while in
+        effect they are correlated. The Monte Carlo procedure correctly propagates
+        correlation in the parameter uncertainty. Tests show that taking correlation
+        between tmpf and tmpb into account reduces the estimated parameter uncertainty.
+        """
+
+        if mc_sample_size is not None:
+            self.conf_int_mc_double_ended(
+                p_val=p_val,
+                p_cov=p_cov,
+                store_ta=store_ta if self.trans_att.size > 0 else None,
+                st_var=st_var,
+                ast_var=ast_var,
+                rst_var=rst_var,
+                rast_var=rast_var,
+                store_tmpf="",
+                store_tmpb="",
+                store_tmpw=store_tmpw,
+                store_tempvar=variance_suffix,
+                conf_ints=conf_ints,
+                mc_sample_size=mc_sample_size,
+                da_random_state=mc_da_random_state,
+                remove_mc_set_flag=mc_remove_mc_set_flag,
+                reduce_memory_usage=mc_reduce_memory_usage,
+            )
+
+        drop_vars = [k for k, v in self.items() if {"params1", "params2"}.intersection(v.dims)]
+
+        for k in drop_vars:
+            del self[k]
+
+        self[store_p_val] = (("params1",), p_val)
+        self[store_p_cov] = (("params1", "params2"), p_cov)
+
+        pass
+
+    def calibration_double_ended_old(
             self,
             sections=None,
             st_var=None,
@@ -5472,7 +6584,7 @@ class ParameterIndexDoubleEnded:
 
         return arr_out
 
-    
+
 def open_datastore(
         filename_or_obj,
         group=None,
