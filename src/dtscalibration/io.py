@@ -29,6 +29,56 @@ _dim_attrs = {
             name='rast',
             description='reverse anti-Stokes intensity',
             units='-'),
+    ('tmpf',):
+        dict(
+            name='tmpf',
+            description='Temperature estimated using the Stokes and anti-Stokes from the Forward channel',
+            units='degC'),
+    ('tmpb',):
+        dict(
+            name='tmpb',
+            description='Temperature estimated using the Stokes and anti-Stokes from the Backward channel',
+            units='degC'),
+    ('tmpw',):
+        dict(
+            name='tmpw',
+            description='Temperature estimated using the Stokes and anti-Stokes from both the Forward and Backward channel.',
+            units='degC'),
+    ('tmpf_var',):
+        dict(
+            name='tmpf_var',
+            description='Uncertainty variance in tmpf estimated with linear-error propagation',
+            units='degC^2'),
+    ('tmpb_var',):
+        dict(
+            name='tmpb_var',
+            description='Uncertainty variance in tmpb estimated with linear-error propagation',
+            units='degC^2'),
+    ('tmpw_var_lower',):
+        dict(
+            name='tmpw_var_lower',
+            description='Lower bound of uncertainty variance in tmpw estimated with linear-error propagation',
+            units='degC^2'),
+    ('tmpw_var_upper',):
+        dict(
+            name='tmpw_var_upper',
+            description='Upper bound of uncertainty variance in tmpw estimated with linear-error propagation',
+            units='degC^2'),
+    ('tmpf_mc_var',):
+        dict(
+            name='tmpf_mc_var',
+            description='Uncertainty variance in tmpf estimated with Monte Carlo',
+            units='degC^2'),
+    ('tmpb_mc_var',):
+        dict(
+            name='tmpb_mc_var',
+            description='Uncertainty variance in tmpb estimated with Monte Carlo',
+            units='degC^2'),
+    ('tmpw_mc_var',):
+        dict(
+            name='tmpw_mc_var',
+            description='Uncertainty variance in tmpw estimated with Monte Carlo',
+            units='degC^2'),
     ('acquisitionTime',):
         dict(
             name='acquisitionTime',
