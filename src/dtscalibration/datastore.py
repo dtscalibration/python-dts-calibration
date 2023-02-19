@@ -4320,7 +4320,7 @@ dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
                 store_tmpw=store_tmpw,
                 store_tempvar=variance_suffix,
                 conf_ints=[],
-                mc_sample_size=tmpw_mc_size,
+                mc_sample_size=mc_sample_size,
                 da_random_state=None,
                 remove_mc_set_flag=remove_mc_set_flag,
                 reduce_memory_usage=reduce_memory_usage)

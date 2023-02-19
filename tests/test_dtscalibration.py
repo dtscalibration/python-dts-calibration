@@ -915,7 +915,7 @@ def test_double_ended_wls_estimate_synthetic():
         rast_var=1e-7,
         method='wls',
         solver='sparse',
-        tmpw_mc_size=5)
+        mc_sample_size=5)
 
     assert_almost_equal_verbose(ds.gamma.values, gamma, decimal=10)
     assert_almost_equal_verbose(ds.alpha.values, alpha, decimal=8)
@@ -1011,7 +1011,7 @@ def test_double_ended_wls_estimate_synthetic_df_and_db_are_different():
         rast_var=1.,
         method='wls',
         solver='sparse',
-        tmpw_mc_size=1000,
+        mc_sample_size=1000,
         fix_gamma=(gamma, 0.),
         remove_mc_set_flag=True)
 
@@ -1113,7 +1113,7 @@ def test_reneaming_old_default_labels_to_new_fixed_labels():
         rast_var=1.,
         method='wls',
         solver='sparse',
-        tmpw_mc_size=1000,
+        mc_sample_size=1000,
         fix_gamma=(gamma, 0.),
         remove_mc_set_flag=True)
 
@@ -1204,7 +1204,7 @@ def test_fail_if_st_labels_are_passed_to_calibration_function():
         rast_var=1.,
         method='wls',
         solver='sparse',
-        tmpw_mc_size=1000,
+        mc_sample_size=1000,
         fix_gamma=(gamma, 0.),
         remove_mc_set_flag=True)
     pass
@@ -1292,7 +1292,7 @@ def test_double_ended_asymmetrical_attenuation():
         rast_var=1.,
         method='wls',
         solver='sparse',
-        tmpw_mc_size=1000,
+        mc_sample_size=1000,
         remove_mc_set_flag=True,
         trans_att=[50.])
 
@@ -1322,7 +1322,7 @@ def test_double_ended_asymmetrical_attenuation():
         rast_var=1.,
         method='wls',
         solver='sparse',
-        tmpw_mc_size=1000,
+        mc_sample_size=1000,
         remove_mc_set_flag=True,
         transient_asym_att_x=[50.])
 
@@ -1410,7 +1410,7 @@ def test_double_ended_one_matching_section_and_one_asym_att():
         rast_var=1.,
         method='wls',
         solver='sparse',
-        tmpw_mc_size=3,
+        mc_sample_size=3,
         remove_mc_set_flag=True,
         trans_att=[50.],
         matching_sections=[
@@ -1516,7 +1516,7 @@ def test_double_ended_two_matching_sections_and_two_asym_atts():
         rast_var=0.1,
         method='wls',
         solver='sparse',
-        tmpw_mc_size=3,
+        mc_sample_size=3,
         remove_mc_set_flag=True,
         trans_att=[x[3 * nx_per_sec], x[6 * nx_per_sec]],
         matching_sections=ms)
@@ -1599,7 +1599,7 @@ def test_double_ended_wls_fix_gamma_estimate_synthetic():
         rast_var=1e-12,
         method='wls',
         solver='sparse',
-        tmpw_mc_size=5,
+        mc_sample_size=5,
         fix_gamma=(gamma, 0.))
 
     assert_almost_equal_verbose(ds.gamma.values, gamma, decimal=18)
@@ -1678,7 +1678,7 @@ def test_double_ended_wls_fix_alpha_estimate_synthetic():
         rast_var=1e-7,
         method='wls',
         solver='sparse',
-        tmpw_mc_size=5,
+        mc_sample_size=5,
         fix_alpha=(alpha, np.zeros_like(alpha)))
 
     assert_almost_equal_verbose(ds.gamma.values, gamma, decimal=8)
@@ -1757,7 +1757,7 @@ def test_double_ended_wls_fix_alpha_fix_gamma_estimate_synthetic():
         rast_var=1e-7,
         method='wls',
         solver='sparse',
-        tmpw_mc_size=5,
+        mc_sample_size=5,
         fix_gamma=(gamma, 0.),
         fix_alpha=(alpha, np.zeros_like(alpha)))
 
@@ -1848,7 +1848,7 @@ def test_double_ended_fix_alpha_matching_sections_and_one_asym_att():
         rast_var=1.,
         method='wls',
         solver='sparse',
-        tmpw_mc_size=3,
+        mc_sample_size=3,
         remove_mc_set_flag=True,
         trans_att=[50.],
         matching_sections=[
@@ -1873,7 +1873,7 @@ def test_double_ended_fix_alpha_matching_sections_and_one_asym_att():
         rast_var=1.,
         method='wls',
         solver='sparse',
-        tmpw_mc_size=3,
+        mc_sample_size=3,
         remove_mc_set_flag=True,
         fix_alpha=(alpha_adj, alpha_var_adj),
         trans_att=[50.],
@@ -1966,7 +1966,7 @@ def test_double_ended_fix_alpha_gamma_matching_sections_and_one_asym_att():
         rast_var=1.,
         method='wls',
         solver='sparse',
-        tmpw_mc_size=3,
+        mc_sample_size=3,
         remove_mc_set_flag=True,
         trans_att=[50.],
         matching_sections=[
@@ -1991,7 +1991,7 @@ def test_double_ended_fix_alpha_gamma_matching_sections_and_one_asym_att():
         rast_var=1.,
         method='wls',
         solver='sparse',
-        tmpw_mc_size=3,
+        mc_sample_size=3,
         remove_mc_set_flag=True,
         fix_alpha=(alpha_adj, alpha_var_adj),
         fix_gamma=(gamma, 0.),
@@ -2085,7 +2085,7 @@ def test_double_ended_fix_gamma_matching_sections_and_one_asym_att():
         rast_var=1.,
         method='wls',
         solver='sparse',
-        tmpw_mc_size=3,
+        mc_sample_size=3,
         fix_gamma=(gamma, 0.),
         remove_mc_set_flag=True,
         trans_att=[50.],
@@ -2336,7 +2336,7 @@ def test_estimate_variance_of_temperature_estimate():
         # fix_alpha=(alpha, 0. * alpha),
         method='wls',
         solver='stats',
-        tmpw_mc_size=nmc)
+        mc_sample_size=nmc)
 
     ds.conf_int_double_ended(
         p_val='p_val',
