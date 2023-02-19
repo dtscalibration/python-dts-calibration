@@ -3193,7 +3193,6 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             ip.get_tab_values(pval=p_var, x=self.x.values, trans_att=self.trans_att.values, axis=""),
         )
 
-        p_cov_test = np.array([[f"({irow},{icol})" for icol in range(ip.npar)] for irow in range(ip.npar)])
         # extract covariances and ensure broadcastable to (nx, nt)
         sigma2_gamma_df = p_cov[np.meshgrid(ip.gamma, ip.df, indexing="ij")]
         sigma2_gamma_db = p_cov[np.meshgrid(ip.gamma, ip.db, indexing="ij")]
