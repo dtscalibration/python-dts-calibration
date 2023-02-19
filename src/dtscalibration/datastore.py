@@ -2104,7 +2104,7 @@ dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
                 ip_use = list(range(1 + 1 + nt + nta * nt))
 
             p_var = np.zeros_like(p_val)
-            p_cov = np.zeros((p_val.size, p_val.size), dtype=np.float)
+            p_cov = np.zeros((p_val.size, p_val.size), dtype=float)
 
             if fix_gamma is not None:
                 ip_remove = [0]
