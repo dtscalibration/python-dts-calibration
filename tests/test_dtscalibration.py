@@ -848,7 +848,7 @@ def test_exponential_variance_of_stokes_synthetic():
     pass
 
 
-def test_double_ended_ols_wls_estimate_synthetic():
+def test_double_ended_wls_estimate_synthetic():
     """Checks whether the coefficients are correctly defined by creating a
     synthetic measurement set, and derive the parameters from this set.
     Without variance.
@@ -906,17 +906,6 @@ def test_double_ended_ols_wls_estimate_synthetic():
         'cold': [slice(0., 0.4 * cable_len)],
         'warm': [slice(0.65 * cable_len, cable_len)]}
 
-    # OLS
-    ds.calibration_double_ended(
-        sections=sections, method='ols', solver='sparse')
-
-    assert_almost_equal_verbose(ds.gamma.values, gamma, decimal=11)
-    assert_almost_equal_verbose(
-        ds.alpha.values, alpha, decimal=12)  # 13 in 64-bit
-    assert_almost_equal_verbose(ds.tmpf.values, temp_real - 273.15, decimal=10)
-    assert_almost_equal_verbose(ds.tmpb.values, temp_real - 273.15, decimal=10)
-    assert_almost_equal_verbose(ds.tmpw.values, temp_real - 273.15, decimal=11)
-
     # WLS
     ds.calibration_double_ended(
         sections=sections,
@@ -935,7 +924,7 @@ def test_double_ended_ols_wls_estimate_synthetic():
     assert_almost_equal_verbose(ds.tmpw.values, temp_real - 273.15, decimal=6)
 
 
-def test_double_ended_ols_wls_estimate_synthetic_df_and_db_are_different():
+def test_double_ended_wls_estimate_synthetic_df_and_db_are_different():
     """Checks whether the coefficients are correctly defined by creating a
     synthetic measurement set, and derive the parameters from this set.
     Without variance.
@@ -1041,7 +1030,7 @@ def test_double_ended_ols_wls_estimate_synthetic_df_and_db_are_different():
 
 def test_reneaming_old_default_labels_to_new_fixed_labels():
     """Same as
-    `test_double_ended_ols_wls_estimate_synthetic_df_and_db_are_different`
+    `test_double_ended_wls_estimate_synthetic_df_and_db_are_different`
     Which runs fast, but using the renaming function."""
     from dtscalibration import DataStore
 
@@ -1144,7 +1133,7 @@ def test_reneaming_old_default_labels_to_new_fixed_labels():
 @pytest.mark.xfail
 def test_fail_if_st_labels_are_passed_to_calibration_function():
     """Same as
-    `test_double_ended_ols_wls_estimate_synthetic_df_and_db_are_different`
+    `test_double_ended_wls_estimate_synthetic_df_and_db_are_different`
     Which runs fast."""
     from dtscalibration import DataStore
 
@@ -1538,7 +1527,7 @@ def test_double_ended_two_matching_sections_and_two_asym_atts():
     pass
 
 
-def test_double_ended_ols_wls_fix_gamma_estimate_synthetic():
+def test_double_ended_wls_fix_gamma_estimate_synthetic():
     """Checks whether the coefficients are correctly defined by creating a
     synthetic measurement set, and derive the parameters from this set.
     Without variance.
@@ -1601,20 +1590,6 @@ def test_double_ended_ols_wls_fix_gamma_estimate_synthetic():
         'cold': [slice(0., 0.35 * cable_len)],
         'warm': [slice(0.67 * cable_len, cable_len)]}
 
-    # OLS
-    ds.calibration_double_ended(
-        sections=sections,
-        method='ols',
-        solver='sparse',
-        fix_gamma=(gamma, 0.))
-
-    assert_almost_equal_verbose(ds.gamma.values, gamma, decimal=18)
-    assert_almost_equal_verbose(
-        ds.alpha.values, alpha, decimal=10)  # 11 in 64-bit
-    assert_almost_equal_verbose(ds.tmpf.values, temp_real - 273.15, decimal=8)
-    assert_almost_equal_verbose(ds.tmpb.values, temp_real - 273.15, decimal=8)
-    assert_almost_equal_verbose(ds.tmpw.values, temp_real - 273.15, decimal=8)
-
     # WLS
     ds.calibration_double_ended(
         sections=sections,
@@ -1636,7 +1611,7 @@ def test_double_ended_ols_wls_fix_gamma_estimate_synthetic():
     pass
 
 
-def test_double_ended_ols_wls_fix_alpha_estimate_synthetic():
+def test_double_ended_wls_fix_alpha_estimate_synthetic():
     """Checks whether the coefficients are correctly defined by creating a
     synthetic measurement set, and derive the parameters from this set.
     Without variance.
@@ -1694,22 +1669,6 @@ def test_double_ended_ols_wls_fix_alpha_estimate_synthetic():
         'cold': [slice(0., 0.4 * cable_len)],
         'warm': [slice(0.78 * cable_len, cable_len)]}
 
-    # OLS
-    ds.calibration_double_ended(
-        sections=sections,
-        method='ols',
-        solver='sparse',
-        fix_alpha=(alpha, np.zeros_like(alpha)))
-
-    assert_almost_equal_verbose(ds.gamma.values, gamma, decimal=9)
-    assert_almost_equal_verbose(ds.alpha.values, alpha, decimal=18)
-    assert_almost_equal_verbose(
-        ds.tmpf.values, temp_real - 273.15, decimal=8)  # 9 on 64-bit
-    assert_almost_equal_verbose(
-        ds.tmpb.values, temp_real - 273.15, decimal=8)  # 9 on 64-bit
-    assert_almost_equal_verbose(
-        ds.tmpw.values, temp_real - 273.15, decimal=7)  # 11 on 64-bit
-
     # WLS
     ds.calibration_double_ended(
         sections=sections,
@@ -1731,7 +1690,7 @@ def test_double_ended_ols_wls_fix_alpha_estimate_synthetic():
     pass
 
 
-def test_double_ended_ols_wls_fix_alpha_fix_gamma_estimate_synthetic():
+def test_double_ended_wls_fix_alpha_fix_gamma_estimate_synthetic():
     """Checks whether the coefficients are correctly defined by creating a
     synthetic measurement set, and derive the parameters from this set.
     Without variance.
@@ -1788,20 +1747,6 @@ def test_double_ended_ols_wls_fix_alpha_fix_gamma_estimate_synthetic():
     sections = {
         'cold': [slice(0., 0.5 * cable_len)],
         'warm': [slice(0.5 * cable_len, cable_len)]}
-
-    # OLS
-    ds.calibration_double_ended(
-        sections=sections,
-        method='ols',
-        solver='sparse',
-        fix_gamma=(gamma, 0.),
-        fix_alpha=(alpha, np.zeros_like(alpha)))
-
-    assert_almost_equal_verbose(ds.gamma.values, gamma, decimal=18)
-    assert_almost_equal_verbose(ds.alpha.values, alpha, decimal=18)
-    assert_almost_equal_verbose(ds.tmpf.values, temp_real - 273.15, decimal=9)
-    assert_almost_equal_verbose(ds.tmpb.values, temp_real - 273.15, decimal=9)
-    assert_almost_equal_verbose(ds.tmpw.values, temp_real - 273.15, decimal=9)
 
     # WLS
     ds.calibration_double_ended(
@@ -2451,7 +2396,7 @@ def test_estimate_variance_of_temperature_estimate():
     pass
 
 
-def test_single_ended_ols_wls_estimate_synthetic():
+def test_single_ended_wls_estimate_synthetic():
     """Checks whether the coefficients are correctly defined by creating a
     synthetic measurement set, and derive the parameters from this set.
     Without variance.
@@ -2505,15 +2450,6 @@ def test_single_ended_ols_wls_estimate_synthetic():
     sections = {
         'cold': [slice(0., 0.5 * cable_len)],
         'warm': [slice(0.5 * cable_len, cable_len)]}
-
-    # OLS
-    ds.calibration_single_ended(
-        sections=sections, method='ols', solver='sparse')
-
-    assert_almost_equal_verbose(ds.gamma.values, gamma, decimal=6)
-    assert_almost_equal_verbose(
-        ds.dalpha.values, dalpha_p - dalpha_m, decimal=8)
-    assert_almost_equal_verbose(ds.tmpf.values, temp_real - 273.15, decimal=4)
 
     # WLS
     ds.calibration_single_ended(
@@ -2531,7 +2467,7 @@ def test_single_ended_ols_wls_estimate_synthetic():
     pass
 
 
-def test_single_ended_ols_wls_fix_dalpha_synthetic():
+def test_single_ended_wls_fix_dalpha_synthetic():
     """Checks whether the coefficients are correctly defined by creating a
     synthetic measurement set, and derive the parameters from this set.
     Without variance.
@@ -2585,18 +2521,6 @@ def test_single_ended_ols_wls_fix_dalpha_synthetic():
     sections = {
         'cold': [slice(0., 0.5 * cable_len)],
         'warm': [slice(0.5 * cable_len, cable_len)]}
-
-    # OLS
-    ds.calibration_single_ended(
-        sections=sections,
-        method='ols',
-        solver='sparse',
-        fix_dalpha=(dalpha_p - dalpha_m, 0.))
-
-    assert_almost_equal_verbose(ds.gamma.values, gamma, decimal=11)
-    assert_almost_equal_verbose(
-        ds.dalpha.values, dalpha_p - dalpha_m, decimal=18)
-    assert_almost_equal_verbose(ds.tmpf.values, temp_real - 273.15, decimal=12)
 
     # WLS
     ds.calibration_single_ended(
@@ -2615,7 +2539,7 @@ def test_single_ended_ols_wls_fix_dalpha_synthetic():
     pass
 
 
-def test_single_ended_ols_wls_fix_gamma_synthetic():
+def test_single_ended_wls_fix_gamma_synthetic():
     """Checks whether the coefficients are correctly defined by creating a
     synthetic measurement set, and derive the parameters from this set.
     Without variance.
@@ -2669,18 +2593,6 @@ def test_single_ended_ols_wls_fix_gamma_synthetic():
     sections = {
         'cold': [slice(0., 0.5 * cable_len)],
         'warm': [slice(0.5 * cable_len, cable_len)]}
-
-    # OLS
-    ds.calibration_single_ended(
-        sections=sections,
-        method='ols',
-        solver='sparse',
-        fix_gamma=(gamma, 0.))
-
-    assert_almost_equal_verbose(ds.gamma.values, gamma, decimal=18)
-    assert_almost_equal_verbose(
-        ds.dalpha.values, dalpha_p - dalpha_m, decimal=10)
-    assert_almost_equal_verbose(ds.tmpf.values, temp_real - 273.15, decimal=8)
 
     # WLS
     ds.calibration_single_ended(
@@ -2699,7 +2611,7 @@ def test_single_ended_ols_wls_fix_gamma_synthetic():
     pass
 
 
-def test_single_ended_ols_wls_fix_gamma_fix_dalpha_synthetic():
+def test_single_ended_wls_fix_gamma_fix_dalpha_synthetic():
     """Checks whether the coefficients are correctly defined by creating a
     synthetic measurement set, and derive the parameters from this set.
     Without variance.
@@ -2753,20 +2665,6 @@ def test_single_ended_ols_wls_fix_gamma_fix_dalpha_synthetic():
     sections = {
         'cold': [slice(0., 0.5 * cable_len)],
         'warm': [slice(0.5 * cable_len, cable_len)]}
-
-    # OLS
-    ds.calibration_single_ended(
-        sections=sections,
-        method='ols',
-        solver='sparse',
-        fix_gamma=(gamma, 0.),
-        fix_dalpha=(dalpha_p - dalpha_m, 0.))
-
-    assert_almost_equal_verbose(ds.gamma.values, gamma, decimal=18)
-    assert_almost_equal_verbose(
-        ds.dalpha.values, dalpha_p - dalpha_m, decimal=18)
-    assert_almost_equal_verbose(
-        ds.tmpf.values, temp_real - 273.15, decimal=8)  # 11 on 64-bit
 
     # WLS
     ds.calibration_single_ended(
@@ -2849,23 +2747,6 @@ def test_single_ended_trans_att_synthetic():
                 slice(0.125 * cable_len, 0.25 * cable_len),
                 slice(0.65 * cable_len, 0.70 * cable_len)],
         'warm': [slice(0.25 * cable_len, 0.375 * cable_len)]}
-
-    ds_test = ds.copy(deep=True)
-
-    # OLS
-    ds_test.calibration_single_ended(
-        sections=sections,
-        method='ols',
-        trans_att=[40, 60],
-        solver='sparse')
-
-    assert_almost_equal_verbose(ds_test.gamma.values, gamma, decimal=8)
-    assert_almost_equal_verbose(
-        ds_test.tmpf.values, temp_real - 273.15, decimal=8)
-    assert_almost_equal_verbose(
-        ds_test.isel(trans_att=0).talpha, -np.log(tr_att), decimal=8)
-    assert_almost_equal_verbose(
-        ds_test.isel(trans_att=1).talpha, -np.log(tr_att2), decimal=8)
 
     ds_test = ds.copy(deep=True)
 
@@ -3025,24 +2906,6 @@ def test_single_ended_matching_sections_synthetic():
             slice(.01 * cable_len,
                   .09 * cable_len), slice(.91 * cable_len,
                                           .99 * cable_len), True)]
-
-    ds_test = ds.copy(deep=True)
-
-    # OLS
-    ds_test.calibration_single_ended(
-        sections=sections,
-        method='ols',
-        matching_sections=matching_sections,
-        trans_att=[40, 60],
-        solver='sparse')
-
-    assert_almost_equal_verbose(ds_test.gamma.values, gamma, decimal=8)
-    assert_almost_equal_verbose(
-        ds_test.tmpf.values, temp_real - 273.15, decimal=8)
-    assert_almost_equal_verbose(
-        ds_test.isel(trans_att=0).talpha, -np.log(tr_att), decimal=8)
-    assert_almost_equal_verbose(
-        ds_test.isel(trans_att=1).talpha, -np.log(tr_att2), decimal=8)
 
     ds_test = ds.copy(deep=True)
 
@@ -3263,32 +3126,6 @@ def test_single_ended_exponential_variance_estimate_synthetic():
 
     pass
     print('hoi')
-
-
-def test_calibration_ols():
-    """Testing ordinary least squares procedure. And compare with device calibrated temperature.
-    The measurements were calibrated by the device using only section 8--17.m. Those temperatures
-    are compared up to 2 decimals. Silixa only uses a single calibration constant (I think they
-    fix gamma), or a different formulation, see Shell primer.
-    """
-    filepath = data_dir_double_ended2
-    ds = read_silixa_files(
-        directory=filepath, timezone_netcdf='UTC', file_ext='*.xml')
-    ds100 = ds.sel(x=slice(0, 100))
-    sections_ultima = {
-        'probe1Temperature': [slice(8., 17.)],  # cold bath
-    }
-
-    ds100.calibration_double_ended(
-        sections=sections_ultima, store_tmpw='tmpw', method='ols')
-
-    np.testing.assert_array_almost_equal(
-        ds100['tmpw'].data, ds100.tmp.data, decimal=1)
-
-    ds009 = ds100.sel(x=sections_ultima['probe1Temperature'][0])
-    np.testing.assert_array_almost_equal(
-        ds009['tmpw'].data, ds009.tmp.data, decimal=2)
-    pass
 
 
 def test_calibrate_wls_procedures():
