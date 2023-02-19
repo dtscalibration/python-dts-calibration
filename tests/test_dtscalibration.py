@@ -1013,7 +1013,7 @@ def test_double_ended_wls_estimate_synthetic_df_and_db_are_different():
         solver='sparse',
         mc_sample_size=1000,
         fix_gamma=(gamma, 0.),
-        remove_mc_set_flag=True)
+        mc_remove_set_flag=True)
 
     assert_almost_equal_verbose(df, ds.df.values, decimal=14)
     assert_almost_equal_verbose(db, ds.db.values, decimal=13)
@@ -1115,7 +1115,7 @@ def test_reneaming_old_default_labels_to_new_fixed_labels():
         solver='sparse',
         mc_sample_size=1000,
         fix_gamma=(gamma, 0.),
-        remove_mc_set_flag=True)
+        mc_remove_set_flag=True)
 
     assert_almost_equal_verbose(df, ds.df.values, decimal=14)
     assert_almost_equal_verbose(db, ds.db.values, decimal=13)
@@ -1206,7 +1206,7 @@ def test_fail_if_st_labels_are_passed_to_calibration_function():
         solver='sparse',
         mc_sample_size=1000,
         fix_gamma=(gamma, 0.),
-        remove_mc_set_flag=True)
+        mc_remove_set_flag=True)
     pass
 
 
@@ -1293,7 +1293,7 @@ def test_double_ended_asymmetrical_attenuation():
         method='wls',
         solver='sparse',
         mc_sample_size=1000,
-        remove_mc_set_flag=True,
+        mc_remove_set_flag=True,
         trans_att=[50.])
 
     assert_almost_equal_verbose(temp_real_celsius, ds.tmpf.values, decimal=7)
@@ -1323,7 +1323,7 @@ def test_double_ended_asymmetrical_attenuation():
         method='wls',
         solver='sparse',
         mc_sample_size=1000,
-        remove_mc_set_flag=True,
+        mc_remove_set_flag=True,
         transient_asym_att_x=[50.])
 
     assert_almost_equal_verbose(temp_real_celsius, ds.tmpf.values, decimal=7)
@@ -1411,7 +1411,7 @@ def test_double_ended_one_matching_section_and_one_asym_att():
         method='wls',
         solver='sparse',
         mc_sample_size=3,
-        remove_mc_set_flag=True,
+        mc_remove_set_flag=True,
         trans_att=[50.],
         matching_sections=[
             (
@@ -1517,7 +1517,7 @@ def test_double_ended_two_matching_sections_and_two_asym_atts():
         method='wls',
         solver='sparse',
         mc_sample_size=3,
-        remove_mc_set_flag=True,
+        mc_remove_set_flag=True,
         trans_att=[x[3 * nx_per_sec], x[6 * nx_per_sec]],
         matching_sections=ms)
 
@@ -1849,7 +1849,7 @@ def test_double_ended_fix_alpha_matching_sections_and_one_asym_att():
         method='wls',
         solver='sparse',
         mc_sample_size=3,
-        remove_mc_set_flag=True,
+        mc_remove_set_flag=True,
         trans_att=[50.],
         matching_sections=[
             (
@@ -1874,7 +1874,7 @@ def test_double_ended_fix_alpha_matching_sections_and_one_asym_att():
         method='wls',
         solver='sparse',
         mc_sample_size=3,
-        remove_mc_set_flag=True,
+        mc_remove_set_flag=True,
         fix_alpha=(alpha_adj, alpha_var_adj),
         trans_att=[50.],
         matching_sections=[
@@ -1967,7 +1967,7 @@ def test_double_ended_fix_alpha_gamma_matching_sections_and_one_asym_att():
         method='wls',
         solver='sparse',
         mc_sample_size=3,
-        remove_mc_set_flag=True,
+        mc_remove_set_flag=True,
         trans_att=[50.],
         matching_sections=[
             (
@@ -1992,7 +1992,7 @@ def test_double_ended_fix_alpha_gamma_matching_sections_and_one_asym_att():
         method='wls',
         solver='sparse',
         mc_sample_size=3,
-        remove_mc_set_flag=True,
+        mc_remove_set_flag=True,
         fix_alpha=(alpha_adj, alpha_var_adj),
         fix_gamma=(gamma, 0.),
         trans_att=[50.],
@@ -2087,7 +2087,7 @@ def test_double_ended_fix_gamma_matching_sections_and_one_asym_att():
         solver='sparse',
         mc_sample_size=3,
         fix_gamma=(gamma, 0.),
-        remove_mc_set_flag=True,
+        mc_remove_set_flag=True,
         trans_att=[50.],
         matching_sections=[
             (
@@ -2352,7 +2352,7 @@ def test_estimate_variance_of_temperature_estimate():
         conf_ints=[20., 80.],
         mc_sample_size=nmc,
         da_random_state=state,
-        remove_mc_set_flag=False,
+        mc_remove_set_flag=False,
         reduce_memory_usage=1)
 
     assert_almost_equal_verbose(
