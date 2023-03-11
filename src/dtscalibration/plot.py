@@ -313,8 +313,8 @@ def plot_residuals_reference_sections_single(
     x_ax_avg = fig.add_subplot(grid[:2, 2:-1])  # , sharex=main_ax
     legend_ax = fig.add_subplot(grid[:2, :2], xticklabels=[], yticklabels=[])
     cbar_ax = fig.add_subplot(grid[2:, -1], xticklabels=[], yticklabels=[])
-    if np.issubdtype(resid[time_dim].dtype, np.float) or np.issubdtype(
-            resid[time_dim].dtype, np.int):
+    if np.issubdtype(resid[time_dim].dtype, float) or np.issubdtype(
+            resid[time_dim].dtype, int):
         resid.plot.imshow(
             ax=main_ax,
             cbar_ax=cbar_ax,
