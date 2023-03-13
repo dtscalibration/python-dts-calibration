@@ -1,6 +1,26 @@
 
 Changelog
 =========
+[Unreleased] ()
+
+Bugfixes
+
+* Fixed deprecated np.float and np.int
+
+Other
+
+* Moved project build system & scripts to hatch.
+* Project is now fully configured using pyproject.toml
+* Linting is handled by Ruff.
+* Notebooks are now rendered as part of the documentation.
+
+Removed
+
+* cli.py script (unused) has been removed.
+
+New contributors:
+* Karl Lapo (@klapo)
+
 1.1.2 (2022-09-25)
 ------------------
 
