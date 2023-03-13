@@ -1,6 +1,0 @@
-[tool.pylint."messages control"]
-# Suppress warnings for bad variables for specific variables:
-good-names=X,x,y
-
-# To disable this warning completely:
-# disable = invalid-name
