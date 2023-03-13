@@ -1,7 +1,7 @@
 
 Changelog
 =========
-[Unreleased] ()
+[1.2.0] (13-03-2023)
 
 Bugfixes
 
