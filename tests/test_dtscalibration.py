@@ -10,7 +10,6 @@ from dtscalibration import DataStore
 from dtscalibration import read_silixa_files
 from dtscalibration.calibrate_utils import wls_sparse
 from dtscalibration.calibrate_utils import wls_stats
-from dtscalibration.cli import main
 
 np.random.seed(0)
 
@@ -54,10 +53,6 @@ def assert_almost_equal_verbose(actual, desired, verbose=False, **kwargs):
     desired2 = np.broadcast_to(desired, actual.shape)
     np.testing.assert_almost_equal(actual, desired2, err_msg=m, **kwargs)
     pass
-
-
-def test_main():
-    assert main([]) == 0
 
 
 def test_variance_input_types_single():
