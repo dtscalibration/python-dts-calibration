@@ -45,10 +45,6 @@ Overview
    :alt: It would be greatly appreciated if you could cite this package in eg articles presentations
    :target: https://zenodo.org/badge/latestdoi/143077491
 
-.. |example-notebooks| image:: https://mybinder.org/badge.svg
-   :alt: Interactively run the example notebooks online
-   :target: https://mybinder.org/v2/gh/dtscalibration/python-dts-calibration/main?filepath=examples%2Fnotebooks
-
 .. end-badges
 
 A Python package to load Distributed Temperature Sensing files, perform a calibration, and plot the result. A detailed description of the calibration procedure can be found at https://doi.org/10.3390/s20082235 .
@@ -90,14 +86,12 @@ Devices currently supported
 * AP Sensing: **CP320** .xml files *(single ended only)*
 * SensorTran: **SensorTran 5100** .dat binary files *(single ended only)*
 
-Learn by examples
-=================
-Interactively run the example notebooks online by clicking `here <https://mybinder.org/v2/gh/dtscalibration/python-dts-calibration/main?filepath=examples%2Fnotebooks>`_.
-
 Documentation
 =============
 
 https://python-dts-calibration.readthedocs.io/
+Example notebooks can be viewed [here](https://python-dts-calibration.readthedocs.io/en/latest/learn_by_examples.html).
+
 
 How to cite
 ===========
