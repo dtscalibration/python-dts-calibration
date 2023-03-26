@@ -2269,7 +2269,7 @@ dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
         store_tmpw="tmpw",
         mc_sample_size=None,
         mc_da_random_state=None,
-        mc_mc_remove_set_flag=True,
+        mc_remove_set_flag=True,
         mc_reduce_memory_usage=False,
         store_p_cov="p_cov",
         store_p_val="p_val",
@@ -2452,7 +2452,7 @@ C_\mathrm{B}(t) + \int_x^L{\Delta\\alpha(x')\,\mathrm{d}x'}}
             For testing purposes. Similar to random seed. The seed for dask.
             Makes random not so random. To produce reproducable results for
             testing environments.
-        mc_mc_remove_set_flag : bool
+        mc_remove_set_flag : bool
             Remove the monte carlo data set, from which the CI and the
             variance are calculated.
         variance_suffix : str, optional
@@ -3167,6 +3167,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             ("x", time_dim),
             ip.get_tab_values(pval=p_val, x=self.x.values, trans_att=self.trans_att.values, axis=""),
         )
+        self[store_ta + "_fw"] = ((time_dim,),)
 
         self[store_tmpf] = (
             self[store_gamma]
@@ -3333,7 +3334,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
         """
 
         if mc_sample_size is not None:
-            self.conf_int_mc_double_ended(
+            self.conf_int_double_ended(
                 p_val=p_val,
                 p_cov=p_cov,
                 store_ta=store_ta if self.trans_att.size > 0 else None,
@@ -3348,7 +3349,7 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                 conf_ints=conf_ints,
                 mc_sample_size=mc_sample_size,
                 da_random_state=mc_da_random_state,
-                mc_remove_set_flag=mc_mc_remove_set_flag,
+                mc_remove_set_flag=mc_remove_set_flag,
                 reduce_memory_usage=mc_reduce_memory_usage,
             )
 
