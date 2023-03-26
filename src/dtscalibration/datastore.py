@@ -3286,13 +3286,12 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             dta_ddb=(2 * deriv_ds.T_ta_bw * deriv_ds.T_db_bw * sigma2_tabw_db),
             dta_dalpha=(2 * deriv_ds.T_ta_bw * deriv_ds.T_alpha_bw * sigma2_tabw_alpha),
         )
-        var_fw_da = xr.Dataset(var_fw_dict).to_array(dim="com")
-        var_bw_da = xr.Dataset(var_bw_dict).to_array(dim="com")
-        self['var_fw_da'] = var_fw_da
-        self['var_bw_da'] = var_bw_da
 
-        self[store_tmpf + variance_suffix] = var_fw_da.sum(dim="com")
-        self[store_tmpb + variance_suffix] = var_bw_da.sum(dim="com")
+        self['var_fw_da'] = xr.Dataset(var_fw_dict).to_array(dim="com")
+        self['var_bw_da'] = xr.Dataset(var_bw_dict).to_array(dim="com")
+
+        self[store_tmpf + variance_suffix] = self['var_fw_da'].sum(dim="com")
+        self[store_tmpb + variance_suffix] = self['var_bw_da'].sum(dim="com")
 
         self[store_tmpw + variance_suffix + '_upper'] = 1 / (
             1 / self[store_tmpf + variance_suffix] +
@@ -3302,8 +3301,8 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                                    store_tmpb + variance_suffix])
                                * self[store_tmpw + variance_suffix + '_upper']) - 273.15
 
-        tmpf_var_excl_par = var_fw_da.sel(com=['dT_dst', 'dT_dast']).sum(dim="com")
-        tmpb_var_excl_par = var_bw_da.sel(com=['dT_drst', 'dT_drast']).sum(dim="com")
+        tmpf_var_excl_par = self['var_fw_da'].sel(com=['dT_dst', 'dT_dast']).sum(dim="com")
+        tmpb_var_excl_par = self['var_bw_da'].sel(com=['dT_drst', 'dT_drast']).sum(dim="com")
         self[store_tmpw + variance_suffix + '_lower'] = 1 / (1 / tmpf_var_excl_par + 1 / tmpb_var_excl_par)
 
         self[store_tmpf].attrs.update(_dim_attrs[('tmpf',)])
