@@ -3,11 +3,12 @@ import numpy as np
 import scipy.sparse as sp
 import statsmodels.api as sm
 from scipy.sparse import linalg as ln
+import xarray as xr
 
 
-def parse_st_var(ds, st_var, st_label='st', ix_sel=None):
+def parse_st_var(ds, st_var, st_label='st'):
     """
-    Utility function to check the st_var input, and to return in the correct
+    Utility function to check the st_var input and to return in DataArray
     format.
 
     Parameters
@@ -24,39 +25,21 @@ def parse_st_var(ds, st_var, st_label='st', ix_sel=None):
     st_label : string
         Name of the (reverse) stokes/anti-stokes data variable which is being
         parsed.
-    ix_sel : None, array-like
-        Index mapping along the x-dimension to apply to st_var. Definition
-        required when st_var is array-like
 
     Returns
     -------
     Parsed st_var
     """
     if callable(st_var):
-        st_var_sec = st_var(ds[st_label].isel(x=ix_sel)).values
-
-    elif np.size(st_var) > 1:
-        if ix_sel is None:
-            raise ValueError(
-                '`ix_sel` kwarg not defined while `st_var` is array-like')
-
-        for a, b in zip(st_var.shape[::-1], ds[st_label].shape[::-1]):
-            if a == 1 or b == 1 or a == b:
-                pass
-            else:
-                raise ValueError(
-                    st_label + '_var is not broadcastable to ds.' + st_label)
-
-        if len(st_var.shape) > 1:
-            st_var_sec = np.asarray(st_var, dtype=float)[ix_sel]
-        else:
-            st_var_sec = np.asarray(st_var, dtype=float)
-
+        st_var_sec = st_var(ds[st_label])
     else:
-        st_var_sec = np.asarray(st_var, dtype=float)
+        st_var_sec = xr.ones_like(ds[st_label]) * st_var
 
     assert np.all(np.isfinite(st_var_sec)), \
         'NaN/inf values detected in ' + st_label + '_var. Please check input.'
+
+    assert np.all(st_var_sec > 0.), \
+        'Negative values detected in ' + st_label + '_var. Please check input.'
 
     return st_var_sec
 
@@ -425,11 +408,11 @@ def calibration_double_ended_solver(  # noqa: MC0001
 
     # w
     if st_var is not None:  # WLS
-        st_var_sec = parse_st_var(ds, st_var, st_label='st', ix_sel=ix_sec)
-        ast_var_sec = parse_st_var(ds, ast_var, st_label='ast', ix_sel=ix_sec)
-        rst_var_sec = parse_st_var(ds, rst_var, st_label='rst', ix_sel=ix_sec)
+        st_var_sec = parse_st_var(ds, st_var, st_label='st').isel(x=ix_sec).values
+        ast_var_sec = parse_st_var(ds, ast_var, st_label='ast').isel(x=ix_sec).values
+        rst_var_sec = parse_st_var(ds, rst_var, st_label='rst').isel(x=ix_sec).values
         rast_var_sec = parse_st_var(
-            ds, rast_var, st_label='rast', ix_sel=ix_sec)
+            ds, rast_var, st_label='rast').isel(x=ix_sec).values
 
         w_F = 1 / (ds_sec.st**-2 * st_var_sec
                    + ds_sec.ast**-2 * ast_var_sec).values.ravel()

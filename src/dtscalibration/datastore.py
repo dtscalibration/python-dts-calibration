@@ -20,6 +20,7 @@ from .calibrate_utils import calc_alpha_double
 from .calibrate_utils import calibration_double_ended_solver
 from .calibrate_utils import calibration_single_ended_solver
 from .calibrate_utils import match_sections
+from .calibrate_utils import parse_st_var
 from .calibrate_utils import wls_sparse
 from .calibrate_utils import wls_stats
 from .datastore_utils import check_timestep_allclose
@@ -3167,7 +3168,6 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             ("x", time_dim),
             ip.get_tab_values(pval=p_val, x=self.x.values, trans_att=self.trans_att.values, axis=""),
         )
-        self[store_ta + "_fw"] = ((time_dim,),)
 
         self[store_tmpf] = (
             self[store_gamma]
@@ -3259,8 +3259,8 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
         self['deriv'] = deriv_ds.to_array(dim='com2')
 
         var_fw_dict = dict(
-            dT_dst=deriv_ds.T_st_fw ** 2 * st_var,
-            dT_dast=deriv_ds.T_ast_fw ** 2 * ast_var,
+            dT_dst=deriv_ds.T_st_fw ** 2 * parse_st_var(self, st_var, st_label='st'),
+            dT_dast=deriv_ds.T_ast_fw ** 2 * parse_st_var(self, ast_var, st_label='ast'),
             dT_gamma=deriv_ds.T_gamma_fw ** 2 * self[store_gamma + variance_suffix],
             dT_ddf=deriv_ds.T_df_fw ** 2 * self[store_df + variance_suffix],
             dT_dalpha=deriv_ds.T_alpha_fw ** 2 * self[store_alpha + variance_suffix],
@@ -3273,8 +3273,8 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             dta_dalpha=(2 * deriv_ds.T_ta_fw * deriv_ds.T_alpha_fw * sigma2_tafw_alpha),
         )
         var_bw_dict = dict(
-            dT_drst=deriv_ds.T_rst_bw ** 2 * rst_var,
-            dT_drast=deriv_ds.T_rast_bw ** 2 * rast_var,
+            dT_drst=deriv_ds.T_rst_bw ** 2 * parse_st_var(self, rst_var, st_label='rst'),
+            dT_drast=deriv_ds.T_rast_bw ** 2 * parse_st_var(self, rast_var, st_label='rast'),
             dT_gamma=deriv_ds.T_gamma_bw ** 2 * self[store_gamma + variance_suffix],
             dT_ddb=deriv_ds.T_db_bw ** 2 * self[store_db + variance_suffix],
             dT_dalpha=deriv_ds.T_alpha_bw ** 2 * self[store_alpha + variance_suffix],
@@ -3287,11 +3287,11 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
             dta_dalpha=(2 * deriv_ds.T_ta_bw * deriv_ds.T_alpha_bw * sigma2_tabw_alpha),
         )
 
-        self['var_fw_da'] = xr.Dataset(var_fw_dict).to_array(dim="com")
-        self['var_bw_da'] = xr.Dataset(var_bw_dict).to_array(dim="com")
+        self['var_fw_da'] = xr.Dataset(var_fw_dict).to_array(dim="comp_fw")
+        self['var_bw_da'] = xr.Dataset(var_bw_dict).to_array(dim="comp_bw")
 
-        self[store_tmpf + variance_suffix] = self['var_fw_da'].sum(dim="com")
-        self[store_tmpb + variance_suffix] = self['var_bw_da'].sum(dim="com")
+        self[store_tmpf + variance_suffix] = self['var_fw_da'].sum(dim="comp_fw")
+        self[store_tmpb + variance_suffix] = self['var_bw_da'].sum(dim="comp_bw")
 
         self[store_tmpw + variance_suffix + '_upper'] = 1 / (
             1 / self[store_tmpf + variance_suffix] +
@@ -3301,8 +3301,8 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
                                    store_tmpb + variance_suffix])
                                * self[store_tmpw + variance_suffix + '_upper']) - 273.15
 
-        tmpf_var_excl_par = self['var_fw_da'].sel(com=['dT_dst', 'dT_dast']).sum(dim="com")
-        tmpb_var_excl_par = self['var_bw_da'].sel(com=['dT_drst', 'dT_drast']).sum(dim="com")
+        tmpf_var_excl_par = self['var_fw_da'].sel(comp_fw=['dT_dst', 'dT_dast']).sum(dim="comp_fw")
+        tmpb_var_excl_par = self['var_bw_da'].sel(comp_bw=['dT_drst', 'dT_drast']).sum(dim="comp_bw")
         self[store_tmpw + variance_suffix + '_lower'] = 1 / (1 / tmpf_var_excl_par + 1 / tmpb_var_excl_par)
 
         self[store_tmpf].attrs.update(_dim_attrs[('tmpf',)])
@@ -5203,6 +5203,7 @@ dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
             tax = self[ta_dim].values
             nta = tax.size
             npar += nt * 2 * nta
+
         else:
             nta = 0
 

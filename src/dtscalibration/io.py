@@ -12,6 +12,7 @@ import pandas as pd
 
 # Returns a dictionary with the attributes to the dimensions.
 #  The keys refer to the naming used in the raw files.
+# TODO: attrs for st_var and use it in parse_st_var function
 _dim_attrs = {
     ('x', 'distance'):
         dict(
