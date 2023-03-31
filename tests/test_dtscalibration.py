@@ -1857,9 +1857,8 @@ def test_double_ended_fix_alpha_matching_sections_and_one_asym_att():
                 slice(x[4 * nx_per_sec], x[5 * nx_per_sec - 1]), True)])
 
     # remove TA vars
-    k = [
-        'talpha_fw', 'talpha_bw', 'talpha_fw_var', 'talpha_bw_var',
-        'trans_att']
+    k = ['talpha_fw', 'talpha_bw', 'trans_att']
+
     for ki in k:
         del ds[ki]
 
@@ -1975,9 +1974,8 @@ def test_double_ended_fix_alpha_gamma_matching_sections_and_one_asym_att():
                 slice(x[4 * nx_per_sec], x[5 * nx_per_sec - 1]), True)])
 
     # remove TA vars
-    k = [
-        'talpha_fw', 'talpha_bw', 'talpha_fw_var', 'talpha_bw_var',
-        'trans_att']
+    k = ['talpha_fw', 'talpha_bw', 'trans_att']
+
     for ki in k:
         del ds[ki]
 
