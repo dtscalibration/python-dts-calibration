@@ -3160,6 +3160,13 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
         self[store_alpha] = (("x",), p_val[ip.alpha])
         self[store_df] = ((time_dim,), p_val[ip.df])
         self[store_db] = ((time_dim,), p_val[ip.db])
+        if nta:
+            self[store_ta + "_fw"] = ((time_dim, 'trans_att'), p_val[ip.taf].reshape((nt, nta), order='C'))
+            self[store_ta + "_bw"] = ((time_dim, 'trans_att'), p_val[ip.tab].reshape((nt, nta), order='C'))
+        else:
+            self[store_ta + "_fw"] = ((time_dim, 'trans_att'), np.zeros((nt, 0)))
+            self[store_ta + "_bw"] = ((time_dim, 'trans_att'), np.zeros((nt, 0)))
+
         self[store_ta + "_fw_full"] = (
             ("x", time_dim),
             ip.get_taf_values(pval=p_val, x=self.x.values, trans_att=self.trans_att.values, axis=""),
