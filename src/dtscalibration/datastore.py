@@ -3202,11 +3202,11 @@ dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
         )
 
         # extract covariances and ensure broadcastable to (nx, nt)
-        sigma2_gamma_df = p_cov[np.meshgrid(ip.gamma, ip.df, indexing="ij")]
-        sigma2_gamma_db = p_cov[np.meshgrid(ip.gamma, ip.db, indexing="ij")]
-        sigma2_gamma_alpha = p_cov[np.meshgrid(ip.alpha, ip.gamma, indexing="ij")]
-        sigma2_alpha_df = p_cov[np.meshgrid(ip.alpha, ip.df, indexing="ij")]
-        sigma2_alpha_db = p_cov[np.meshgrid(ip.alpha, ip.db, indexing="ij")]
+        sigma2_gamma_df = p_cov[np.ix_(ip.gamma, ip.df)]
+        sigma2_gamma_db = p_cov[np.ix_(ip.gamma, ip.db)]
+        sigma2_gamma_alpha = p_cov[np.ix_(ip.alpha, ip.gamma)]
+        sigma2_alpha_df = p_cov[np.ix_(ip.alpha, ip.df)]
+        sigma2_alpha_db = p_cov[np.ix_(ip.alpha, ip.db)]
         sigma2_tafw_gamma = ip.get_taf_values(
             pval=p_cov[ip.gamma],
             x=self.x.values,
