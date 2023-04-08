@@ -2514,6 +2514,7 @@ dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
     dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
     08Calibrate_double_wls.ipynb>`_
         """
+        # TODO: confidence intervals using the variance approximated by linear error propagation
         self.check_deprecated_kwargs(kwargs)
 
         self.set_trans_att(trans_att=trans_att, **kwargs)
@@ -3280,6 +3281,7 @@ dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
         sigma2_gamma_df = p_cov[np.ix_(ip.gamma, ip.df)]
         sigma2_gamma_db = p_cov[np.ix_(ip.gamma, ip.db)]
         sigma2_gamma_alpha = p_cov[np.ix_(ip.alpha, ip.gamma)]
+        sigma2_df_db = p_cov[ip.df, ip.db][None]  # Shape is [0, nt] ?
         sigma2_alpha_df = p_cov[np.ix_(ip.alpha, ip.df)]
         sigma2_alpha_db = p_cov[np.ix_(ip.alpha, ip.db)]
         sigma2_tafw_gamma = ip.get_taf_values(
@@ -3312,12 +3314,25 @@ dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
             trans_att=self.trans_att.values,
             axis="time",
         )
+        sigma2_tafw_db = ip.get_taf_values(
+            pval=p_cov[ip.db],
+            x=self.x.values,
+            trans_att=self.trans_att.values,
+            axis="time",
+        )
         sigma2_tabw_db = ip.get_tab_values(
             pval=p_cov[ip.db],
             x=self.x.values,
             trans_att=self.trans_att.values,
             axis="time",
         )
+        sigma2_tabw_df = ip.get_tab_values(
+            pval=p_cov[ip.df],
+            x=self.x.values,
+            trans_att=self.trans_att.values,
+            axis="time",
+        )
+        # sigma2_tafw_tabw
 
         tmpf = self[store_tmpf] + 273.15
         tmpb = self[store_tmpb] + 273.15
@@ -3352,7 +3367,7 @@ dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
             ),
             dalpha_ddf=(
                 2 * deriv_ds.T_alpha_fw * deriv_ds.T_df_fw * sigma2_alpha_df
-            ),  # <<<==== TODO
+            ),
             dta_dgamma=(2 * deriv_ds.T_ta_fw * deriv_ds.T_gamma_fw * sigma2_tafw_gamma),
             dta_ddf=(2 * deriv_ds.T_ta_fw * deriv_ds.T_df_fw * sigma2_tafw_df),
             dta_dalpha=(2 * deriv_ds.T_ta_fw * deriv_ds.T_alpha_fw * sigma2_tafw_alpha),
@@ -3381,16 +3396,60 @@ dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
         self[store_tmpf + variance_suffix] = self["var_fw_da"].sum(dim="comp_fw")
         self[store_tmpb + variance_suffix] = self["var_bw_da"].sum(dim="comp_bw")
 
-        self[store_tmpw + variance_suffix + "_upper"] = 1 / (
+        # First estimate of tmpw_var
+        self[store_tmpw + variance_suffix + "_approx"] = 1 / (
             1 / self[store_tmpf + variance_suffix] + 1 / self[store_tmpb + variance_suffix]
         )
-        self[store_tmpw] = (
-                               (
-                                   tmpf / self[store_tmpf + variance_suffix]
-                                   + tmpb / self[store_tmpb + variance_suffix]
-                               )
-                               * self[store_tmpw + variance_suffix + "_upper"]
+        self[store_tmpw] = \
+            ((tmpf / self[store_tmpf + variance_suffix] + tmpb / self[store_tmpb + variance_suffix]) * self[store_tmpw + variance_suffix + "_approx"]
                            ) - 273.15
+
+        weightsf = self[store_tmpw + variance_suffix + "_approx"] / self[store_tmpf + variance_suffix]
+        weightsb = self[store_tmpw + variance_suffix + "_approx"] / self[store_tmpb + variance_suffix]
+
+        deriv_dict2 = dict(
+            T_gamma_w=weightsf * deriv_dict['T_gamma_fw'] + weightsb * deriv_dict['T_gamma_bw'],
+            T_st_w=weightsf * deriv_dict['T_st_fw'],
+            T_ast_w=weightsf * deriv_dict['T_ast_fw'],
+            T_rst_w=weightsb * deriv_dict['T_rst_bw'],
+            T_rast_w=weightsb * deriv_dict['T_rast_bw'],
+            T_df_w=weightsf * deriv_dict['T_df_fw'],
+            T_db_w=weightsb * deriv_dict['T_db_bw'],
+            T_alpha_w=weightsf * deriv_dict['T_alpha_fw'] + weightsb * deriv_dict['T_alpha_bw'],
+            T_taf_w=weightsf * deriv_dict['T_ta_fw'],
+            T_tab_w=weightsb * deriv_dict['T_ta_bw'],
+        )
+        deriv_ds2 = xr.Dataset(deriv_dict2)
+
+        # TODO: sigma2_tafw_tabw
+        var_w_dict = dict(
+            dT_dst=deriv_ds2.T_st_w ** 2 * parse_st_var(self, st_var, st_label="st"),
+            dT_dast=deriv_ds2.T_ast_w ** 2 * parse_st_var(self, ast_var, st_label="ast"),
+            dT_drst=deriv_ds2.T_rst_w ** 2 * parse_st_var(self, rst_var, st_label="rst"),
+            dT_drast=deriv_ds2.T_rast_w ** 2 * parse_st_var(self, rast_var, st_label="rast"),
+            dT_gamma=deriv_ds2.T_gamma_w ** 2 * self[store_gamma + variance_suffix],
+            dT_ddf=deriv_ds2.T_df_w ** 2 * self[store_df + variance_suffix],
+            dT_ddb=deriv_ds2.T_db_w ** 2 * self[store_db + variance_suffix],
+            dT_dalpha=deriv_ds2.T_alpha_w ** 2 * self[store_alpha + variance_suffix],
+            dT_dtaf=deriv_ds2.T_taf_w ** 2 * self[store_ta + "_fw_full" + variance_suffix],
+            dT_dtab=deriv_ds2.T_tab_w ** 2 * self[store_ta + "_bw_full" + variance_suffix],
+            dgamma_ddf=2 * deriv_ds2.T_gamma_w * deriv_ds2.T_df_w * sigma2_gamma_df,
+            dgamma_ddb=2 * deriv_ds2.T_gamma_w * deriv_ds2.T_db_w * sigma2_gamma_db,
+            dgamma_dalpha=2 * deriv_ds2.T_gamma_w * deriv_ds2.T_alpha_w * sigma2_gamma_alpha,
+            dgamma_dtaf=2 * deriv_ds2.T_gamma_w  * deriv_ds2.T_taf_w* sigma2_tafw_gamma,
+            dgamma_dtab=2 * deriv_ds2.T_gamma_w * deriv_ds2.T_tab_w * sigma2_tabw_gamma,
+            ddf_ddb=2 * deriv_ds2.T_df_w * deriv_ds2.T_db_w * sigma2_df_db,
+            ddf_dalpha=2 * deriv_ds2.T_df_w * deriv_ds2.T_alpha_w * sigma2_alpha_df,
+            ddf_dtaf=2 * deriv_ds2.T_df_w * deriv_ds2.T_taf_w * sigma2_tafw_df,
+            ddf_dtab=2 * deriv_ds2.T_df_w * deriv_ds2.T_tab_w * sigma2_tabw_df,
+            ddb_dalpha=2 * deriv_ds2.T_db_w * deriv_ds2.T_alpha_w * sigma2_alpha_db,
+            ddb_dtaf=2 * deriv_ds2.T_db_w * deriv_ds2.T_taf_w * sigma2_tafw_db,
+            ddb_dtab=2 * deriv_ds2.T_db_w * deriv_ds2.T_tab_w * sigma2_tabw_db,
+            # dtaf_dtab=2 * deriv_ds2.T_tab_w * deriv_ds2.T_tab_w * sigma2_tafw_tabw,
+        )
+        self["var_w_da"] = xr.Dataset(var_w_dict).to_array(dim="comp_w")
+        self[store_tmpw + variance_suffix] = self["var_w_da"].sum(dim="comp_w")
+
 
         tmpf_var_excl_par = (
             self["var_fw_da"].sel(comp_fw=["dT_dst", "dT_dast"]).sum(dim="comp_fw")
@@ -3407,8 +3466,11 @@ dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
         self[store_tmpw].attrs.update(_dim_attrs[("tmpw",)])
         self[store_tmpf + variance_suffix].attrs.update(_dim_attrs[("tmpf_var",)])
         self[store_tmpb + variance_suffix].attrs.update(_dim_attrs[("tmpb_var",)])
-        self[store_tmpw + variance_suffix + "_upper"].attrs.update(
-            _dim_attrs[("tmpw_var_upper",)]
+        self[store_tmpw + variance_suffix].attrs.update(
+            _dim_attrs[("tmpw_var",)]
+        )
+        self[store_tmpw + variance_suffix + "_approx"].attrs.update(
+            _dim_attrs[("tmpw_var_approx",)]
         )
         self[store_tmpw + variance_suffix + "_lower"].attrs.update(
             _dim_attrs[("tmpw_var_lower",)]
@@ -5672,9 +5734,6 @@ class ParameterIndexDoubleEnded:
             pass
 
         elif axis == "":
-            # assert pval.ndim <= 2
-            # if pval.ndim == 2:
-            #     assert 1 in pval.shape
             pval = np.squeeze(pval)
             assert pval.ndim == 1
             arr = np.transpose(self.get_tab_pars(pval), axes=(1, 0))
