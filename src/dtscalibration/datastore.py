@@ -2255,7 +2255,7 @@ class DataStore(xr.Dataset):
             T_ta_fw=-(tmpf ** 2) / self[store_gamma],
         )
         deriv_ds = xr.Dataset(deriv_dict)
-        self["deriv"] = deriv_ds.to_array(dim="com2")
+        # self["deriv"] = deriv_ds.to_array(dim="com2")
 
         sigma2_gamma_c = p_cov[np.ix_(ip.gamma, ip.c)]
         sigma2_tafw_gamma = ip.get_taf_values(
@@ -2309,6 +2309,9 @@ class DataStore(xr.Dataset):
 
         self["var_fw_da"] = xr.Dataset(var_fw_dict).to_array(dim="comp_fw")
         self[store_tmpf + variance_suffix] = self["var_fw_da"].sum(dim="comp_fw")
+
+        self[store_tmpf].attrs.update(_dim_attrs[("tmpf",)])
+        self[store_tmpf + variance_suffix].attrs.update(_dim_attrs[("tmpf_var",)])
 
         drop_vars = [
             k for k, v in self.items() if {"params1", "params2"}.intersection(v.dims)
@@ -3544,34 +3547,6 @@ class DataStore(xr.Dataset):
         self[store_tmpw + variance_suffix + "_lower"].attrs.update(
             _dim_attrs[("tmpw_var_lower",)]
         )
-
-        """
-        The linear-error-propagation estimation of tmpf_var and tmpb_var are spot on.
-        But tmpw_var_upper is slightly overestimated, great
-        for most of your analysis. Use the more computational expensive Monte Carlo
-        procedure, by setting mc_sample_size, to achieve the best estimate of the
-        variance in tmpw (tmpw_mc_var).
-        """
-
-        # if mc_sample_size is not None:
-        #     self.conf_int_double_ended(
-        #         p_val=p_val,
-        #         p_cov=p_cov,
-        #         store_ta=store_ta if self.trans_att.size > 0 else None,
-        #         st_var=st_var,
-        #         ast_var=ast_var,
-        #         rst_var=rst_var,
-        #         rast_var=rast_var,
-        #         store_tmpf="",
-        #         store_tmpb="",
-        #         store_tmpw=store_tmpw,
-        #         store_tempvar=variance_suffix,
-        #         conf_ints=mc_conf_ints,
-        #         mc_sample_size=mc_sample_size,
-        #         da_random_state=mc_da_random_state,
-        #         mc_remove_set_flag=mc_remove_set_flag,
-        #         reduce_memory_usage=mc_reduce_memory_usage,
-        #     )
 
         drop_vars = [
             k for k, v in self.items() if {"params1", "params2"}.intersection(v.dims)
