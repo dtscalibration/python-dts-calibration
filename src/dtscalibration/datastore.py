@@ -2171,6 +2171,9 @@ class DataStore(xr.Dataset):
             elif solver == "stats":
                 out = wls_stats(X[:, ip_use], y, w=w, calc_cov=calc_cov, verbose=False)
 
+            else:
+                assert 0, 'Unknown solver'
+
             p_val[ip_use] = out[0]
             p_var[ip_use] = out[1]
             np.fill_diagonal(p_cov, p_var)  # set variance of all fixed params
@@ -2307,21 +2310,15 @@ class DataStore(xr.Dataset):
         self["var_fw_da"] = xr.Dataset(var_fw_dict).to_array(dim="comp_fw")
         self[store_tmpf + variance_suffix] = self["var_fw_da"].sum(dim="comp_fw")
 
-        if store_p_val:
-            drop_vars = [
-                k for k, v in self.items() if {"params1", "params2"}.intersection(v.dims)
-            ]
+        drop_vars = [
+            k for k, v in self.items() if {"params1", "params2"}.intersection(v.dims)
+        ]
 
-            for k in drop_vars:
-                del self[k]
+        for k in drop_vars:
+            del self[k]
 
-            self[store_p_val] = (("params1",), p_val)
-
-            if method == "wls" or method == "external":
-                assert (
-                    store_p_cov
-                ), "Might as well store the covariance matrix. Already computed."
-                self[store_p_cov] = (("params1", "params2"), p_cov)
+        self[store_p_val] = (("params1",), p_val)
+        self[store_p_cov] = (("params1", "params2"), p_cov)
 
         pass
 
@@ -3554,39 +3551,28 @@ class DataStore(xr.Dataset):
         But tmpw_var_upper is slightly overestimated, great
         for most of your analysis. Use the more computational expensive Monte Carlo
         procedure, by setting mc_sample_size, to achieve the best estimate of the
-        variance in tmpw (tmpw_mc_var). tmpf_var_lower and tmpb_var_upper are the
-        lower and upper bounds of tmpw_mc_var. The differences between tmpw and tmpw_mc
-        negligible.
-        The _lower linear-error-propagation estimation of the variance of tmpw
-        includes only the uncertainty from the noise in the Stokes and anti-Stokes
-        measurements and does not include any uncertainty from parameter estimation.
-        The _upper estimation includes also an overestimation of the parameter
-        uncertainty. This is an overestimation because it is assumed that
-        tmpf_var_lower and tmpb_var_upper are estimated independent, while in
-        effect they are correlated. The Monte Carlo procedure correctly propagates
-        correlation in the parameter uncertainty. Tests show that taking correlation
-        between tmpf and tmpb into account reduces the estimated parameter uncertainty.
+        variance in tmpw (tmpw_mc_var).
         """
 
-        if mc_sample_size is not None:
-            self.conf_int_double_ended(
-                p_val=p_val,
-                p_cov=p_cov,
-                store_ta=store_ta if self.trans_att.size > 0 else None,
-                st_var=st_var,
-                ast_var=ast_var,
-                rst_var=rst_var,
-                rast_var=rast_var,
-                store_tmpf="",
-                store_tmpb="",
-                store_tmpw=store_tmpw,
-                store_tempvar=variance_suffix,
-                conf_ints=mc_conf_ints,
-                mc_sample_size=mc_sample_size,
-                da_random_state=mc_da_random_state,
-                mc_remove_set_flag=mc_remove_set_flag,
-                reduce_memory_usage=mc_reduce_memory_usage,
-            )
+        # if mc_sample_size is not None:
+        #     self.conf_int_double_ended(
+        #         p_val=p_val,
+        #         p_cov=p_cov,
+        #         store_ta=store_ta if self.trans_att.size > 0 else None,
+        #         st_var=st_var,
+        #         ast_var=ast_var,
+        #         rst_var=rst_var,
+        #         rast_var=rast_var,
+        #         store_tmpf="",
+        #         store_tmpb="",
+        #         store_tmpw=store_tmpw,
+        #         store_tempvar=variance_suffix,
+        #         conf_ints=mc_conf_ints,
+        #         mc_sample_size=mc_sample_size,
+        #         da_random_state=mc_da_random_state,
+        #         mc_remove_set_flag=mc_remove_set_flag,
+        #         reduce_memory_usage=mc_reduce_memory_usage,
+        #     )
 
         drop_vars = [
             k for k, v in self.items() if {"params1", "params2"}.intersection(v.dims)
