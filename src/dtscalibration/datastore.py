@@ -3520,7 +3520,6 @@ class DataStore(xr.Dataset):
         self["var_w_da"] = xr.Dataset(var_w_dict).to_array(dim="comp_w")
         self[store_tmpw + variance_suffix] = self["var_w_da"].sum(dim="comp_w")
 
-
         tmpf_var_excl_par = (
             self["var_fw_da"].sel(comp_fw=["dT_dst", "dT_dast"]).sum(dim="comp_fw")
         )
