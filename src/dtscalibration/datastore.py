@@ -1834,30 +1834,31 @@ class DataStore(xr.Dataset):
                     + 'Import_timeseries.ipynb for more info')
 
     def calibration_single_ended(
-            self,
-            sections=None,
-            st_var=None,
-            ast_var=None,
-            store_c='c',
-            store_gamma='gamma',
-            store_dalpha='dalpha',
-            store_alpha='alpha',
-            store_ta='talpha',
-            store_tmpf='tmpf',
-            store_p_cov='p_cov',
-            store_p_val='p_val',
-            variance_suffix='_var',
-            method='wls',
-            solver='sparse',
-            p_val=None,
-            p_var=None,
-            p_cov=None,
-            matching_sections=None,
-            trans_att=None,
-            fix_gamma=None,
-            fix_dalpha=None,
-            fix_alpha=None,
-            **kwargs):
+        self,
+        sections=None,
+        st_var=None,
+        ast_var=None,
+        store_c="c",
+        store_gamma="gamma",
+        store_dalpha="dalpha",
+        store_alpha="alpha",
+        store_ta="talpha",
+        store_tmpf="tmpf",
+        store_p_cov="p_cov",
+        store_p_val="p_val",
+        variance_suffix="_var",
+        method="wls",
+        solver="sparse",
+        p_val=None,
+        p_var=None,
+        p_cov=None,
+        matching_sections=None,
+        trans_att=None,
+        fix_gamma=None,
+        fix_dalpha=None,
+        fix_alpha=None,
+        **kwargs
+    ):
         """
         Calibrate the Stokes (`ds.st`) and anti-Stokes (`ds.ast`) data to
         temperature using fiber sections with a known temperature
@@ -2008,8 +2009,8 @@ class DataStore(xr.Dataset):
         Examples
         --------
         - `Example notebook 7: Calibrate single ended <https://github.com/\
-dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
-07Calibrate_single_wls.ipynb>`_
+    dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
+    07Calibrate_single_wls.ipynb>`_
 
         """
         self.check_deprecated_kwargs(kwargs)
@@ -2018,10 +2019,10 @@ dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
         if sections:
             self.sections = sections
         else:
-            assert self.sections, 'sections are not defined'
+            assert self.sections, "sections are not defined"
 
-        if method == 'wls':
-            assert st_var is not None and ast_var is not None, 'Set `st_var`'
+        if method == "wls":
+            assert st_var is not None and ast_var is not None, "Set `st_var`"
 
         self.check_reference_section_values()
 
@@ -2030,57 +2031,54 @@ dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
         nt = self[time_dim].size
         nta = self.trans_att.size
 
-        assert self.st.dims[0] == 'x', 'Stokes are transposed'
-        assert self.ast.dims[0] == 'x', 'Stokes are transposed'
+        assert self.st.dims[0] == "x", "Stokes are transposed"
+        assert self.ast.dims[0] == "x", "Stokes are transposed"
 
         if matching_sections:
             matching_indices = match_sections(self, matching_sections)
         else:
             matching_indices = None
 
-        ix_sec = self.ufunc_per_section(x_indices=True, calc_per='all')
-        assert not np.any(
-            self.st.isel(x=ix_sec) <= 0.), \
-            'There is uncontrolled noise in the ST signal. Are your sections' \
-            'correctly defined?'
-        assert not np.any(
-            self.ast.isel(x=ix_sec) <= 0.), \
-            'There is uncontrolled noise in the AST signal. Are your sections' \
-            'correctly defined?'
+        ix_sec = self.ufunc_per_section(x_indices=True, calc_per="all")
+        assert not np.any(self.st.isel(x=ix_sec) <= 0.0), (
+            "There is uncontrolled noise in the ST signal. Are your sections"
+            "correctly defined?"
+        )
+        assert not np.any(self.ast.isel(x=ix_sec) <= 0.0), (
+            "There is uncontrolled noise in the AST signal. Are your sections"
+            "correctly defined?"
+        )
 
-        if method == 'ols' or method == 'wls':
-            if method == 'ols':
-                assert st_var is None and ast_var is None, ''
-                st_var = None  # ols
-                ast_var = None  # ols
-                calc_cov = False
-            else:
-                for input_item in [st_var, ast_var]:
-                    assert input_item is not None, 'For wls define all ' \
-                                                   'variances (`st_var`, ' \
-                                                   '`ast_var`) '
+        if method == "wls":
+            for input_item in [st_var, ast_var]:
+                assert input_item is not None, (
+                    "For wls define all " "variances (`st_var`, " "`ast_var`) "
+                )
 
-                calc_cov = True
+            calc_cov = True
 
             split = calibration_single_ended_solver(
                 self,
                 st_var,
                 ast_var,
                 calc_cov=calc_cov,
-                solver='external_split',
-                matching_indices=matching_indices)
+                solver="external_split",
+                matching_indices=matching_indices,
+            )
 
-            y = split['y']
-            w = split['w']
+            y = split["y"]
+            w = split["w"]
 
             # Stack all X's
             if fix_alpha:
-                assert not fix_dalpha, 'Use either `fix_dalpha` or `fix_alpha`'
-                assert fix_alpha[0].size == self.x.size, 'fix_alpha also needs to be defined outside the reference ' \
-                                                         'sections'
-                assert fix_alpha[1].size == self.x.size, 'fix_alpha also needs to be defined outside the reference ' \
-                                                         'sections'
-                p_val = split['p0_est_alpha'].copy()
+                assert not fix_dalpha, "Use either `fix_dalpha` or `fix_alpha`"
+                assert fix_alpha[0].size == self.x.size, (
+                    "fix_alpha also needs to be defined outside the reference " "sections"
+                )
+                assert fix_alpha[1].size == self.x.size, (
+                    "fix_alpha also needs to be defined outside the reference " "sections"
+                )
+                p_val = split["p0_est_alpha"].copy()
 
                 if np.any(matching_indices):
                     raise NotImplementedError(
@@ -2088,9 +2086,8 @@ dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
                     )
 
                 X = sp.hstack(
-                    (
-                        split['X_gamma'], split['X_alpha'], split['X_c'],
-                        split['X_TA'])).tocsr()
+                    (split["X_gamma"], split["X_alpha"], split["X_c"], split["X_TA"])
+                ).tocsr()
                 ip_use = list(range(1 + nx + nt + nta * nt))
 
             else:
@@ -2098,10 +2095,16 @@ dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
                     (
                         sp.hstack(
                             (
-                                split['X_gamma'], split['X_dalpha'],
-                                split['X_c'], split['X_TA'])),
-                        split['X_m'])).tocsr()
-                p_val = split['p0_est_dalpha'].copy()
+                                split["X_gamma"],
+                                split["X_dalpha"],
+                                split["X_c"],
+                                split["X_TA"],
+                            )
+                        ),
+                        split["X_m"],
+                    )
+                ).tocsr()
+                p_val = split["p0_est_dalpha"].copy()
                 ip_use = list(range(1 + 1 + nt + nta * nt))
 
             p_var = np.zeros_like(p_val)
@@ -2113,9 +2116,11 @@ dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
                 p_val[ip_remove] = fix_gamma[0]
                 p_var[ip_remove] = fix_gamma[1]
 
-                X_gamma = sp.vstack(
-                    (split['X_gamma'],
-                     split['X_m'].tocsr()[:, 0].tocoo())).toarray().flatten()
+                X_gamma = (
+                    sp.vstack((split["X_gamma"], split["X_m"].tocsr()[:, 0].tocoo()))
+                    .toarray()
+                    .flatten()
+                )
 
                 y -= fix_gamma[0] * X_gamma
                 w = 1 / (1 / w + fix_gamma[1] * X_gamma)
@@ -2127,8 +2132,8 @@ dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
                 p_var[ip_remove] = fix_alpha[1]
 
                 # X_alpha needs to be vertically extended to support matching sections
-                y -= split['X_alpha'].dot(fix_alpha[0])
-                w = 1 / (1 / w + split['X_alpha'].dot(fix_alpha[1]))
+                y -= split["X_alpha"].dot(fix_alpha[0])
+                w = 1 / (1 / w + split["X_alpha"].dot(fix_alpha[1]))
 
             if fix_dalpha is not None:
                 ip_remove = [1]
@@ -2138,117 +2143,185 @@ dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
 
                 y -= np.hstack(
                     (
-                        fix_dalpha[0] * split['X_dalpha'].toarray().flatten(),
+                        fix_dalpha[0] * split["X_dalpha"].toarray().flatten(),
                         (
-                            fix_dalpha[0] * split['X_m'].tocsr()
-                            [:, 1].tocoo().toarray().flatten())))
+                            fix_dalpha[0]
+                            * split["X_m"].tocsr()[:, 1].tocoo().toarray().flatten()
+                        ),
+                    )
+                )
                 w = 1 / (
-                    1 / w + np.hstack(
+                    1 / w
+                    + np.hstack(
+                    (
+                        fix_dalpha[1] * split["X_dalpha"].toarray().flatten(),
                         (
                             fix_dalpha[1]
-                            * split['X_dalpha'].toarray().flatten(), (
-                                fix_dalpha[1] * split['X_m'].tocsr()
-                                [:, 1].tocoo().toarray().flatten()))))
+                            * split["X_m"].tocsr()[:, 1].tocoo().toarray().flatten()
+                        ),
+                    )
+                )
+                )
 
-            if solver == 'sparse':
+            if solver == "sparse":
                 out = wls_sparse(
-                    X[:, ip_use],
-                    y,
-                    w=w,
-                    x0=p_val[ip_use],
-                    calc_cov=calc_cov,
-                    verbose=False)
+                    X[:, ip_use], y, w=w, x0=p_val[ip_use], calc_cov=calc_cov, verbose=False
+                )
 
-            elif solver == 'stats':
-                out = wls_stats(
-                    X[:, ip_use], y, w=w, calc_cov=calc_cov, verbose=False)
+            elif solver == "stats":
+                out = wls_stats(X[:, ip_use], y, w=w, calc_cov=calc_cov, verbose=False)
 
             p_val[ip_use] = out[0]
             p_var[ip_use] = out[1]
+            np.fill_diagonal(p_cov, p_var)  # set variance of all fixed params
+            p_cov[np.ix_(ip_use, ip_use)] = out[2]
 
-            if calc_cov:
-                np.fill_diagonal(
-                    p_cov, p_var)  # set variance of all fixed params
-                p_cov[np.ix_(ip_use, ip_use)] = out[2]
-
-        elif method == 'external':
+        elif method == "external":
             for input_item in [p_val, p_var, p_cov]:
-                assert input_item is not None, \
-                    'Define p_val, p_var, p_cov when using an external solver'
+                assert (
+                    input_item is not None
+                ), "Define p_val, p_var, p_cov when using an external solver"
 
-        elif method == 'external_split':
-            raise ValueError('Not implemented yet')
+        elif method == "external_split":
+            raise ValueError("Not implemented yet")
 
         else:
-            raise ValueError('Choose a valid method')
+            raise ValueError("Choose a valid method")
+
+        # all below require the following solution sizes
+        ip = ParameterIndexSingleEnded(nt, nx, nta, fix_alpha=fix_alpha)
+
+        # npar = 1 + 1 + nt + nta * nt
+        assert p_val.size == ip.npar
+        assert p_var.size == ip.npar
+        assert p_cov.shape == (ip.npar, ip.npar)
 
         # store calibration parameters in DataStore
-        self[store_gamma] = (tuple(), p_val[0])
-
-        if method == 'wls' or method == 'external':
-            self[store_gamma + variance_suffix] = (tuple(), p_var[0])
+        self[store_gamma] = (tuple(), p_val[ip.gamma].item())
+        self[store_gamma + variance_suffix] = (tuple(), p_var[ip.gamma].item())
 
         if nta > 0:
-            ta = p_val[-nt * nta:].reshape((nt, nta), order='F')
-            self[store_ta] = ((time_dim, 'trans_att'), ta[:, :])
+            self[store_ta] = ((time_dim, "trans_att"), ip.get_taf_pars(p_val))
+            self[store_ta + variance_suffix] = (
+                (time_dim, "trans_att"),
+                ip.get_taf_pars(p_var),
+            )
 
-            if method == 'wls' or method == 'external':
-                tavar = p_var[-nt * nta:].reshape((nt, nta), order='F')
-                self[store_ta + variance_suffix] = (
-                    (time_dim, 'trans_att'), tavar[:, :])
+        self[store_c] = ((time_dim,), p_val[ip.c])
+        self[store_c + variance_suffix] = ((time_dim,), p_var[ip.c])
+
+        self[store_dalpha] = (tuple(), p_val[ip.dalpha].item())
+        self[store_dalpha + variance_suffix] = (tuple(), p_var[ip.dalpha].item())
 
         if fix_alpha:
-            ic_start = 1 + nx
-            self[store_c] = ((time_dim,), p_val[ic_start:nt + ic_start])
-            self[store_alpha] = (('x',), fix_alpha[0])
-
-            if method == 'wls' or method == 'external':
-                self[store_c + variance_suffix] = (
-                    (time_dim,), p_var[ic_start:nt + ic_start])
-                self[store_alpha + variance_suffix] = (('x',), fix_alpha[1])
+            self[store_alpha] = fix_alpha[0]
+            self[store_alpha + variance_suffix] = fix_alpha[1]
         else:
-            self[store_c] = ((time_dim,), p_val[2:nt + 2])
-            dalpha = p_val[1]
-            self[store_dalpha] = (tuple(), dalpha)
-            self[store_alpha] = (('x',), dalpha * self.x.data)
+            self[store_alpha] = self[store_dalpha] * self.x
+            self[store_alpha + variance_suffix] = (
+                self[store_dalpha + variance_suffix] * self.x ** 2
+            )
 
-            if method == 'wls' or method == 'external':
-                self[store_c
-                     + variance_suffix] = ((time_dim,), p_var[2:nt + 2])
-                dalpha_var = p_var[1]
-                self[store_dalpha + variance_suffix] = (tuple(), dalpha_var)
-                self[store_alpha
-                     + variance_suffix] = (('x',), dalpha_var * self.x.data)
+        self[store_ta + "_fw_full"] = (
+            ("x", time_dim),
+            ip.get_taf_values(
+                pval=p_val, x=self.x.values, trans_att=self.trans_att.values, axis=""
+            ),
+        )
+        self[store_ta + "_fw_full" + variance_suffix] = (
+            ("x", time_dim),
+            ip.get_taf_values(
+                pval=p_var, x=self.x.values, trans_att=self.trans_att.values, axis=""
+            ),
+        )
 
-        # deal with FW
-        if store_tmpf:
-            ta_arr = np.zeros((nx, nt))
-            if nta > 0:
-                for tai, taxi in zip(self[store_ta].values.T,
-                                     self.trans_att.values):
-                    ta_arr[self.x.values >= taxi] = \
-                        ta_arr[self.x.values >= taxi] + tai
+        tmpf = self.gamma / (
+            (np.log(self.st / self.ast) + (self[store_c] + self[store_ta + "_fw_full"]))
+            + self[store_alpha]
+        )
+        self[store_tmpf] = tmpf - 273.15
 
-            tempF_data = self.gamma.data / (
-                (
-                    np.log(self.st.data) - np.log(self.ast.data) +
-                    (self.c.data[None, :] + ta_arr)) +
-                (self.alpha.data[:, None])) - 273.15
-            self[store_tmpf] = (('x', time_dim), tempF_data)
+        # tmpf_var
+        deriv_dict = dict(
+            T_gamma_fw=tmpf / self[store_gamma],
+            T_st_fw=-(tmpf ** 2) / (self[store_gamma] * self.st),
+            T_ast_fw=tmpf ** 2 / (self[store_gamma] * self.ast),
+            T_c_fw=-(tmpf ** 2) / self[store_gamma],
+            T_dalpha_fw=-self.x * (tmpf ** 2) / self[store_gamma],
+            T_alpha_fw=-(tmpf ** 2) / self[store_gamma],
+            T_ta_fw=-(tmpf ** 2) / self[store_gamma],
+        )
+        deriv_ds = xr.Dataset(deriv_dict)
+        self["deriv"] = deriv_ds.to_array(dim="com2")
+
+        sigma2_gamma_c = p_cov[np.ix_(ip.gamma, ip.c)]
+        sigma2_tafw_gamma = ip.get_taf_values(
+            pval=p_cov[ip.gamma],
+            x=self.x.values,
+            trans_att=self.trans_att.values,
+            axis="",
+        )
+        sigma2_tafw_c = ip.get_taf_values(
+            pval=p_cov[ip.c],
+            x=self.x.values,
+            trans_att=self.trans_att.values,
+            axis="time",
+        )
+        var_fw_dict = dict(
+            dT_dst=deriv_ds.T_st_fw ** 2 * parse_st_var(self, st_var, st_label="st"),
+            dT_dast=deriv_ds.T_ast_fw ** 2 * parse_st_var(self, ast_var, st_label="ast"),
+            dT_gamma=deriv_ds.T_gamma_fw ** 2 * self[store_gamma + variance_suffix],
+            dT_dc=deriv_ds.T_c_fw ** 2 * self[store_c + variance_suffix],
+            dT_ddalpha=deriv_ds.T_alpha_fw ** 2
+                       * self[store_alpha + variance_suffix],  # same as dT_dalpha
+            dT_dta=deriv_ds.T_ta_fw ** 2 * self[store_ta + "_fw_full" + variance_suffix],
+            dgamma_dc=(2 * deriv_ds.T_gamma_fw * deriv_ds.T_c_fw * sigma2_gamma_c),
+            dta_dgamma=(2 * deriv_ds.T_ta_fw * deriv_ds.T_gamma_fw * sigma2_tafw_gamma),
+            dta_dc=(2 * deriv_ds.T_ta_fw * deriv_ds.T_c_fw * sigma2_tafw_c),
+        )
+
+        if not fix_alpha:
+            # These correlations don't exist in case of fix_alpha. Including them reduces tmpf_var.
+            sigma2_gamma_dalpha = p_cov[np.ix_(ip.dalpha, ip.gamma)]
+            sigma2_dalpha_c = p_cov[np.ix_(ip.dalpha, ip.c)]
+            sigma2_tafw_dalpha = ip.get_taf_values(
+                pval=p_cov[ip.dalpha],
+                x=self.x.values,
+                trans_att=self.trans_att.values,
+                axis="",
+            )
+            var_fw_dict.update(
+                dict(
+                    dgamma_ddalpha=(
+                        2 * deriv_ds.T_gamma_fw * deriv_ds.T_dalpha_fw * sigma2_gamma_dalpha
+                    ),
+                    ddalpha_dc=(
+                        2 * deriv_ds.T_dalpha_fw * deriv_ds.T_c_fw * sigma2_dalpha_c
+                    ),
+                    dta_ddalpha=(
+                        2 * deriv_ds.T_ta_fw * deriv_ds.T_dalpha_fw * sigma2_tafw_dalpha
+                    ),
+                )
+            )
+
+        self["var_fw_da"] = xr.Dataset(var_fw_dict).to_array(dim="comp_fw")
+        self[store_tmpf + variance_suffix] = self["var_fw_da"].sum(dim="comp_fw")
 
         if store_p_val:
             drop_vars = [
-                k for k, v in self.items()
-                if {'params1', 'params2'}.intersection(v.dims)]
+                k for k, v in self.items() if {"params1", "params2"}.intersection(v.dims)
+            ]
 
             for k in drop_vars:
                 del self[k]
 
-            self[store_p_val] = (('params1',), p_val)
+            self[store_p_val] = (("params1",), p_val)
 
-            if method == 'wls' or method == 'external':
-                assert store_p_cov, 'Might as well store the covariance matrix. Already computed.'
-                self[store_p_cov] = (('params1', 'params2'), p_cov)
+            if method == "wls" or method == "external":
+                assert (
+                    store_p_cov
+                ), "Might as well store the covariance matrix. Already computed."
+                self[store_p_cov] = (("params1", "params2"), p_cov)
 
         pass
 
@@ -3200,7 +3273,7 @@ dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
             raise ValueError("Choose a valid method")
 
         # all below require the following solution sizes
-        ip = ParameterIndexDoubleEnded(nt, nx, nta)
+        ip = ParameterIndexDoubleEnded(nt, nx, nta, fix_gamma=fix_gamma, fix_alpha=fix_alpha)
 
         # npar = 1 + 2 * nt + nx + 2 * nt * nta
         assert p_val.size == ip.npar
@@ -5759,6 +5832,144 @@ class ParameterIndexDoubleEnded:
             for tai, taxi in zip(arr, trans_att):
                 # loop over nta, tai has shape (t, t)
                 arr_out[x < taxi] += np.diag(tai)
+
+        return arr_out
+
+
+class ParameterIndexSingleEnded:
+    """
+    npar = 1 + 1 + nt + nta * nt
+    """
+
+    def __init__(self, nt, nx, nta, fix_alpha=False):
+        self.nt = nt
+        self.nx = nx
+        self.nta = nta
+        self.fix_alpha = fix_alpha
+
+    @property
+    def all(self):
+        return np.concatenate((
+            self.gamma,
+            self.dalpha,
+            self.alpha,
+            self.c,
+            self.ta.flatten(order='F')
+        ))
+
+    @property
+    def npar(self):
+        if not self.fix_alpha:
+            return 1 + 1 + self.nt + self.nta * self.nt
+        else:
+            return 1 + self.nt + self.nta * self.nt
+
+    @property
+    def gamma(self):
+        return [0]
+
+    @property
+    def dalpha(self):
+        if not self.fix_alpha:
+            return [1]
+        else:
+            return []
+
+    @property
+    def alpha(self):
+        if not self.fix_alpha:
+            return []
+        else:
+            return list(range(1, 1 + self.nx))
+
+    @property
+    def c(self):
+        if self.fix_alpha:
+            return list(range(1 + self.nx, 1 + self.nx + self.nt))
+        else:
+            return list(range(1 + 1, 1 + 1 + self.nt))
+
+    # @property
+    # def ta(self):
+    #     if self.nta == 0:
+    #         return np.zeros((self.nt, 2, 0))
+    #     elif not self.fix_gamma and not self.fix_alpha:
+    #         arr = np.arange(1 + 2 * self.nt + self.nx, self.npar)
+    #     elif self.fix_gamma and not self.fix_alpha:
+    #         arr = np.arange(2 * self.nt + self.nx, self.npar)
+    #     elif not self.fix_gamma and self.fix_alpha:
+    #         arr = np.arange(1 + 2 * self.nt, self.npar)
+    #     elif self.fix_gamma and self.fix_alpha:
+    #         arr = np.arange(2 * self.nt, self.npar)
+    #
+    #     return arr.reshape((self.nt, 2, self.nta), order="F")
+    #
+    # @property
+    # def taf(self):
+    #     """
+    #     Use `.reshape((nt, nta))` to convert array to (time-dim and transatt-dim). Order is the default C order.
+    #     ta = pval[1 + 2 * nt + nx:].reshape((nt, 2, nta), order='F')
+    #     self[store_ta + '_fw'] = ((time_dim, 'trans_att'), ta[:, 0, :])
+    #     """
+    #     return self.ta[:, 0, :].flatten(order="C")
+    #
+    # def get_ta_pars(self, pval):
+    #     if self.nta > 0:
+    #         if pval.ndim == 1:
+    #             return np.take_along_axis(pval[None, None], self.ta, axis=-1)
+    #
+    #         else:
+    #             # assume shape is (a, npar) and returns shape (nt, 2, nta, a)
+    #             assert pval.shape[1] == self.npar and pval.ndim == 2
+    #             return np.stack([self.get_ta_pars(v) for v in pval], axis=-1)
+    #
+    #     else:
+    #         return np.zeros(shape=(self.nt, 2, 0))
+
+    def get_taf_pars(self, pval):
+        """returns taf parameters of shape (nt, nta) or (nt, nta, a)"""
+        if self.fix_alpha:
+            return list(range(1 + self.nx + self.nt, 1 + self.nx + self.nt + self.nt * self.nta))
+        else:
+            return list(range(1 + 1 + self.nt, 1 + 1 + self.nt + self.nt * self.nta))
+
+    def get_taf_values(self, pval, x, trans_att, axis=""):
+        """returns taf parameters of shape (nx, nt)"""
+        pval = np.atleast_2d(pval)
+
+        assert pval.ndim == 2 and pval.shape[1] == self.npar
+
+        arr_out = np.zeros((self.nx, self.nt))
+
+        if self.nta == 0:
+            pass
+
+        elif axis == "":
+            assert pval.shape[0] == 1
+
+            arr = np.transpose(self.get_taf_pars(pval), axes=(1, 2, 0))  # (nta, 1, nt)
+
+            for tai, taxi in zip(arr, trans_att):
+                arr_out[x >= taxi] += tai
+
+        elif axis == "x":
+            assert pval.shape[0] == self.nx
+
+            arr = np.transpose(self.get_taf_pars(pval), axes=(1, 2, 0))  # (nta, nx, nt)
+
+            for tai, taxi in zip(arr, trans_att):
+                # loop over nta, tai has shape (x, t)
+                arr_out[x >= taxi] += tai[x >= taxi]
+
+        elif axis == "time":
+            assert pval.shape[0] == self.nt
+
+            # arr (nt, nta, nt) to have shape (nta, nt, nt)
+            arr = np.transpose(self.get_taf_pars(pval), axes=(1, 2, 0))
+
+            for tai, taxi in zip(arr, trans_att):
+                # loop over nta, tai has shape (t, t)
+                arr_out[x >= taxi] += np.diag(tai)[None]
 
         return arr_out
 
