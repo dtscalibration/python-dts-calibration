@@ -2153,14 +2153,14 @@ class DataStore(xr.Dataset):
                 w = 1 / (
                     1 / w
                     + np.hstack(
-                    (
-                        fix_dalpha[1] * split["X_dalpha"].toarray().flatten(),
                         (
-                            fix_dalpha[1]
-                            * split["X_m"].tocsr()[:, 1].tocoo().toarray().flatten()
-                        ),
+                            fix_dalpha[1] * split["X_dalpha"].toarray().flatten(),
+                            (
+                                fix_dalpha[1]
+                                * split["X_m"].tocsr()[:, 1].tocoo().toarray().flatten()
+                            ),
+                        )
                     )
-                )
                 )
 
             if solver == "sparse":
@@ -2275,8 +2275,7 @@ class DataStore(xr.Dataset):
             dT_dast=deriv_ds.T_ast_fw ** 2 * parse_st_var(self, ast_var, st_label="ast"),
             dT_gamma=deriv_ds.T_gamma_fw ** 2 * self[store_gamma + variance_suffix],
             dT_dc=deriv_ds.T_c_fw ** 2 * self[store_c + variance_suffix],
-            dT_ddalpha=deriv_ds.T_alpha_fw ** 2
-                       * self[store_alpha + variance_suffix],  # same as dT_dalpha
+            dT_ddalpha=deriv_ds.T_alpha_fw ** 2 * self[store_alpha + variance_suffix],  # same as dT_dalpha
             dT_dta=deriv_ds.T_ta_fw ** 2 * self[store_ta + "_fw_full" + variance_suffix],
             dgamma_dc=(2 * deriv_ds.T_gamma_fw * deriv_ds.T_c_fw * sigma2_gamma_c),
             dta_dgamma=(2 * deriv_ds.T_ta_fw * deriv_ds.T_gamma_fw * sigma2_tafw_gamma),
@@ -3050,9 +3049,8 @@ class DataStore(xr.Dataset):
                             out[0][2 * nt + n_E_in_cal:],
                         )
                     )
-                    p_val[1 + 2 * nt + split["ix_from_cal_match_to_glob"]] = out[0][
-                                                                             2 * nt: 2 * nt + n_E_in_cal
-                                                                             ]
+                    p_val[1 + 2 * nt + split["ix_from_cal_match_to_glob"]] = \
+                        out[0][2 * nt: 2 * nt + n_E_in_cal]
                     p_val[1 + 2 * nt + ix_sec[0]] = 0.0
                     p_var = np.concatenate(
                         (
@@ -3062,9 +3060,8 @@ class DataStore(xr.Dataset):
                             out[1][2 * nt + n_E_in_cal:],
                         )
                     )
-                    p_var[1 + 2 * nt + split["ix_from_cal_match_to_glob"]] = out[1][
-                                                                             2 * nt: 2 * nt + n_E_in_cal
-                                                                             ]
+                    p_var[1 + 2 * nt + split["ix_from_cal_match_to_glob"]] = \
+                        out[1][2 * nt: 2 * nt + n_E_in_cal]
 
                 p_cov = np.diag(p_var).copy()
 
@@ -3447,8 +3444,7 @@ class DataStore(xr.Dataset):
         )
         var_bw_dict = dict(
             dT_drst=deriv_ds.T_rst_bw ** 2 * parse_st_var(self, rst_var, st_label="rst"),
-            dT_drast=deriv_ds.T_rast_bw ** 2
-                     * parse_st_var(self, rast_var, st_label="rast"),
+            dT_drast=deriv_ds.T_rast_bw ** 2 * parse_st_var(self, rast_var, st_label="rast"),
             dT_gamma=deriv_ds.T_gamma_bw ** 2 * self[store_gamma + variance_suffix],
             dT_ddb=deriv_ds.T_db_bw ** 2 * self[store_db + variance_suffix],
             dT_dalpha=deriv_ds.T_alpha_bw ** 2 * self[store_alpha + variance_suffix],
@@ -3473,9 +3469,9 @@ class DataStore(xr.Dataset):
         self[store_tmpw + variance_suffix + "_approx"] = 1 / (
             1 / self[store_tmpf + variance_suffix] + 1 / self[store_tmpb + variance_suffix]
         )
-        self[store_tmpw] = \
-            ((tmpf / self[store_tmpf + variance_suffix] + tmpb / self[store_tmpb + variance_suffix]) * self[store_tmpw + variance_suffix + "_approx"]
-                           ) - 273.15
+        self[store_tmpw] = ((tmpf / self[store_tmpf + variance_suffix] +
+                             tmpb / self[store_tmpb + variance_suffix]
+                             ) * self[store_tmpw + variance_suffix + "_approx"]) - 273.15
 
         weightsf = self[store_tmpw + variance_suffix + "_approx"] / self[store_tmpf + variance_suffix]
         weightsb = self[store_tmpw + variance_suffix + "_approx"] / self[store_tmpb + variance_suffix]
@@ -3509,7 +3505,7 @@ class DataStore(xr.Dataset):
             dgamma_ddf=2 * deriv_ds2.T_gamma_w * deriv_ds2.T_df_w * sigma2_gamma_df,
             dgamma_ddb=2 * deriv_ds2.T_gamma_w * deriv_ds2.T_db_w * sigma2_gamma_db,
             dgamma_dalpha=2 * deriv_ds2.T_gamma_w * deriv_ds2.T_alpha_w * sigma2_gamma_alpha,
-            dgamma_dtaf=2 * deriv_ds2.T_gamma_w  * deriv_ds2.T_taf_w* sigma2_tafw_gamma,
+            dgamma_dtaf=2 * deriv_ds2.T_gamma_w * deriv_ds2.T_taf_w * sigma2_tafw_gamma,
             dgamma_dtab=2 * deriv_ds2.T_gamma_w * deriv_ds2.T_tab_w * sigma2_tabw_gamma,
             ddf_ddb=2 * deriv_ds2.T_df_w * deriv_ds2.T_db_w * sigma2_df_db,
             ddf_dalpha=2 * deriv_ds2.T_df_w * deriv_ds2.T_alpha_w * sigma2_alpha_df,
