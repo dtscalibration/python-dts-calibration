@@ -1882,13 +1882,13 @@ def coords_time(
             k: (
                 'time', pd.DatetimeIndex(v).tz_localize(
                     tz=timezone_input_files).tz_convert(
-                        timezone_netcdf).astype('datetime64[ns]'),
+                        timezone_netcdf).tz_localize(None).astype('datetime64[ns]'),
                 time_attrs[k])
             for k, v in coords_zip}
     else:
         coords = {
             k: (
-                'time', pd.DatetimeIndex(v).tz_convert(timezone_netcdf).astype(
+                'time', pd.DatetimeIndex(v).tz_convert(timezone_netcdf).tz_localize(None).astype(
                     'datetime64[ns]'), time_attrs[k])
             for k, v in coords_zip}
 
