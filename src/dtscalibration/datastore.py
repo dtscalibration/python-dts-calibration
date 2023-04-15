@@ -3270,7 +3270,7 @@ class DataStore(xr.Dataset):
             raise ValueError("Choose a valid method")
 
         # all below require the following solution sizes
-        ip = ParameterIndexDoubleEnded(nt, nx, nta, fix_gamma=fix_gamma, fix_alpha=fix_alpha)
+        ip = ParameterIndexDoubleEnded(nt, nx, nta)
 
         # npar = 1 + 2 * nt + nx + 2 * nt * nta
         assert p_val.size == ip.npar
@@ -3282,6 +3282,7 @@ class DataStore(xr.Dataset):
         self[store_alpha] = (("x",), p_val[ip.alpha])
         self[store_df] = ((time_dim,), p_val[ip.df])
         self[store_db] = ((time_dim,), p_val[ip.db])
+
         if nta:
             self[store_ta + "_fw"] = (
                 (time_dim, "trans_att"),
