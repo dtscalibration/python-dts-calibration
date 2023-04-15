@@ -5846,43 +5846,6 @@ class ParameterIndexSingleEnded:
         else:
             return list(range(1 + 1, 1 + 1 + self.nt))
 
-    # @property
-    # def ta(self):
-    #     if self.nta == 0:
-    #         return np.zeros((self.nt, 2, 0))
-    #     elif not self.fix_gamma and not self.fix_alpha:
-    #         arr = np.arange(1 + 2 * self.nt + self.nx, self.npar)
-    #     elif self.fix_gamma and not self.fix_alpha:
-    #         arr = np.arange(2 * self.nt + self.nx, self.npar)
-    #     elif not self.fix_gamma and self.fix_alpha:
-    #         arr = np.arange(1 + 2 * self.nt, self.npar)
-    #     elif self.fix_gamma and self.fix_alpha:
-    #         arr = np.arange(2 * self.nt, self.npar)
-    #
-    #     return arr.reshape((self.nt, 2, self.nta), order="F")
-    #
-    # @property
-    # def taf(self):
-    #     """
-    #     Use `.reshape((nt, nta))` to convert array to (time-dim and transatt-dim). Order is the default C order.
-    #     ta = pval[1 + 2 * nt + nx:].reshape((nt, 2, nta), order='F')
-    #     self[store_ta + '_fw'] = ((time_dim, 'trans_att'), ta[:, 0, :])
-    #     """
-    #     return self.ta[:, 0, :].flatten(order="C")
-    #
-    # def get_ta_pars(self, pval):
-    #     if self.nta > 0:
-    #         if pval.ndim == 1:
-    #             return np.take_along_axis(pval[None, None], self.ta, axis=-1)
-    #
-    #         else:
-    #             # assume shape is (a, npar) and returns shape (nt, 2, nta, a)
-    #             assert pval.shape[1] == self.npar and pval.ndim == 2
-    #             return np.stack([self.get_ta_pars(v) for v in pval], axis=-1)
-    #
-    #     else:
-    #         return np.zeros(shape=(self.nt, 2, 0))
-
     def get_taf_pars(self, pval):
         """returns taf parameters of shape (nt, nta) or (nt, nta, a)"""
         if self.fix_alpha:

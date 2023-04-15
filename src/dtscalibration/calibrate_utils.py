@@ -2,8 +2,8 @@
 import numpy as np
 import scipy.sparse as sp
 import statsmodels.api as sm
-from scipy.sparse import linalg as ln
 import xarray as xr
+from scipy.sparse import linalg as ln
 
 
 def parse_st_var(ds, st_var, st_label='st'):
