@@ -2204,11 +2204,17 @@ class DataStore(xr.Dataset):
         self[store_gamma + variance_suffix] = (tuple(), p_var[ip.gamma].item())
 
         if nta > 0:
-            self[store_ta] = ((time_dim, "trans_att"), ip.get_taf_pars(p_val))
-            self[store_ta + variance_suffix] = (
-                (time_dim, "trans_att"),
+            self[store_ta + "_fw"] = (
+                ("trans_att", time_dim),
+                ip.get_taf_pars(p_val),
+            )
+            self[store_ta + "_fw" + variance_suffix] = (
+                ("trans_att", time_dim),
                 ip.get_taf_pars(p_var),
             )
+        else:
+            self[store_ta + "_fw"] = (("trans_att", time_dim), np.zeros((0, nt)))
+            self[store_ta + "_fw" + variance_suffix] = (("trans_att", time_dim), np.zeros((0, nt)))
 
         self[store_c] = ((time_dim,), p_val[ip.c])
         self[store_c + variance_suffix] = ((time_dim,), p_var[ip.c])
@@ -3292,9 +3298,19 @@ class DataStore(xr.Dataset):
                 (time_dim, "trans_att"),
                 p_val[ip.tab].reshape((nt, nta), order="C"),
             )
+            self[store_ta + "_fw" + variance_suffix] = (
+                (time_dim, "trans_att"),
+                p_var[ip.taf].reshape((nt, nta), order="C"),
+            )
+            self[store_ta + "_bw" + variance_suffix] = (
+                (time_dim, "trans_att"),
+                p_var[ip.tab].reshape((nt, nta), order="C"),
+            )
         else:
             self[store_ta + "_fw"] = ((time_dim, "trans_att"), np.zeros((nt, 0)))
             self[store_ta + "_bw"] = ((time_dim, "trans_att"), np.zeros((nt, 0)))
+            self[store_ta + "_fw" + variance_suffix] = ((time_dim, "trans_att"), np.zeros((nt, 0)))
+            self[store_ta + "_bw" + variance_suffix] = ((time_dim, "trans_att"), np.zeros((nt, 0)))
 
         self[store_ta + "_fw_full"] = (
             ("x", time_dim),
@@ -5846,18 +5862,32 @@ class ParameterIndexSingleEnded:
         else:
             return list(range(1 + 1, 1 + 1 + self.nt))
 
-    def get_taf_pars(self, pval):
+    @property
+    def taf(self):
         """returns taf parameters of shape (nt, nta) or (nt, nta, a)"""
-        if self.fix_alpha:
-            return list(range(1 + self.nx + self.nt, 1 + self.nx + self.nt + self.nt * self.nta))
+        # ta = p_val[-nt * nta:].reshape((nt, nta), order='F')
+        # self[store_ta] = ((time_dim, 'trans_att'), ta[:, :])
+
+        return np.arange(1 + 1 + self.nt, 1 + 1 + self.nt + self.nt * self.nta).reshape((self.nt, self.nta), order='F')
+
+    def get_taf_pars(self, pval):
+        if self.nta > 0:
+            if pval.ndim == 1:
+                # returns shape (nta, nt)
+                assert len(pval) == self.npar, "Length of pval is incorrect"
+                return np.stack([pval[tafi] for tafi in self.taf.T])
+
+            else:
+                # assume shape is (a, npar) and returns shape (nta, nt, a)
+                assert pval.shape[1] == self.npar and pval.ndim == 2
+                return np.stack([self.get_taf_pars(v) for v in pval], axis=-1)
+
         else:
-            return list(range(1 + 1 + self.nt, 1 + 1 + self.nt + self.nt * self.nta))
+            return np.zeros(shape=(self.nt, 0))
 
     def get_taf_values(self, pval, x, trans_att, axis=""):
         """returns taf parameters of shape (nx, nt)"""
-        pval = np.atleast_2d(pval)
-
-        assert pval.ndim == 2 and pval.shape[1] == self.npar
+        # assert pval.ndim == 2 and pval.shape[1] == self.npar
 
         arr_out = np.zeros((self.nx, self.nt))
 
@@ -5865,27 +5895,27 @@ class ParameterIndexSingleEnded:
             pass
 
         elif axis == "":
-            assert pval.shape[0] == 1
-
-            arr = np.transpose(self.get_taf_pars(pval), axes=(1, 2, 0))  # (nta, 1, nt)
+            pval = pval.flatten()
+            assert pval.shape == (self.npar,)
+            arr = self.get_taf_pars(pval)
+            assert arr.shape == (self.nta, self.nt, )
 
             for tai, taxi in zip(arr, trans_att):
                 arr_out[x >= taxi] += tai
 
         elif axis == "x":
-            assert pval.shape[0] == self.nx
-
-            arr = np.transpose(self.get_taf_pars(pval), axes=(1, 2, 0))  # (nta, nx, nt)
+            assert pval.shape == (self.nx, self.npar)
+            arr = self.get_taf_pars(pval)
+            assert arr.shape == (self.nta, self.nx, self.nt)
 
             for tai, taxi in zip(arr, trans_att):
                 # loop over nta, tai has shape (x, t)
                 arr_out[x >= taxi] += tai[x >= taxi]
 
         elif axis == "time":
-            assert pval.shape[0] == self.nt
-
-            # arr (nt, nta, nt) to have shape (nta, nt, nt)
-            arr = np.transpose(self.get_taf_pars(pval), axes=(1, 2, 0))
+            assert pval.shape == (self.nt, self.npar)
+            arr = self.get_taf_pars(pval)
+            assert arr.shape == (self.nta, self.nt, self.nt)
 
             for tai, taxi in zip(arr, trans_att):
                 # loop over nta, tai has shape (t, t)
