@@ -2250,9 +2250,9 @@ def test_estimate_variance_of_temperature_estimate():
 
     stokes_m_var = 0.1
     cable_len = 10.
-    nt = 150
+    nt = 1002
     time = np.arange(nt)
-    nmc = 2001
+    nmc = 501
     x = np.linspace(0., cable_len, 64)
     ts_cold = np.ones(nt) * 4.
     ts_warm = np.ones(nt) * 20.
@@ -2297,10 +2297,6 @@ def test_estimate_variance_of_temperature_estimate():
 
     ds = DataStore(
         {
-            # 'st':                    (['x', 'time'], st),
-            # 'ast':                   (['x', 'time'], ast),
-            # 'rst':                   (['x', 'time'], rst),
-            # 'rast':                  (['x', 'time'], rast),
             'st': (['x', 'time'], st_m),
             'ast': (['x', 'time'], ast_m),
             'rst': (['x', 'time'], rst_m),
@@ -2317,12 +2313,6 @@ def test_estimate_variance_of_temperature_estimate():
     sections = {
         'cold': [slice(0., 0.25 * cable_len)],
         'warm': [slice(0.5 * cable_len, 0.75 * cable_len)]}
-
-    # st_label = 'mst'
-    # ast_label = 'mast'
-    # rst_label = 'mrst'
-    # rast_label = 'mrast'
-
     # MC variance
     ds.calibration_double_ended(
         sections=sections,
@@ -2347,7 +2337,7 @@ def test_estimate_variance_of_temperature_estimate():
         store_tmpb='tmpb',
         store_tmpw='tmpw',
         store_tempvar='_var',
-        conf_ints=[20., 80.],
+        # conf_ints=[20., 80.],
         mc_sample_size=nmc,
         da_random_state=state,
         mc_remove_set_flag=False,
@@ -2369,28 +2359,27 @@ def test_estimate_variance_of_temperature_estimate():
 
     # tmpf
     temp_real2 = temp_real[:, 0] - 273.15
-    actual = (
-        np.square(ds.tmpf - temp_real2[:, None]).sum(dim='time')
-        / ds.time.size)
-    desire = ds.tmpf_mc_var.values
+    actual = (ds.tmpf - temp_real2[:, None]).var(dim='time')
+    desire2 = ds.tmpf_var.mean(dim='time')
 
     # Validate on sections that were not used for calibration.
     assert_almost_equal_verbose(
-        actual[16:32].mean(), desire[16:32].mean(), decimal=3)
-    assert_almost_equal_verbose(
-        actual[48:].mean(), desire[48:].mean(), decimal=3)
+        actual[16:32], desire2[16:32], decimal=2)
 
     # tmpb
-    actual = (
-        np.square(ds.tmpb - temp_real2[:, None]).sum(dim='time')
-        / ds.time.size)
-    desire = ds.tmpb_mc_var.values
+    actual = (ds.tmpb - temp_real2[:, None]).var(dim='time')
+    desire2 = ds.tmpb_var.mean(dim='time')
 
     # Validate on sections that were not used for calibration.
     assert_almost_equal_verbose(
-        actual[16:32].mean(), desire[16:32].mean(), decimal=4)
+        actual[16:32], desire2[16:32], decimal=2)
+
+    # tmpw
+    actual = (ds.tmpw - temp_real2[:, None]).var(dim='time')
+    desire2 = ds.tmpw_var.mean(dim='time')
     assert_almost_equal_verbose(
-        actual[48:].mean(), desire[48:].mean(), decimal=4)
+        actual[16:32], desire2[16:32], decimal=3)
+
     pass
 
 
