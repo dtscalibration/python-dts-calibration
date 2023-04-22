@@ -2926,9 +2926,9 @@ def test_single_ended_matching_sections_synthetic():
     assert_almost_equal_verbose(
         ds_test.tmpf.values, temp_real - 273.15, decimal=8)
     assert_almost_equal_verbose(
-        ds_test.isel(trans_att=0).talpha, -np.log(tr_att), decimal=8)
+        ds_test.isel(trans_att=0).talpha_fw, -np.log(tr_att), decimal=8)
     assert_almost_equal_verbose(
-        ds_test.isel(trans_att=1).talpha, -np.log(tr_att2), decimal=8)
+        ds_test.isel(trans_att=1).talpha_fw, -np.log(tr_att2), decimal=8)
 
     ds_test = ds.copy(deep=True)
 
@@ -2947,9 +2947,9 @@ def test_single_ended_matching_sections_synthetic():
     assert_almost_equal_verbose(
         ds_test.tmpf.values, temp_real - 273.15, decimal=8)
     assert_almost_equal_verbose(
-        ds_test.isel(trans_att=0).talpha, -np.log(tr_att), decimal=8)
+        ds_test.isel(trans_att=0).talpha_fw, -np.log(tr_att), decimal=8)
     assert_almost_equal_verbose(
-        ds_test.isel(trans_att=1).talpha, -np.log(tr_att2), decimal=8)
+        ds_test.isel(trans_att=1).talpha_fw, -np.log(tr_att2), decimal=8)
 
     ds_test = ds.copy(deep=True)
 
@@ -2968,9 +2968,9 @@ def test_single_ended_matching_sections_synthetic():
     assert_almost_equal_verbose(
         ds_test.tmpf.values, temp_real - 273.15, decimal=8)
     assert_almost_equal_verbose(
-        ds_test.isel(trans_att=0).talpha, -np.log(tr_att), decimal=8)
+        ds_test.isel(trans_att=0).talpha_fw, -np.log(tr_att), decimal=8)
     assert_almost_equal_verbose(
-        ds_test.isel(trans_att=1).talpha, -np.log(tr_att2), decimal=8)
+        ds_test.isel(trans_att=1).talpha_fw, -np.log(tr_att2), decimal=8)
 
     ds_test = ds.copy(deep=True)
 
@@ -2990,9 +2990,9 @@ def test_single_ended_matching_sections_synthetic():
     assert_almost_equal_verbose(
         ds_test.tmpf.values, temp_real - 273.15, decimal=8)
     assert_almost_equal_verbose(
-        ds_test.isel(trans_att=0).talpha, -np.log(tr_att), decimal=8)
+        ds_test.isel(trans_att=0).talpha_fw, -np.log(tr_att), decimal=8)
     assert_almost_equal_verbose(
-        ds_test.isel(trans_att=1).talpha, -np.log(tr_att2), decimal=8)
+        ds_test.isel(trans_att=1).talpha_fw, -np.log(tr_att2), decimal=8)
 
     # Test conf. ints. for the combination of everything
     ds_test.conf_int_single_ended(
@@ -3006,9 +3006,9 @@ def test_single_ended_matching_sections_synthetic():
         mc_sample_size=50)
 
     ds_test_1 = ds_test.isel(time=-1)
-    ds_test_1.tmpf
-    ds_test_1.tmpf_mc.isel(CI=0).values
-    ds_test_1.tmpf_mc.isel(CI=2).values
+    # ds_test_1.tmpf
+    # ds_test_1.tmpf_mc.isel(CI=0).values
+    # ds_test_1.tmpf_mc.isel(CI=2).values
 
     assert np.all(
         np.less(ds_test_1.tmpf_mc.isel(CI=0).values, ds_test_1.tmpf)
