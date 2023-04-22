@@ -2252,7 +2252,7 @@ def test_estimate_variance_of_temperature_estimate():
     cable_len = 10.
     nt = 150
     time = np.arange(nt)
-    nmc = 201
+    nmc = 2001
     x = np.linspace(0., cable_len, 64)
     ts_cold = np.ones(nt) * 4.
     ts_warm = np.ones(nt) * 20.
@@ -2364,7 +2364,7 @@ def test_estimate_variance_of_temperature_estimate():
 
     assert_almost_equal_verbose(ds.gamma_mc.var(dim='mc'), 0., decimal=2)
     assert_almost_equal_verbose(ds.alpha_mc.var(dim='mc'), 0., decimal=8)
-    assert_almost_equal_verbose(ds.df_mc.var(dim='mc'), ds.df_var, decimal=7)
+    assert_almost_equal_verbose(ds.df_mc.var(dim='mc'), ds.df_var, decimal=8)
     assert_almost_equal_verbose(ds.db_mc.var(dim='mc'), ds.db_var, decimal=8)
 
     # tmpf
