@@ -32,6 +32,8 @@ def _notebook_run(path):
             "notebook", "--execute", "--ExecutePreprocessor.timeout=60"]
         subprocess.check_call(args)
 
+        assert os.path.exists(nbpath), "nbconvert used different output filename"
+
         nb = nbformat.read(nbpath, nbformat.current_nbformat)
 
     errors = [
