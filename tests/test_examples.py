@@ -25,8 +25,8 @@ def _notebook_run(path):
 
         # recent version (~7.3.1) requires output without extension
         out_path = os.path.join(
-                os.path.dirname(nbpath),
-                os.path.basename(nbpath).split('.', 1)[0])
+            os.path.dirname(nbpath),
+            os.path.basename(nbpath).split('.', 1)[0])
         args = [
             jupyter_exec, "nbconvert", path, "--output", out_path, "--to",
             "notebook", "--execute", "--ExecutePreprocessor.timeout=60"]
