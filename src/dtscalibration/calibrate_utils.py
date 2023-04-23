@@ -61,13 +61,13 @@ def calibration_single_ended_solver(  # noqa: MC0001
     ----------
     ds : DataStore
     st_var : float, array-like, optional
-        If `None` use ols calibration. If `float` the variance of the noise
+        If `float` the variance of the noise
         from the Stokes detector is described with a single value. Or when the
         variance is a function of the intensity (Poisson distributed) define an
         array with shape (nx, nt), where nx are the number of calibration
         locations.
     ast_var : float, array-like, optional
-        If `None` use ols calibration. If `float` the variance of the noise
+        If `float` the variance of the noise
         from the Stokes detector is described with a single value. Or when the
         variance is a function of the intensity (Poisson distributed) define an
         array with shape (nx, nt), where nx are the number of calibration
@@ -337,25 +337,25 @@ def calibration_double_ended_solver(  # noqa: MC0001
     ----------
     ds : DataStore
     st_var : float, array-like, optional
-        If `None` use ols calibration. If `float` the variance of the noise
+        If `float` the variance of the noise
         from the Stokes detector is described with a single value. Or when the
         variance is a function of the intensity (Poisson distributed) define an
         array with shape (nx, nt), where nx are the number of calibration
         locations.
     ast_var : float, array-like, optional
-        If `None` use ols calibration. If `float` the variance of the noise
+        If `float` the variance of the noise
         from the Stokes detector is described with a single value. Or when the
         variance is a function of the intensity (Poisson distributed) define an
         array with shape (nx, nt), where nx are the number of calibration
         locations.
     rst_var : float, array-like, optional
-        If `None` use ols calibration. If `float` the variance of the noise
+        If `float` the variance of the noise
         from the Stokes detector is described with a single value. Or when the
         variance is a function of the intensity (Poisson distributed) define an
         array with shape (nx, nt), where nx are the number of calibration
         locations.
     rast_var : float, array-like, optional
-        If `None` use ols calibration. If `float` the variance of the noise
+        If `float` the variance of the noise
         from the Stokes detector is described with a single value. Or when the
         variance is a function of the intensity (Poisson distributed) define an
         array with shape (nx, nt), where nx are the number of calibration
@@ -407,22 +407,17 @@ def calibration_double_ended_solver(  # noqa: MC0001
     y_B = np.log(ds_sec.rst / ds_sec.rast).values.ravel()
 
     # w
-    if st_var is not None:  # WLS
-        st_var_sec = parse_st_var(ds, st_var, st_label='st').isel(x=ix_sec).values
-        ast_var_sec = parse_st_var(ds, ast_var, st_label='ast').isel(x=ix_sec).values
-        rst_var_sec = parse_st_var(ds, rst_var, st_label='rst').isel(x=ix_sec).values
-        rast_var_sec = parse_st_var(
-            ds, rast_var, st_label='rast').isel(x=ix_sec).values
+    st_var_sec = parse_st_var(ds, st_var, st_label='st').isel(x=ix_sec).values
+    ast_var_sec = parse_st_var(ds, ast_var, st_label='ast').isel(x=ix_sec).values
+    rst_var_sec = parse_st_var(ds, rst_var, st_label='rst').isel(x=ix_sec).values
+    rast_var_sec = parse_st_var(
+        ds, rast_var, st_label='rast').isel(x=ix_sec).values
 
-        w_F = 1 / (ds_sec.st**-2 * st_var_sec
-                   + ds_sec.ast**-2 * ast_var_sec).values.ravel()
-        w_B = 1 / (
-            ds_sec.rst**-2 * rst_var_sec
-            + ds_sec.rast**-2 * rast_var_sec).values.ravel()
-
-    else:  # OLS
-        w_F = np.ones(nt * nx_sec)
-        w_B = np.ones(nt * nx_sec)
+    w_F = 1 / (ds_sec.st**-2 * st_var_sec
+               + ds_sec.ast**-2 * ast_var_sec).values.ravel()
+    w_B = 1 / (
+        ds_sec.rst**-2 * rst_var_sec
+        + ds_sec.rast**-2 * rast_var_sec).values.ravel()
 
     if not np.any(matching_indices):
         p0_est = np.concatenate(

@@ -1960,10 +1960,9 @@ class DataStore(xr.Dataset):
         variance_suffix : str
             String appended for storing the variance. Only used when method
             is wls.
-        method : {'ols', 'wls'}
-            Use `'ols'` for ordinary least squares and `'wls'` for weighted least
-            squares. `'wls'` is the default, and there is currently no reason to
-            use `'ols'`.
+        method : {'wls',}
+            Use `'wls'` for weighted least
+            squares.
         solver : {'sparse', 'stats'}
             Either use the homemade weighted sparse solver or the weighted
             dense matrix solver of statsmodels. The sparse solver uses much less
@@ -2537,10 +2536,8 @@ class DataStore(xr.Dataset):
         variance_suffix : str, optional
             String appended for storing the variance. Only used when method
             is wls.
-        method : {'ols', 'wls', 'external'}
-            Use `'ols'` for ordinary least squares and `'wls'` for weighted least
-            squares. `'wls'` is the default, and there is currently no reason to
-            use `'ols'`.
+        method : {'wls', 'external'}
+            Use `'wls'` for weighted least squares.
         solver : {'sparse', 'stats'}
             Either use the homemade weighted sparse solver or the weighted
             dense matrix solver of statsmodels. The sparse solver uses much less
