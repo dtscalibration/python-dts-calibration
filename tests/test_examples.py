@@ -18,7 +18,7 @@ def _notebook_run(path):
     # 'with' method is used so the file is closed by tempfile
     # and free to be overwritten.
     # with tempfile.NamedTemporaryFile('w', suffix=".ipynb") as fout:
-    with tempfile.NamedTemporaryFile('w', suffix=".nbconvert.ipynb") as fout:
+    with tempfile.NamedTemporaryFile('w', suffix=".nbconvert.ipynb", delete=False) as fout:
         nbpath = fout.name
 
         jupyter_exec = shutil.which('jupyter')
