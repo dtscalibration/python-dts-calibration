@@ -17,17 +17,22 @@ def _notebook_run(path):
     # Create a temporary file to write the notebook to.
     # 'with' method is used so the file is closed by tempfile
     # and free to be overwritten.
-    with tempfile.NamedTemporaryFile('w', suffix=".ipynb") as fout:
+    # with tempfile.NamedTemporaryFile('w', suffix=".ipynb") as fout:
+    with tempfile.NamedTemporaryFile('w', suffix=".nbconvert.ipynb") as fout:
         nbpath = fout.name
 
-    jupyter_exec = shutil.which('jupyter')
+        jupyter_exec = shutil.which('jupyter')
 
-    args = [
-        jupyter_exec, "nbconvert", path, "--output", nbpath, "--to",
-        "notebook", "--execute", "--ExecutePreprocessor.timeout=60"]
-    subprocess.check_call(args)
+        # recent version (~7.3.1) requires output without extension
+        out_path = os.path.join(
+                os.path.dirname(nbpath),
+                os.path.basename(nbpath).split('.', 1)[0])
+        args = [
+            jupyter_exec, "nbconvert", path, "--output", out_path, "--to",
+            "notebook", "--execute", "--ExecutePreprocessor.timeout=60"]
+        subprocess.check_call(args)
 
-    nb = nbformat.read(nbpath, nbformat.current_nbformat)
+        nb = nbformat.read(nbpath, nbformat.current_nbformat)
 
     errors = [
         output for cell in nb.cells if "outputs" in cell
