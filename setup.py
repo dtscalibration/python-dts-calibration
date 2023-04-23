@@ -80,7 +80,7 @@ setup(
         'toolz',
         'matplotlib',
         'netCDF4<=1.5.8',
-        'pandas >= 1.4, <2',  # required by xarray 
+        'pandas >= 1.4, <2',  # required by xarray
         'cloudpickle',
     ],
     extras_require={
