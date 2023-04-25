@@ -56,4 +56,4 @@ def test_ipynb():
     for fp in filepathlist:
         _, errors = _notebook_run(fp)
         assert errors == []
-        
+
