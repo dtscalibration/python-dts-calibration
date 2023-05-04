@@ -27,11 +27,9 @@ jobs:
           python3 --version
       - name: Upgrade pip and install dependencies
         run: |
-          python3 -m pip install --upgrade pip setuptools
+          python3 -m pip install --upgrade pip hatch
           python3 -m pip install .[docs]
       - name: Install pandoc using apt
         run: sudo apt install pandoc
-      - name: Convert the notebook examples to docs
-        run: python docs/nb_examples_to_docs.py
       - name: Build documentation
-        run: sphinx-build -b html docs dist/docs
+        run: hatch run docs:build

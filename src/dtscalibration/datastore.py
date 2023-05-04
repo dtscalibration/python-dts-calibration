@@ -4425,8 +4425,8 @@ dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
         ----------
         p_val : array-like, optional
             Define `p_val`, `p_var`, `p_cov` if you used an external function
-            for calibration. Has size 2 + `nt`. First value is :math:`\gamma`,
-            second is :math:`\Delta \\alpha`, others are :math:`C` for each
+            for calibration. Has size 2 + `nt`. First value is :math:`\\gamma`,
+            second is :math:`\\Delta \\alpha`, others are :math:`C` for each
             timestep.
             If set to False, no uncertainty in the parameters is propagated
             into the confidence intervals. Similar to the spec sheets of the DTS

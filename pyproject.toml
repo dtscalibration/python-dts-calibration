@@ -1,0 +1,189 @@
+[build-system]
+requires = ["hatchling>=1.8.0", "hatch-vcs", "hatch-fancy-pypi-readme"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "src/dtscalibration/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+  "/.github", "/.mypy_cache", "/.pytest_cache", "/.githooks",
+  "sonar-project.properties"
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dtscalibration"]
+
+[tool.hatch.publish.index]
+disable = true  # Requires confirmation when publishing to pypi.
+
+[project]
+name = "dtscalibration"
+description = "A Python package to load raw DTS files, perform a calibration, and plot the result."
+readme = "README.rst"
+license = "BSD-3-Clause"
+requires-python = ">=3.8, <3.11"
+authors = [
+  {email = "bdestombe@gmail.com"},
+  {name = "Bas des Tombe, Bart Schilperoort"}
+]
+maintainers = [
+  {name = "Bas des Tombe", email = "bdestombe@gmail.com"},
+  {name = "Bart Schilperoort", email = "b.schilperoort@gmail.com"},
+]
+keywords = [
+  "DTS",
+  "distributed temperature sensing",
+  "calibration",
+  "confidence intervals",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: Unix",
+    "Operating System :: POSIX",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "numpy",
+    "xarray<=2022.03.0",
+    "pyyaml",
+    "xmltodict",
+    "scipy",
+    "patsy",  # a dependency of statsmodels
+    "statsmodels",
+    "dask",
+    "toolz",
+    "matplotlib",
+    "netCDF4<=1.5.8",
+    "pandas<2",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+dev = [
+    "hatch",
+    "bump2version",
+    "ruff",
+    "isort",
+    "pytest",
+    "pytest-cov",
+    "jupyter",
+    "nbformat",  # Needed to run the tests
+]
+docs = [  # Required for ReadTheDocs
+    "myst_parser",
+    "sphinx",
+    "sphinx_rtd_theme",
+    "sphinx-autoapi",
+    "coverage[toml]",
+    "nbsphinx",
+    "ipykernel",
+    'recommonmark',
+    'sphinx-automodapi',
+    'pypandoc',
+    'jupyter_client',
+]
+
+[tool.hatch.envs.default]
+features = ["dev"]
+
+[tool.hatch.envs.default.scripts]
+lint = [
+  "ruff check .",
+  "isort --check-only --diff .",
+]
+format = ["isort .", "lint",]
+test = ["pytest ./src/ ./tests/",]  # --doctest-modules
+coverage = [
+  "pytest --cov --cov-report term --cov-report xml --junitxml=xunit-result.xml tests/",
+]
+
+[tool.hatch.envs.docs]
+features = ["docs"]
+
+[tool.hatch.envs.docs.scripts]
+build = [
+    "sphinx-build -c docs -b html docs dist/docs",    #"python docs/nb_examples_to_docs.py",
+]
+
+[tool.hatch.envs.matrix_test]
+features = ["dev"]
+
+[[tool.hatch.envs.matrix_test.matrix]]
+python = ["3.8", "3.9", "3.10"]
+
+[tool.hatch.envs.matrix_test.scripts]
+test = ["pytest ./src/ ./tests/",]  # --doctest-modules
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+select = [  # It would be nice to have the commented out checks working.
+  "E",  # pycodestyle
+  "F",  # pyflakes
+  # "B",  # flake8-bugbear
+  # "D",  # pydocstyle
+  # "C90",  # mccabe complexity
+  # "N",  # PEP8-naming
+  # "UP",  # pyupgrade (upgrade syntax to current syntax)
+  "PLE",  # Pylint error https://github.com/charliermarsh/ruff#error-ple
+  # "PLR",  # Pylint refactor (e.g. too-many-arguments)
+  # "PLW",  # Pylint warning (useless-else-on-loop)
+]
+extend-select = [
+  # "D401",  # First line should be in imperative mood
+  # "D400",  # First line should end in a period.
+  # "D404",  # First word of the docstring should not be "This"
+  "TID252",  # No relative imports (not pep8 compliant)
+]
+ignore = [
+  "PLR2004",  # magic value used in comparson
+  "E501",  # Line too long (want to have fixed
+]
+# Allow autofix for all enabled rules (when `--fix`) is provided.
+fixable = ["E", "F"]
+unfixable = []
+line-length = 88
+exclude = ["docs", "build"]
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+target-version = "py38"
+
+[tool.ruff.per-file-ignores]
+"tests/**" = ["D"]
+
+[tool.ruff.pydocstyle]
+convention = "google"
+
+[tool.ruff.mccabe]
+max-complexity = 10
+
+[tool.isort]
+py_version=39
+force_single_line = true
+known_first_party = ["dtscalibration"]
+skip = [".gitignore", ".tox", "docs"]
+src_paths = ["src", "tests"]
+line_length = 120
+
+[tool.coverage.run]
+branch = true
+source = ["src/dtscalibration"]
+command_line = "-m pytest"
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+  "@overload",
+  "if TYPE_CHECKING:",
+  "if typing.TYPE_CHECKING:"
+]

@@ -27,12 +27,10 @@ jobs:
           python3 --version
       - name: Upgrade pip and install dependencies
         run: |
-          python3 -m pip install --upgrade pip setuptools
-          python3 -m pip install .[dev,publishing]
-      - name: Check style against standards using flake8
-        run: flake8 src tests setup.py
-      - name: Check import order
-        run: isort --check-only src/dtscalibration --diff
+          python3 -m pip install --upgrade pip hatch
+          python3 -m pip install .[dev]
+      - name: Check style with Ruff and isort
+        run: hatch run lint
 
   build:
     name: Build for (${{ matrix.python-version }}, ${{ matrix.os }})
@@ -55,9 +53,9 @@ jobs:
           python3 --version
       - name: Upgrade pip and install dependencies
         run: |
-          python3 -m pip install --upgrade pip setuptools
-          python3 -m pip install .[dev,publishing]
+          python3 -m pip install --upgrade pip hatch
+          python3 -m pip install .[dev]
       - name: Run unit tests
-        run: pytest -v
+        run: hatch run test
       - name: Verify that we can build the package
-        run: python3 setup.py sdist bdist_wheel
+        run: hatch build

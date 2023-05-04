@@ -14,7 +14,7 @@ extensions = [
     'sphinx.ext.todo',
     'sphinx.ext.viewcode',
     'sphinx.ext.autosectionlabel',
-    # 'nbsphinx',
+    'nbsphinx',
     'sphinx.ext.mathjax',
     'sphinx.ext.intersphinx',
     'sphinx_automodapi.automodapi',
@@ -30,7 +30,7 @@ extensions = [
     ]
 
 if os.getenv('SPELLCHECK'):
-    extensions += 'sphinxcontrib.spelling',
+    extensions += 'sphinxcontrib.spelling'
     spelling_show_suggestions = True
     spelling_lang = 'en_US'
 
@@ -41,7 +41,7 @@ project = 'dtscalibration'
 year = str(date.today().year)
 author = 'Bas des Tombe and Bart Schilperoort'
 copyright = '{0}, {1}'.format(year, author)
-version = release = '1.1.2'
+version = release = '1.2.0'
 
 pygments_style = 'trac'
 templates_path = ['.']
@@ -69,3 +69,7 @@ napoleon_use_param = False
 
 # sphinx_automodapi.automodapi
 numpydoc_show_class_members = False
+
+# -- nbsphinx configuration --
+nbsphinx_allow_errors = False
+nbsphinx_execute = "always"

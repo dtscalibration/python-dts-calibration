@@ -8,7 +8,7 @@ Contents
    readme
    installation
    usage
-   examples/index
+   learn_by_examples
    reference/index
    contributing
    authors

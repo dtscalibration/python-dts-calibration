@@ -29,7 +29,7 @@ Overview
     :alt: PyPI Package latest release
     :target: https://pypi.python.org/pypi/dtscalibration
 
-.. |commits-since| image:: https://img.shields.io/github/commits-since/dtscalibration/python-dts-calibration/v1.1.2.svg
+.. |commits-since| image:: https://img.shields.io/github/commits-since/dtscalibration/python-dts-calibration/v1.2.0.svg
     :alt: Commits since latest release
     :target: https://github.com/dtscalibration/python-dts-calibration/compare/v1.1.1...main
 
@@ -44,10 +44,6 @@ Overview
 .. |zenodo| image:: https://zenodo.org/badge/143077491.svg
    :alt: It would be greatly appreciated if you could cite this package in eg articles presentations
    :target: https://zenodo.org/badge/latestdoi/143077491
-
-.. |example-notebooks| image:: https://mybinder.org/badge.svg
-   :alt: Interactively run the example notebooks online
-   :target: https://mybinder.org/v2/gh/dtscalibration/python-dts-calibration/main?filepath=examples%2Fnotebooks
 
 .. end-badges
 
@@ -90,14 +86,12 @@ Devices currently supported
 * AP Sensing: **CP320** .xml files *(single ended only)*
 * SensorTran: **SensorTran 5100** .dat binary files *(single ended only)*
 
-Learn by examples
-=================
-Interactively run the example notebooks online by clicking `here <https://mybinder.org/v2/gh/dtscalibration/python-dts-calibration/main?filepath=examples%2Fnotebooks>`_.
-
 Documentation
 =============
 
 https://python-dts-calibration.readthedocs.io/
+Example notebooks can be viewed [here](https://python-dts-calibration.readthedocs.io/en/latest/learn_by_examples.html).
+
 
 How to cite
 ===========
