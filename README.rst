@@ -47,7 +47,7 @@ Overview
 
 .. |example-notebooks| image:: https://mybinder.org/badge.svg
    :alt: Interactively run the example notebooks online
-   :target: https://mybinder.org/v2/gh/dtscalibration/python-dts-calibration/master?filepath=docs/notebooks
+   :target: https://mybinder.org/v2/gh/dtscalibration/python-dts-calibration/main?labpath=docs%2Fnotebooks
 
 .. end-badges
 
