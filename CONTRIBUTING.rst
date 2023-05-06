@@ -51,7 +51,8 @@ To set up `python-dts-calibration` for local development:
 
 4. Activate your desired development environment (e.g., a python venv or conda environment), and install the package in editable mode, with the dev dependencies::
 
-    pip install -e .[dev]
+    pip install -e ".[dev]"
+
 
 4. When you're done making changes, make sure the code follows the right style, that all tests pass, and that the docs build with the following commands::
 
