@@ -45,6 +45,10 @@ Overview
    :alt: It would be greatly appreciated if you could cite this package in eg articles presentations
    :target: https://zenodo.org/badge/latestdoi/143077491
 
+.. |example-notebooks| image:: https://mybinder.org/badge.svg
+   :alt: Interactively run the example notebooks online
+   :target: https://mybinder.org/v2/gh/dtscalibration/python-dts-calibration/master?filepath=docs/notebooks
+
 .. end-badges
 
 A Python package to load Distributed Temperature Sensing files, perform a calibration, and plot the result. A detailed description of the calibration procedure can be found at https://doi.org/10.3390/s20082235 .
