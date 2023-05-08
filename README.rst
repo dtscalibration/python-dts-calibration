@@ -14,8 +14,6 @@ Overview
       - | |version| |supported-versions| |commits-since|
     * - Citable
       - |zenodo|
-    * - Example notebooks
-      - |example-notebooks|
 
 .. |docs| image:: https://readthedocs.org/projects/python-dts-calibration/badge/?style=flat
     :target: https://python-dts-calibration.readthedocs.io/en/latest/
