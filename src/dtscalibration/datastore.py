@@ -50,46 +50,46 @@ class DataStore(xr.Dataset):
     never initiate this class directly, but use read_xml_dir or open_datastore
     functions instead.
 
-        Parameters
-        ----------
-        data_vars : dict-like, optional
-            A mapping from variable names to :py:class:`~xarray.DataArray`
-            objects, :py:class:`~xarray.Variable` objects or tuples of the
-            form ``(dims, data[, attrs])`` which can be used as arguments to
-            create a new ``Variable``. Each dimension must have the same length
-            in all variables in which it appears.
-        coords : dict-like, optional
-            Another mapping in the same form as the `variables` argument,
-            except the each item is saved on the datastore as a "coordinate".
-            These variables have an associated meaning: they describe
-            constant/fixed/independent quantities, unlike the
-            varying/measured/dependent quantities that belong in `variables`.
-            Coordinates values may be given by 1-dimensional arrays or scalars,
-            in which case `dims` do not need to be supplied: 1D arrays will be
-            assumed to give index values along the dimension with the same
-            name.
-        attrs : dict-like, optional
-            Global attributes to save on this datastore.
-        sections : Dict[str, List[slice]], optional
-            Sections for calibration. The dictionary should contain key-var
-            couples in which the key is the name of the calibration temp time
-            series. And the var is a list of slice objects as 'slice(start,
-            stop)'; start and stop in meter (float).
-        compat : {'broadcast_equals', 'equals', 'identical'}, optional
-            String indicating how to compare variables of the same name for
-            potential conflicts when initializing this datastore:
-            - 'broadcast_equals': all values must be equal when variables are
-              broadcast against each other to ensure common dimensions.
-            - 'equals': all values and dimensions must be the same.
-            - 'identical': all values, dimensions and attributes must be the
-              same.
+    Parameters
+    ----------
+    data_vars : dict-like, optional
+        A mapping from variable names to :py:class:`~xarray.DataArray`
+        objects, :py:class:`~xarray.Variable` objects or tuples of the
+        form ``(dims, data[, attrs])`` which can be used as arguments to
+        create a new ``Variable``. Each dimension must have the same length
+        in all variables in which it appears.
+    coords : dict-like, optional
+        Another mapping in the same form as the `variables` argument,
+        except the each item is saved on the datastore as a "coordinate".
+        These variables have an associated meaning: they describe
+        constant/fixed/independent quantities, unlike the
+        varying/measured/dependent quantities that belong in `variables`.
+        Coordinates values may be given by 1-dimensional arrays or scalars,
+        in which case `dims` do not need to be supplied: 1D arrays will be
+        assumed to give index values along the dimension with the same
+        name.
+    attrs : dict-like, optional
+        Global attributes to save on this datastore.
+    sections : Dict[str, List[slice]], optional
+        Sections for calibration. The dictionary should contain key-var
+        couples in which the key is the name of the calibration temp time
+        series. And the var is a list of slice objects as 'slice(start,
+        stop)'; start and stop in meter (float).
+    compat : {'broadcast_equals', 'equals', 'identical'}, optional
+        String indicating how to compare variables of the same name for
+        potential conflicts when initializing this datastore:
+         - 'broadcast_equals': all values must be equal when variables are
+           broadcast against each other to ensure common dimensions.
+         - 'equals': all values and dimensions must be the same.
+         - 'identical': all values, dimensions and attributes must be the
+           same.
 
-        See Also
-        --------
-        dtscalibration.read_xml_dir : Load measurements stored in XML-files
-        dtscalibration.open_datastore : Load (calibrated) measurements from
-        netCDF-like file
-        """
+    See Also
+    --------
+    dtscalibration.read_xml_dir : Load measurements stored in XML-files
+    dtscalibration.open_datastore : Load (calibrated) measurements from
+    netCDF-like file
+    """
     def __init__(self, *args, autofill_dim_attrs=True, **kwargs):
         super().__init__(*args, **kwargs)
 
