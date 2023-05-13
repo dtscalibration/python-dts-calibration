@@ -93,9 +93,8 @@ Devices currently supported
 Documentation
 =============
 
-https://python-dts-calibration.readthedocs.io/
-Example notebooks can be viewed [here](https://python-dts-calibration.readthedocs.io/en/latest/learn_by_examples.html).
-
+* Documentation at https://python-dts-calibration.readthedocs.io/ .
+* Example notebooks that work within the browser can be viewed `here <https://python-dts-calibration.readthedocs.io/en/latest/learn_by_examples.html>`_.
 
 How to cite
 ===========
