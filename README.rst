@@ -14,6 +14,8 @@ Overview
       - | |version| |supported-versions| |commits-since|
     * - Citable
       - |zenodo|
+    * - Example notebooks
+      - |example-notebooks|
 
 .. |docs| image:: https://readthedocs.org/projects/python-dts-calibration/badge/?style=flat
     :target: https://python-dts-calibration.readthedocs.io/en/latest/
@@ -42,6 +44,10 @@ Overview
 .. |zenodo| image:: https://zenodo.org/badge/143077491.svg
    :alt: It would be greatly appreciated if you could cite this package in eg articles presentations
    :target: https://zenodo.org/badge/latestdoi/143077491
+
+.. |example-notebooks| image:: https://mybinder.org/badge.svg
+   :alt: Interactively run the example notebooks online
+   :target: https://mybinder.org/v2/gh/dtscalibration/python-dts-calibration/main?labpath=docs%2Fnotebooks
 
 .. end-badges
 
