@@ -1,8 +1,17 @@
 
 Changelog
 =========
-[1.2.0] (13-03-2023)
 
+2.0.0 (2023-05-24)
+------------------
+
+* Faster approach on error propagation. As alternative to computational intensive Monte Carlo runs.
+* Refractored some of the indexing logic of the calibration routines.
+* Rewritten single-ended and double-ended example notebooks.
+* Removed support for OLS calibration, as with minor extra efforts WLS could be used, which has significant benefits.
+
+1.2.0 (2023-03-13)
+------------------
 Bugfixes
 
 * Fixed deprecated np.float and np.int
