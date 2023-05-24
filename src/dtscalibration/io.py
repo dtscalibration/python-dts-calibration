@@ -11,6 +11,7 @@ import pandas as pd
 
 # Returns a dictionary with the attributes to the dimensions.
 #  The keys refer to the naming used in the raw files.
+# TODO: attrs for st_var and use it in parse_st_var function
 _dim_attrs = {
     ('x', 'distance'):
         dict(
@@ -22,7 +23,7 @@ _dim_attrs = {
         dict(
             name='tmp',
             description='Temperature calibrated by device',
-            units='degC'),
+            units=r'$^\circ$C'),
     ('st',): dict(name='st', description='Stokes intensity', units='-'),
     ('ast',): dict(name='ast', description='anti-Stokes intensity', units='-'),
     ('rst',):
@@ -32,6 +33,63 @@ _dim_attrs = {
             name='rast',
             description='reverse anti-Stokes intensity',
             units='-'),
+    ('tmpf',):
+        dict(
+            name='tmpf',
+            description='Temperature estimated using the Stokes and anti-Stokes from the Forward channel',
+            units=r'$^\circ$C'),
+    ('tmpb',):
+        dict(
+            name='tmpb',
+            description='Temperature estimated using the Stokes and anti-Stokes from the Backward channel',
+            units=r'$^\circ$C'),
+    ('tmpw',):
+        dict(
+            name='tmpw',
+            description='Temperature estimated using the Stokes and anti-Stokes from both the Forward and Backward channel.',
+            units=r'$^\circ$C'),
+    ('tmpf_var',):
+        dict(
+            name='tmpf_var',
+            description='Uncertainty variance in tmpf estimated with linear-error propagation',
+            units=r'$^\circ$C$^2$'),
+    ('tmpb_var',):
+        dict(
+            name='tmpb_var',
+            description='Uncertainty variance in tmpb estimated with linear-error propagation',
+            units=r'$^\circ$C$^2$'),
+    ('tmpw_var',):
+        dict(
+            name='tmpw_var',
+            description='Uncertainty variance in tmpw estimated with linear-error propagation',
+            units=r'$^\circ$C$^2$'),
+    ('tmpw_var_lower',):
+        dict(
+            name='tmpw_var_lower',
+            description='Lower bound of uncertainty variance in tmpw estimated with linear-error propagation. '
+                        'Excludes the parameter uncertainties.',
+            units=r'$^\circ$C$^2$'),
+    ('tmpw_var_approx',):
+        dict(
+            name='tmpw_var_upper',
+            description='Upper bound of uncertainty variance in tmpw estimated with linear-error propagation. '
+                        'Excludes the correlation between tmpf and tmpb caused by alpha.',
+            units=r'$^\circ$C$^2$'),
+    ('tmpf_mc_var',):
+        dict(
+            name='tmpf_mc_var',
+            description='Uncertainty variance in tmpf estimated with Monte Carlo',
+            units=r'$^\circ$C$^2$'),
+    ('tmpb_mc_var',):
+        dict(
+            name='tmpb_mc_var',
+            description='Uncertainty variance in tmpb estimated with Monte Carlo',
+            units=r'$^\circ$C$^2$'),
+    ('tmpw_mc_var',):
+        dict(
+            name='tmpw_mc_var',
+            description='Uncertainty variance in tmpw estimated with Monte Carlo',
+            units=r'$^\circ$C$^2$'),
     ('acquisitionTime',):
         dict(
             name='acquisitionTime',
@@ -963,21 +1021,21 @@ def read_sensornet_files_routine_v3(
                     'name': 'Probe 1 temperature',
                     'description': 'reference probe 1 '
                                    'temperature',
-                    'units': 'degC'}),
+                    'units': r'$^\circ$C'}),
         'probe2Temperature':
             (
                 'time', probe2temperature, {
                     'name': 'Probe 2 temperature',
                     'description': 'reference probe 2 '
                                    'temperature',
-                    'units': 'degC'}),
+                    'units': r'$^\circ$C'}),
         'referenceTemperature':
             (
                 'time', referenceTemperature, {
                     'name': 'reference temperature',
                     'description': 'Internal reference '
                                    'temperature',
-                    'units': 'degC'}),
+                    'units': r'$^\circ$C'}),
         'gamma_ddf':
             (
                 'time', gamma_ddf, {
@@ -1207,7 +1265,7 @@ def read_sensortran_files_routine(
                     'name': 'reference temperature',
                     'description': 'Internal reference '
                                    'temperature',
-                    'units': 'degC'}),
+                    'units': r'$^\circ$C'}),
         'st_zero':
             (
                 ['time'], ST_zero, {
@@ -1823,13 +1881,13 @@ def coords_time(
             k: (
                 'time', pd.DatetimeIndex(v).tz_localize(
                     tz=timezone_input_files).tz_convert(
-                        timezone_netcdf).astype('datetime64[ns]'),
+                        timezone_netcdf).tz_localize(None).astype('datetime64[ns]'),
                 time_attrs[k])
             for k, v in coords_zip}
     else:
         coords = {
             k: (
-                'time', pd.DatetimeIndex(v).tz_convert(timezone_netcdf).astype(
+                'time', pd.DatetimeIndex(v).tz_convert(timezone_netcdf).tz_localize(None).astype(
                     'datetime64[ns]'), time_attrs[k])
             for k, v in coords_zip}
 

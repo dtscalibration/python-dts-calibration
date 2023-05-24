@@ -2,12 +2,13 @@
 import numpy as np
 import scipy.sparse as sp
 import statsmodels.api as sm
+import xarray as xr
 from scipy.sparse import linalg as ln
 
 
-def parse_st_var(ds, st_var, st_label='st', ix_sel=None):
+def parse_st_var(ds, st_var, st_label='st'):
     """
-    Utility function to check the st_var input, and to return in the correct
+    Utility function to check the st_var input and to return in DataArray
     format.
 
     Parameters
@@ -24,39 +25,21 @@ def parse_st_var(ds, st_var, st_label='st', ix_sel=None):
     st_label : string
         Name of the (reverse) stokes/anti-stokes data variable which is being
         parsed.
-    ix_sel : None, array-like
-        Index mapping along the x-dimension to apply to st_var. Definition
-        required when st_var is array-like
 
     Returns
     -------
     Parsed st_var
     """
     if callable(st_var):
-        st_var_sec = st_var(ds[st_label].isel(x=ix_sel)).values
-
-    elif np.size(st_var) > 1:
-        if ix_sel is None:
-            raise ValueError(
-                '`ix_sel` kwarg not defined while `st_var` is array-like')
-
-        for a, b in zip(st_var.shape[::-1], ds[st_label].shape[::-1]):
-            if a == 1 or b == 1 or a == b:
-                pass
-            else:
-                raise ValueError(
-                    st_label + '_var is not broadcastable to ds.' + st_label)
-
-        if len(st_var.shape) > 1:
-            st_var_sec = np.asarray(st_var, dtype=float)[ix_sel]
-        else:
-            st_var_sec = np.asarray(st_var, dtype=float)
-
+        st_var_sec = st_var(ds[st_label])
     else:
-        st_var_sec = np.asarray(st_var, dtype=float)
+        st_var_sec = xr.ones_like(ds[st_label]) * st_var
 
     assert np.all(np.isfinite(st_var_sec)), \
         'NaN/inf values detected in ' + st_label + '_var. Please check input.'
+
+    assert np.all(st_var_sec > 0.), \
+        'Negative values detected in ' + st_label + '_var. Please check input.'
 
     return st_var_sec
 
@@ -78,13 +61,13 @@ def calibration_single_ended_solver(  # noqa: MC0001
     ----------
     ds : DataStore
     st_var : float, array-like, optional
-        If `None` use ols calibration. If `float` the variance of the noise
+        If `float` the variance of the noise
         from the Stokes detector is described with a single value. Or when the
         variance is a function of the intensity (Poisson distributed) define an
         array with shape (nx, nt), where nx are the number of calibration
         locations.
     ast_var : float, array-like, optional
-        If `None` use ols calibration. If `float` the variance of the noise
+        If `float` the variance of the noise
         from the Stokes detector is described with a single value. Or when the
         variance is a function of the intensity (Poisson distributed) define an
         array with shape (nx, nt), where nx are the number of calibration
@@ -256,21 +239,21 @@ def calibration_single_ended_solver(  # noqa: MC0001
 
     # w
     if st_var is not None:
-        st_var_sec = parse_st_var(ds, st_var, st_label='st', ix_sel=ix_sec)
-        ast_var_sec = parse_st_var(ds, ast_var, st_label='ast', ix_sel=ix_sec)
+        st_var_sec = parse_st_var(ds, st_var, st_label='st').isel(x=ix_sec).values
+        ast_var_sec = parse_st_var(ds, ast_var, st_label='ast').isel(x=ix_sec).values
 
         w = 1 / (ds_sec.st**-2 * st_var_sec
                  + ds_sec.ast**-2 * ast_var_sec).values.ravel()
 
         if np.any(matching_indices):
             st_var_ms0 = parse_st_var(
-                ds, st_var, st_label='st', ix_sel=matching_indices[:, 0])
+                ds, st_var, st_label='st').isel(x=matching_indices[:, 0]).values
             st_var_ms1 = parse_st_var(
-                ds, st_var, st_label='st', ix_sel=matching_indices[:, 1])
+                ds, st_var, st_label='st').isel(x=matching_indices[:, 1]).values
             ast_var_ms0 = parse_st_var(
-                ds, ast_var, st_label='ast', ix_sel=matching_indices[:, 0])
+                ds, ast_var, st_label='ast').isel(x=matching_indices[:, 0]).values
             ast_var_ms1 = parse_st_var(
-                ds, ast_var, st_label='ast', ix_sel=matching_indices[:, 1])
+                ds, ast_var, st_label='ast').isel(x=matching_indices[:, 1]).values
 
             w_ms = 1 / (
                 (ds_ms0.st.values**-2 * st_var_ms0) +
@@ -354,25 +337,25 @@ def calibration_double_ended_solver(  # noqa: MC0001
     ----------
     ds : DataStore
     st_var : float, array-like, optional
-        If `None` use ols calibration. If `float` the variance of the noise
+        If `float` the variance of the noise
         from the Stokes detector is described with a single value. Or when the
         variance is a function of the intensity (Poisson distributed) define an
         array with shape (nx, nt), where nx are the number of calibration
         locations.
     ast_var : float, array-like, optional
-        If `None` use ols calibration. If `float` the variance of the noise
+        If `float` the variance of the noise
         from the Stokes detector is described with a single value. Or when the
         variance is a function of the intensity (Poisson distributed) define an
         array with shape (nx, nt), where nx are the number of calibration
         locations.
     rst_var : float, array-like, optional
-        If `None` use ols calibration. If `float` the variance of the noise
+        If `float` the variance of the noise
         from the Stokes detector is described with a single value. Or when the
         variance is a function of the intensity (Poisson distributed) define an
         array with shape (nx, nt), where nx are the number of calibration
         locations.
     rast_var : float, array-like, optional
-        If `None` use ols calibration. If `float` the variance of the noise
+        If `float` the variance of the noise
         from the Stokes detector is described with a single value. Or when the
         variance is a function of the intensity (Poisson distributed) define an
         array with shape (nx, nt), where nx are the number of calibration
@@ -424,22 +407,17 @@ def calibration_double_ended_solver(  # noqa: MC0001
     y_B = np.log(ds_sec.rst / ds_sec.rast).values.ravel()
 
     # w
-    if st_var is not None:  # WLS
-        st_var_sec = parse_st_var(ds, st_var, st_label='st', ix_sel=ix_sec)
-        ast_var_sec = parse_st_var(ds, ast_var, st_label='ast', ix_sel=ix_sec)
-        rst_var_sec = parse_st_var(ds, rst_var, st_label='rst', ix_sel=ix_sec)
-        rast_var_sec = parse_st_var(
-            ds, rast_var, st_label='rast', ix_sel=ix_sec)
+    st_var_sec = parse_st_var(ds, st_var, st_label='st').isel(x=ix_sec).values
+    ast_var_sec = parse_st_var(ds, ast_var, st_label='ast').isel(x=ix_sec).values
+    rst_var_sec = parse_st_var(ds, rst_var, st_label='rst').isel(x=ix_sec).values
+    rast_var_sec = parse_st_var(
+        ds, rast_var, st_label='rast').isel(x=ix_sec).values
 
-        w_F = 1 / (ds_sec.st**-2 * st_var_sec
-                   + ds_sec.ast**-2 * ast_var_sec).values.ravel()
-        w_B = 1 / (
-            ds_sec.rst**-2 * rst_var_sec
-            + ds_sec.rast**-2 * rast_var_sec).values.ravel()
-
-    else:  # OLS
-        w_F = np.ones(nt * nx_sec)
-        w_B = np.ones(nt * nx_sec)
+    w_F = 1 / (ds_sec.st**-2 * st_var_sec
+               + ds_sec.ast**-2 * ast_var_sec).values.ravel()
+    w_B = 1 / (
+        ds_sec.rst**-2 * rst_var_sec
+        + ds_sec.rast**-2 * rast_var_sec).values.ravel()
 
     if not np.any(matching_indices):
         p0_est = np.concatenate(
@@ -521,24 +499,24 @@ def calibration_double_ended_solver(  # noqa: MC0001
 
         y = np.concatenate((y_F, y_B, y_eq1, y_eq2, y_eq3))
 
-        st_var_hix = parse_st_var(ds, st_var, st_label='st', ix_sel=hix)
-        ast_var_hix = parse_st_var(ds, ast_var, st_label='ast', ix_sel=hix)
-        rst_var_hix = parse_st_var(ds, rst_var, st_label='rst', ix_sel=hix)
-        rast_var_hix = parse_st_var(ds, rast_var, st_label='rast', ix_sel=hix)
+        st_var_hix = parse_st_var(ds, st_var, st_label='st').isel(x=hix).values
+        ast_var_hix = parse_st_var(ds, ast_var, st_label='ast').isel(x=hix).values
+        rst_var_hix = parse_st_var(ds, rst_var, st_label='rst').isel(x=hix).values
+        rast_var_hix = parse_st_var(ds, rast_var, st_label='rast').isel(x=hix).values
 
-        st_var_tix = parse_st_var(ds, st_var, st_label='st', ix_sel=tix)
-        ast_var_tix = parse_st_var(ds, ast_var, st_label='ast', ix_sel=tix)
-        rst_var_tix = parse_st_var(ds, rst_var, st_label='rst', ix_sel=tix)
-        rast_var_tix = parse_st_var(ds, rast_var, st_label='rast', ix_sel=tix)
+        st_var_tix = parse_st_var(ds, st_var, st_label='st').isel(x=tix).values
+        ast_var_tix = parse_st_var(ds, ast_var, st_label='ast').isel(x=tix).values
+        rst_var_tix = parse_st_var(ds, rst_var, st_label='rst').isel(x=tix).values
+        rast_var_tix = parse_st_var(ds, rast_var, st_label='rast').isel(x=tix).values
 
         st_var_mnc = parse_st_var(
-            ds, st_var, st_label='st', ix_sel=ix_match_not_cal)
+            ds, st_var, st_label='st').isel(x=ix_match_not_cal).values
         ast_var_mnc = parse_st_var(
-            ds, ast_var, st_label='ast', ix_sel=ix_match_not_cal)
+            ds, ast_var, st_label='ast').isel(x=ix_match_not_cal).values
         rst_var_mnc = parse_st_var(
-            ds, rst_var, st_label='rst', ix_sel=ix_match_not_cal)
+            ds, rst_var, st_label='rst').isel(x=ix_match_not_cal).values
         rast_var_mnc = parse_st_var(
-            ds, rast_var, st_label='rast', ix_sel=ix_match_not_cal)
+            ds, rast_var, st_label='rast').isel(x=ix_match_not_cal).values
 
         w_eq1 = 1 / (
             (ds_hix.st**-2 * st_var_hix
