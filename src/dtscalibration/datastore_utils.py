@@ -123,15 +123,7 @@ def merge_double_ended(ds_fw, ds_bw, cable_length, plot_result=True):
             and ds_bw.attrs['isDoubleEnded'] == '0'), \
         "(one of the) input DataStores is already double ended"
 
-    assert (ds_fw.time.size == ds_bw.time.size), \
-        "The two input DataStore objects are not of the same size in the " +\
-        "time dimension."
-
-    assert ds_bw.time.size == ds_fw.time.size, "Measurements from certain times are missing"
-
-    # Assume forward to have been first and remain consistent.
-    assert np.all(ds_bw.time.values > ds_fw.time.values), \
-        "Measurements are not consecutive. First a forward measurement then a backward measurement"
+    ds_fw, ds_bw = merge_double_ended_times(ds_fw, ds_bw)
 
     ds = ds_fw.copy()
     ds_bw = ds_bw.copy()
@@ -162,6 +154,43 @@ def merge_double_ended(ds_fw, ds_bw, cable_length, plot_result=True):
         ax.legend()
 
     return ds
+
+
+def merge_double_ended_times(ds_fw, ds_bw):
+    """Merge two channels eventhough channels might be missing measurements.
+    No protection against swapping fw and bw"""
+    if 'forward channel' in ds_fw.attrs and 'forward channel' in ds_bw.attrs:
+        assert ds_fw.attrs['forward channel'] < ds_bw.attrs['forward channel'], "ds_fw and ds_bw are swapped"
+    elif 'forwardMeasurementChannel' in ds_fw.attrs and 'forwardMeasurementChannel' in ds_bw.attrs:
+        assert ds_fw.attrs['forwardMeasurementChannel'] < ds_bw.attrs['forwardMeasurementChannel'], \
+            "ds_fw and ds_bw are swapped"
+
+    if (ds_bw.time.size == ds_fw.time.size) and np.all(ds_bw.time.values > ds_fw.time.values):
+        return ds_fw, ds_bw
+
+    iuse_chfw = list()
+    iuse_chbw = list()
+
+    times_fw = {k: ("fw", i) for i, k in enumerate(ds_fw.time.values)}
+    times_bw = {k: ("bw", i) for i, k in enumerate(ds_bw.time.values)}
+    times_all = dict(sorted(({**times_fw, **times_bw}).items()))
+    times_all_val = list(times_all.values())
+
+    for (direction, ind), (direction_next, ind_next) in zip(times_all_val[:-1], times_all_val[1:]):
+        if direction == "fw" and direction_next == "bw":
+            iuse_chfw.append(ind)
+            iuse_chbw.append(ind_next)
+
+        elif direction == "bw" and direction_next == "fw":
+            pass
+
+        elif direction == "fw" and direction_next == "fw":
+            print(f"Missing backward measurement beween {ds_fw.time.values[ind]} and {ds_fw.time.values[ind_next]}")
+
+        elif direction == "bw" and direction_next == "bw":
+            print(f"Missing forward measurement beween {ds_bw.time.values[ind]} and {ds_bw.time.values[ind_next]}")
+
+    return ds_fw.isel(time=iuse_chfw), ds_fw.isel(time=iuse_chfw)
 
 
 # pylint: disable=too-many-locals
