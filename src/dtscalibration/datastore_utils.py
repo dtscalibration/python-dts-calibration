@@ -127,6 +127,12 @@ def merge_double_ended(ds_fw, ds_bw, cable_length, plot_result=True):
         "The two input DataStore objects are not of the same size in the " +\
         "time dimension."
 
+    assert ds_bw.time.size == ds_fw.time.size, "Measurements from certain times are missing"
+
+    # Assume forward to have been first and remain consistent.
+    assert np.all(ds_bw.time.values > ds_fw.time.values), \
+        "Measurements are not consecutive. First a forward measurement then a backward measurement"
+
     ds = ds_fw.copy()
     ds_bw = ds_bw.copy()
 
