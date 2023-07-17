@@ -157,9 +157,13 @@ def merge_double_ended(ds_fw, ds_bw, cable_length, plot_result=True):
 
 
 def merge_double_ended_times(ds_fw, ds_bw):
-    """Merge two channels even though channels might be missing measurements.
-    Skips measurements for which there is no partner measurement. Little
-    protection against swapping fw and bw is implemented.
+    """Helper for `merge_double_ended()` to deal with missing measurements. The
+    number of measurements of the forward and backward channels might get out
+    of sync if the device shuts down before the measurement of the last channel
+    is complete. This skips all measurements that are not accompanied by a partner
+    channel.
+
+    Provides little protection against swapping fw and bw.
 
     If all measurements are recorded: fw_t0, bw_t0, fw_t1, bw_t1, fw_t2, bw_t2, ..
         > all are passed
@@ -169,12 +173,13 @@ def merge_double_ended_times(ds_fw, ds_bw):
      - fw_t0, bw_t0, fw_t1, fw_t2, bw_t2, .. > fw_t0, bw_t0, fw_t2, bw_t2, ..
      - fw_t0, bw_t0, bw_t1, fw_t2, fw_t3, bw_t3, .. > fw_t0, bw_t0, fw_t3, bw_t3,
 
-    Not perfect and the following situation is not caught:
+    Mixing forward and backward channels can be problematic when there is a pause
+    after measuring all channels. This function is not perfect as the following
+    situation is not caught:
      - fw_t0, bw_t0, fw_t1, bw_t2, fw_t3, bw_t3, ..
         > fw_t0, bw_t0, fw_t1, bw_t2, fw_t3, bw_t3, ..
 
-    Mixing forward and backward channels can be problematic when there is a pause
-    after measuring all channels. This routine checks that the lowest channel
+    This routine checks that the lowest channel
     number is measured first (aka the forward channel), but it doesn't catch the
     last case as it doesn't know that fw_t1 and bw_t2 belong to different cycles.
 
