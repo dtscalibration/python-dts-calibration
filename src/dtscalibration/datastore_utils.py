@@ -157,8 +157,43 @@ def merge_double_ended(ds_fw, ds_bw, cable_length, plot_result=True):
 
 
 def merge_double_ended_times(ds_fw, ds_bw):
-    """Merge two channels eventhough channels might be missing measurements.
-    No protection against swapping fw and bw"""
+    """Merge two channels even though channels might be missing measurements.
+    Skips measurements for which there is no partner measurement. Little
+    protection against swapping fw and bw is implemented.
+
+    If all measurements are recorded: fw_t0, bw_t0, fw_t1, bw_t1, fw_t2, bw_t2, ..
+        > all are passed
+
+    If some are missing the accompanying measurement is skipped:
+     - fw_t0, bw_t0, bw_t1, fw_t2, bw_t2, .. > fw_t0, bw_t0, fw_t2, bw_t2, ..
+     - fw_t0, bw_t0, fw_t1, fw_t2, bw_t2, .. > fw_t0, bw_t0, fw_t2, bw_t2, ..
+     - fw_t0, bw_t0, bw_t1, fw_t2, fw_t3, bw_t3, .. > fw_t0, bw_t0, fw_t3, bw_t3,
+
+    Not perfect and the following situation is not caught:
+     - fw_t0, bw_t0, fw_t1, bw_t2, fw_t3, bw_t3, ..
+        > fw_t0, bw_t0, fw_t1, bw_t2, fw_t3, bw_t3, ..
+
+    Mixing forward and backward channels can be problematic when there is a pause
+    after measuring all channels. This routine checks that the lowest channel
+    number is measured first (aka the forward channel), but it doesn't catch the
+    last case as it doesn't know that fw_t1 and bw_t2 belong to different cycles.
+
+    Parameters
+    ----------
+    ds_fw : DataSore object
+        DataStore object representing the forward measurement channel
+    ds_bw : DataSore object
+        DataStore object representing the backward measurement channel
+
+    Returns
+    -------
+    ds_fw_sel : DataSore object
+        DataStore object representing the forward measurement channel with
+        only times for which there is also a ds_bw measurement
+    ds_bw_sel : DataSore object
+        DataStore object representing the backward measurement channel with
+        only times for which there is also a ds_fw measurement
+    """
     if 'forward channel' in ds_fw.attrs and 'forward channel' in ds_bw.attrs:
         assert ds_fw.attrs['forward channel'] < ds_bw.attrs['forward channel'], "ds_fw and ds_bw are swapped"
     elif 'forwardMeasurementChannel' in ds_fw.attrs and 'forwardMeasurementChannel' in ds_bw.attrs:
