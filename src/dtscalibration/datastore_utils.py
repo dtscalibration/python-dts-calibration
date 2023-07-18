@@ -230,7 +230,7 @@ def merge_double_ended_times(ds_fw, ds_bw):
         elif direction == "bw" and direction_next == "bw":
             print(f"Missing forward measurement beween {ds_bw.time.values[ind]} and {ds_bw.time.values[ind_next]}")
 
-    return ds_fw.isel(time=iuse_chfw), ds_fw.isel(time=iuse_chfw)
+    return ds_fw.isel(time=iuse_chfw), ds_bw.isel(time=iuse_chbw)
 
 
 # pylint: disable=too-many-locals
