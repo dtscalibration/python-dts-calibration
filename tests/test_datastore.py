@@ -639,8 +639,23 @@ def test_merge_double_ended():
     np.testing.assert_approx_equal(result, -3712866.0382, significant=10)
 
 
-def test_merge_double_ended_times():
+@pytest.mark.parametrize(
+    "inotinfw, inotinbw, inotinout",
+    [
+        ([], [], []),
+        ([1], [], [1]),
+        ([], [1], [1]),
+        ([1], [1], [1]),
+        ([1, 2], [], [1, 2]),
+        ([], [1, 2], [1, 2]),
+        ([1], [2], [1, 2]),
+        pytest.param([2], [1], [1, 2], marks=pytest.mark.xfail)
+    ])
+def test_merge_double_ended_times(inotinfw, inotinbw, inotinout):
     """
+    Arguments are the indices not included in resp fw measurements, bw measurements,
+    and merged output.
+
     If all measurements are recorded: fw_t0, bw_t0, fw_t1, bw_t1, fw_t2, bw_t2, ..
         > all are passed
 
@@ -658,6 +673,7 @@ def test_merge_double_ended_times():
     This routine checks that the lowest channel
     number is measured first (aka the forward channel), but it doesn't catch the
     last case as it doesn't know that fw_t1 and bw_t2 belong to different cycles.
+    Any ideas are welcome.
     """
     filepath_fw = data_dir_double_single_ch1
     filepath_bw = data_dir_double_single_ch2
@@ -670,27 +686,16 @@ def test_merge_double_ended_times():
     ds_fw.st.values = np.tile(np.arange(ds_fw.time.size)[None], (ds_fw.x.size, 1))
     ds_bw.st.values = np.tile(np.arange(ds_bw.time.size)[None], (ds_bw.x.size, 1))
 
-    # time index that is not included in: fw, bw, merged
-    cases_iisnotin = [
-        ([], [], []),
-        ([1], [], [1]),
-        ([], [1], [1]),
-        ([1], [1], [1]),
-        ([1, 2], [], [1, 2]),
-        ([], [1, 2], [1, 2]),
-        ([1], [2], [1, 2]),
-    ]
-    # The following is not caught:
-    # ([2], [1], [1, 2]),
-    cases_iisin = [tuple(list(i for i in range(6) if i not in a) for a in b) for b in cases_iisnotin]
+    # transform time index that is not included in: fw, bw, merged, to the ones included
+    ifw = list(i for i in range(6) if i not in inotinfw)
+    ibw = list(i for i in range(6) if i not in inotinbw)
+    iout = list(i for i in range(6) if i not in inotinout)
 
-    for ifw, ibw, iout in cases_iisin:
-        ds = merge_double_ended(
-            ds_fw.isel(time=ifw),
-            ds_bw.isel(time=ibw),
-            cable_length=cable_length,
-            plot_result=False,
-            verbose=False)
-        assert ds.time.size == len(iout) and np.all(ds.st.isel(x=0) == iout), \
-            f"FW:{ifw} & BW:{ibw} should lead to {iout} but instead leads to {ds.st.isel(x=0).values}"
-
+    ds = merge_double_ended(
+        ds_fw.isel(time=ifw),
+        ds_bw.isel(time=ibw),
+        cable_length=cable_length,
+        plot_result=False,
+        verbose=False)
+    assert ds.time.size == len(iout) and np.all(ds.st.isel(x=0) == iout), \
+        f"FW:{ifw} & BW:{ibw} should lead to {iout} but instead leads to {ds.st.isel(x=0).values}"
