@@ -93,7 +93,7 @@ def check_timestep_allclose(ds, eps=0.01):
                                               'for all time steps'
 
 
-def merge_double_ended(ds_fw, ds_bw, cable_length, plot_result=True):
+def merge_double_ended(ds_fw, ds_bw, cable_length, plot_result=True, verbose=True):
     """
     Some measurements are not set up on the DTS-device as double-ended
     meausurements. This means that the two channels have to be merged manually.
@@ -123,7 +123,7 @@ def merge_double_ended(ds_fw, ds_bw, cable_length, plot_result=True):
             and ds_bw.attrs['isDoubleEnded'] == '0'), \
         "(one of the) input DataStores is already double ended"
 
-    ds_fw, ds_bw = merge_double_ended_times(ds_fw, ds_bw)
+    ds_fw, ds_bw = merge_double_ended_times(ds_fw, ds_bw, verbose=verbose)
 
     ds = ds_fw.copy()
     ds_bw = ds_bw.copy()
@@ -156,7 +156,7 @@ def merge_double_ended(ds_fw, ds_bw, cable_length, plot_result=True):
     return ds
 
 
-def merge_double_ended_times(ds_fw, ds_bw):
+def merge_double_ended_times(ds_fw, ds_bw, verbose=True):
     """Helper for `merge_double_ended()` to deal with missing measurements. The
     number of measurements of the forward and backward channels might get out
     of sync if the device shuts down before the measurement of the last channel
@@ -225,10 +225,12 @@ def merge_double_ended_times(ds_fw, ds_bw):
             pass
 
         elif direction == "fw" and direction_next == "fw":
-            print(f"Missing backward measurement beween {ds_fw.time.values[ind]} and {ds_fw.time.values[ind_next]}")
+            if verbose:
+                print(f"Missing backward measurement beween {ds_fw.time.values[ind]} and {ds_fw.time.values[ind_next]}")
 
         elif direction == "bw" and direction_next == "bw":
-            print(f"Missing forward measurement beween {ds_bw.time.values[ind]} and {ds_bw.time.values[ind_next]}")
+            if verbose:
+                print(f"Missing forward measurement beween {ds_bw.time.values[ind]} and {ds_bw.time.values[ind_next]}")
 
     return ds_fw.isel(time=iuse_chfw), ds_bw.isel(time=iuse_chbw)
 

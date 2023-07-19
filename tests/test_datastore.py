@@ -637,3 +637,60 @@ def test_merge_double_ended():
     result = (ds.isel(time=0).st - ds.isel(time=0).rst).sum().values
 
     np.testing.assert_approx_equal(result, -3712866.0382, significant=10)
+
+
+def test_merge_double_ended_times():
+    """
+    If all measurements are recorded: fw_t0, bw_t0, fw_t1, bw_t1, fw_t2, bw_t2, ..
+        > all are passed
+
+    If some are missing the accompanying measurement is skipped:
+     - fw_t0, bw_t0, bw_t1, fw_t2, bw_t2, .. > fw_t0, bw_t0, fw_t2, bw_t2, ..
+     - fw_t0, bw_t0, fw_t1, fw_t2, bw_t2, .. > fw_t0, bw_t0, fw_t2, bw_t2, ..
+     - fw_t0, bw_t0, bw_t1, fw_t2, fw_t3, bw_t3, .. > fw_t0, bw_t0, fw_t3, bw_t3,
+
+    Mixing forward and backward channels can be problematic when there is a pause
+    after measuring all channels. This function is not perfect as the following
+    situation is not caught:
+     - fw_t0, bw_t0, fw_t1, bw_t2, fw_t3, bw_t3, ..
+        > fw_t0, bw_t0, fw_t1, bw_t2, fw_t3, bw_t3, ..
+
+    This routine checks that the lowest channel
+    number is measured first (aka the forward channel), but it doesn't catch the
+    last case as it doesn't know that fw_t1 and bw_t2 belong to different cycles.
+    """
+    filepath_fw = data_dir_double_single_ch1
+    filepath_bw = data_dir_double_single_ch2
+    cable_length = 2017.7
+
+    ds_fw = read_silixa_files(directory=filepath_fw)
+    ds_bw = read_silixa_files(directory=filepath_bw)
+
+    # set stokes to varify proper time alignment
+    ds_fw.st.values = np.tile(np.arange(ds_fw.time.size)[None], (ds_fw.x.size, 1))
+    ds_bw.st.values = np.tile(np.arange(ds_bw.time.size)[None], (ds_bw.x.size, 1))
+
+    # time index that is not included in: fw, bw, merged
+    cases_iisnotin = [
+        ([], [], []),
+        ([1], [], [1]),
+        ([], [1], [1]),
+        ([1], [1], [1]),
+        ([1, 2], [], [1, 2]),
+        ([], [1, 2], [1, 2]),
+        ([1], [2], [1, 2]),
+    ]
+    # The following is not caught:
+    # ([2], [1], [1, 2]),
+    cases_iisin = [tuple(list(i for i in range(6) if i not in a) for a in b) for b in cases_iisnotin]
+
+    for ifw, ibw, iout in cases_iisin:
+        ds = merge_double_ended(
+            ds_fw.isel(time=ifw),
+            ds_bw.isel(time=ibw),
+            cable_length=cable_length,
+            plot_result=False,
+            verbose=False)
+        assert ds.time.size == len(iout) and np.all(ds.st.isel(x=0) == iout), \
+            f"FW:{ifw} & BW:{ibw} should lead to {iout} but instead leads to {ds.st.isel(x=0).values}"
+
