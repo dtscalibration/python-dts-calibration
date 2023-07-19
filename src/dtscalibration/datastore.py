@@ -2191,7 +2191,7 @@ class DataStore(xr.Dataset):
             raise ValueError("Choose a valid method")
 
         # all below require the following solution sizes
-        ip = ParameterIndexSingleEnded(nt, nx, nta, fix_alpha=fix_alpha)
+        ip = ParameterIndexSingleEnded(nt, nx, nta, fix_alpha=fix_alpha, fix_dalpha=fix_dalpha)
 
         # npar = 1 + 1 + nt + nta * nt
         assert p_val.size == ip.npar
@@ -3273,7 +3273,7 @@ class DataStore(xr.Dataset):
             raise ValueError("Choose a valid method")
 
         # all below require the following solution sizes
-        ip = ParameterIndexDoubleEnded(nt, nx, nta)
+        ip = ParameterIndexDoubleEnded(nt, nx, nta, includes_alpha=True, includes_dalpha=False)
 
         # npar = 1 + 2 * nt + nx + 2 * nt * nta
         assert p_val.size == ip.npar
@@ -5808,14 +5808,17 @@ class ParameterIndexDoubleEnded:
 
 class ParameterIndexSingleEnded:
     """
+    if parameter fixed, they are not in
     npar = 1 + 1 + nt + nta * nt
     """
 
-    def __init__(self, nt, nx, nta, fix_alpha=False):
+    def __init__(self, nt, nx, nta, includes_alpha=False, includes_dalpha=True):
+        assert not (includes_alpha and includes_dalpha), "Cannot hold both dalpha and alpha"
         self.nt = nt
         self.nx = nx
         self.nta = nta
-        self.fix_alpha = fix_alpha
+        self.includes_alpha = includes_alpha
+        self.includes_dalpha = includes_dalpha
 
     @property
     def all(self):
@@ -5829,7 +5832,9 @@ class ParameterIndexSingleEnded:
 
     @property
     def npar(self):
-        if not self.fix_alpha:
+        if self.includes_alpha:
+            return 1 + self.nx + self.nt + self.nta * self.nt
+        elif self.includes_dalpha:
             return 1 + 1 + self.nt + self.nta * self.nt
         else:
             return 1 + self.nt + self.nta * self.nt
@@ -5840,32 +5845,41 @@ class ParameterIndexSingleEnded:
 
     @property
     def dalpha(self):
-        if not self.fix_alpha:
+        if self.includes_dalpha:
             return [1]
         else:
             return []
 
     @property
     def alpha(self):
-        if not self.fix_alpha:
-            return []
-        else:
+        if self.includes_alpha:
             return list(range(1, 1 + self.nx))
+        else:
+            return []
 
     @property
     def c(self):
-        if self.fix_alpha:
+        if self.includes_alpha:
             return list(range(1 + self.nx, 1 + self.nx + self.nt))
-        else:
+        elif self.includes_dalpha:
             return list(range(1 + 1, 1 + 1 + self.nt))
+        else:
+            return list(range(1, 1 + self.nt))
 
     @property
     def taf(self):
         """returns taf parameters of shape (nt, nta) or (nt, nta, a)"""
         # ta = p_val[-nt * nta:].reshape((nt, nta), order='F')
         # self[store_ta] = ((time_dim, 'trans_att'), ta[:, :])
-
-        return np.arange(1 + 1 + self.nt, 1 + 1 + self.nt + self.nt * self.nta).reshape((self.nt, self.nta), order='F')
+        if self.includes_alpha:
+            return np.arange(1 + self.nx + self.nt, 1 + self.nx + self.nt + self.nt * self.nta
+                             ).reshape((self.nt, self.nta), order='F')
+        elif self.includes_dalpha:
+            return np.arange(1 + 1 + self.nt, 1 + 1 + self.nt + self.nt * self.nta
+                             ).reshape((self.nt, self.nta), order='F')
+        else:
+            return np.arange(1 + self.nt, 1 + self.nt + self.nt * self.nta
+                             ).reshape((self.nt, self.nta), order='F')
 
     def get_taf_pars(self, pval):
         if self.nta > 0:
