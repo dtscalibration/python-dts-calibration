@@ -2,6 +2,16 @@
 Changelog
 =========
 
+dev
+---
+New features
+
+* Added function that aids in merging two single-ended measurements into a double-ended measurement. The added function checks solves for when measurements are missing in one channel but are present in the other.
+
+Bug fixes
+
+* Single-ended measurements with `fix_alpha` failed due to a bug introduced in v2.0.0
+
 2.0.0 (2023-05-24)
 ------------------
 
@@ -12,7 +22,7 @@ Changelog
 
 1.2.0 (2023-03-13)
 ------------------
-Bugfixes
+Bug fixes
 
 * Fixed deprecated np.float and np.int
 
