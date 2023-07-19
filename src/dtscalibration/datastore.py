@@ -2191,7 +2191,10 @@ class DataStore(xr.Dataset):
             raise ValueError("Choose a valid method")
 
         # all below require the following solution sizes
-        ip = ParameterIndexSingleEnded(nt, nx, nta, includes_alpha=True, includes_dalpha=False)
+        if fix_alpha:
+            ip = ParameterIndexSingleEnded(nt, nx, nta, includes_alpha=True, includes_dalpha=False)
+        else:
+            ip = ParameterIndexSingleEnded(nt, nx, nta, includes_alpha=False, includes_dalpha=True)
 
         # npar = 1 + 1 + nt + nta * nt
         assert p_val.size == ip.npar
