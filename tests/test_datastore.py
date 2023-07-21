@@ -649,7 +649,7 @@ def test_merge_double_ended():
         ([1, 2], [], [1, 2]),
         ([], [1, 2], [1, 2]),
         ([1], [2], [1, 2]),
-        pytest.param([2], [1], [1, 2], marks=pytest.mark.xfail)
+        ([2], [1], [1, 2])
     ])
 def test_merge_double_ended_times(inotinfw, inotinbw, inotinout):
     """

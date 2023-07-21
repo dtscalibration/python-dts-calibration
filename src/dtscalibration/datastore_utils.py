@@ -156,7 +156,7 @@ def merge_double_ended(ds_fw, ds_bw, cable_length, plot_result=True, verbose=Tru
     return ds
 
 
-def merge_double_ended_times(ds_fw, ds_bw, verbose=True):
+def merge_double_ended_times(ds_fw, ds_bw, verify_timedeltas=True, verbose=True):
     """Helper for `merge_double_ended()` to deal with missing measurements. The
     number of measurements of the forward and backward channels might get out
     of sync if the device shuts down before the measurement of the last channel
@@ -189,6 +189,10 @@ def merge_double_ended_times(ds_fw, ds_bw, verbose=True):
         DataStore object representing the forward measurement channel
     ds_bw : DataSore object
         DataStore object representing the backward measurement channel
+    verify_timedeltas : bool
+        Check whether times between forward and backward measurements are similar to those of neighboring measurements
+    verbose : bool
+        Print additional information to screen
 
     Returns
     -------
@@ -205,8 +209,16 @@ def merge_double_ended_times(ds_fw, ds_bw, verbose=True):
         assert ds_fw.attrs['forwardMeasurementChannel'] < ds_bw.attrs['forwardMeasurementChannel'], \
             "ds_fw and ds_bw are swapped"
 
+    # Are all dt's within 1.5 seconds from one another?
     if (ds_bw.time.size == ds_fw.time.size) and np.all(ds_bw.time.values > ds_fw.time.values):
-        return ds_fw, ds_bw
+        if verify_timedeltas:
+            dt_ori = (ds_bw.time.values - ds_fw.time.values) / np.array(1000000000, dtype='timedelta64[ns]')
+            dt_all_close = np.allclose(dt_ori, dt_ori[0], atol=1.5, rtol=0.)
+        else:
+            dt_all_close = True
+
+        if dt_all_close:
+            return ds_fw, ds_bw
 
     iuse_chfw = list()
     iuse_chbw = list()
@@ -232,7 +244,25 @@ def merge_double_ended_times(ds_fw, ds_bw, verbose=True):
             if verbose:
                 print(f"Missing forward measurement beween {ds_bw.time.values[ind]} and {ds_bw.time.values[ind_next]}")
 
-    return ds_fw.isel(time=iuse_chfw), ds_bw.isel(time=iuse_chbw)
+    # throw out is dt differs from its neighbors
+    if verify_timedeltas:
+        dt = (ds_bw.isel(time=iuse_chbw).time.values - ds_fw.isel(time=iuse_chfw).time.values) /\
+             np.array(1000000000, dtype='timedelta64[ns]')
+        leaveout = np.zeros_like(dt, dtype=bool)
+        leaveout[1:-1] = np.isclose(dt[:-2], dt[2:], atol=1.5, rtol=0.) * ~np.isclose(dt[:-2], dt[1:-1], atol=1.5, rtol=0.)
+        iuse_chfw2 = np.array(iuse_chfw)[~leaveout]
+        iuse_chbw2 = np.array(iuse_chbw)[~leaveout]
+
+        if verbose:
+            for itfw, itbw in zip(np.array(iuse_chfw)[leaveout], np.array(iuse_chbw)[leaveout]):
+                print(f"FW: {ds_fw.isel(time=itfw).time.values} and BW: {ds_bw.isel(time=itbw).time.values} do not "
+                      f"belong together as their timedelta is larger than their neighboring timedeltas. Thrown out.")
+
+    else:
+        iuse_chfw2 = iuse_chfw
+        iuse_chbw2 = iuse_chbw
+
+    return ds_fw.isel(time=iuse_chfw2), ds_bw.isel(time=iuse_chbw2)
 
 
 # pylint: disable=too-many-locals
