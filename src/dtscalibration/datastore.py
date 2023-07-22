@@ -2222,8 +2222,9 @@ class DataStore(xr.Dataset):
         self[store_c + variance_suffix] = ((time_dim,), p_var[ip.c])
 
         if fix_alpha:
-            self[store_alpha] = fix_alpha[0]
-            self[store_alpha + variance_suffix] = fix_alpha[1]
+            self[store_alpha] = (("x",), fix_alpha[0])
+            self[store_alpha + variance_suffix] = (("x",), fix_alpha[1])
+
         else:
             self[store_dalpha] = (tuple(), p_val[ip.dalpha].item())
             self[store_dalpha + variance_suffix] = (tuple(), p_var[ip.dalpha].item())

@@ -2493,7 +2493,7 @@ def test_single_ended_wls_fix_dalpha_synthetic():
     print('C', np.log(C_p / C_m))
     print('x0', x.max())
 
-    ds = DataStore(
+    ds_ori = DataStore(
         {
             'st': (['x', 'time'], st),
             'ast': (['x', 'time'], ast),
@@ -2509,8 +2509,9 @@ def test_single_ended_wls_fix_dalpha_synthetic():
         'cold': [slice(0., 0.5 * cable_len)],
         'warm': [slice(0.5 * cable_len, cable_len)]}
 
-    # WLS
-    ds.calibration_single_ended(
+    # Test fix_dalpha
+    ds_dalpha = ds_ori.copy()
+    ds_dalpha.calibration_single_ended(
         sections=sections,
         st_var=1.,
         ast_var=1.,
@@ -2518,10 +2519,27 @@ def test_single_ended_wls_fix_dalpha_synthetic():
         solver='sparse',
         fix_dalpha=(dalpha_p - dalpha_m, 0.))
 
-    assert_almost_equal_verbose(ds.gamma.values, gamma, decimal=12)
+    assert_almost_equal_verbose(ds_dalpha.gamma.values, gamma, decimal=12)
     assert_almost_equal_verbose(
-        ds.dalpha.values, dalpha_p - dalpha_m, decimal=14)
-    assert_almost_equal_verbose(ds.tmpf.values, temp_real - 273.15, decimal=10)
+        ds_dalpha.dalpha.values, dalpha_p - dalpha_m, decimal=14)
+    assert_almost_equal_verbose(
+        ds_dalpha.alpha.values, x * (dalpha_p - dalpha_m), decimal=14)
+    assert_almost_equal_verbose(ds_dalpha.tmpf.values, temp_real - 273.15, decimal=10)
+
+    # Test fix_alpha
+    ds_alpha = ds_ori.copy()
+    ds_alpha.calibration_single_ended(
+        sections=sections,
+        st_var=1.,
+        ast_var=1.,
+        method='wls',
+        solver='sparse',
+        fix_alpha=(x * (dalpha_p - dalpha_m), 0. * x))
+
+    assert_almost_equal_verbose(ds_alpha.gamma.values, gamma, decimal=12)
+    assert_almost_equal_verbose(
+        ds_dalpha.alpha.values, x * (dalpha_p - dalpha_m), decimal=14)
+    assert_almost_equal_verbose(ds_alpha.tmpf.values, temp_real - 273.15, decimal=10)
 
     pass
 
