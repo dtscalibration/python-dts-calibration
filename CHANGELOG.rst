@@ -10,7 +10,7 @@ New features
 
 Bug fixes
 
-* Single-ended measurements with `fix_alpha` failed due to a bug introduced in v2.0.0
+* Single-ended measurements with `fix_alpha` failed due to a bug introduced in v2.0.0 ([#173](https://github.com/dtscalibration/python-dts-calibration/pull/173)).
 
 2.0.0 (2023-05-24)
 ------------------
