@@ -2191,7 +2191,10 @@ class DataStore(xr.Dataset):
             raise ValueError("Choose a valid method")
 
         # all below require the following solution sizes
-        ip = ParameterIndexSingleEnded(nt, nx, nta, fix_alpha=fix_alpha)
+        if fix_alpha:
+            ip = ParameterIndexSingleEnded(nt, nx, nta, includes_alpha=True, includes_dalpha=False)
+        else:
+            ip = ParameterIndexSingleEnded(nt, nx, nta, includes_alpha=False, includes_dalpha=True)
 
         # npar = 1 + 1 + nt + nta * nt
         assert p_val.size == ip.npar
@@ -2218,13 +2221,14 @@ class DataStore(xr.Dataset):
         self[store_c] = ((time_dim,), p_val[ip.c])
         self[store_c + variance_suffix] = ((time_dim,), p_var[ip.c])
 
-        self[store_dalpha] = (tuple(), p_val[ip.dalpha].item())
-        self[store_dalpha + variance_suffix] = (tuple(), p_var[ip.dalpha].item())
-
         if fix_alpha:
-            self[store_alpha] = fix_alpha[0]
-            self[store_alpha + variance_suffix] = fix_alpha[1]
+            self[store_alpha] = (("x",), fix_alpha[0])
+            self[store_alpha + variance_suffix] = (("x",), fix_alpha[1])
+
         else:
+            self[store_dalpha] = (tuple(), p_val[ip.dalpha].item())
+            self[store_dalpha + variance_suffix] = (tuple(), p_var[ip.dalpha].item())
+
             self[store_alpha] = self[store_dalpha] * self.x
             self[store_alpha + variance_suffix] = (
                 self[store_dalpha + variance_suffix] * self.x ** 2
@@ -5808,14 +5812,17 @@ class ParameterIndexDoubleEnded:
 
 class ParameterIndexSingleEnded:
     """
+    if parameter fixed, they are not in
     npar = 1 + 1 + nt + nta * nt
     """
 
-    def __init__(self, nt, nx, nta, fix_alpha=False):
+    def __init__(self, nt, nx, nta, includes_alpha=False, includes_dalpha=True):
+        assert not (includes_alpha and includes_dalpha), "Cannot hold both dalpha and alpha"
         self.nt = nt
         self.nx = nx
         self.nta = nta
-        self.fix_alpha = fix_alpha
+        self.includes_alpha = includes_alpha
+        self.includes_dalpha = includes_dalpha
 
     @property
     def all(self):
@@ -5829,7 +5836,9 @@ class ParameterIndexSingleEnded:
 
     @property
     def npar(self):
-        if not self.fix_alpha:
+        if self.includes_alpha:
+            return 1 + self.nx + self.nt + self.nta * self.nt
+        elif self.includes_dalpha:
             return 1 + 1 + self.nt + self.nta * self.nt
         else:
             return 1 + self.nt + self.nta * self.nt
@@ -5840,32 +5849,41 @@ class ParameterIndexSingleEnded:
 
     @property
     def dalpha(self):
-        if not self.fix_alpha:
+        if self.includes_dalpha:
             return [1]
         else:
             return []
 
     @property
     def alpha(self):
-        if not self.fix_alpha:
-            return []
-        else:
+        if self.includes_alpha:
             return list(range(1, 1 + self.nx))
+        else:
+            return []
 
     @property
     def c(self):
-        if self.fix_alpha:
+        if self.includes_alpha:
             return list(range(1 + self.nx, 1 + self.nx + self.nt))
-        else:
+        elif self.includes_dalpha:
             return list(range(1 + 1, 1 + 1 + self.nt))
+        else:
+            return list(range(1, 1 + self.nt))
 
     @property
     def taf(self):
         """returns taf parameters of shape (nt, nta) or (nt, nta, a)"""
         # ta = p_val[-nt * nta:].reshape((nt, nta), order='F')
         # self[store_ta] = ((time_dim, 'trans_att'), ta[:, :])
-
-        return np.arange(1 + 1 + self.nt, 1 + 1 + self.nt + self.nt * self.nta).reshape((self.nt, self.nta), order='F')
+        if self.includes_alpha:
+            return np.arange(1 + self.nx + self.nt, 1 + self.nx + self.nt + self.nt * self.nta
+                             ).reshape((self.nt, self.nta), order='F')
+        elif self.includes_dalpha:
+            return np.arange(1 + 1 + self.nt, 1 + 1 + self.nt + self.nt * self.nta
+                             ).reshape((self.nt, self.nta), order='F')
+        else:
+            return np.arange(1 + self.nt, 1 + self.nt + self.nt * self.nta
+                             ).reshape((self.nt, self.nta), order='F')
 
     def get_taf_pars(self, pval):
         if self.nta > 0:
