@@ -529,10 +529,6 @@ def test_double_ended_variance_estimate_synthetic():
         ast_var=mast_var,
         rst_var=mrst_var,
         rast_var=mrast_var,
-        store_tmpf='tmpf',
-        store_tmpb='tmpb',
-        store_tmpw='tmpw',
-        store_tempvar='_var',
         conf_ints=[2.5, 50., 97.5],
         mc_sample_size=100,
         da_random_state=state)
@@ -642,8 +638,6 @@ def test_single_ended_variance_estimate_synthetic():
         p_cov='p_cov',
         st_var=mst_var,
         ast_var=mast_var,
-        store_tmpf='tmpf',
-        store_tempvar='_var',
         conf_ints=[2.5, 50., 97.5],
         mc_sample_size=50,
         da_random_state=state)
@@ -914,8 +908,7 @@ def test_double_ended_wls_estimate_synthetic():
         rst_var=1e-7,
         rast_var=1e-7,
         method='wls',
-        solver='sparse',
-        mc_sample_size=5)
+        solver='sparse')
 
     assert_almost_equal_verbose(ds.gamma.values, gamma, decimal=10)
     assert_almost_equal_verbose(ds.alpha.values, alpha, decimal=8)
@@ -1011,9 +1004,7 @@ def test_double_ended_wls_estimate_synthetic_df_and_db_are_different():
         rast_var=1.,
         method='wls',
         solver='sparse',
-        mc_sample_size=1000,
-        fix_gamma=(gamma, 0.),
-        mc_remove_set_flag=True)
+        fix_gamma=(gamma, 0.))
 
     assert_almost_equal_verbose(df, ds.df.values, decimal=14)
     assert_almost_equal_verbose(db, ds.db.values, decimal=13)
@@ -1113,9 +1104,7 @@ def test_reneaming_old_default_labels_to_new_fixed_labels():
         rast_var=1.,
         method='wls',
         solver='sparse',
-        mc_sample_size=1000,
-        fix_gamma=(gamma, 0.),
-        mc_remove_set_flag=True)
+        fix_gamma=(gamma, 0.))
 
     assert_almost_equal_verbose(df, ds.df.values, decimal=14)
     assert_almost_equal_verbose(db, ds.db.values, decimal=13)
@@ -1292,8 +1281,6 @@ def test_double_ended_asymmetrical_attenuation():
         rast_var=1.,
         method='wls',
         solver='sparse',
-        mc_sample_size=1000,
-        mc_remove_set_flag=True,
         trans_att=[50.])
 
     assert_almost_equal_verbose(temp_real_celsius, ds.tmpf.values, decimal=7)
@@ -1322,8 +1309,6 @@ def test_double_ended_asymmetrical_attenuation():
         rast_var=1.,
         method='wls',
         solver='sparse',
-        mc_sample_size=1000,
-        mc_remove_set_flag=True,
         transient_asym_att_x=[50.])
 
     assert_almost_equal_verbose(temp_real_celsius, ds.tmpf.values, decimal=7)
@@ -1410,8 +1395,6 @@ def test_double_ended_one_matching_section_and_one_asym_att():
         rast_var=1.,
         method='wls',
         solver='sparse',
-        mc_sample_size=3,
-        mc_remove_set_flag=True,
         trans_att=[50.],
         matching_sections=[
             (
@@ -1516,8 +1499,6 @@ def test_double_ended_two_matching_sections_and_two_asym_atts():
         rast_var=0.1,
         method='wls',
         solver='sparse',
-        mc_sample_size=3,
-        mc_remove_set_flag=True,
         trans_att=[x[3 * nx_per_sec], x[6 * nx_per_sec]],
         matching_sections=ms)
 
@@ -1599,7 +1580,6 @@ def test_double_ended_wls_fix_gamma_estimate_synthetic():
         rast_var=1e-12,
         method='wls',
         solver='sparse',
-        mc_sample_size=5,
         fix_gamma=(gamma, 0.))
 
     assert_almost_equal_verbose(ds.gamma.values, gamma, decimal=18)
@@ -1678,7 +1658,6 @@ def test_double_ended_wls_fix_alpha_estimate_synthetic():
         rast_var=1e-7,
         method='wls',
         solver='sparse',
-        mc_sample_size=5,
         fix_alpha=(alpha, np.zeros_like(alpha)))
 
     assert_almost_equal_verbose(ds.gamma.values, gamma, decimal=8)
@@ -1757,7 +1736,6 @@ def test_double_ended_wls_fix_alpha_fix_gamma_estimate_synthetic():
         rast_var=1e-7,
         method='wls',
         solver='sparse',
-        mc_sample_size=5,
         fix_gamma=(gamma, 0.),
         fix_alpha=(alpha, np.zeros_like(alpha)))
 
@@ -1848,8 +1826,6 @@ def test_double_ended_fix_alpha_matching_sections_and_one_asym_att():
         rast_var=1.,
         method='wls',
         solver='sparse',
-        mc_sample_size=3,
-        mc_remove_set_flag=True,
         trans_att=[50.],
         matching_sections=[
             (
@@ -1872,8 +1848,6 @@ def test_double_ended_fix_alpha_matching_sections_and_one_asym_att():
         rast_var=1.,
         method='wls',
         solver='sparse',
-        mc_sample_size=3,
-        mc_remove_set_flag=True,
         fix_alpha=(alpha_adj, alpha_var_adj),
         trans_att=[50.],
         matching_sections=[
@@ -1965,8 +1939,6 @@ def test_double_ended_fix_alpha_gamma_matching_sections_and_one_asym_att():
         rast_var=1.,
         method='wls',
         solver='sparse',
-        mc_sample_size=3,
-        mc_remove_set_flag=True,
         trans_att=[50.],
         matching_sections=[
             (
@@ -1989,8 +1961,6 @@ def test_double_ended_fix_alpha_gamma_matching_sections_and_one_asym_att():
         rast_var=1.,
         method='wls',
         solver='sparse',
-        mc_sample_size=3,
-        mc_remove_set_flag=True,
         fix_alpha=(alpha_adj, alpha_var_adj),
         fix_gamma=(gamma, 0.),
         trans_att=[50.],
@@ -2083,9 +2053,7 @@ def test_double_ended_fix_gamma_matching_sections_and_one_asym_att():
         rast_var=1.,
         method='wls',
         solver='sparse',
-        mc_sample_size=3,
         fix_gamma=(gamma, 0.),
-        mc_remove_set_flag=True,
         trans_att=[50.],
         matching_sections=[
             (
@@ -2205,10 +2173,6 @@ def test_double_ended_exponential_variance_estimate_synthetic():
         ast_var=mast_var,
         rst_var=mrst_var,
         rast_var=mrast_var,
-        store_tmpf='tmpf',
-        store_tmpb='tmpb',
-        store_tmpw='tmpw',
-        store_tempvar='_var',
         conf_ints=[2.5, 50., 97.5],
         mc_sample_size=100,
         da_random_state=state)
@@ -2323,8 +2287,7 @@ def test_estimate_variance_of_temperature_estimate():
         # fix_gamma=(gamma, 0.),
         # fix_alpha=(alpha, 0. * alpha),
         method='wls',
-        solver='stats',
-        mc_sample_size=nmc)
+        solver='stats')
 
     ds.conf_int_double_ended(
         p_val='p_val',
@@ -2333,10 +2296,6 @@ def test_estimate_variance_of_temperature_estimate():
         ast_var=mast_var,
         rst_var=mrst_var,
         rast_var=mrast_var,
-        store_tmpf='tmpf',
-        store_tmpb='tmpb',
-        store_tmpw='tmpw',
-        store_tempvar='_var',
         # conf_ints=[20., 80.],
         mc_sample_size=nmc,
         da_random_state=state,
@@ -3002,8 +2961,6 @@ def test_single_ended_matching_sections_synthetic():
         p_cov='p_cov',
         st_var=1.0,
         ast_var=1.0,
-        store_tmpf='tmpf',
-        store_tempvar='_var',
         conf_ints=[2.5, 50., 97.5],
         mc_sample_size=50)
 
@@ -3106,8 +3063,6 @@ def test_single_ended_exponential_variance_estimate_synthetic():
         p_cov='p_cov',
         st_var=mst_var,
         ast_var=mast_var,
-        store_tmpf='tmpf',
-        store_tempvar='_var',
         conf_ints=[2.5, 50., 97.5],
         mc_sample_size=50,
         da_random_state=state)
@@ -3197,8 +3152,6 @@ def test_average_measurements_single_ended():
         p_cov='p_cov',
         st_var=st_var,
         ast_var=ast_var,
-        store_tmpf='tmpf',
-        store_tempvar='_var',
         conf_ints=[2.5, 97.5],
         mc_sample_size=50,  # <- choose a much larger sample size
         ci_avg_x_flag1=True,
@@ -3209,8 +3162,6 @@ def test_average_measurements_single_ended():
         p_cov='p_cov',
         st_var=st_var,
         ast_var=ast_var,
-        store_tmpf='tmpf',
-        store_tempvar='_var',
         conf_ints=[2.5, 97.5],
         mc_sample_size=50,  # <- choose a much larger sample size
         ci_avg_x_flag2=True,
@@ -3223,8 +3174,6 @@ def test_average_measurements_single_ended():
         p_cov='p_cov',
         st_var=st_var,
         ast_var=ast_var,
-        store_tmpf='tmpf',
-        store_tempvar='_var',
         conf_ints=[2.5, 97.5],
         mc_sample_size=50,  # <- choose a much larger sample size
         ci_avg_time_flag1=True,
@@ -3235,8 +3184,6 @@ def test_average_measurements_single_ended():
         p_cov='p_cov',
         st_var=st_var,
         ast_var=ast_var,
-        store_tmpf='tmpf',
-        store_tempvar='_var',
         conf_ints=[2.5, 97.5],
         mc_sample_size=50,  # <- choose a much larger sample size
         ci_avg_time_flag1=False,
@@ -3267,7 +3214,6 @@ def test_average_measurements_double_ended():
         ast_var=ast_var,
         rst_var=rst_var,
         rast_var=rast_var,
-        store_tmpw='tmpw',
         method='wls',
         solver='sparse')
     ds.average_double_ended(
@@ -3277,10 +3223,6 @@ def test_average_measurements_double_ended():
         ast_var=ast_var,
         rst_var=rst_var,
         rast_var=rast_var,
-        store_tmpf='tmpf',
-        store_tmpb='tmpb',
-        store_tmpw='tmpw',
-        store_tempvar='_var',
         conf_ints=[2.5, 97.5],
         mc_sample_size=50,  # <- choose a much larger sample size
         ci_avg_x_flag1=True,
@@ -3293,10 +3235,6 @@ def test_average_measurements_double_ended():
         ast_var=ast_var,
         rst_var=rst_var,
         rast_var=rast_var,
-        store_tmpf='tmpf',
-        store_tmpb='tmpb',
-        store_tmpw='tmpw',
-        store_tempvar='_var',
         conf_ints=[2.5, 97.5],
         mc_sample_size=50,  # <- choose a much larger sample size
         ci_avg_x_flag2=True,
@@ -3311,10 +3249,6 @@ def test_average_measurements_double_ended():
         ast_var=ast_var,
         rst_var=rst_var,
         rast_var=rast_var,
-        store_tmpf='tmpf',
-        store_tmpb='tmpb',
-        store_tmpw='tmpw',
-        store_tempvar='_var',
         conf_ints=[2.5, 97.5],
         mc_sample_size=50,  # <- choose a much larger sample size
         ci_avg_time_flag1=True,
@@ -3327,10 +3261,6 @@ def test_average_measurements_double_ended():
         ast_var=ast_var,
         rst_var=rst_var,
         rast_var=rast_var,
-        store_tmpf='tmpf',
-        store_tmpb='tmpb',
-        store_tmpw='tmpw',
-        store_tempvar='_var',
         conf_ints=[2.5, 97.5],
         mc_sample_size=50,  # <- choose a much larger sample size
         ci_avg_time_flag1=False,
