@@ -12,6 +12,10 @@ Bug fixes
 
 * Single-ended measurements with `fix_alpha` failed due to a bug introduced in v2.0.0 ([#173](https://github.com/dtscalibration/python-dts-calibration/pull/173)).
 
+Removed
+
+* Removed ds.resample_datastore() in favor of using xarray's resample function. See example notebook 2.
+
 2.0.0 (2023-05-24)
 ------------------
 
