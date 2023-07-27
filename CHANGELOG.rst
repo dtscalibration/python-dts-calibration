@@ -16,6 +16,10 @@ Introduced limitations
 
 * Standardized parameter names. Reduced the freedom in choosing parameter names and dimension names in favor of simplifying the code.
 
+Removed
+
+* Removed ds.resample_datastore() in favor of using xarray's resample function. See example notebook 2.
+
 2.0.0 (2023-05-24)
 ------------------
 

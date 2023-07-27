@@ -22,7 +22,7 @@ name = "dtscalibration"
 description = "A Python package to load raw DTS files, perform a calibration, and plot the result."
 readme = "README.rst"
 license = "BSD-3-Clause"
-requires-python = ">=3.8, <3.11"
+requires-python = ">=3.9, <3.11"
 authors = [
   {email = "bdestombe@gmail.com"},
   {name = "Bas des Tombe, Bart Schilperoort"}
@@ -46,7 +46,6 @@ classifiers = [
     "Operating System :: POSIX",
     "Operating System :: Microsoft :: Windows",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Topic :: Utilities",
@@ -118,7 +117,7 @@ build = [
 features = ["dev"]
 
 [[tool.hatch.envs.matrix_test.matrix]]
-python = ["3.8", "3.9", "3.10"]
+python = ["3.9", "3.10"]
 
 [tool.hatch.envs.matrix_test.scripts]
 test = ["pytest ./src/ ./tests/",]  # --doctest-modules

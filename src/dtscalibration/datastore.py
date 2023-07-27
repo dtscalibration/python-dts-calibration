@@ -5260,6 +5260,11 @@ class DataStore(xr.Dataset):
 
         return out
 
+    def resample_datastore(*args, **kwargs):
+        raise "ds.resample_datastore() is deprecated. Use " \
+              "from dtscalibration import DataStore; DataStore(ds.resample()) " \
+              "instead. See example notebook 2."
+
 
 class ParameterIndexDoubleEnded:
     """

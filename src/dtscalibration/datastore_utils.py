@@ -248,6 +248,9 @@ def merge_double_ended_times(ds_fw, ds_bw, verify_timedeltas=True, verbose=True)
     if verify_timedeltas:
         dt = (ds_bw.isel(time=iuse_chbw).time.values - ds_fw.isel(time=iuse_chfw).time.values) /\
              np.array(1000000000, dtype='timedelta64[ns]')
+        dt = (
+            (ds_bw.isel(time=iuse_chbw).time.values - ds_fw.isel(time=iuse_chfw).time.values) /
+            np.timedelta64(1, "s"))
         leaveout = np.zeros_like(dt, dtype=bool)
         leaveout[1:-1] = np.isclose(dt[:-2], dt[2:], atol=1.5, rtol=0.) * ~np.isclose(dt[:-2], dt[1:-1], atol=1.5, rtol=0.)
         iuse_chfw2 = np.array(iuse_chfw)[~leaveout]
@@ -255,8 +258,11 @@ def merge_double_ended_times(ds_fw, ds_bw, verify_timedeltas=True, verbose=True)
 
         if verbose:
             for itfw, itbw in zip(np.array(iuse_chfw)[leaveout], np.array(iuse_chbw)[leaveout]):
-                print(f"FW: {ds_fw.isel(time=itfw).time.values} and BW: {ds_bw.isel(time=itbw).time.values} do not "
-                      f"belong together as their timedelta is larger than their neighboring timedeltas. Thrown out.")
+                print(
+                    "The following measurements do not belong together, as the time difference\n"
+                    "between the\forward and backward measurements is more than 1.5 seconds\n"
+                    "larger than the neighboring measurements.\n"
+                    f"FW: {ds_fw.isel(time=itfw).time.values} and BW: {ds_bw.isel(time=itbw).time.values}")
 
     else:
         iuse_chfw2 = iuse_chfw
