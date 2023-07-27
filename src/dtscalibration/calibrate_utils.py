@@ -633,11 +633,11 @@ def calibration_double_ended_solver(  # noqa: MC0001
     # put E outside of reference section in solution
     # concatenating makes a copy of the data instead of using a pointer
     ds_sub = ds[['st', 'ast', 'rst', 'rast', 'trans_att']]
-    time_dim = ds_sub.get_time_dim()
-    ds_sub['df'] = ((time_dim,), p_sol[1:1 + nt])
-    ds_sub['df_var'] = ((time_dim,), p_var[1:1 + nt])
-    ds_sub['db'] = ((time_dim,), p_sol[1 + nt:1 + 2 * nt])
-    ds_sub['db_var'] = ((time_dim,), p_var[1 + nt:1 + 2 * nt])
+    'time' = ds_sub.get_time_dim()
+    ds_sub['df'] = (('time',), p_sol[1:1 + nt])
+    ds_sub['df_var'] = (('time',), p_var[1:1 + nt])
+    ds_sub['db'] = (('time',), p_sol[1 + nt:1 + 2 * nt])
+    ds_sub['db_var'] = (('time',), p_var[1 + nt:1 + 2 * nt])
     E_all_exact, E_all_var_exact = calc_alpha_double(
         'exact',
         ds_sub,
@@ -1238,7 +1238,7 @@ def calc_alpha_double(
     assert ix_alpha_is_zero >= 0, 'Define ix_alpha_is_zero' + \
                                   str(ix_alpha_is_zero)
 
-    time_dim = ds.get_time_dim()
+    'time' = ds.get_time_dim()
 
     if st_var is not None:
         if callable(st_var):
@@ -1280,8 +1280,8 @@ def calc_alpha_double(
                 # Can be improved by including covariances. That reduces the
                 # uncert.
 
-                ta_arr_fw = np.zeros((ds.x.size, ds[time_dim].size))
-                ta_arr_fw_var = np.zeros((ds.x.size, ds[time_dim].size))
+                ta_arr_fw = np.zeros((ds.x.size, ds['time'].size))
+                ta_arr_fw_var = np.zeros((ds.x.size, ds['time'].size))
                 for tai, taxi, tai_var in zip(
                         talpha_fw.T, ds.trans_att.values, talpha_fw_var.T):
                     ta_arr_fw[ds.x.values >= taxi] = \
@@ -1289,8 +1289,8 @@ def calc_alpha_double(
                     ta_arr_fw_var[ds.x.values >= taxi] = \
                         ta_arr_fw_var[ds.x.values >= taxi] + tai_var
 
-                ta_arr_bw = np.zeros((ds.x.size, ds[time_dim].size))
-                ta_arr_bw_var = np.zeros((ds.x.size, ds[time_dim].size))
+                ta_arr_bw = np.zeros((ds.x.size, ds['time'].size))
+                ta_arr_bw_var = np.zeros((ds.x.size, ds['time'].size))
                 for tai, taxi, tai_var in zip(
                         talpha_bw.T, ds.trans_att.values, talpha_bw_var.T):
                     ta_arr_bw[ds.x.values < taxi] = \
@@ -1308,8 +1308,8 @@ def calc_alpha_double(
                 A_var = (i_var_fw + i_var_bw + D_B_var + D_F_var) / 2
                 A = (i_bw - i_fw) / 2 + (D_B - D_F) / 2
 
-        E_var = 1 / (1 / A_var).sum(dim=time_dim)
-        E = (A / A_var).sum(dim=time_dim) * E_var
+        E_var = 1 / (1 / A_var).sum(dim='time')
+        E = (A / A_var).sum(dim='time') * E_var
 
     else:
         i_fw = np.log(ds.st / ds.ast)
@@ -1322,8 +1322,8 @@ def calc_alpha_double(
             D_B = ds[D_B_label]
             A = (i_bw - i_fw) / 2 + (D_B - D_F) / 2
 
-        E_var = A.var(dim=time_dim)
-        E = A.mean(dim=time_dim)
+        E_var = A.var(dim='time')
+        E = A.mean(dim='time')
 
     # E is defined zero at the first index of the reference sections
     if mode == 'guess':

@@ -103,11 +103,10 @@ class DataStore(xr.Dataset):
                 ideal_dim.append('x')
                 all_dim.pop(all_dim.index('x'))
 
-            time_dim = self.get_time_dim()
-            if time_dim:
-                if time_dim in all_dim:
-                    ideal_dim.append(time_dim)
-                    all_dim.pop(all_dim.index(time_dim))
+            if 'time':
+                if 'time' in all_dim:
+                    ideal_dim.append('time')
+                    all_dim.pop(all_dim.index('time'))
 
                 ideal_dim += all_dim
 
@@ -370,8 +369,7 @@ class DataStore(xr.Dataset):
         """
         Returns the keys of all timeseires that can be used for calibration.
         """
-        time_dim = self.get_time_dim()
-        return [k for k, v in self.data_vars.items() if v.dims == (time_dim,)]
+        return [k for k, v in self.data_vars.items() if v.dims == ('time',)]
 
     def to_netcdf(
             self,
@@ -701,43 +699,6 @@ class DataStore(xr.Dataset):
                 v['chunksizes'] = chunks
 
         return encoding
-
-    def get_time_dim(self, data_var_key=None):
-        """
-        Find relevant time dimension. by educative guessing
-
-        Parameters
-        ----------
-        data_var_key : str
-            The data variable key that contains a relevant time dimension. If
-            None, 'st' is used.
-
-        Returns
-        -------
-
-        """
-        options = [
-            'date', 'time', 'day', 'days', 'hour', 'hours', 'minute',
-            'minutes', 'second', 'seconds']
-        if data_var_key is None:
-            if 'st' in self.data_vars:
-                data_var_key = 'st'
-            elif 'st' in self.data_vars:
-                data_var_key = 'st'
-            else:
-                return 'time'
-
-        dims = self[data_var_key].dims
-        # find all dims in options
-        in_opt = [next(filter(lambda s: s == d, options), None) for d in dims]
-
-        if in_opt and in_opt != [None]:
-            # exclude Nones from list
-            return next(filter(None, in_opt))
-
-        else:
-            # there is no time dimension
-            return None
 
     def get_section_indices(self, sec):
         """Returns the x-indices of the section. `sec` is a slice."""
@@ -1719,8 +1680,6 @@ class DataStore(xr.Dataset):
         -------
 
         """
-        time_dim = self.get_time_dim()
-
         for key in self.sections.keys():
             if not np.issubdtype(self[key].dtype, np.floating):
                 raise ValueError(
@@ -1733,7 +1692,7 @@ class DataStore(xr.Dataset):
                     'NaN/inf value(s) found in reference temperature "' + key
                     + '"')
 
-            if self[key].dims != (time_dim,):
+            if self[key].dims != ('time',):
                 raise ValueError(
                     'Time dimension of the reference temperature timeseries '
                     + key + 'is not the same as the time dimension'
@@ -1902,8 +1861,7 @@ class DataStore(xr.Dataset):
         self.check_reference_section_values()
 
         nx = self.x.size
-        time_dim = self.get_time_dim()
-        nt = self[time_dim].size
+        nt = self['time'].size
         nta = self.trans_att.size
 
         assert self.st.dims[0] == "x", "Stokes are transposed"
@@ -2083,19 +2041,19 @@ class DataStore(xr.Dataset):
 
         if nta > 0:
             self["talpha_fw"] = (
-                ("trans_att", time_dim),
+                ("trans_att", 'time'),
                 ip.get_taf_pars(p_val),
             )
             self["talpha_fw_var"] = (
-                ("trans_att", time_dim),
+                ("trans_att", 'time'),
                 ip.get_taf_pars(p_var),
             )
         else:
-            self["talpha_fw"] = (("trans_att", time_dim), np.zeros((0, nt)))
-            self["talpha_fw_var"] = (("trans_att", time_dim), np.zeros((0, nt)))
+            self["talpha_fw"] = (("trans_att", 'time'), np.zeros((0, nt)))
+            self["talpha_fw_var"] = (("trans_att", 'time'), np.zeros((0, nt)))
 
-        self["c"] = ((time_dim,), p_val[ip.c])
-        self["c_var"] = ((time_dim,), p_var[ip.c])
+        self["c"] = (('time',), p_val[ip.c])
+        self["c_var"] = (('time',), p_var[ip.c])
 
         if fix_alpha:
             self["alpha"] = (("x",), fix_alpha[0])
@@ -2111,13 +2069,13 @@ class DataStore(xr.Dataset):
             )
 
         self["talpha_fw_full"] = (
-            ("x", time_dim),
+            ("x", 'time'),
             ip.get_taf_values(
                 pval=p_val, x=self.x.values, trans_att=self.trans_att.values, axis=""
             ),
         )
         self["talpha_fw_full_var"] = (
-            ("x", time_dim),
+            ("x", 'time'),
             ip.get_taf_values(
                 pval=p_var, x=self.x.values, trans_att=self.trans_att.values, axis=""
             ),
@@ -2444,8 +2402,7 @@ class DataStore(xr.Dataset):
         self.check_reference_section_values()
 
         nx = self.x.size
-        time_dim = self.get_time_dim()
-        nt = self[time_dim].size
+        nt = self['time'].size
         nta = self.trans_att.size
         ix_sec = self.ufunc_per_section(x_indices=True, calc_per="all")
         nx_sec = ix_sec.size
@@ -3125,40 +3082,40 @@ class DataStore(xr.Dataset):
         # save estimates and variances to datastore, skip covariances
         self["gamma"] = (tuple(), p_val[ip.gamma].item())
         self["alpha"] = (("x",), p_val[ip.alpha])
-        self["df"] = ((time_dim,), p_val[ip.df])
-        self["db"] = ((time_dim,), p_val[ip.db])
+        self["df"] = (('time',), p_val[ip.df])
+        self["db"] = (('time',), p_val[ip.db])
 
         if nta:
             self["talpha_fw"] = (
-                (time_dim, "trans_att"),
+                ('time', "trans_att"),
                 p_val[ip.taf].reshape((nt, nta), order="C"),
             )
             self["talpha_bw"] = (
-                (time_dim, "trans_att"),
+                ('time', "trans_att"),
                 p_val[ip.tab].reshape((nt, nta), order="C"),
             )
             self["talpha_fw_var"] = (
-                (time_dim, "trans_att"),
+                ('time', "trans_att"),
                 p_var[ip.taf].reshape((nt, nta), order="C"),
             )
             self["talpha_bw_var"] = (
-                (time_dim, "trans_att"),
+                ('time', "trans_att"),
                 p_var[ip.tab].reshape((nt, nta), order="C"),
             )
         else:
-            self["talpha_fw"] = ((time_dim, "trans_att"), np.zeros((nt, 0)))
-            self["talpha_bw"] = ((time_dim, "trans_att"), np.zeros((nt, 0)))
-            self["talpha_fw_var"] = ((time_dim, "trans_att"), np.zeros((nt, 0)))
-            self["talpha_bw_var"] = ((time_dim, "trans_att"), np.zeros((nt, 0)))
+            self["talpha_fw"] = (('time', "trans_att"), np.zeros((nt, 0)))
+            self["talpha_bw"] = (('time', "trans_att"), np.zeros((nt, 0)))
+            self["talpha_fw_var"] = (('time', "trans_att"), np.zeros((nt, 0)))
+            self["talpha_bw_var"] = (('time', "trans_att"), np.zeros((nt, 0)))
 
         self["talpha_fw_full"] = (
-            ("x", time_dim),
+            ("x", 'time'),
             ip.get_taf_values(
                 pval=p_val, x=self.x.values, trans_att=self.trans_att.values, axis=""
             ),
         )
         self["talpha_bw_full"] = (
-            ("x", time_dim),
+            ("x", 'time'),
             ip.get_tab_values(
                 pval=p_val, x=self.x.values, trans_att=self.trans_att.values, axis=""
             ),
@@ -3188,16 +3145,16 @@ class DataStore(xr.Dataset):
 
         self["gamma_var"] = (tuple(), p_var[ip.gamma].item())
         self["alpha_var"] = (("x",), p_var[ip.alpha])
-        self["df_var"] = ((time_dim,), p_var[ip.df])
-        self["db_var"] = ((time_dim,), p_var[ip.db])
+        self["df_var"] = (('time',), p_var[ip.df])
+        self["db_var"] = (('time',), p_var[ip.db])
         self["talpha_fw_full_var"] = (
-            ("x", time_dim),
+            ("x", 'time'),
             ip.get_taf_values(
                 pval=p_var, x=self.x.values, trans_att=self.trans_att.values, axis=""
             ),
         )
         self["talpha_bw_full_var"] = (
-            ("x", time_dim),
+            ("x", 'time'),
             ip.get_tab_values(
                 pval=p_var, x=self.x.values, trans_att=self.trans_att.values, axis=""
             ),
@@ -3497,8 +3454,6 @@ class DataStore(xr.Dataset):
         else:
             state = da.random.RandomState()
 
-        time_dim = self.get_time_dim(data_var_key='st')
-
         no, nt = self.st.data.shape
         if 'trans_att' in self.keys():
             nta = self.trans_att.size
@@ -3534,15 +3489,15 @@ class DataStore(xr.Dataset):
 
         if fixed_alpha:
             self['alpha_mc'] = (('mc', 'x'), p_mc[:, 1:no + 1])
-            self['c_mc'] = (('mc', time_dim), p_mc[:, 1 + no:1 + no + nt])
+            self['c_mc'] = (('mc', 'time'), p_mc[:, 1 + no:1 + no + nt])
         else:
             self['dalpha_mc'] = (('mc',), p_mc[:, 1])
-            self['c_mc'] = (('mc', time_dim), p_mc[:, 2:nt + 2])
+            self['c_mc'] = (('mc', 'time'), p_mc[:, 2:nt + 2])
 
         self['gamma_mc'] = (('mc',), p_mc[:, 0])
         if nta:
             self['ta_mc'] = (
-                ('mc', 'trans_att', time_dim),
+                ('mc', 'trans_att', 'time'),
                 np.reshape(p_mc[:, -nt * nta:], (mc_sample_size, nta, nt)))
 
         rsize = (self.mc.size, self.x.size, self.time.size)
@@ -3597,7 +3552,7 @@ class DataStore(xr.Dataset):
                 st_vari_da = da.from_array(st_vari, chunks=memchunk[1:])
 
             self[k] = (
-                ('mc', 'x', time_dim),
+                ('mc', 'x', 'time'),
                 state.normal(
                     loc=loc,  # has chunks=memchunk[1:]
                     scale=st_vari_da**0.5,
@@ -3611,7 +3566,7 @@ class DataStore(xr.Dataset):
                 for tai, taxi in zip(ta.values, self.trans_att.values):
                     ta_arr[ii, self.x.values >= taxi] = \
                         ta_arr[ii, self.x.values >= taxi] + tai
-        self['ta_mc_arr'] = (('mc', 'x', time_dim), ta_arr)
+        self['ta_mc_arr'] = (('mc', 'x', 'time'), ta_arr)
 
         if fixed_alpha:
             self['tmpf_mc_set'] = self['gamma_mc'] / (
@@ -3646,7 +3601,7 @@ class DataStore(xr.Dataset):
                 drop_axis=avg_axis,  # avg dimesnions are dropped from input arr
                 new_axis=0)  # The new CI dimension is added as first axis
 
-            self['tmpf_mc'] = (('CI', 'x', time_dim), q)
+            self['tmpf_mc'] = (('CI', 'x', 'time'), q)
 
         if mc_remove_set_flag:
             drop_var = [
@@ -3818,54 +3773,52 @@ class DataStore(xr.Dataset):
             reduce_memory_usage=reduce_memory_usage,
             **kwargs)
 
-        time_dim = self.get_time_dim(data_var_key='st')
-
         if ci_avg_time_sel is not None:
-            time_dim2 = time_dim + '_avg'
+            time_dim2 = 'time' + '_avg'
             x_dim2 = 'x'
             self.coords[time_dim2] = (
                 (time_dim2,),
-                self[time_dim].sel(**{
-                    time_dim: ci_avg_time_sel}).data)
+                self['time'].sel(**{
+                    'time': ci_avg_time_sel}).data)
             self['tmpf_avgsec'] = (
                 ('x', time_dim2),
                 self["tmpf"].sel(**{
-                    time_dim: ci_avg_time_sel}).data)
+                    'time': ci_avg_time_sel}).data)
             self['tmpf_mc_set'] = (
                 ('mc', 'x', time_dim2),
                 self["tmpf"
                      + '_mc_set'].sel(**{
-                         time_dim: ci_avg_time_sel}).data)
+                         'time': ci_avg_time_sel}).data)
 
         elif ci_avg_time_isel is not None:
-            time_dim2 = time_dim + '_avg'
+            time_dim2 = 'time' + '_avg'
             x_dim2 = 'x'
             self.coords[time_dim2] = (
                 (time_dim2,),
-                self[time_dim].isel(**{
-                    time_dim: ci_avg_time_isel}).data)
+                self['time'].isel(**{
+                    'time': ci_avg_time_isel}).data)
             self['tmpf_avgsec'] = (
                 ('x', time_dim2),
                 self["tmpf"].isel(**{
-                    time_dim: ci_avg_time_isel}).data)
+                    'time': ci_avg_time_isel}).data)
             self['tmpf_mc_set'] = (
                 ('mc', 'x', time_dim2),
                 self["tmpf"
                      + '_mc_set'].isel(**{
-                         time_dim: ci_avg_time_isel}).data)
+                         'time': ci_avg_time_isel}).data)
 
         elif ci_avg_x_sel is not None:
-            time_dim2 = time_dim
+            time_dim2 = 'time'
             x_dim2 = 'x_avg'
             self.coords[x_dim2] = ((x_dim2,), self.x.sel(x=ci_avg_x_sel).data)
             self['tmpf_avgsec'] = (
-                (x_dim2, time_dim), self["tmpf"].sel(x=ci_avg_x_sel).data)
+                (x_dim2, 'time'), self["tmpf"].sel(x=ci_avg_x_sel).data)
             self['tmpf_mc_set'] = (
-                ('mc', x_dim2, time_dim),
+                ('mc', x_dim2, 'time'),
                 self['tmpf_mc_set'].sel(x=ci_avg_x_sel).data)
 
         elif ci_avg_x_isel is not None:
-            time_dim2 = time_dim
+            time_dim2 = 'time'
             x_dim2 = 'x_avg'
             self.coords[x_dim2] = (
                 (x_dim2,), self.x.isel(x=ci_avg_x_isel).data)
@@ -3878,7 +3831,7 @@ class DataStore(xr.Dataset):
         else:
             self['tmpf_avgsec'] = self["tmpf"]
             x_dim2 = 'x'
-            time_dim2 = time_dim
+            time_dim2 = 'time'
 
         # subtract the mean temperature
         q = self['tmpf_mc_set'] - self['tmpf_avgsec']
@@ -4183,8 +4136,6 @@ class DataStore(xr.Dataset):
         else:
             state = da.random.RandomState()
 
-        time_dim = self.get_time_dim(data_var_key='st')
-
         if conf_ints:
             assert "tmpw", 'Current implementation requires you to ' \
                                'define "tmpw" when estimating confidence ' \
@@ -4231,8 +4182,8 @@ class DataStore(xr.Dataset):
 
             self['gamma_mc'] = (tuple(), gamma)
             self['alpha_mc'] = (('x',), alpha)
-            self['df_mc'] = ((time_dim,), d_fw)
-            self['db_mc'] = ((time_dim,), d_bw)
+            self['df_mc'] = (('time',), d_fw)
+            self['db_mc'] = (('time',), d_bw)
 
             if nta:
                 ta = p_val[2 * nt + 1 + no:].reshape((nt, 2, nta), order='F')
@@ -4249,8 +4200,8 @@ class DataStore(xr.Dataset):
                     ta_bw_arr[self.x.values < taxi] = \
                         ta_bw_arr[self.x.values < taxi] + tai
 
-                self['talpha_fw_mc'] = (('x', time_dim), ta_fw_arr)
-                self['talpha_bw_mc'] = (('x', time_dim), ta_bw_arr)
+                self['talpha_fw_mc'] = (('x', 'time'), ta_fw_arr)
+                self['talpha_bw_mc'] = (('x', 'time'), ta_bw_arr)
 
         elif isinstance(p_cov, bool) and p_cov:
             raise NotImplementedError(
@@ -4281,8 +4232,8 @@ class DataStore(xr.Dataset):
             d_bw = po_mc[:, 1 + nt:2 * nt + 1]
 
             self['gamma_mc'] = (('mc',), gamma)
-            self['df_mc'] = (('mc', time_dim), d_fw)
-            self['db_mc'] = (('mc', time_dim), d_bw)
+            self['df_mc'] = (('mc', 'time'), d_fw)
+            self['db_mc'] = (('mc', 'time'), d_bw)
 
             # calculate alpha seperately
             alpha = np.zeros((mc_sample_size, no), dtype=float)
@@ -4331,8 +4282,8 @@ class DataStore(xr.Dataset):
 
                     ta_bw_arr += mask * tai.T[:, None, :]
 
-                self['talpha_fw_mc'] = (('mc', 'x', time_dim), ta_fw_arr)
-                self['talpha_bw_mc'] = (('mc', 'x', time_dim), ta_bw_arr)
+                self['talpha_fw_mc'] = (('mc', 'x', 'time'), ta_fw_arr)
+                self['talpha_bw_mc'] = (('mc', 'x', 'time'), ta_bw_arr)
 
         # Draw from the normal distributions for the Stokes intensities
         for k, st_labeli, st_vari in zip(['r_st', 'r_ast', 'r_rst', 'r_rast'],
@@ -4372,7 +4323,7 @@ class DataStore(xr.Dataset):
                 st_vari_da = da.from_array(st_vari, chunks=memchunk[1:])
 
             self[k] = (
-                ('mc', 'x', time_dim),
+                ('mc', 'x', 'time'),
                 state.normal(
                     loc=loc,  # has chunks=memchunk[1:]
                     scale=st_vari_da**0.5,
@@ -4427,7 +4378,7 @@ class DataStore(xr.Dataset):
                         # avg dimensions are dropped from input arr
                         new_axis=0)  # The new CI dimension is added as firsaxis
 
-                    self[label + '_mc'] = (('CI', 'x', time_dim), q)
+                    self[label + '_mc'] = (('CI', 'x', 'time'), q)
 
         # Weighted mean of the forward and backward
         tmpw_var = 1 / (
@@ -4462,7 +4413,7 @@ class DataStore(xr.Dataset):
                 drop_axis=avg_axis,  # avg dimensions are dropped
                 new_axis=0,
                 dtype=float)  # The new CI dimension is added as first axis
-            self["tmpw" + '_mc'] = (('CI', 'x', time_dim), q2)
+            self["tmpw" + '_mc'] = (('CI', 'x', 'time'), q2)
 
         # Clean up the garbage. All arrays with a Monte Carlo dimension.
         if mc_remove_set_flag:
@@ -4677,55 +4628,53 @@ class DataStore(xr.Dataset):
             reduce_memory_usage=reduce_memory_usage,
             **kwargs)
 
-        time_dim = self.get_time_dim(data_var_key='st')
-
         for label in ["tmpf", "tmpb"]:
             if ci_avg_time_sel is not None:
-                time_dim2 = time_dim + '_avg'
+                time_dim2 = 'time' + '_avg'
                 x_dim2 = 'x'
                 self.coords[time_dim2] = (
                     (time_dim2,),
-                    self[time_dim].sel(**{
-                        time_dim: ci_avg_time_sel}).data)
+                    self['time'].sel(**{
+                        'time': ci_avg_time_sel}).data)
                 self[label + '_avgsec'] = (
                     ('x', time_dim2),
                     self[label].sel(**{
-                        time_dim: ci_avg_time_sel}).data)
+                        'time': ci_avg_time_sel}).data)
                 self[label + '_mc_set'] = (
                     ('mc', 'x', time_dim2),
                     self[label + '_mc_set'].sel(**{
-                        time_dim: ci_avg_time_sel}).data)
+                        'time': ci_avg_time_sel}).data)
 
             elif ci_avg_time_isel is not None:
-                time_dim2 = time_dim + '_avg'
+                time_dim2 = 'time' + '_avg'
                 x_dim2 = 'x'
                 self.coords[time_dim2] = (
                     (time_dim2,),
-                    self[time_dim].isel(**{
-                        time_dim: ci_avg_time_isel}).data)
+                    self['time'].isel(**{
+                        'time': ci_avg_time_isel}).data)
                 self[label + '_avgsec'] = (
                     ('x', time_dim2),
                     self[label].isel(**{
-                        time_dim: ci_avg_time_isel}).data)
+                        'time': ci_avg_time_isel}).data)
                 self[label + '_mc_set'] = (
                     ('mc', 'x', time_dim2),
                     self[label
                          + '_mc_set'].isel(**{
-                             time_dim: ci_avg_time_isel}).data)
+                             'time': ci_avg_time_isel}).data)
 
             elif ci_avg_x_sel is not None:
-                time_dim2 = time_dim
+                time_dim2 = 'time'
                 x_dim2 = 'x_avg'
                 self.coords[x_dim2] = (
                     (x_dim2,), self.x.sel(x=ci_avg_x_sel).data)
                 self[label + '_avgsec'] = (
-                    (x_dim2, time_dim), self[label].sel(x=ci_avg_x_sel).data)
+                    (x_dim2, 'time'), self[label].sel(x=ci_avg_x_sel).data)
                 self[label + '_mc_set'] = (
-                    ('mc', x_dim2, time_dim),
+                    ('mc', x_dim2, 'time'),
                     self[label + '_mc_set'].sel(x=ci_avg_x_sel).data)
 
             elif ci_avg_x_isel is not None:
-                time_dim2 = time_dim
+                time_dim2 = 'time'
                 x_dim2 = 'x_avg'
                 self.coords[x_dim2] = (
                     (x_dim2,), self.x.isel(x=ci_avg_x_isel).data)
@@ -4738,7 +4687,7 @@ class DataStore(xr.Dataset):
             else:
                 self[label + '_avgsec'] = self[label]
                 x_dim2 = 'x'
-                time_dim2 = time_dim
+                time_dim2 = 'time'
 
             memchunk = self[label + '_mc_set'].chunks
 
@@ -5047,8 +4996,6 @@ class DataStore(xr.Dataset):
         resid_da : xarray.DataArray
             The residuals as DataArray
         """
-        time_dim = self.get_time_dim(data_var_key=label)
-
         resid_temp = self.ufunc_per_section(
             sections=sections, label=label, temp_err=True, calc_per='all')
         resid_x = self.ufunc_per_section(
@@ -5061,10 +5008,10 @@ class DataStore(xr.Dataset):
         resid_sorted[resid_ix, :] = resid_temp
         resid_da = xr.DataArray(
             data=resid_sorted,
-            dims=('x', time_dim),
+            dims=('x', 'time'),
             coords={
                 'x': self.x,
-                time_dim: self.time})
+                'time': self.time})
         return resid_da
 
     def ufunc_per_section(
@@ -5256,7 +5203,7 @@ class DataStore(xr.Dataset):
                 if subtract_from_label:
                     # calculate std wrt other series
                     # check_dims(self, [subtract_from_label],
-                    #            correct_dims=('x', time_dim))
+                    #            correct_dims=('x', 'time'))
 
                     assert not temp_err
 
@@ -5328,12 +5275,12 @@ class ParameterIndexDoubleEnded:
     # store calibration parameters in DataStore
     self["gamma"] = (tuple(), gamma)
     self["alpha"] = (('x',), alpha)
-    self["df"] = ((time_dim,), d_fw)
-    self["db"] = ((time_dim,), d_bw)
+    self["df"] = (('time',), d_fw)
+    self["db"] = (('time',), d_bw)
     if nta > 0:
         ta = pval[1 + 2 * nt + nx:].reshape((nt, 2, nta), order='F')
-        self['talpha_fw'] = ((time_dim, 'trans_att'), ta[:, 0, :])
-        self['talpha_bw'] = ((time_dim, 'trans_att'), ta[:, 1, :])
+        self['talpha_fw'] = (('time', 'trans_att'), ta[:, 0, :])
+        self['talpha_bw'] = (('time', 'trans_att'), ta[:, 1, :])
     """
 
     def __init__(self, nt, nx, nta, fix_gamma=False, fix_alpha=False):
@@ -5414,7 +5361,7 @@ class ParameterIndexDoubleEnded:
         """
         Use `.reshape((nt, nta))` to convert array to (time-dim and transatt-dim). Order is the default C order.
         ta = pval[1 + 2 * nt + nx:].reshape((nt, 2, nta), order='F')
-        self['talpha_fw'] = ((time_dim, 'trans_att'), ta[:, 0, :])
+        self['talpha_fw'] = (('time', 'trans_att'), ta[:, 0, :])
         """
         return self.ta[:, 0, :].flatten(order="C")
 
@@ -5423,7 +5370,7 @@ class ParameterIndexDoubleEnded:
         """
         Use `.reshape((nt, nta))` to convert array to (time-dim and transatt-dim). Order is the default C order.
         ta = pval[1 + 2 * nt + nx:].reshape((nt, 2, nta), order='F')
-        self['talpha_bw'] = ((time_dim, 'trans_att'), ta[:, 1, :])
+        self['talpha_bw'] = (('time', 'trans_att'), ta[:, 1, :])
         """
         return self.ta[:, 1, :].flatten(order="C")
 
@@ -5591,7 +5538,7 @@ class ParameterIndexSingleEnded:
     def taf(self):
         """returns taf parameters of shape (nt, nta) or (nt, nta, a)"""
         # ta = p_val[-nt * nta:].reshape((nt, nta), order='F')
-        # self["talpha"] = ((time_dim, 'trans_att'), ta[:, :])
+        # self["talpha"] = (('time', 'trans_att'), ta[:, :])
         if self.includes_alpha:
             return np.arange(1 + self.nx + self.nt, 1 + self.nx + self.nt + self.nt * self.nta
                              ).reshape((self.nt, self.nta), order='F')

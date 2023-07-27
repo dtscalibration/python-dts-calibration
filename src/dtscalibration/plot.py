@@ -15,8 +15,6 @@ def plot_residuals_reference_sections(
     units="",
     fig_kwargs=None,
     method="split",
-    time_dim="time",
-    x_dim="x",
     cmap="RdBu_r",
 ):
     """
@@ -44,10 +42,6 @@ def plot_residuals_reference_sections(
         whitespace.
         'single' will use the previous method, where all sections are in one
         plot.
-    time_dim : str
-        Name of the time dimension to average/take the variance of
-    x_dim : str
-        Name of the spatial dimension
     cmap : str
         Matplotlib colormap to use for the residual plot. By default it will
         use a diverging colormap.
@@ -182,10 +176,10 @@ def plot_residuals_reference_sections(
             )
             section_axes[ii].set_ylabel("")
 
-            resid.sel(x=section_list[ii]).std(dim=time_dim).plot(
-                ax=section_ax_avg[ii], y=x_dim, c="blue")
-            resid.sel(x=section_list[ii]).mean(dim=time_dim).plot(
-                ax=section_ax_avg[ii], y=x_dim, c="orange")
+            resid.sel(x=section_list[ii]).std(dim='time').plot(
+                ax=section_ax_avg[ii], y="x", c="blue")
+            resid.sel(x=section_list[ii]).mean(dim='time').plot(
+                ax=section_ax_avg[ii], y="x", c="orange")
             section_ax_avg[ii].axvline(
                 0, linestyle="-", c="black", linewidth=0.8)
             section_ax_avg[ii].set_ylabel("")
@@ -210,8 +204,8 @@ def plot_residuals_reference_sections(
                        - 1].set_ylabel("x (m)")
 
         # plot the x ax avg
-        resid.std(dim=x_dim).plot(ax=x_ax_avg, c="blue")
-        resid.mean(dim=x_dim).plot(ax=x_ax_avg, c="orange")
+        resid.std(dim="x").plot(ax=x_ax_avg, c="blue")
+        resid.mean(dim="x").plot(ax=x_ax_avg, c="orange")
         x_ax_avg.axhline(0, linestyle="-", c="black", linewidth=0.8)
         x_ax_avg.set_xlabel("")
         x_ax_avg.set_ylabel(units)
@@ -251,8 +245,6 @@ def plot_residuals_reference_sections_single(
     robust=True,
     units="",
     fig_kwargs=None,
-    time_dim="time",
-    x_dim="x",
 ):
     """
     Analyze the residuals of the reference sections, between the Stokes
@@ -274,9 +266,9 @@ def plot_residuals_reference_sections_single(
         The sections obj is normally used to set DataStore.sections, now is
         used toobtain the
         section names to plot the names on top of the residuals.
-    time_dim : str
+    'time' : str
         Name of the time dimension to average/take the variance of
-    x_dim : str
+    "x" : str
         Name of the spatial dimension
 
     Returns
@@ -313,8 +305,8 @@ def plot_residuals_reference_sections_single(
     x_ax_avg = fig.add_subplot(grid[:2, 2:-1])  # , sharex=main_ax
     legend_ax = fig.add_subplot(grid[:2, :2], xticklabels=[], yticklabels=[])
     cbar_ax = fig.add_subplot(grid[2:, -1], xticklabels=[], yticklabels=[])
-    if np.issubdtype(resid[time_dim].dtype, float) or np.issubdtype(
-            resid[time_dim].dtype, int):
+    if np.issubdtype(resid['time'].dtype, float) or np.issubdtype(
+            resid['time'].dtype, int):
         resid.plot.imshow(
             ax=main_ax,
             cbar_ax=cbar_ax,
@@ -332,8 +324,8 @@ def plot_residuals_reference_sections_single(
 
     # x_ax_avg
     x_ax_avg2 = x_ax_avg.twinx()
-    resid.std(dim=x_dim).plot(ax=x_ax_avg2, c="blue")
-    resid.mean(dim=x_dim).plot(ax=x_ax_avg2, c="orange")
+    resid.std(dim="x").plot(ax=x_ax_avg2, c="blue")
+    resid.mean(dim="x").plot(ax=x_ax_avg2, c="orange")
     x_ax_avg2.axhline(0, linestyle="-", c="black", linewidth=0.8)
     if plot_avg_std is not None:
         x_ax_avg2.axhline(plot_avg_std, linestyle="--", c="blue")
@@ -344,11 +336,11 @@ def plot_residuals_reference_sections_single(
     x_ax_avg2.set_ylabel(units)
 
     # y_ax_avg
-    dp = resid.std(dim=time_dim)
+    dp = resid.std(dim='time')
     x = dp.values
     y = dp.x
     y_ax_avg.plot(x, y, c="blue")
-    dp = resid.mean(dim=time_dim)
+    dp = resid.mean(dim='time')
     x = dp.values
     y = dp.x
     y_ax_avg.plot(x, y, c="orange")
@@ -397,7 +389,6 @@ def plot_accuracy(
     title=None,
     plot_names=True,
     sections=None,
-    x_dim="x",
 ):
     """
     Analyze the residuals of the reference sections, between the Stokes
@@ -419,7 +410,7 @@ def plot_accuracy(
         The sections obj is normally used to set DataStore.sections, now is
         used toobtain the
         section names to plot the names on top of the residuals.
-    x_dim : str
+    "x" : str
         Name of the spatial dimension
 
     Returns
@@ -552,7 +543,6 @@ def plot_sigma_report(
     temp_var_label
     itimes
     """
-    time_dim = ds.get_time_dim(data_var_key=temp_label)
     assert "CI" not in ds[temp_label].dims, "use other plot report function"
 
     fig, (ax1, ax2) = plt.subplots(nrows=2, sharex=True, figsize=(12, 8))
@@ -565,8 +555,8 @@ def plot_sigma_report(
         temp = ds[temp_label].isel(time=itimes)
         stds = np.sqrt(ds[temp_var_acc_label].isel(time=itimes)).compute()
     else:
-        temp = ds[temp_label].mean(dim=time_dim).compute()
-        stds = np.sqrt(ds[temp_var_acc_label]).mean(dim=time_dim).compute()
+        temp = ds[temp_label].mean(dim='time').compute()
+        stds = np.sqrt(ds[temp_var_acc_label]).mean(dim='time').compute()
 
     for lbl, clr in zip([2.0, 1.0], colors):
         y1 = temp - lbl * stds
@@ -620,7 +610,7 @@ def plot_sigma_report(
                 v_sei = v_sei.compute()
 
             if itimes:
-                val = ds[k].mean(dim=time_dim)
+                val = ds[k].mean(dim='time')
             else:
                 val = ds[k].isel(time=itimes)
 
@@ -673,7 +663,7 @@ def plot_sigma_report(
         if itimes:
             stds_prec = np.sqrt(ds[temp_var_prec_label].isel(time=itimes))
         else:
-            stds_prec = np.sqrt(ds[temp_var_prec_label]).mean(dim=time_dim)
+            stds_prec = np.sqrt(ds[temp_var_prec_label]).mean(dim='time')
         stds_prec.plot(
             ax=ax2, c="black", label="Projected precision", **line_kwargs)
 
