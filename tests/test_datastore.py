@@ -556,8 +556,6 @@ def read_data_from_fp_numpy(fp):
 
 
 def test_resample_datastore():
-    import xarray as xr
-
     filepath = data_dir_single_ended
     ds = read_silixa_files(
         directory=filepath, timezone_netcdf='UTC', file_ext='*.xml')

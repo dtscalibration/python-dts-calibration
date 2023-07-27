@@ -246,8 +246,6 @@ def merge_double_ended_times(ds_fw, ds_bw, verify_timedeltas=True, verbose=True)
 
     # throw out is dt differs from its neighbors
     if verify_timedeltas:
-        dt = (ds_bw.isel(time=iuse_chbw).time.values - ds_fw.isel(time=iuse_chfw).time.values) /\
-             np.array(1000000000, dtype='timedelta64[ns]')
         dt = (
             (ds_bw.isel(time=iuse_chbw).time.values - ds_fw.isel(time=iuse_chfw).time.values) /
             np.timedelta64(1, "s"))
