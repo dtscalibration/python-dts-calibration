@@ -556,14 +556,12 @@ def read_data_from_fp_numpy(fp):
 
 
 def test_resample_datastore():
-    import xarray as xr
-
     filepath = data_dir_single_ended
     ds = read_silixa_files(
         directory=filepath, timezone_netcdf='UTC', file_ext='*.xml')
     assert ds.time.size == 3
 
-    ds_resampled = DataStore(xr.Dataset(ds).resample(time="47S").mean())
+    ds_resampled = DataStore(ds.resample(time="47S").mean())
 
     assert ds_resampled.time.size == 2
     assert ds_resampled.st.dims == ('x', 'time'), 'The dimension have to ' \
