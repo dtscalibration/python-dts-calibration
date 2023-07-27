@@ -103,7 +103,7 @@ class DataStore(xr.Dataset):
                 ideal_dim.append('x')
                 all_dim.pop(all_dim.index('x'))
 
-            time_dim = self.get_time_dim()
+            time_dim = "time"
             if time_dim:
                 if time_dim in all_dim:
                     ideal_dim.append(time_dim)
