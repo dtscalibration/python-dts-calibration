@@ -12,6 +12,10 @@ Bug fixes
 
 * Single-ended measurements with `fix_alpha` failed due to a bug introduced in v2.0.0 ([#173](https://github.com/dtscalibration/python-dts-calibration/pull/173)).
 
+Introduced limitations
+
+* Standardized parameter names. Reduced the freedom in choosing parameter names and dimension names in favor of simplifying the code.
+
 2.0.0 (2023-05-24)
 ------------------
 
