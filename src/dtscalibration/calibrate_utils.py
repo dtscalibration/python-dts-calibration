@@ -633,7 +633,6 @@ def calibration_double_ended_solver(  # noqa: MC0001
     # put E outside of reference section in solution
     # concatenating makes a copy of the data instead of using a pointer
     ds_sub = ds[['st', 'ast', 'rst', 'rast', 'trans_att']]
-    'time' = ds_sub.get_time_dim()
     ds_sub['df'] = (('time',), p_sol[1:1 + nt])
     ds_sub['df_var'] = (('time',), p_var[1:1 + nt])
     ds_sub['db'] = (('time',), p_sol[1 + nt:1 + 2 * nt])
@@ -1237,8 +1236,6 @@ def calc_alpha_double(
 
     assert ix_alpha_is_zero >= 0, 'Define ix_alpha_is_zero' + \
                                   str(ix_alpha_is_zero)
-
-    'time' = ds.get_time_dim()
 
     if st_var is not None:
         if callable(st_var):
