@@ -662,7 +662,7 @@ class DataStore(xr.Dataset):
                 v['dtype'] = 'int32'
                 # v['_FillValue'] = -9999  # Int does not support NaN
 
-            if np.issubdtype(self[k].dtype, str):
+            if np.issubdtype(self[k].dtype, str) or np.issubdtype(self[k].dtype, object):
                 # Compression not supported for variable length strings
                 # https://github.com/Unidata/netcdf4-python/issues/1205
                 v["zlib"] = False
