@@ -22,7 +22,7 @@ name = "dtscalibration"
 description = "A Python package to load raw DTS files, perform a calibration, and plot the result."
 readme = "README.rst"
 license = "BSD-3-Clause"
-requires-python = ">=3.9, <3.11"
+requires-python = ">=3.9, <3.12"
 authors = [
   {email = "bdestombe@gmail.com"},
   {name = "Bas des Tombe, Bart Schilperoort"}
@@ -48,12 +48,13 @@ classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Topic :: Utilities",
 ]
 dependencies = [
     "numpy",
     "xarray",
-    "pyyaml",
+    "pyyaml>=6.0.1",
     "xmltodict",
     "scipy",
     "patsy",  # a dependency of statsmodels
@@ -61,7 +62,8 @@ dependencies = [
     "dask",
     "toolz",
     "matplotlib",
-    "netCDF4<=1.5.8",
+    "netCDF4>=1.6.4",
+    "flox",
     "pandas",
 ]
 dynamic = ["version"]
@@ -117,7 +119,7 @@ build = [
 features = ["dev"]
 
 [[tool.hatch.envs.matrix_test.matrix]]
-python = ["3.9", "3.10"]
+python = ["3.9", "3.10", "3.11"]
 
 [tool.hatch.envs.matrix_test.scripts]
 test = ["pytest ./src/ ./tests/",]  # --doctest-modules
@@ -155,7 +157,8 @@ line-length = 88
 exclude = ["docs", "build"]
 # Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
-target-version = "py38"
+# Minimum supported Python version
+target-version = "py39"
 
 [tool.ruff.per-file-ignores]
 "tests/**" = ["D"]
