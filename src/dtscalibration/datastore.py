@@ -662,6 +662,11 @@ class DataStore(xr.Dataset):
                 v['dtype'] = 'int32'
                 # v['_FillValue'] = -9999  # Int does not support NaN
 
+            if np.issubdtype(self[k].dtype, str):
+                # Compression not supported for variable length strings
+                # https://github.com/Unidata/netcdf4-python/issues/1205
+                v["zlib"] = False
+
         if time_chunks_from_key is not None:
             # obtain optimal chunk sizes in time and x dim
             if self[time_chunks_from_key].dims == ('x', 'time'):
