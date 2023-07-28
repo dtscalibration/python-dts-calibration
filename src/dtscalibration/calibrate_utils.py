@@ -390,12 +390,12 @@ def calibration_double_ended_solver(  # noqa: MC0001
     # Calculate E as initial estimate for the E calibration.
     # Does not require ta to be passed on
     E_all_guess, E_all_var_guess = calc_alpha_double(
-        'guess',
-        ds,
-        st_var,
-        ast_var,
-        rst_var,
-        rast_var,
+        mode='guess',
+        ds=ds,
+        st_var=st_var,
+        ast_var=ast_var,
+        rst_var=rst_var,
+        rast_var=rast_var,
         ix_alpha_is_zero=ix_alpha_is_zero)
     df_est, db_est = calc_df_db_double_est(ds, ix_alpha_is_zero, 485.)
 
@@ -638,16 +638,12 @@ def calibration_double_ended_solver(  # noqa: MC0001
     ds_sub['db'] = (('time',), p_sol[1 + nt:1 + 2 * nt])
     ds_sub['db_var'] = (('time',), p_var[1 + nt:1 + 2 * nt])
     E_all_exact, E_all_var_exact = calc_alpha_double(
-        'exact',
-        ds_sub,
-        st_var,
-        ast_var,
-        rst_var,
-        rast_var,
-        'df',
-        'db',
-        'df_var',
-        'db_var',
+        mode='exact',
+        ds=ds_sub,
+        st_var=st_var,
+        ast_var=ast_var,
+        rst_var=rst_var,
+        rast_var=rast_var,
         ix_alpha_is_zero=ix_alpha_is_zero,
         talpha_fw=talpha_fw,
         talpha_bw=talpha_bw,
@@ -1222,10 +1218,6 @@ def calc_alpha_double(
         ast_var=None,
         rst_var=None,
         rast_var=None,
-        D_F_label=None,
-        D_B_label=None,
-        D_F_var_label=None,
-        D_B_var_label=None,
         ix_alpha_is_zero=-1,
         talpha_fw=None,
         talpha_bw=None,
@@ -1268,10 +1260,10 @@ def calc_alpha_double(
             A = (i_bw - i_fw) / 2
 
         elif mode == 'exact':
-            D_F = ds[D_F_label]
-            D_B = ds[D_B_label]
-            D_F_var = ds[D_F_var_label]
-            D_B_var = ds[D_B_var_label]
+            D_F = ds["df"]
+            D_B = ds["db"]
+            D_F_var = ds["df_var"]
+            D_B_var = ds["db_var"]
 
             if ds.trans_att.size > 0:
                 # Can be improved by including covariances. That reduces the
@@ -1315,8 +1307,8 @@ def calc_alpha_double(
         if mode == 'guess':
             A = (i_bw - i_fw) / 2
         elif mode == 'exact':
-            D_F = ds[D_F_label]
-            D_B = ds[D_B_label]
+            D_F = ds["df"]
+            D_B = ds["db"]
             A = (i_bw - i_fw) / 2 + (D_B - D_F) / 2
 
         E_var = A.var(dim='time')

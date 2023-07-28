@@ -2799,16 +2799,12 @@ class DataStore(xr.Dataset):
                     talpha_bw_var = None
 
                 E_all_exact, E_all_var_exact = calc_alpha_double(
-                    "exact",
-                    ds_sub,
-                    st_var,
-                    ast_var,
-                    rst_var,
-                    rast_var,
-                    "df",
-                    "db",
-                    "df_var",
-                    "db_var",
+                    mode="exact",
+                    ds=ds_sub,
+                    st_var=st_var,
+                    ast_var=ast_var,
+                    rst_var=rst_var,
+                    rast_var=rast_var,
                     ix_alpha_is_zero=ix_sec[0],
                     talpha_fw=talpha_fw,
                     talpha_bw=talpha_bw,
