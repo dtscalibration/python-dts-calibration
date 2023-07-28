@@ -54,7 +54,7 @@ classifiers = [
 dependencies = [
     "numpy",
     "xarray",
-    "pyyaml",
+    "pyyaml>=6.0.1",
     "xmltodict",
     "scipy",
     "patsy",  # a dependency of statsmodels
