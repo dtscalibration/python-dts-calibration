@@ -7,10 +7,13 @@ dev
 New features
 
 * Improved the functionality of `merge_double_ended`, by adding a check that handles measurements missing in one channel while present in the other ([#171](https://github.com/dtscalibration/python-dts-calibration/pull/171))
+* Support for Python 3.11
+* Requiring netcdf4 >= 1.6.4
 
 Bug fixes
 
 * Single-ended measurements with `fix_alpha` failed due to a bug introduced in v2.0.0 ([#173](https://github.com/dtscalibration/python-dts-calibration/pull/173)).
+* Flox included in requirements to speed up resampling via xarray ([Xarray #5734](https://github.com/pydata/xarray/pull/5734)).
 
 Introduced limitations
 
