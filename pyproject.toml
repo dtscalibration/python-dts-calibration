@@ -58,7 +58,6 @@ dependencies = [
     "xmltodict",
     "scipy",
     "statsmodels",
-    "toolz",
     "matplotlib",
     "netCDF4>=1.6.4",
     "nc-time-axis>=1.4.1"  # optional plot dependency of xarray
