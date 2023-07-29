@@ -74,6 +74,10 @@ dev = [
     "bump2version",
     "ruff",
     "isort",
+    "mypy",
+    "types-PyYAML",  # for pyyaml types
+    "types-xmltodict",  # for xmltodict types
+    "pandas-stubs",  # for pandas types
     "pytest",
     "pytest-cov",
     "jupyter",
@@ -100,6 +104,7 @@ features = ["dev"]
 lint = [
   "ruff check .",
   "isort --check-only --diff .",
+  "mypy src/",
 ]
 format = ["isort .", "lint",]
 test = ["pytest ./src/ ./tests/",]  # --doctest-modules
@@ -176,6 +181,9 @@ known_first_party = ["dtscalibration"]
 skip = [".gitignore", ".tox", "docs"]
 src_paths = ["src", "tests"]
 line_length = 120
+
+[tool.mypy]
+ignore_missing_imports = true  # Preferably false, but matplotlib, scipy and statsmodels are missing typing stubs
 
 [tool.coverage.run]
 branch = true
