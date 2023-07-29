@@ -16,25 +16,25 @@ import yaml
 from scipy.optimize import minimize
 from scipy.sparse import linalg as ln
 
-from .calibrate_utils import calc_alpha_double
-from .calibrate_utils import calibration_double_ended_solver
-from .calibrate_utils import calibration_single_ended_solver
-from .calibrate_utils import match_sections
-from .calibrate_utils import parse_st_var
-from .calibrate_utils import wls_sparse
-from .calibrate_utils import wls_stats
-from .datastore_utils import check_timestep_allclose
-from .io import _dim_attrs
-from .io import apsensing_xml_version_check
-from .io import read_apsensing_files_routine
-from .io import read_sensornet_files_routine_v3
-from .io import read_sensortran_files_routine
-from .io import read_silixa_files_routine_v4
-from .io import read_silixa_files_routine_v6
-from .io import sensornet_ddf_version_check
-from .io import sensortran_binary_version_check
-from .io import silixa_xml_version_check
-from .io import ziphandle_to_filepathlist
+from dtscalibration.calibrate_utils import calc_alpha_double
+from dtscalibration.calibrate_utils import calibration_double_ended_solver
+from dtscalibration.calibrate_utils import calibration_single_ended_solver
+from dtscalibration.calibrate_utils import match_sections
+from dtscalibration.calibrate_utils import parse_st_var
+from dtscalibration.calibrate_utils import wls_sparse
+from dtscalibration.calibrate_utils import wls_stats
+from dtscalibration.datastore_utils import check_timestep_allclose
+from dtscalibration.io import _dim_attrs
+from dtscalibration.io import apsensing_xml_version_check
+from dtscalibration.io import read_apsensing_files_routine
+from dtscalibration.io import read_sensornet_files_routine_v3
+from dtscalibration.io import read_sensortran_files_routine
+from dtscalibration.io import read_silixa_files_routine_v4
+from dtscalibration.io import read_silixa_files_routine_v6
+from dtscalibration.io import sensornet_ddf_version_check
+from dtscalibration.io import sensortran_binary_version_check
+from dtscalibration.io import silixa_xml_version_check
+from dtscalibration.io import ziphandle_to_filepathlist
 
 dtsattr_namelist = ['double_ended_flag']
 dim_attrs = {k: v for kl, v in _dim_attrs.items() for k in kl}
@@ -43,7 +43,6 @@ warnings.filterwarnings(
     message='xarray subclass DataStore should explicitly define __slots__')
 
 
-# pylint: disable=W605
 class DataStore(xr.Dataset):
     """The data class that stores the measurements, contains calibration
     methods to relate Stokes and anti-Stokes to temperature. The user should
@@ -289,7 +288,7 @@ class DataStore(xr.Dataset):
         pass
 
     @property
-    def is_double_ended(self):
+    def is_double_ended(self) -> float:
         """
         Whether or not the data is loaded from a double-ended setup.
 
@@ -303,7 +302,7 @@ class DataStore(xr.Dataset):
             # backward compatible to when only silixa files were supported
             return bool(int(self.attrs['customData:isDoubleEnded']))
         else:
-            assert 0
+            raise ValueError("Could not determine if the data was from a double-ended setup.")
 
     @is_double_ended.setter
     def is_double_ended(self, flag: bool):
@@ -311,7 +310,7 @@ class DataStore(xr.Dataset):
         pass
 
     @property
-    def chfw(self):
+    def chfw(self) -> float:
         """
         Zero based channel index of the forward measurements
 
