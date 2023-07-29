@@ -304,7 +304,7 @@ def shift_double_ended(ds, i_shift, verbose=True):
         With a shifted x-axis
     """
     # pylint: disable=import-outside-toplevel
-    from . import DataStore
+    from dtscalibration import DataStore
 
     assert isinstance(i_shift, (int, np.integer))
 
