@@ -17,6 +17,7 @@ Changed
 
 * Standardized parameter names. Reduced the freedom in choosing parameter names and dimension names in favor of simplifying the code.
 * Requiring netcdf4 >= 1.6.4
+* Optional dependencies of xarray that improve performance are now required by default.
 * Flox included in requirements to speed up resampling via xarray ([Xarray #5734](https://github.com/pydata/xarray/pull/5734)).
 
 Removed
