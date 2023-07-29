@@ -74,6 +74,7 @@ dev = [
     "bump2version",
     "ruff",
     "isort",
+    "black",
     "mypy",
     "types-PyYAML",  # for pyyaml types
     "types-xmltodict",  # for xmltodict types
@@ -103,10 +104,11 @@ features = ["dev"]
 [tool.hatch.envs.default.scripts]
 lint = [
   "ruff check .",
+  "black --check src/",
   "isort --check-only --diff .",
   "mypy src/",
 ]
-format = ["isort .", "lint",]
+format = ["black src/", "isort .", "lint",]
 test = ["pytest ./src/ ./tests/",]  # --doctest-modules
 coverage = [
   "pytest --cov --cov-report term --cov-report xml --junitxml=xunit-result.xml tests/",
@@ -181,6 +183,11 @@ known_first_party = ["dtscalibration"]
 skip = [".gitignore", ".tox", "docs"]
 src_paths = ["src", "tests"]
 line_length = 120
+
+[tool.black]
+line-length = 88
+target-version = ['py38', 'py39', 'py310']
+include = '\.pyi?$'
 
 [tool.mypy]
 ignore_missing_imports = true  # Preferably false, but matplotlib, scipy and statsmodels are missing typing stubs
