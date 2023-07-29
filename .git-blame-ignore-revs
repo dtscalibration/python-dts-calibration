@@ -1,2 +1,5 @@
 # First formatting of code with black
 83a63f7a3dfa03387faf40a1cc8fc66e14b73c9f
+
+# Formatted tests, non-source files with black
+efc6892f496e6bdf183784e6f79273cc868147d6
