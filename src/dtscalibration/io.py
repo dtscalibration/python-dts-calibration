@@ -237,7 +237,6 @@ def sensortran_binary_version_check(filepathlist):
     return version
 
 
-# pylint: disable=too-many-locals
 def read_silixa_files_routine_v6(  # noqa: MC0001
         filepathlist,
         xml_version=6,

@@ -24,6 +24,12 @@ Removed
 * Removed ds.resample_datastore() in favor of using xarray's resample function. See example notebook 2.
 * Removed support for Python 3.8
 
+Developer changes
+
+* Added mypy to dev dependencies and CI.
+* Changed all import statements to be absolute instead of relative.
+* Cleaned up old 'pylint: disable' comments
+
 2.0.0 (2023-05-24)
 ------------------
 

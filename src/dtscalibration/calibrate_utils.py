@@ -44,7 +44,6 @@ def parse_st_var(ds, st_var, st_label='st'):
     return st_var_sec
 
 
-# pylint: disable=too-many-arguments,too-many-locals
 def calibration_single_ended_solver(  # noqa: MC0001
         ds,
         st_var=None,
@@ -267,18 +266,18 @@ def calibration_single_ended_solver(  # noqa: MC0001
 
     if solver == 'sparse':
         if calc_cov:
-            p_sol, p_var, p_cov = wls_sparse(  # pylint: disable=unbalanced-tuple-unpacking
+            p_sol, p_var, p_cov = wls_sparse(
                 X, y, w=w, x0=p0_est_dalpha, calc_cov=calc_cov, verbose=verbose)
         else:
-            p_sol, p_var = wls_sparse(  # pylint: disable=unbalanced-tuple-unpacking
+            p_sol, p_var = wls_sparse(
                 X, y, w=w, x0=p0_est_dalpha, calc_cov=calc_cov, verbose=verbose)
 
     elif solver == 'stats':
         if calc_cov:
-            p_sol, p_var, p_cov = wls_stats(  # pylint: disable=unbalanced-tuple-unpacking
+            p_sol, p_var, p_cov = wls_stats(
                 X, y, w=w, calc_cov=calc_cov, verbose=verbose)
         else:
-            p_sol, p_var = wls_stats(  # pylint: disable=unbalanced-tuple-unpacking
+            p_sol, p_var = wls_stats(
                 X, y, w=w, calc_cov=calc_cov, verbose=verbose)
 
     elif solver == 'external':
@@ -731,7 +730,6 @@ def matching_section_location_indices(ix_sec, hix, tix):
     return ix_from_cal_match_to_glob
 
 
-# pylint: disable=too-many-statements
 def construct_submatrices_matching_sections(
         x, ix_sec, hix, tix, nt, trans_att):
     """
@@ -1039,7 +1037,6 @@ def construct_submatrices(nt, nx, ds, trans_att, x_sec):
     return E, Z_D, Z_gamma, Zero_d, Z_TA_fw, Z_TA_bw
 
 
-# pylint: disable=too-many-branches
 def wls_sparse(
         X,
         y,
