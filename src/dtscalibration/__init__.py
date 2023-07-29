@@ -18,16 +18,27 @@ from dtscalibration.plot import plot_residuals_reference_sections
 from dtscalibration.plot import plot_residuals_reference_sections_single
 from dtscalibration.plot import plot_sigma_report
 
-__version__ = '2.0.0'
+__version__ = "2.0.0"
 __all__ = [
-    "DataStore", "open_datastore", "open_mf_datastore", "read_apsensing_files",
-    "read_sensornet_files", "read_sensortran_files", "read_silixa_files",
-    'check_dims', 'check_timestep_allclose', 'get_netcdf_encoding',
-    'merge_double_ended', 'shift_double_ended',
-    'suggest_cable_shift_double_ended', 'plot_accuracy',
-    'plot_location_residuals_double_ended',
-    'plot_residuals_reference_sections',
-    'plot_residuals_reference_sections_single', 'plot_sigma_report']
+    "DataStore",
+    "open_datastore",
+    "open_mf_datastore",
+    "read_apsensing_files",
+    "read_sensornet_files",
+    "read_sensortran_files",
+    "read_silixa_files",
+    "check_dims",
+    "check_timestep_allclose",
+    "get_netcdf_encoding",
+    "merge_double_ended",
+    "shift_double_ended",
+    "suggest_cable_shift_double_ended",
+    "plot_accuracy",
+    "plot_location_residuals_double_ended",
+    "plot_residuals_reference_sections",
+    "plot_residuals_reference_sections_single",
+    "plot_sigma_report",
+]
 
 # filenames = ['datastore.py', 'datastore_utils.py', 'calibrate_utils.py',
 #              'plot.py', 'io.py']

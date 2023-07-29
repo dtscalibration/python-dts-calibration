@@ -94,11 +94,11 @@ def plot_residuals_reference_sections(
             section_start_dict[str(ii)] = section_list[ii].start
 
         sorted_sections = sorted(
-            sections_dict, key=section_start_dict.__getitem__, reverse=True)
+            sections_dict, key=section_start_dict.__getitem__, reverse=True
+        )
 
         # Create the sorted name and slice lists
-        section_name_list = [
-            sections_dict[name][0] for name in sorted_sections]
+        section_name_list = [sections_dict[name][0] for name in sorted_sections]
         section_list = [sections_dict[name][1] for name in sorted_sections]
 
         resid_sections = [resid.sel(x=section) for section in section_list]
@@ -110,15 +110,15 @@ def plot_residuals_reference_sections(
         grid = plt.GridSpec(
             ncols=3,
             nrows=nsections + 1,
-            height_ratios=[sum(section_height_ratios) / 5]
-            + section_height_ratios,
+            height_ratios=[sum(section_height_ratios) / 5] + section_height_ratios,
             width_ratios=[0.2, 0.8, 0.1],
             hspace=0.15,
             wspace=0.15,
             left=0.08,
             bottom=0.12,
             right=0.9,
-            top=0.88)
+            top=0.88,
+        )
 
         _x_ax_avg = fig.add_subplot(grid[0, 1])
         x_ax_avg = _x_ax_avg.twinx()
@@ -136,20 +136,19 @@ def plot_residuals_reference_sections(
 
         # Link all 2dplot axes to their bottom row
         for section_ax in section_axes[:-1]:
-            section_axes[-1].get_shared_x_axes().join(
-                section_axes[-1], section_ax)
+            section_axes[-1].get_shared_x_axes().join(section_axes[-1], section_ax)
             section_ax.set_xticklabels([])
 
         # Link all 2dplot axes to their avg axes
         for ii in range(nsections):
             section_ax_avg[ii].get_shared_y_axes().join(
-                section_ax_avg[ii], section_axes[ii])
+                section_ax_avg[ii], section_axes[ii]
+            )
             section_axes[ii].set_yticklabels([])
 
         # Link all avg axes to their bottom row
         for section_avg in section_ax_avg[:-1]:
-            section_ax_avg[-1].get_shared_x_axes().join(
-                section_ax_avg[-1], section_avg)
+            section_ax_avg[-1].get_shared_x_axes().join(section_ax_avg[-1], section_avg)
             section_avg.set_xticklabels([])
 
         # Link the x ax avg to the bottom row
@@ -176,12 +175,13 @@ def plot_residuals_reference_sections(
             )
             section_axes[ii].set_ylabel("")
 
-            resid.sel(x=section_list[ii]).std(dim='time').plot(
-                ax=section_ax_avg[ii], y="x", c="blue")
-            resid.sel(x=section_list[ii]).mean(dim='time').plot(
-                ax=section_ax_avg[ii], y="x", c="orange")
-            section_ax_avg[ii].axvline(
-                0, linestyle="-", c="black", linewidth=0.8)
+            resid.sel(x=section_list[ii]).std(dim="time").plot(
+                ax=section_ax_avg[ii], y="x", c="blue"
+            )
+            resid.sel(x=section_list[ii]).mean(dim="time").plot(
+                ax=section_ax_avg[ii], y="x", c="orange"
+            )
+            section_ax_avg[ii].axvline(0, linestyle="-", c="black", linewidth=0.8)
             section_ax_avg[ii].set_ylabel("")
 
         cbar_ax.set_ylabel(units)
@@ -193,15 +193,14 @@ def plot_residuals_reference_sections(
             ticks[0].label1.set_verticalalignment("bottom")
             ticks[1].label1.set_verticalalignment("top")
             section_avg.set_xticks(
-                [np.floor(vmin * 10) / 10, 0,
-                 np.ceil(vmax * 10) / 10])
+                [np.floor(vmin * 10) / 10, 0, np.ceil(vmax * 10) / 10]
+            )
         section_ax_avg[-1].set_xlabel(units)
 
         for section_ax in section_axes[:-1]:
             section_ax.set_xlabel("")
 
-        section_ax_avg[np.ceil(nsections / 2).astype(int)
-                       - 1].set_ylabel("x (m)")
+        section_ax_avg[np.ceil(nsections / 2).astype(int) - 1].set_ylabel("x (m)")
 
         # plot the x ax avg
         resid.std(dim="x").plot(ax=x_ax_avg, c="blue")
@@ -278,8 +277,8 @@ def plot_residuals_reference_sections_single(
     """
     if plot_names:
         assert sections is not None, (
-            "The sections names are obtained from "
-            "the sections dict")
+            "The sections names are obtained from " "the sections dict"
+        )
 
     # Set up the axes with gridspec
     if fig_kwargs is None:
@@ -292,32 +291,23 @@ def plot_residuals_reference_sections_single(
         fig.suptitle(title)
 
     grid = plt.GridSpec(
-        10,
-        10,
-        hspace=0.2,
-        wspace=0.2,
-        left=0.08,
-        bottom=0.12,
-        right=0.9,
-        top=0.88)
+        10, 10, hspace=0.2, wspace=0.2, left=0.08, bottom=0.12, right=0.9, top=0.88
+    )
     main_ax = fig.add_subplot(grid[2:, 2:-1])
     y_ax_avg = fig.add_subplot(grid[2:, :2])  # xticklabels=[],
     x_ax_avg = fig.add_subplot(grid[:2, 2:-1])  # , sharex=main_ax
     legend_ax = fig.add_subplot(grid[:2, :2], xticklabels=[], yticklabels=[])
     cbar_ax = fig.add_subplot(grid[2:, -1], xticklabels=[], yticklabels=[])
-    if np.issubdtype(resid['time'].dtype, float) or np.issubdtype(
-            resid['time'].dtype, int):
+    if np.issubdtype(resid["time"].dtype, float) or np.issubdtype(
+        resid["time"].dtype, int
+    ):
         resid.plot.imshow(
-            ax=main_ax,
-            cbar_ax=cbar_ax,
-            cbar_kwargs={"aspect": 10},
-            robust=robust)
+            ax=main_ax, cbar_ax=cbar_ax, cbar_kwargs={"aspect": 10}, robust=robust
+        )
     else:
         resid.plot(
-            ax=main_ax,
-            cbar_ax=cbar_ax,
-            cbar_kwargs={"aspect": 10},
-            robust=robust)
+            ax=main_ax, cbar_ax=cbar_ax, cbar_kwargs={"aspect": 10}, robust=robust
+        )
     main_ax.set_yticklabels([])
     main_ax.set_ylabel("")
     cbar_ax.set_ylabel(units)
@@ -336,11 +326,11 @@ def plot_residuals_reference_sections_single(
     x_ax_avg2.set_ylabel(units)
 
     # y_ax_avg
-    dp = resid.std(dim='time')
+    dp = resid.std(dim="time")
     x = dp.values
     y = dp.x
     y_ax_avg.plot(x, y, c="blue")
-    dp = resid.mean(dim='time')
+    dp = resid.mean(dim="time")
     x = dp.values
     y = dp.x
     y_ax_avg.plot(x, y, c="orange")
@@ -420,8 +410,8 @@ def plot_accuracy(
     """
     if plot_names:
         assert sections is not None, (
-            "The sections names are obtained from "
-            "the sections dict")
+            "The sections names are obtained from " "the sections dict"
+        )
 
     # Set up the axes with gridspec
     if fig is None:
@@ -432,22 +422,15 @@ def plot_accuracy(
 
     # setup the axes
     grid = plt.GridSpec(
-        10,
-        10,
-        hspace=0.2,
-        wspace=0.2,
-        left=0.08,
-        bottom=0.12,
-        right=0.9,
-        top=0.88)
+        10, 10, hspace=0.2, wspace=0.2, left=0.08, bottom=0.12, right=0.9, top=0.88
+    )
     main_ax = fig.add_subplot(grid[2:, 2:-1])
     y_ax_avg = fig.add_subplot(grid[2:, :2])  # xticklabels=[],
     x_ax_avg = fig.add_subplot(grid[:2, 2:-1])  # , sharex=main_ax
     legend_ax = fig.add_subplot(grid[:2, :2], xticklabels=[], yticklabels=[])
     cbar_ax = fig.add_subplot(grid[2:, -1], xticklabels=[], yticklabels=[])
 
-    accuracy.plot(
-        ax=main_ax, cbar_ax=cbar_ax, cbar_kwargs={"aspect": 20}, robust=True)
+    accuracy.plot(ax=main_ax, cbar_ax=cbar_ax, cbar_kwargs={"aspect": 20}, robust=True)
     main_ax.set_yticklabels([])
     main_ax.set_ylabel("")
     cbar_ax.set_ylabel(r"$^\circ$C")
@@ -488,12 +471,9 @@ def plot_accuracy(
 
     # legend
     if real_accuracy_time_avg is not None:
-        legend_ax.fill_between(
-            [], [], facecolor="blue", label="Projected precision")
-        legend_ax.fill_between(
-            [], [], facecolor="orange", label="Projected accuracy")
-        legend_ax.fill_between(
-            [], [], facecolor="green", label="Measured accuracy")
+        legend_ax.fill_between([], [], facecolor="blue", label="Projected precision")
+        legend_ax.fill_between([], [], facecolor="orange", label="Projected accuracy")
+        legend_ax.fill_between([], [], facecolor="green", label="Measured accuracy")
     else:
         legend_ax.fill_between([], [], facecolor="blue", label="Precision")
         legend_ax.fill_between([], [], facecolor="orange", label="Accuracy")
@@ -529,11 +509,8 @@ def plot_accuracy(
 
 
 def plot_sigma_report(
-        ds,
-        temp_label,
-        temp_var_acc_label,
-        temp_var_prec_label=None,
-        itimes=None):
+    ds, temp_label, temp_var_acc_label, temp_var_prec_label=None, itimes=None
+):
     """
     Returns two sub-plots. first a temperature with confidence boundaries.
     Parameters
@@ -555,8 +532,8 @@ def plot_sigma_report(
         temp = ds[temp_label].isel(time=itimes)
         stds = np.sqrt(ds[temp_var_acc_label].isel(time=itimes)).compute()
     else:
-        temp = ds[temp_label].mean(dim='time').compute()
-        stds = np.sqrt(ds[temp_var_acc_label]).mean(dim='time').compute()
+        temp = ds[temp_label].mean(dim="time").compute()
+        stds = np.sqrt(ds[temp_var_acc_label]).mean(dim="time").compute()
 
     for lbl, clr in zip([2.0, 1.0], colors):
         y1 = temp - lbl * stds
@@ -576,7 +553,8 @@ def plot_sigma_report(
     if isinstance(itimes, list):
         for iitimes in itimes:
             ds[temp_label].isel(time=iitimes).plot(
-                ax=ax1, c="grey", label="DTS single", **line_kwargs)
+                ax=ax1, c="grey", label="DTS single", **line_kwargs
+            )
 
     temp.plot(ax=ax1, linewidth=0.8, c="black", label="DTS")
 
@@ -595,14 +573,12 @@ def plot_sigma_report(
         #     temp_err=True,
         #     axis=0)
         sigma_est = ds.ufunc_per_section(
-            label=temp_label,
-            func=np.std,
-            temp_err=True,
-            calc_per="stretch",
-            axis=0)
+            label=temp_label, func=np.std, temp_err=True, calc_per="stretch", axis=0
+        )
     else:
         sigma_est = ds.ufunc_per_section(
-            label=temp_label, func=np.std, temp_err=True, calc_per="stretch")
+            label=temp_label, func=np.std, temp_err=True, calc_per="stretch"
+        )
 
     for (k, v), (k_se, v_se) in zip(ds.sections.items(), sigma_est.items()):
         for vi, v_sei in zip(v, v_se):
@@ -610,21 +586,24 @@ def plot_sigma_report(
                 v_sei = v_sei.compute()
 
             if itimes:
-                val = ds[k].mean(dim='time')
+                val = ds[k].mean(dim="time")
             else:
                 val = ds[k].isel(time=itimes)
 
             ax1.plot(
-                [vi.start, vi.stop], [val, val],
-                linewidth=0.8,
-                c="blue",
-                linestyle="--")
+                [vi.start, vi.stop], [val, val], linewidth=0.8, c="blue", linestyle="--"
+            )
             sig_dts = stds.sel(x=vi).mean()
             tbx, tby = (vi.start + vi.stop) / 2, val
             tbt = (
-                r"$\sigma_{Est}$ = " + "{0:2.3f}".format(sig_dts.data)
-                + r"$^\circ$C" + "\n" + r"$\sigma_{DTS}$ = "
-                + "{0:2.3f}".format(v_sei) + r"$^\circ$C")
+                r"$\sigma_{Est}$ = "
+                + "{0:2.3f}".format(sig_dts.data)
+                + r"$^\circ$C"
+                + "\n"
+                + r"$\sigma_{DTS}$ = "
+                + "{0:2.3f}".format(v_sei)
+                + r"$^\circ$C"
+            )
             ax1.annotate(
                 tbt,
                 xy=(tbx, tby),
@@ -638,20 +617,24 @@ def plot_sigma_report(
     if itimes is None:
         ax1.set_title(
             "Temperature and standard deviation averaged over "
-            "time per reference section")
+            "time per reference section"
+        )
     else:
         ax1.set_title(
             "Projected uncertainty at t={} compared to standard error "
-            "in baths".format(itimes))
+            "in baths".format(itimes)
+        )
     ax1.legend()
     ax1.set_ylabel(r"Temperature [$^\circ$C]")
 
     err_ref = ds.ufunc_per_section(
-        label=temp_label, func=None, temp_err=True, calc_per="stretch")
+        label=temp_label, func=None, temp_err=True, calc_per="stretch"
+    )
     x_ref = ds.ufunc_per_section(label="x", calc_per="stretch")
 
-    for (k, v), (k_se, v_se), (kx, vx) in zip(ds.sections.items(),
-                                              err_ref.items(), x_ref.items()):
+    for (k, v), (k_se, v_se), (kx, vx) in zip(
+        ds.sections.items(), err_ref.items(), x_ref.items()
+    ):
         for vi, v_sei, vxi in zip(v, v_se, vx):
             var_temp_t = np.std(v_sei, axis=1)
             ax2.plot(vxi, var_temp_t, label=k, **line_kwargs)
@@ -663,9 +646,8 @@ def plot_sigma_report(
         if itimes:
             stds_prec = np.sqrt(ds[temp_var_prec_label].isel(time=itimes))
         else:
-            stds_prec = np.sqrt(ds[temp_var_prec_label]).mean(dim='time')
-        stds_prec.plot(
-            ax=ax2, c="black", label="Projected precision", **line_kwargs)
+            stds_prec = np.sqrt(ds[temp_var_prec_label]).mean(dim="time")
+        stds_prec.plot(ax=ax2, c="black", label="Projected precision", **line_kwargs)
 
     ax2.set_ylim([0.0, 1.1 * stds.max()])
     ax2.legend()
@@ -675,7 +657,8 @@ def plot_sigma_report(
 
 
 def plot_location_residuals_double_ended(
-        ds, werr, hix, tix, ix_sec, ix_match_not_cal, nt):
+    ds, werr, hix, tix, ix_sec, ix_match_not_cal, nt
+):
     from xarray import Dataset
 
     nx_sec = ix_sec.size
@@ -697,8 +680,7 @@ def plot_location_residuals_double_ended(
         arr[tix] = werr[s].reshape((npair, nt))  # at # ix_sec
         data_vars["werr_eq1"] = (("x", "time"), arr)
 
-        s = slice(
-            2 * nx_sec * nt + npair * nt, 2 * nx_sec * nt + 2 * npair * nt)
+        s = slice(2 * nx_sec * nt + npair * nt, 2 * nx_sec * nt + 2 * npair * nt)
         arr = np.zeros((ds.x.size, nt), dtype=float)
         arr[hix] = werr[s].reshape((npair, nt))  # at
         arr[tix] = werr[s].reshape((npair, nt))  # at # ix_sec
@@ -709,17 +691,20 @@ def plot_location_residuals_double_ended(
             2 * nx_sec * nt + 2 * npair * nt + nx_match_not_cal * nt,
         )
         arr = np.zeros((ds.x.size, nt), dtype=float)
-        arr[ix_match_not_cal] = werr[s].reshape(
-            (nx_match_not_cal, nt))  # at ix_sec
+        arr[ix_match_not_cal] = werr[s].reshape((nx_match_not_cal, nt))  # at ix_sec
         data_vars["werr_eq3"] = (("x", "time"), arr)
 
     dv = Dataset(data_vars=data_vars, coords=dict(x=ds.x, time=ds.time))
     if np.any(hix):
         dv["werr_tot"] = (
-            dv["werr_F"]**2 + dv["werr_B"]**2 + dv["werr_eq1"]**2
-            + dv["werr_eq2"]**2 + dv["werr_eq3"]**2)
+            dv["werr_F"] ** 2
+            + dv["werr_B"] ** 2
+            + dv["werr_eq1"] ** 2
+            + dv["werr_eq2"] ** 2
+            + dv["werr_eq3"] ** 2
+        )
     else:
-        dv["werr_tot"] = dv["werr_F"]**2 + dv["werr_B"]**2
+        dv["werr_tot"] = dv["werr_F"] ** 2 + dv["werr_B"] ** 2
 
     fig, axs = plt.subplots(
         len(dv.data_vars),
