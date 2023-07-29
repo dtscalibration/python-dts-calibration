@@ -53,6 +53,8 @@ classifiers = [
 ]
 dependencies = [
     "numpy>=1.22.4",  # xarray: recommended to use >= 1.22 for full quantile method support
+    "dask",
+    "pandas",
     "xarray[parallel,accel]",
     "pyyaml>=6.0.1",
     "xmltodict",
