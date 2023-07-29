@@ -9,7 +9,7 @@ import nbformat
 
 def _notebook_run(path):
     """Execute a notebook via nbconvert and collect output.
-       :returns (parsed nb object, execution errors)
+    :returns (parsed nb object, execution errors)
     """
     dirname, __ = os.path.split(path)
     os.chdir(dirname)
@@ -18,18 +18,28 @@ def _notebook_run(path):
     # 'with' method is used so the file is closed by tempfile
     # and free to be overwritten.
     # with tempfile.NamedTemporaryFile('w', suffix=".ipynb") as fout:
-    with tempfile.NamedTemporaryFile('w', suffix=".nbconvert.ipynb", delete=False) as fout:
+    with tempfile.NamedTemporaryFile(
+        "w", suffix=".nbconvert.ipynb", delete=False
+    ) as fout:
         nbpath = fout.name
 
-        jupyter_exec = shutil.which('jupyter')
+        jupyter_exec = shutil.which("jupyter")
 
         # recent version (~7.3.1) requires output without extension
         out_path = os.path.join(
-            os.path.dirname(nbpath),
-            os.path.basename(nbpath).split('.', 1)[0])
+            os.path.dirname(nbpath), os.path.basename(nbpath).split(".", 1)[0]
+        )
         args = [
-            jupyter_exec, "nbconvert", path, "--output", out_path, "--to",
-            "notebook", "--execute", "--ExecutePreprocessor.timeout=60"]
+            jupyter_exec,
+            "nbconvert",
+            path,
+            "--output",
+            out_path,
+            "--to",
+            "notebook",
+            "--execute",
+            "--ExecutePreprocessor.timeout=60",
+        ]
         subprocess.check_call(args)
 
         assert os.path.exists(nbpath), "nbconvert used different output filename"
@@ -37,8 +47,12 @@ def _notebook_run(path):
         nb = nbformat.read(nbpath, nbformat.current_nbformat)
 
     errors = [
-        output for cell in nb.cells if "outputs" in cell
-        for output in cell["outputs"] if output.output_type == "error"]
+        output
+        for cell in nb.cells
+        if "outputs" in cell
+        for output in cell["outputs"]
+        if output.output_type == "error"
+    ]
 
     # Remove the temp file once the test is done
     if os.path.exists(nbpath):
@@ -48,9 +62,9 @@ def _notebook_run(path):
 
 
 def test_ipynb():
-    file_ext = '*.ipynb'
+    file_ext = "*.ipynb"
     wd = os.path.dirname(os.path.abspath(__file__))
-    nb_dir = os.path.join(wd, '..', 'examples', 'notebooks', file_ext)
+    nb_dir = os.path.join(wd, "..", "examples", "notebooks", file_ext)
     filepathlist = glob.glob(nb_dir)
 
     for fp in filepathlist:
