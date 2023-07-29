@@ -57,7 +57,6 @@ dependencies = [
     "pyyaml>=6.0.1",
     "xmltodict",
     "scipy",
-    "patsy",  # a dependency of statsmodels
     "statsmodels",
     "toolz",
     "matplotlib",
