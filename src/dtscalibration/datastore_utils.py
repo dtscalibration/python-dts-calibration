@@ -23,15 +23,21 @@ def check_dims(ds, labels, correct_dims=None):
 
     """
     if not correct_dims:
-        assert len(labels) > 1, 'Define the correct dimensions'
+        assert len(labels) > 1, "Define the correct dimensions"
 
         for li in labels[1:]:
-            assert ds[labels[0]].dims == ds[li].dims, li + ' doesnot have the correct dimensions.' \
-                                                           ' Should be ' + str(ds[labels[0]].dims)
+            assert (
+                ds[labels[0]].dims == ds[li].dims
+            ), li + " doesnot have the correct dimensions." " Should be " + str(
+                ds[labels[0]].dims
+            )
     else:
         for li in labels:
-            assert ds[li].dims == correct_dims, li + ' doesnot have the correct dimensions. ' \
-                                                     'Should be ' + str(correct_dims)
+            assert (
+                ds[li].dims == correct_dims
+            ), li + " doesnot have the correct dimensions. " "Should be " + str(
+                correct_dims
+            )
 
 
 def get_netcdf_encoding(ds, zlib=True, complevel=5, **kwargs):
@@ -75,22 +81,24 @@ def check_timestep_allclose(ds, eps=0.01):
     -------
 
     """
-    dim = ds.channel_configuration['chfw']['acquisitiontime_label']
+    dim = ds.channel_configuration["chfw"]["acquisitiontime_label"]
     dt = ds[dim].data
     dtmin = dt.min()
     dtmax = dt.max()
     dtavg = (dtmin + dtmax) / 2
-    assert (dtmax - dtmin) / dtavg < eps, 'Acquisition time is Forward channel not equal for all ' \
-                                          'time steps'
+    assert (dtmax - dtmin) / dtavg < eps, (
+        "Acquisition time is Forward channel not equal for all " "time steps"
+    )
 
     if ds.is_double_ended:
-        dim = ds.channel_configuration['chbw']['acquisitiontime_label']
+        dim = ds.channel_configuration["chbw"]["acquisitiontime_label"]
         dt = ds[dim].data
         dtmin = dt.min()
         dtmax = dt.max()
         dtavg = (dtmin + dtmax) / 2
-        assert (dtmax - dtmin) / dtavg < eps, 'Acquisition time Backward channel is not equal ' \
-                                              'for all time steps'
+        assert (dtmax - dtmin) / dtavg < eps, (
+            "Acquisition time Backward channel is not equal " "for all time steps"
+        )
 
 
 def merge_double_ended(ds_fw, ds_bw, cable_length, plot_result=True, verbose=True):
@@ -119,38 +127,36 @@ def merge_double_ended(ds_fw, ds_bw, cable_length, plot_result=True, verbose=Tru
     ds : DataStore object
         With the two channels merged
     """
-    assert (ds_fw.attrs['isDoubleEnded'] == '0'
-            and ds_bw.attrs['isDoubleEnded'] == '0'), \
-        "(one of the) input DataStores is already double ended"
+    assert (
+        ds_fw.attrs["isDoubleEnded"] == "0" and ds_bw.attrs["isDoubleEnded"] == "0"
+    ), "(one of the) input DataStores is already double ended"
 
     ds_fw, ds_bw = merge_double_ended_times(ds_fw, ds_bw, verbose=verbose)
 
     ds = ds_fw.copy()
     ds_bw = ds_bw.copy()
 
-    ds_bw['x'] = cable_length - ds_bw.x.values
+    ds_bw["x"] = cable_length - ds_bw.x.values
 
     # TODO: check if reindexing matters, and should be used.
     # one way to do it is performed below, but this could create artifacts
     x_resolution = ds.x.values[1] - ds.x.values[0]
-    ds_bw = ds_bw.reindex(
-        {'x': ds.x}, method='nearest', tolerance=0.99 * x_resolution)
+    ds_bw = ds_bw.reindex({"x": ds.x}, method="nearest", tolerance=0.99 * x_resolution)
 
-    ds_bw = ds_bw.sortby('x')
+    ds_bw = ds_bw.sortby("x")
 
-    ds['rst'] = (['x', 'time'], ds_bw.st.values)
-    ds['rast'] = (['x', 'time'], ds_bw.ast.values)
+    ds["rst"] = (["x", "time"], ds_bw.st.values)
+    ds["rast"] = (["x", "time"], ds_bw.ast.values)
 
-    ds = ds.dropna(dim='x')
+    ds = ds.dropna(dim="x")
 
-    ds.attrs['isDoubleEnded'] = '1'
-    ds['userAcquisitionTimeBW'] = (
-        'time', ds_bw['userAcquisitionTimeFW'].values)
+    ds.attrs["isDoubleEnded"] = "1"
+    ds["userAcquisitionTimeBW"] = ("time", ds_bw["userAcquisitionTimeFW"].values)
 
     if plot_result:
         _, ax = plt.subplots()
-        ds['st'].isel(time=0).plot(ax=ax, label='Stokes forward')
-        ds['rst'].isel(time=0).plot(ax=ax, label='Stokes backward')
+        ds["st"].isel(time=0).plot(ax=ax, label="Stokes forward")
+        ds["rst"].isel(time=0).plot(ax=ax, label="Stokes backward")
         ax.legend()
 
     return ds
@@ -203,17 +209,28 @@ def merge_double_ended_times(ds_fw, ds_bw, verify_timedeltas=True, verbose=True)
         DataStore object representing the backward measurement channel with
         only times for which there is also a ds_fw measurement
     """
-    if 'forward channel' in ds_fw.attrs and 'forward channel' in ds_bw.attrs:
-        assert ds_fw.attrs['forward channel'] < ds_bw.attrs['forward channel'], "ds_fw and ds_bw are swapped"
-    elif 'forwardMeasurementChannel' in ds_fw.attrs and 'forwardMeasurementChannel' in ds_bw.attrs:
-        assert ds_fw.attrs['forwardMeasurementChannel'] < ds_bw.attrs['forwardMeasurementChannel'], \
-            "ds_fw and ds_bw are swapped"
+    if "forward channel" in ds_fw.attrs and "forward channel" in ds_bw.attrs:
+        assert (
+            ds_fw.attrs["forward channel"] < ds_bw.attrs["forward channel"]
+        ), "ds_fw and ds_bw are swapped"
+    elif (
+        "forwardMeasurementChannel" in ds_fw.attrs
+        and "forwardMeasurementChannel" in ds_bw.attrs
+    ):
+        assert (
+            ds_fw.attrs["forwardMeasurementChannel"]
+            < ds_bw.attrs["forwardMeasurementChannel"]
+        ), "ds_fw and ds_bw are swapped"
 
     # Are all dt's within 1.5 seconds from one another?
-    if (ds_bw.time.size == ds_fw.time.size) and np.all(ds_bw.time.values > ds_fw.time.values):
+    if (ds_bw.time.size == ds_fw.time.size) and np.all(
+        ds_bw.time.values > ds_fw.time.values
+    ):
         if verify_timedeltas:
-            dt_ori = (ds_bw.time.values - ds_fw.time.values) / np.array(1000000000, dtype='timedelta64[ns]')
-            dt_all_close = np.allclose(dt_ori, dt_ori[0], atol=1.5, rtol=0.)
+            dt_ori = (ds_bw.time.values - ds_fw.time.values) / np.array(
+                1000000000, dtype="timedelta64[ns]"
+            )
+            dt_all_close = np.allclose(dt_ori, dt_ori[0], atol=1.5, rtol=0.0)
         else:
             dt_all_close = True
 
@@ -228,7 +245,9 @@ def merge_double_ended_times(ds_fw, ds_bw, verify_timedeltas=True, verbose=True)
     times_all = dict(sorted(({**times_fw, **times_bw}).items()))
     times_all_val = list(times_all.values())
 
-    for (direction, ind), (direction_next, ind_next) in zip(times_all_val[:-1], times_all_val[1:]):
+    for (direction, ind), (direction_next, ind_next) in zip(
+        times_all_val[:-1], times_all_val[1:]
+    ):
         if direction == "fw" and direction_next == "bw":
             iuse_chfw.append(ind)
             iuse_chbw.append(ind_next)
@@ -238,29 +257,39 @@ def merge_double_ended_times(ds_fw, ds_bw, verify_timedeltas=True, verbose=True)
 
         elif direction == "fw" and direction_next == "fw":
             if verbose:
-                print(f"Missing backward measurement beween {ds_fw.time.values[ind]} and {ds_fw.time.values[ind_next]}")
+                print(
+                    f"Missing backward measurement beween {ds_fw.time.values[ind]} and {ds_fw.time.values[ind_next]}"
+                )
 
         elif direction == "bw" and direction_next == "bw":
             if verbose:
-                print(f"Missing forward measurement beween {ds_bw.time.values[ind]} and {ds_bw.time.values[ind_next]}")
+                print(
+                    f"Missing forward measurement beween {ds_bw.time.values[ind]} and {ds_bw.time.values[ind_next]}"
+                )
 
     # throw out is dt differs from its neighbors
     if verify_timedeltas:
         dt = (
-            (ds_bw.isel(time=iuse_chbw).time.values - ds_fw.isel(time=iuse_chfw).time.values) /
-            np.timedelta64(1, "s"))
+            ds_bw.isel(time=iuse_chbw).time.values
+            - ds_fw.isel(time=iuse_chfw).time.values
+        ) / np.timedelta64(1, "s")
         leaveout = np.zeros_like(dt, dtype=bool)
-        leaveout[1:-1] = np.isclose(dt[:-2], dt[2:], atol=1.5, rtol=0.) * ~np.isclose(dt[:-2], dt[1:-1], atol=1.5, rtol=0.)
+        leaveout[1:-1] = np.isclose(dt[:-2], dt[2:], atol=1.5, rtol=0.0) * ~np.isclose(
+            dt[:-2], dt[1:-1], atol=1.5, rtol=0.0
+        )
         iuse_chfw2 = np.array(iuse_chfw)[~leaveout]
         iuse_chbw2 = np.array(iuse_chbw)[~leaveout]
 
         if verbose:
-            for itfw, itbw in zip(np.array(iuse_chfw)[leaveout], np.array(iuse_chbw)[leaveout]):
+            for itfw, itbw in zip(
+                np.array(iuse_chfw)[leaveout], np.array(iuse_chbw)[leaveout]
+            ):
                 print(
                     "The following measurements do not belong together, as the time difference\n"
                     "between the\forward and backward measurements is more than 1.5 seconds\n"
                     "larger than the neighboring measurements.\n"
-                    f"FW: {ds_fw.isel(time=itfw).time.values} and BW: {ds_bw.isel(time=itbw).time.values}")
+                    f"FW: {ds_fw.isel(time=itfw).time.values} and BW: {ds_bw.isel(time=itbw).time.values}"
+                )
 
     else:
         iuse_chfw2 = iuse_chfw
@@ -329,27 +358,26 @@ def shift_double_ended(ds, i_shift, verbose=True):
         # TMP2 = ds.tmp.data[i_shift:]
 
     d2_coords = dict(ds.coords)
-    d2_coords['x'] = (('x',), x2, ds.x.attrs)
+    d2_coords["x"] = (("x",), x2, ds.x.attrs)
 
     d2_data = dict(ds.data_vars)
     for k in ds.data_vars:
-        if 'x' in ds[k].dims and k in d2_data:
+        if "x" in ds[k].dims and k in d2_data:
             del d2_data[k]
 
-    new_data = (('st', st), ('ast', ast), ('rst', rst), ('rast', rast))
+    new_data = (("st", st), ("ast", ast), ("rst", rst), ("rast", rast))
 
     for k, v in new_data:
         d2_data[k] = (ds[k].dims, v, ds[k].attrs)
 
     not_included = [k for k in ds.data_vars if k not in d2_data]
-    if (not_included and verbose):
-        print('I dont know what to do with the following data', not_included)
+    if not_included and verbose:
+        print("I dont know what to do with the following data", not_included)
 
     return DataStore(data_vars=d2_data, coords=d2_coords, attrs=ds.attrs)
 
 
-def suggest_cable_shift_double_ended(
-        ds, irange, plot_result=True, **fig_kwargs):
+def suggest_cable_shift_double_ended(ds, irange, plot_result=True, **fig_kwargs):
     """The cable length was initially configured during the DTS measurement.
     For double ended measurements it is important to enter the correct length
     so that the forward channel and the backward channel are aligned.
@@ -421,12 +449,12 @@ def suggest_cable_shift_double_ended(
 
         att_dif1 = np.diff(att, n=1, axis=0)
         att_x_dif1 = 0.5 * x2[1:] + 0.5 * x2[:-1]
-        err1_mask = np.logical_and(att_x_dif1 > 1., att_x_dif1 < 150.)
+        err1_mask = np.logical_and(att_x_dif1 > 1.0, att_x_dif1 < 150.0)
         err1.append(np.nansum(np.abs(att_dif1[err1_mask])))
 
         att_dif2 = np.diff(att, n=2, axis=0)
         att_x_dif2 = x2[1:-1]
-        err2_mask = np.logical_and(att_x_dif2 > 1., att_x_dif2 < 150.)
+        err2_mask = np.logical_and(att_x_dif2 > 1.0, att_x_dif2 < 150.0)
         err2.append(np.nansum(np.abs(att_dif2[err2_mask])))
 
     ishift1 = irange[np.argmin(err1, axis=0)]
@@ -437,14 +465,14 @@ def suggest_cable_shift_double_ended(
             fig_kwargs = {}
 
         f, (ax0, ax1) = plt.subplots(2, 1, sharex=False, **fig_kwargs)
-        f.suptitle(f'best shift is {ishift1} or {ishift2}')
+        f.suptitle(f"best shift is {ishift1} or {ishift2}")
 
         dt = ds.isel(time=0)
         x = dt.x.data
         y = dt.st.data
-        ax0.plot(x, y, label='ST original')
+        ax0.plot(x, y, label="ST original")
         y = dt.rst.data
-        ax0.plot(x, y, label='REV-ST original')
+        ax0.plot(x, y, label="REV-ST original")
 
         dtsh1 = shift_double_ended(dt, ishift1)
         dtsh2 = shift_double_ended(dt, ishift2)
@@ -452,19 +480,21 @@ def suggest_cable_shift_double_ended(
         x2 = dtsh2.x.data
         y1 = dtsh1.rst.data
         y2 = dtsh2.rst.data
-        ax0.plot(x1, y1, label=f'ST i_shift={ishift1}')
-        ax0.plot(x2, y2, label=f'ST i_shift={ishift2}')
-        ax0.set_xlabel('x (m)')
+        ax0.plot(x1, y1, label=f"ST i_shift={ishift1}")
+        ax0.plot(x2, y2, label=f"ST i_shift={ishift2}")
+        ax0.set_xlabel("x (m)")
         ax0.legend()
 
         ax2 = ax1.twinx()
-        ax1.plot(irange, err1, c='red', label='1 deriv')
-        ax2.plot(irange, err2, c='blue', label='2 deriv')
+        ax1.plot(irange, err1, c="red", label="1 deriv")
+        ax2.plot(irange, err2, c="blue", label="2 deriv")
         ax1.axvline(
-            ishift1, c='red', linewidth=0.8, label=f'1 deriv. i_shift={ishift1}')
+            ishift1, c="red", linewidth=0.8, label=f"1 deriv. i_shift={ishift1}"
+        )
         ax2.axvline(
-            ishift2, c='blue', linewidth=0.8, label=f'2 deriv. i_shift={ishift1}')
-        ax1.set_xlabel('i_shift')
+            ishift2, c="blue", linewidth=0.8, label=f"2 deriv. i_shift={ishift1}"
+        )
+        ax1.set_xlabel("i_shift")
         ax1.legend(loc=2)  # left axis
         ax2.legend(loc=1)  # right axis
 
