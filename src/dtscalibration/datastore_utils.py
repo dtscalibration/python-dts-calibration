@@ -269,7 +269,6 @@ def merge_double_ended_times(ds_fw, ds_bw, verify_timedeltas=True, verbose=True)
     return ds_fw.isel(time=iuse_chfw2), ds_bw.isel(time=iuse_chbw2)
 
 
-# pylint: disable=too-many-locals
 def shift_double_ended(ds, i_shift, verbose=True):
     """
     The cable length was initially configured during the DTS measurement. For double ended
@@ -303,7 +302,6 @@ def shift_double_ended(ds, i_shift, verbose=True):
     ds2 : DataStore oobject
         With a shifted x-axis
     """
-    # pylint: disable=import-outside-toplevel
     from dtscalibration import DataStore
 
     assert isinstance(i_shift, (int, np.integer))
@@ -350,7 +348,6 @@ def shift_double_ended(ds, i_shift, verbose=True):
     return DataStore(data_vars=d2_data, coords=d2_coords, attrs=ds.attrs)
 
 
-# pylint: disable=too-many-locals
 def suggest_cable_shift_double_ended(
         ds, irange, plot_result=True, **fig_kwargs):
     """The cable length was initially configured during the DTS measurement.
