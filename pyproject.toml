@@ -188,6 +188,7 @@ target-version = ['py39', 'py310', 'py311']
 
 [tool.mypy]
 ignore_missing_imports = true  # Preferably false, but matplotlib, scipy and statsmodels are missing typing stubs
+python_version = "3.9"
 
 [tool.coverage.run]
 branch = true
