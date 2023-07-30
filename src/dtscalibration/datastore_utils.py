@@ -1,6 +1,7 @@
 # coding=utf-8
 from typing import TYPE_CHECKING
 from typing import Optional
+from typing import Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,7 +14,7 @@ if TYPE_CHECKING:
 
 def check_dims(
     ds: "DataStore",
-    labels: list[str] | tuple[str],
+    labels: Union[list[str], tuple[str]],
     correct_dims: Optional[tuple[str]] = None,
 ) -> None:
     """
