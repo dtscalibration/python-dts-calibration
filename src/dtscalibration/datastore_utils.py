@@ -1,22 +1,35 @@
 # coding=utf-8
+from typing import TYPE_CHECKING
+from typing import Optional
+
 import matplotlib.pyplot as plt
 import numpy as np
+import numpy.typing as npt
+import xarray as xr
+
+if TYPE_CHECKING:
+    from dtscalibration import DataStore
 
 
-def check_dims(ds, labels, correct_dims=None):
+def check_dims(
+    ds: "DataStore",
+    labels: list[str] | tuple[str],
+    correct_dims: Optional[tuple[str]] = None,
+) -> None:
     """
-    Compare the dimensions of different labels (e.g., 'st', 'rst').
-    If a calculation is performed and the dimensions do not agree, the answers don't make
-    sense and the matrices are broadcasted and the memory usage will explode. If no correct
-    dims provided the dimensions of the different are compared.
+    Compare the dimensions of different labels. For example: ['st', 'rst'].
+    If a calculation is performed and the dimensions do not agree, the answers do not
+    make sense and the matrices are broadcasted and the memory usage will explode.
+    If no correct dims provided the dimensions of the different are compared.
 
     Parameters
     ----------
-    ds
-    labels : iterable
-        An iterable with labels
-    correct_dims : tuple of str, optional
-        The correct dimensions
+    ds :
+        The DataStore object to check.
+    labels :
+        An iterable with labels.
+    correct_dims :
+        The correct dimensions.
 
     Returns
     -------
@@ -28,19 +41,21 @@ def check_dims(ds, labels, correct_dims=None):
         for li in labels[1:]:
             assert (
                 ds[labels[0]].dims == ds[li].dims
-            ), li + " doesnot have the correct dimensions." " Should be " + str(
+            ), li + " does not have the correct dimensions." " Should be " + str(
                 ds[labels[0]].dims
             )
     else:
         for li in labels:
             assert (
                 ds[li].dims == correct_dims
-            ), li + " doesnot have the correct dimensions. " "Should be " + str(
+            ), li + " does not have the correct dimensions. " "Should be " + str(
                 correct_dims
             )
 
 
-def get_netcdf_encoding(ds, zlib=True, complevel=5, **kwargs):
+def get_netcdf_encoding(
+    ds: "DataStore", zlib: bool = True, complevel: int = 5, **kwargs
+) -> dict:
     """Get default netcdf compression parameters. The same for each data variable.
 
     TODO: Truncate precision to XML precision per data variable
@@ -54,7 +69,8 @@ def get_netcdf_encoding(ds, zlib=True, complevel=5, **kwargs):
 
     Returns
     -------
-
+    encoding:
+        Encoding dictionary.
     """
     comp = dict(zlib=zlib, complevel=complevel)
     comp.update(kwargs)
@@ -63,14 +79,15 @@ def get_netcdf_encoding(ds, zlib=True, complevel=5, **kwargs):
     return encoding
 
 
-def check_timestep_allclose(ds, eps=0.01):
+def check_timestep_allclose(ds: "DataStore", eps: float = 0.01) -> None:
     """
-    Check if all timesteps are of equal size. For now it is not possible to calibrate over timesteps
-    if the acquisition time of timesteps varies, as the Stokes variance would change over time.
+    Check if all timesteps are of equal size. For now it is not possible to calibrate
+    over timesteps if the acquisition time of timesteps varies, as the Stokes variance
+    would change over time.
 
-    The acquisition time is stored for single ended
-    measurements in userAcquisitionTime, for doubleended measurements in userAcquisitionTimeFW
-    and userAcquisitionTimeBW
+    The acquisition time is stored for single ended measurements in userAcquisitionTime,
+    for double ended measurements in userAcquisitionTimeFW and userAcquisitionTimeBW.
+
     Parameters
     ----------
     ds : DataStore
@@ -101,7 +118,13 @@ def check_timestep_allclose(ds, eps=0.01):
         )
 
 
-def merge_double_ended(ds_fw, ds_bw, cable_length, plot_result=True, verbose=True):
+def merge_double_ended(
+    ds_fw: "DataStore",
+    ds_bw: "DataStore",
+    cable_length: float,
+    plot_result: bool = True,
+    verbose: bool = True,
+) -> "DataStore":
     """
     Some measurements are not set up on the DTS-device as double-ended
     meausurements. This means that the two channels have to be merged manually.
@@ -136,17 +159,19 @@ def merge_double_ended(ds_fw, ds_bw, cable_length, plot_result=True, verbose=Tru
     ds = ds_fw.copy()
     ds_bw = ds_bw.copy()
 
-    ds_bw["x"] = cable_length - ds_bw.x.values
+    ds_bw["x"] = cable_length - ds_bw["x"].values
 
     # TODO: check if reindexing matters, and should be used.
     # one way to do it is performed below, but this could create artifacts
-    x_resolution = ds.x.values[1] - ds.x.values[0]
-    ds_bw = ds_bw.reindex({"x": ds.x}, method="nearest", tolerance=0.99 * x_resolution)
+    x_resolution = ds["x"].values[1] - ds["x"].values[0]
+    ds_bw = ds_bw.reindex(
+        {"x": ds["x"]}, method="nearest", tolerance=0.99 * x_resolution
+    )
 
     ds_bw = ds_bw.sortby("x")
 
-    ds["rst"] = (["x", "time"], ds_bw.st.values)
-    ds["rast"] = (["x", "time"], ds_bw.ast.values)
+    ds["rst"] = (["x", "time"], ds_bw["st"].values)
+    ds["rast"] = (["x", "time"], ds_bw["ast"].values)
 
     ds = ds.dropna(dim="x")
 
@@ -162,7 +187,12 @@ def merge_double_ended(ds_fw, ds_bw, cable_length, plot_result=True, verbose=Tru
     return ds
 
 
-def merge_double_ended_times(ds_fw, ds_bw, verify_timedeltas=True, verbose=True):
+def merge_double_ended_times(
+    ds_fw: "DataStore",
+    ds_bw: "DataStore",
+    verify_timedeltas: bool = True,
+    verbose: bool = True,
+) -> tuple["DataStore", "DataStore"]:
     """Helper for `merge_double_ended()` to deal with missing measurements. The
     number of measurements of the forward and backward channels might get out
     of sync if the device shuts down before the measurement of the last channel
@@ -196,7 +226,8 @@ def merge_double_ended_times(ds_fw, ds_bw, verify_timedeltas=True, verbose=True)
     ds_bw : DataSore object
         DataStore object representing the backward measurement channel
     verify_timedeltas : bool
-        Check whether times between forward and backward measurements are similar to those of neighboring measurements
+        Check whether times between forward and backward measurements are similar to
+        those of neighboring measurements
     verbose : bool
         Print additional information to screen
 
@@ -228,7 +259,7 @@ def merge_double_ended_times(ds_fw, ds_bw, verify_timedeltas=True, verbose=True)
     ):
         if verify_timedeltas:
             dt_ori = (ds_bw.time.values - ds_fw.time.values) / np.array(
-                1000000000, dtype="timedelta64[ns]"
+                1, dtype="timedelta64[s]"
             )
             dt_all_close = np.allclose(dt_ori, dt_ori[0], atol=1.5, rtol=0.0)
         else:
@@ -290,15 +321,14 @@ def merge_double_ended_times(ds_fw, ds_bw, verify_timedeltas=True, verbose=True)
                     "larger than the neighboring measurements.\n"
                     f"FW: {ds_fw.isel(time=itfw).time.values} and BW: {ds_bw.isel(time=itbw).time.values}"
                 )
+        return ds_fw.isel(time=iuse_chfw2), ds_bw.isel(time=iuse_chbw2)
 
-    else:
-        iuse_chfw2 = iuse_chfw
-        iuse_chbw2 = iuse_chbw
-
-    return ds_fw.isel(time=iuse_chfw2), ds_bw.isel(time=iuse_chbw2)
+    return ds_fw.isel(time=iuse_chfw), ds_bw.isel(time=iuse_chbw)
 
 
-def shift_double_ended(ds, i_shift, verbose=True):
+def shift_double_ended(
+    ds: "DataStore", i_shift: int, verbose: bool = True
+) -> "DataStore":
     """
     The cable length was initially configured during the DTS measurement. For double ended
     measurements it is important to enter the correct length so that the forward channel and the
@@ -328,7 +358,7 @@ def shift_double_ended(ds, i_shift, verbose=True):
 
     Returns
     -------
-    ds2 : DataStore oobject
+    ds2 : DataStore object
         With a shifted x-axis
     """
     from dtscalibration import DataStore
@@ -350,15 +380,15 @@ def shift_double_ended(ds, i_shift, verbose=True):
     else:
         # The cable was configured to be too short.
         # Part of the cable is not measured.
-        st = ds.st.data[i_shift:]
-        ast = ds.ast.data[i_shift:]
-        rst = ds.rst.data[:nx2]
-        rast = ds.rast.data[:nx2]
-        x2 = ds.x.data[i_shift:]
+        st = ds["st"].data[i_shift:]
+        ast = ds["ast"].data[i_shift:]
+        rst = ds["rst"].data[:nx2]
+        rast = ds["rast"].data[:nx2]
+        x2 = ds["x"].data[i_shift:]
         # TMP2 = ds.tmp.data[i_shift:]
 
     d2_coords = dict(ds.coords)
-    d2_coords["x"] = (("x",), x2, ds.x.attrs)
+    d2_coords["x"] = xr.DataArray(data=x2, dims=("x",), attrs=ds["x"].attrs)
 
     d2_data = dict(ds.data_vars)
     for k in ds.data_vars:
@@ -368,7 +398,7 @@ def shift_double_ended(ds, i_shift, verbose=True):
     new_data = (("st", st), ("ast", ast), ("rst", rst), ("rast", rast))
 
     for k, v in new_data:
-        d2_data[k] = (ds[k].dims, v, ds[k].attrs)
+        d2_data[k] = xr.DataArray(data=v, dims=ds[k].dims, attrs=ds[k].attrs)
 
     not_included = [k for k in ds.data_vars if k not in d2_data]
     if not_included and verbose:
@@ -377,7 +407,12 @@ def shift_double_ended(ds, i_shift, verbose=True):
     return DataStore(data_vars=d2_data, coords=d2_coords, attrs=ds.attrs)
 
 
-def suggest_cable_shift_double_ended(ds, irange, plot_result=True, **fig_kwargs):
+def suggest_cable_shift_double_ended(
+    ds: "DataStore",
+    irange: npt.NDArray[np.int_],
+    plot_result: bool = True,
+    **fig_kwargs,
+) -> tuple[int, int]:
     """The cable length was initially configured during the DTS measurement.
     For double ended measurements it is important to enter the correct length
     so that the forward channel and the backward channel are aligned.
@@ -424,23 +459,24 @@ def suggest_cable_shift_double_ended(ds, irange, plot_result=True, **fig_kwargs)
     err1 = []
     err2 = []
 
-    for i_shift in irange:
-        nx = ds.x.size
+    for shift in irange:
+        i_shift = int(shift)  # int() because iterating irange does not narrow type.
+        nx = ds["x"].size
         nx2 = nx - i_shift
         if i_shift < 0:
             # The cable was configured to be too long. There is too much data recorded.
-            st = ds.st.data[:i_shift]
-            ast = ds.ast.data[:i_shift]
-            rst = ds.rst.data[-i_shift:]
-            rast = ds.rast.data[-i_shift:]
-            x2 = ds.x.data[:i_shift]
+            st = ds["st"].data[:i_shift]
+            ast = ds["ast"].data[:i_shift]
+            rst = ds["rst"].data[-i_shift:]
+            rast = ds["rast"].data[-i_shift:]
+            x2 = ds["x"].data[:i_shift]
         else:
             # The cable was configured to be too short. Part of the cable is not measured.
-            st = ds.st.data[i_shift:]
-            ast = ds.ast.data[i_shift:]
-            rst = ds.rst.data[:nx2]
-            rast = ds.rast.data[:nx2]
-            x2 = ds.x.data[i_shift:]
+            st = ds["st"].data[i_shift:]
+            ast = ds["ast"].data[i_shift:]
+            rst = ds["rst"].data[:nx2]
+            rast = ds["rast"].data[:nx2]
+            x2 = ds["x"].data[i_shift:]
 
         i_f = np.log(st / ast)
         i_b = np.log(rst / rast)
@@ -457,8 +493,9 @@ def suggest_cable_shift_double_ended(ds, irange, plot_result=True, **fig_kwargs)
         err2_mask = np.logical_and(att_x_dif2 > 1.0, att_x_dif2 < 150.0)
         err2.append(np.nansum(np.abs(att_dif2[err2_mask])))
 
-    ishift1 = irange[np.argmin(err1, axis=0)]
-    ishift2 = irange[np.argmin(err2, axis=0)]
+    # int() is required for typing.
+    ishift1 = int(irange[np.argmin(err1, axis=0)])
+    ishift2 = int(irange[np.argmin(err2, axis=0)])
 
     if plot_result:
         if fig_kwargs is None:
@@ -468,18 +505,18 @@ def suggest_cable_shift_double_ended(ds, irange, plot_result=True, **fig_kwargs)
         f.suptitle(f"best shift is {ishift1} or {ishift2}")
 
         dt = ds.isel(time=0)
-        x = dt.x.data
-        y = dt.st.data
+        x = dt["x"].data
+        y = dt["st"].data
         ax0.plot(x, y, label="ST original")
-        y = dt.rst.data
+        y = dt["rst"].data
         ax0.plot(x, y, label="REV-ST original")
 
         dtsh1 = shift_double_ended(dt, ishift1)
         dtsh2 = shift_double_ended(dt, ishift2)
-        x1 = dtsh1.x.data
-        x2 = dtsh2.x.data
-        y1 = dtsh1.rst.data
-        y2 = dtsh2.rst.data
+        x1 = dtsh1["x"].data
+        x2 = dtsh2["x"].data
+        y1 = dtsh1["rst"].data
+        y2 = dtsh2["rst"].data
         ax0.plot(x1, y1, label=f"ST i_shift={ishift1}")
         ax0.plot(x2, y2, label=f"ST i_shift={ishift2}")
         ax0.set_xlabel("x (m)")
