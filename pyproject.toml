@@ -52,19 +52,17 @@ classifiers = [
     "Topic :: Utilities",
 ]
 dependencies = [
-    "numpy",
-    "xarray",
+    "numpy>=1.22.4",  # xarray: recommended to use >= 1.22 for full quantile method support
+    "dask",
+    "pandas",
+    "xarray[parallel,accel]",
     "pyyaml>=6.0.1",
     "xmltodict",
     "scipy",
-    "patsy",  # a dependency of statsmodels
     "statsmodels",
-    "dask",
-    "toolz",
     "matplotlib",
     "netCDF4>=1.6.4",
-    "flox",
-    "pandas",
+    "nc-time-axis>=1.4.1"  # optional plot dependency of xarray
 ]
 dynamic = ["version"]
 
