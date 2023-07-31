@@ -1458,7 +1458,7 @@ def test_double_ended_asymmetrical_attenuation():
         rast_var=1.0,
         method="wls",
         solver="sparse",
-        transient_asym_att_x=[50.0],
+        trans_att=[50.0],
     )
 
     assert_almost_equal_verbose(temp_real_celsius, ds.tmpf.values, decimal=7)
@@ -3149,7 +3149,7 @@ def test_single_ended_trans_att_synthetic():
         st_var=1.0,
         ast_var=1.0,
         method="wls",
-        transient_att_x=[40, 60],
+        trans_att=[40, 60],
         solver="sparse",
     )
 
