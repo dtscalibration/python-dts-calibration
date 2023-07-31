@@ -783,7 +783,14 @@ class DataStore(xr.Dataset):
 
         ds.tmpw.plot()
         """
-        list_of_depr = ["st_label", "ast_label", "rst_label", "rast_label", "transient_asym_att_x", "transient_att_x"]
+        list_of_depr = [
+            "st_label",
+            "ast_label",
+            "rst_label",
+            "rast_label",
+            "transient_asym_att_x",
+            "transient_att_x",
+        ]
         list_of_pending_depr = []
 
         kwargs = {k: v for k, v in kwargs.items() if k not in list_of_pending_depr}
