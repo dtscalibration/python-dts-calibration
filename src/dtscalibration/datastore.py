@@ -783,8 +783,8 @@ class DataStore(xr.Dataset):
 
         ds.tmpw.plot()
         """
-        list_of_depr = ["st_label", "ast_label", "rst_label", "rast_label"]
-        list_of_pending_depr = ["transient_asym_att_x", "transient_att_x"]
+        list_of_depr = ["st_label", "ast_label", "rst_label", "rast_label", "transient_asym_att_x", "transient_att_x"]
+        list_of_pending_depr = []
 
         kwargs = {k: v for k, v in kwargs.items() if k not in list_of_pending_depr}
 
@@ -1671,23 +1671,6 @@ class DataStore(xr.Dataset):
             If multiple locations are defined, the losses are added.
 
         """
-
-        if "transient_att_x" in kwargs:
-            warnings.warn(
-                "transient_att_x argument will be deprecated in version 2, "
-                "use trans_att",
-                DeprecationWarning,
-            )
-            trans_att = kwargs["transient_att_x"]
-
-        if "transient_asym_att_x" in kwargs:
-            warnings.warn(
-                "transient_asym_att_x arg will be deprecated in version 2, "
-                "use trans_att",
-                DeprecationWarning,
-            )
-            trans_att = kwargs["transient_asym_att_x"]
-
         if "trans_att" in self.coords and self.trans_att.size > 0:
             raise_warning = 0
 
@@ -1859,8 +1842,6 @@ class DataStore(xr.Dataset):
             has three items. The first two items are the slices of the sections
             that are matched. The third item is a boolean and is True if the two
             sections have a reverse direction ("J-configuration").
-        transient_att_x, transient_asym_att_x : iterable, optional
-            Depreciated. See trans_att
         trans_att : iterable, optional
             Splices can cause jumps in differential attenuation. Normal single
             ended calibration assumes these are not present. An additional loss
@@ -2408,8 +2389,6 @@ class DataStore(xr.Dataset):
             memory, is faster, and gives the same result as the statsmodels
             solver. The statsmodels solver is mostly used to check the sparse
             solver. `'stats'` is the default.
-        transient_att_x, transient_asym_att_x : iterable, optional
-            Depreciated. See trans_att
         trans_att : iterable, optional
             Splices can cause jumps in differential attenuation. Normal single
             ended calibration assumes these are not present. An additional loss
