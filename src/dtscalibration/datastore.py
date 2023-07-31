@@ -979,10 +979,8 @@ class DataStore(xr.Dataset):
         dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
         04Calculate_variance_Stokes.ipynb>`_
         """
-        if sections:
-            self.sections = sections
-        else:
-            assert self.sections, "sections are not defined"
+        if sections is None:
+            sections = self.sections
 
         assert self[st_label].dims[0] == "x", "Stokes are transposed"
 
@@ -1155,10 +1153,8 @@ class DataStore(xr.Dataset):
         dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
         04Calculate_variance_Stokes.ipynb>`_
         """
-        if sections:
-            self.sections = sections
-        else:
-            assert self.sections, "sections are not defined"
+        if sections is None:
+            sections = self.sections
 
         assert self[st_label].dims[0] == "x", "Stokes are transposed"
 
@@ -1410,10 +1406,8 @@ class DataStore(xr.Dataset):
         """
         import matplotlib.pyplot as plt
 
-        if sections:
-            self.sections = sections
-        else:
-            assert self.sections, "sections are not defined"
+        if sections is None:
+            sections = self.sections
 
         assert self[st_label].dims[0] == "x", "Stokes are transposed"
         _, resid = self.variance_stokes(st_label=st_label)
