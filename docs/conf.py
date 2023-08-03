@@ -4,6 +4,7 @@ import os
 
 
 extensions = [
+    'sphinx_rtd_theme',
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx.ext.coverage",

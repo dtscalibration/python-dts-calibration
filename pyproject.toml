@@ -83,10 +83,13 @@ dev = [
     "nbformat",  # Needed to run the tests
 ]
 docs = [  # Required for ReadTheDocs
+    "IPython",
     "myst_parser",
+    "matplotlib>=3.0.0",
     "sphinx",
     "sphinx_rtd_theme",
     "sphinx-autoapi",
+    "sphinx-automodapi",
     "coverage[toml]",
     "nbsphinx",
     "ipykernel",
