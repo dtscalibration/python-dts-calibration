@@ -7,3 +7,4 @@ Reference
 .. automodapi:: dtscalibration
    :skip: plot_dask
    :members:
+   :no-inheritance-diagram:

@@ -46,7 +46,7 @@ warnings.filterwarnings(
 class DataStore(xr.Dataset):
     """The data class that stores the measurements, contains calibration
     methods to relate Stokes and anti-Stokes to temperature. The user should
-    never initiate this class directly, but use read_xml_dir or open_datastore
+    never initiate this class directly, but use open_datastore
     functions instead.
 
     Parameters
@@ -85,7 +85,6 @@ class DataStore(xr.Dataset):
 
     See Also
     --------
-    dtscalibration.read_xml_dir : Load measurements stored in XML-files
     dtscalibration.open_datastore : Load (calibrated) measurements from
     netCDF-like file
     """
