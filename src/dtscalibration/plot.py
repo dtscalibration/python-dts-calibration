@@ -511,8 +511,8 @@ def plot_accuracy(
 def plot_sigma_report(
     ds, temp_label, temp_var_acc_label, temp_var_prec_label=None, itimes=None
 ):
-    """
-    Returns two sub-plots. first a temperature with confidence boundaries.
+    """Returns two sub-plots. first a temperature with confidence boundaries.
+
     Parameters
     ----------
     ds
