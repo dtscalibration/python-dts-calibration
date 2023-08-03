@@ -7,7 +7,6 @@ Contents
 
    readme
    installation
-   usage
    learn_by_examples
    reference/index
    contributing

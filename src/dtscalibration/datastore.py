@@ -5753,7 +5753,9 @@ def open_datastore(
     load_in_memory=False,
     **kwargs,
 ):
-    """Load and decode a datastore from a file or file-like object.
+    """Load and decode a datastore from a file or file-like object. Most
+    arguments are passed to xarray.open_dataset().
+
     Parameters
     ----------
     filename_or_obj : str, Path, file or xarray.backends.*DataStore
@@ -5926,7 +5928,7 @@ def read_silixa_files(
     load_in_memory="auto",
     **kwargs,
 ):
-    """Read a folder with measurement files. Each measurement file contains
+    """Read a folder with measurement files from a device of the Silixa brand. Each measurement file contains
     values for a
     single timestep. Remember to check which timezone you are working in.
 
@@ -6004,9 +6006,9 @@ def read_silixa_files(
 
 
 def read_sensortran_files(directory, timezone_netcdf="UTC", silent=False, **kwargs):
-    """Read a folder with measurement files. Each measurement file contains
-    values for a
-    single timestep. Remember to check which timezone you are working in.
+    """Read a folder with measurement files from a device of the Sensortran
+    brand. Each measurement file contains values for a single timestep. Remember
+    to check which timezone you are working in.
 
     The sensortran files are already timezone aware
 
@@ -6066,14 +6068,13 @@ def read_apsensing_files(
     directory=None,
     file_ext="*.xml",
     timezone_netcdf="UTC",
-    timezone_input_files="UTC",
     silent=False,
     load_in_memory="auto",
     **kwargs,
 ):
-    """Read a folder with measurement files. Each measurement file contains
-    values for a single timestep. Remember to check which timezone
-    you are working in.
+    """Read a folder with measurement files from a device of the Sensortran
+    brand. Each measurement file contains values for a single timestep.
+    Remember to check which timezone you are working in.
 
     Parameters
     ----------
@@ -6083,10 +6084,6 @@ def read_apsensing_files(
         Path to folder
     timezone_netcdf : str, optional
         Timezone string of the netcdf file. UTC follows CF-conventions.
-    timezone_input_files : str, optional
-        Timezone string of the measurement files.
-        Remember to check when measurements are taken.
-        Also if summertime is used.
     file_ext : str, optional
         file extension of the measurement files
     silent : bool
