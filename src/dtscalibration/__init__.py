@@ -1,17 +1,17 @@
 # coding=utf-8
 from dtscalibration.datastore import DataStore
-from dtscalibration.datastore import open_datastore
-from dtscalibration.datastore import open_mf_datastore
-from dtscalibration.datastore import read_apsensing_files
-from dtscalibration.datastore import read_sensornet_files
-from dtscalibration.datastore import read_sensortran_files
-from dtscalibration.datastore import read_silixa_files
 from dtscalibration.datastore_utils import check_dims
 from dtscalibration.datastore_utils import check_timestep_allclose
 from dtscalibration.datastore_utils import get_netcdf_encoding
 from dtscalibration.datastore_utils import merge_double_ended
 from dtscalibration.datastore_utils import shift_double_ended
 from dtscalibration.datastore_utils import suggest_cable_shift_double_ended
+from dtscalibration.io import open_datastore
+from dtscalibration.io import open_mf_datastore
+from dtscalibration.io import read_apsensing_files
+from dtscalibration.io import read_sensornet_files
+from dtscalibration.io import read_sensortran_files
+from dtscalibration.io import read_silixa_files
 from dtscalibration.plot import plot_accuracy
 from dtscalibration.plot import plot_location_residuals_double_ended
 from dtscalibration.plot import plot_residuals_reference_sections
@@ -41,7 +41,7 @@ __all__ = [
 ]
 
 # filenames = ['datastore.py', 'datastore_utils.py', 'calibrate_utils.py',
-#              'plot.py', 'io.py']
+#              'plot.py', 'io_utils.py']
 # filenames = ['plot.py']
 #
 # for filename in filenames:
