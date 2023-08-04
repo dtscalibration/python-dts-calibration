@@ -221,6 +221,21 @@ class DataStore(xr.Dataset):
 
         return yaml.load(self.attrs["_sections"], Loader=yaml.UnsafeLoader)
 
+    @sections.setter
+    def sections(self, sections: Dict[str, List[slice]]):
+        sections_validated = None
+
+        if sections is not None:
+            sections_validated = self.validate_sections(sections=sections)
+
+        self.attrs["_sections"] = yaml.dump(sections_validated)
+        pass
+
+    @sections.deleter
+    def sections(self):
+        self.sections = None
+        pass
+
     def validate_sections(self, sections: Dict[str, List[slice]]):
         assert isinstance(sections, dict)
 
@@ -278,21 +293,6 @@ class DataStore(xr.Dataset):
         assert np.unique(ix_sec).size == ix_sec.size, "The sections are overlapping"
 
         return sections_fix_slice_fixed
-
-    @sections.setter
-    def sections(self, sections: Dict[str, List[slice]]):
-        sections_validated = None
-
-        if sections is not None:
-            sections_validated = self.validate_sections(sections=sections)
-
-        self.attrs["_sections"] = yaml.dump(sections_validated)
-        pass
-
-    @sections.deleter
-    def sections(self):
-        self.sections = None
-        pass
 
     @property
     def is_double_ended(self) -> float:
