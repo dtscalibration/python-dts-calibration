@@ -1201,7 +1201,11 @@ def read_silixa_attrs_singlefile(filename, sep):
 
 
 def read_sensortran_files_routine(
-    filepathlist_dts, filepathlist_temp, timezone_input_files="UTC", timezone_netcdf="UTC", silent=False
+    filepathlist_dts,
+    filepathlist_temp,
+    timezone_input_files="UTC",
+    timezone_netcdf="UTC",
+    silent=False,
 ):
     """
     Internal routine that reads sensortran files.
@@ -1419,7 +1423,11 @@ def read_sensortran_single(fname):
 
 
 def read_apsensing_files_routine(
-    filepathlist, timezone_input_files="UTC", timezone_netcdf="UTC", silent=False, load_in_memory="auto"
+    filepathlist,
+    timezone_input_files="UTC",
+    timezone_netcdf="UTC",
+    silent=False,
+    load_in_memory="auto",
 ):
     """
     Internal routine that reads AP Sensing files.
@@ -1443,7 +1451,9 @@ def read_apsensing_files_routine(
 
     import dask
 
-    assert timezone_input_files == "UTC" and timezone_netcdf == "UTC", "Only UTC timezones supported"
+    assert (
+        timezone_input_files == "UTC" and timezone_netcdf == "UTC"
+    ), "Only UTC timezones supported"
 
     # translate names
     tld = {"ST": "st", "AST": "ast", "REV-ST": "rst", "REV-AST": "rast", "TEMP": "tmp"}

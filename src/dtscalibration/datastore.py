@@ -5417,8 +5417,7 @@ class DataStore(xr.Dataset):
         return out
 
     def resample_datastore(*args, **kwargs):
-        raise "ds.resample_datastore() is deprecated. Use from dtscalibration import DataStore; " \
-              "DataStore(ds.resample()) instead. See example notebook 2."
+        raise "ds.resample_datastore() is deprecated. Use from dtscalibration import DataStore; " "DataStore(ds.resample()) instead. See example notebook 2."
 
 
 class ParameterIndexDoubleEnded:
@@ -6032,7 +6031,9 @@ def read_silixa_files(
     return ds
 
 
-def read_sensortran_files(directory, timezone_input_files="UTC", timezone_netcdf="UTC", silent=False, **kwargs):
+def read_sensortran_files(
+    directory, timezone_input_files="UTC", timezone_netcdf="UTC", silent=False, **kwargs
+):
     """Read a folder with measurement files from a device of the Sensortran
     brand. Each measurement file contains values for a single timestep. Remember
     to check which timezone you are working in.

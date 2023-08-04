@@ -825,7 +825,11 @@ def test_variance_of_stokes_linear_synthetic():
         resid,
         var_fun,
     ) = ds.variance_stokes_linear(
-        "c_lin_var_through_zero", sections=sections, nbin=10, through_zero=True, plot_fit=False
+        "c_lin_var_through_zero",
+        sections=sections,
+        nbin=10,
+        through_zero=True,
+        plot_fit=False,
     )
     assert_almost_equal_verbose(slope, var_slope, decimal=3)
 
