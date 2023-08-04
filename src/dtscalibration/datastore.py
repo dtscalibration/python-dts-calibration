@@ -1,6 +1,3 @@
-import fnmatch
-import glob
-import inspect
 import os
 import warnings
 from typing import Dict
@@ -25,16 +22,6 @@ from dtscalibration.calibrate_utils import wls_sparse
 from dtscalibration.calibrate_utils import wls_stats
 from dtscalibration.datastore_utils import check_timestep_allclose
 from dtscalibration.io_utils import _dim_attrs
-from dtscalibration.io_utils import apsensing_xml_version_check
-from dtscalibration.io_utils import read_apsensing_files_routine
-from dtscalibration.io_utils import read_sensornet_files_routine_v3
-from dtscalibration.io_utils import read_sensortran_files_routine
-from dtscalibration.io_utils import read_silixa_files_routine_v4
-from dtscalibration.io_utils import read_silixa_files_routine_v6
-from dtscalibration.io_utils import sensornet_ddf_version_check
-from dtscalibration.io_utils import sensortran_binary_version_check
-from dtscalibration.io_utils import silixa_xml_version_check
-from dtscalibration.io_utils import ziphandle_to_filepathlist
 
 dtsattr_namelist = ["double_ended_flag"]
 dim_attrs = {k: v for kl, v in _dim_attrs.items() for k in kl}
@@ -5768,5 +5755,3 @@ class ParameterIndexSingleEnded:
                 arr_out[x >= taxi] += np.diag(tai)[None]
 
         return arr_out
-
-
