@@ -218,71 +218,75 @@ class DataStore(xr.Dataset):
         """
         if "_sections" not in self.attrs:
             self.attrs["_sections"] = yaml.dump(None)
+
         return yaml.load(self.attrs["_sections"], Loader=yaml.UnsafeLoader)
+
+    def validate_sections(self, sections: Dict[str, List[slice]]):
+        assert isinstance(sections, dict)
+
+        # be less restrictive for capitalized labels
+        # find lower cases label
+        labels = np.reshape(
+            [[s.lower(), s] for s in self.data_vars.keys()], (-1,)
+        ).tolist()
+
+        sections_fix = dict()
+        for k, v in sections.items():
+            if k.lower() in labels:
+                i_lower_case = labels.index(k.lower())
+                i_normal_case = i_lower_case + 1
+                k_normal_case = labels[i_normal_case]
+                sections_fix[k_normal_case] = v
+            else:
+                assert k in self.data_vars, (
+                    "The keys of the "
+                    "sections-dictionary should "
+                    "refer to a valid timeserie "
+                    "already stored in "
+                    "ds.data_vars "
+                )
+
+        sections_fix_slice_fixed = dict()
+
+        for k, v in sections_fix.items():
+            assert isinstance(v, (list, tuple)), (
+                "The values of the sections-dictionary "
+                "should be lists of slice objects."
+            )
+
+            for vi in v:
+                assert isinstance(vi, slice), (
+                    "The values of the sections-dictionary should "
+                    "be lists of slice objects."
+                )
+
+                assert self.x.sel(x=vi).size > 0, (
+                    f"Better define the {k} section. You tried {vi}, "
+                    "which is not within the x-dimension"
+                )
+
+            # sorted stretches
+            stretch_unsort = [slice(float(vi.start), float(vi.stop)) for vi in v]
+            stretch_start = [i.start for i in stretch_unsort]
+            stretch_i_sorted = np.argsort(stretch_start)
+            sections_fix_slice_fixed[k] = [stretch_unsort[i] for i in stretch_i_sorted]
+
+        # Prevent overlapping slices
+        ix_sec = self.ufunc_per_section(
+            sections=sections_fix_slice_fixed, x_indices=True, calc_per="all"
+        )
+        assert np.unique(ix_sec).size == ix_sec.size, "The sections are overlapping"
+
+        return sections_fix_slice_fixed
 
     @sections.setter
     def sections(self, sections: Dict[str, List[slice]]):
-        sections_fix_slice_fixed = None
+        sections_validated = None
 
-        if sections:
-            assert isinstance(sections, dict)
+        if sections is not None:
+            sections_validated = self.validate_sections(sections=sections)
 
-            # be less restrictive for capitalized labels
-            # find lower cases label
-            labels = np.reshape(
-                [[s.lower(), s] for s in self.data_vars.keys()], (-1,)
-            ).tolist()
-
-            sections_fix = dict()
-            for k, v in sections.items():
-                if k.lower() in labels:
-                    i_lower_case = labels.index(k.lower())
-                    i_normal_case = i_lower_case + 1
-                    k_normal_case = labels[i_normal_case]
-                    sections_fix[k_normal_case] = v
-                else:
-                    assert k in self.data_vars, (
-                        "The keys of the "
-                        "sections-dictionary should "
-                        "refer to a valid timeserie "
-                        "already stored in "
-                        "ds.data_vars "
-                    )
-
-            sections_fix_slice_fixed = dict()
-
-            for k, v in sections_fix.items():
-                assert isinstance(v, (list, tuple)), (
-                    "The values of the sections-dictionary "
-                    "should be lists of slice objects."
-                )
-
-                for vi in v:
-                    assert isinstance(vi, slice), (
-                        "The values of the sections-dictionary should "
-                        "be lists of slice objects."
-                    )
-
-                    assert self.x.sel(x=vi).size > 0, (
-                        f"Better define the {k} section. You tried {vi}, "
-                        "which is out of reach"
-                    )
-
-                # sorted stretches
-                stretch_unsort = [slice(float(vi.start), float(vi.stop)) for vi in v]
-                stretch_start = [i.start for i in stretch_unsort]
-                stretch_i_sorted = np.argsort(stretch_start)
-                sections_fix_slice_fixed[k] = [
-                    stretch_unsort[i] for i in stretch_i_sorted
-                ]
-
-            # Prevent overlapping slices
-            ix_sec = self.ufunc_per_section(
-                sections=sections_fix_slice_fixed, x_indices=True, calc_per="all"
-            )
-            assert np.unique(ix_sec).size == ix_sec.size, "The sections are overlapping"
-
-        self.attrs["_sections"] = yaml.dump(sections_fix_slice_fixed)
+        self.attrs["_sections"] = yaml.dump(sections_validated)
         pass
 
     @sections.deleter
@@ -480,7 +484,7 @@ class DataStore(xr.Dataset):
         compute=True,
         time_chunks_from_key="st",
     ):
-        """Write DataStore to multiple to multiple netCDF files.
+        """Write DataStore to multiple netCDF files.
 
         Splits the DataStore along the time dimension using the chunks. It
         first checks if all chunks in `ds` are time aligned. If this is not
@@ -980,17 +984,21 @@ class DataStore(xr.Dataset):
         """
         if sections is None:
             sections = self.sections
+        else:
+            sections = self.validate_sections(sections)
 
         assert self[st_label].dims[0] == "x", "Stokes are transposed"
 
         check_timestep_allclose(self, eps=0.01)
 
-        data_dict = da.compute(
-            self.ufunc_per_section(label=st_label, calc_per="stretch")
-        )[
-            0
-        ]  # should maybe be per section. But then residuals
+        # should maybe be per section. But then residuals
         # seem to be correlated between stretches. I don't know why.. BdT.
+        data_dict = da.compute(
+            self.ufunc_per_section(
+                sections=sections, label=st_label, calc_per="stretch"
+            )
+        )[0]
+
         resid_list = []
 
         for k, v in data_dict.items():
@@ -1015,7 +1023,9 @@ class DataStore(xr.Dataset):
             return var_I, resid
 
         else:
-            ix_resid = self.ufunc_per_section(x_indices=True, calc_per="all")
+            ix_resid = self.ufunc_per_section(
+                sections=sections, x_indices=True, calc_per="all"
+            )
 
             resid_sorted = np.full(shape=self[st_label].shape, fill_value=np.nan)
             resid_sorted[ix_resid, :] = resid
@@ -1154,6 +1164,8 @@ class DataStore(xr.Dataset):
         """
         if sections is None:
             sections = self.sections
+        else:
+            sections = self.validate_sections(sections)
 
         assert self[st_label].dims[0] == "x", "Stokes are transposed"
 
@@ -1166,7 +1178,7 @@ class DataStore(xr.Dataset):
         y_list = []  # intensities of stokes
         x_list = []  # length rel to start of section. for alpha
 
-        for k, stretches in self.sections.items():
+        for k, stretches in sections.items():
             for stretch in stretches:
                 y_list.append(self[st_label].sel(x=stretch).data.T.reshape(-1))
                 _x = self.x.sel(x=stretch).data.copy()
@@ -1260,6 +1272,7 @@ class DataStore(xr.Dataset):
 
         if not reshape_residuals:
             return var_I, resid
+
         else:
             # restructure the residuals, such that they can be plotted and
             # added to ds
@@ -1276,7 +1289,9 @@ class DataStore(xr.Dataset):
                     resid_res.append(resid[lenis:lenie].T.reshape((nt, leni)).T)
 
             _resid = np.concatenate(resid_res)
-            _resid_x = self.ufunc_per_section(label="x", calc_per="all")
+            _resid_x = self.ufunc_per_section(
+                sections=sections, label="x", calc_per="all"
+            )
             isort = np.argsort(_resid_x)
             resid_x = _resid_x[isort]  # get indices from ufunc directly
             resid = _resid[isort, :]
@@ -1407,11 +1422,15 @@ class DataStore(xr.Dataset):
 
         if sections is None:
             sections = self.sections
+        else:
+            sections = self.validate_sections(sections)
 
         assert self[st_label].dims[0] == "x", "Stokes are transposed"
-        _, resid = self.variance_stokes(st_label=st_label)
+        _, resid = self.variance_stokes(sections=sections, st_label=st_label)
 
-        ix_sec = self.ufunc_per_section(x_indices=True, calc_per="all")
+        ix_sec = self.ufunc_per_section(
+            sections=sections, x_indices=True, calc_per="all"
+        )
         st = self.isel(x=ix_sec)[st_label].values.ravel()
         diff_st = resid.isel(x=ix_sec).values.ravel()
 
@@ -1480,7 +1499,7 @@ class DataStore(xr.Dataset):
         return slope, offset, st_sort_mean, st_sort_var, resid, var_fun
 
     def i_var(self, st_var, ast_var, st_label="st", ast_label="ast"):
-        """
+        r"""
         Compute the variance of an observation given the stokes and anti-Stokes
         intensities and their variance.
         The variance, :math:`\sigma^2_{I_{m,n}}`, of the distribution of the
@@ -1632,6 +1651,8 @@ class DataStore(xr.Dataset):
         """
         if sections is None:
             sections = self.sections
+        else:
+            sections = self.validate_sections(sections)
 
         if conf_ints is None:
             conf_ints = self[ci_label].values
@@ -1656,7 +1677,7 @@ class DataStore(xr.Dataset):
 
         return np.logical_and(mask_dn, mask_up)
 
-    def set_trans_att(self, trans_att=None, **kwargs):
+    def set_trans_att(self, trans_att=None):
         """Gracefully set the locations that introduce directional differential
         attenuation
 
@@ -1749,7 +1770,7 @@ class DataStore(xr.Dataset):
         fix_alpha=None,
         **kwargs,
     ):
-        """
+        r"""
         Calibrate the Stokes (`ds.st`) and anti-Stokes (`ds.ast`) data to
         temperature using fiber sections with a known temperature
         (`ds.sections`) for single-ended setups. The calibrated temperature is
@@ -1883,8 +1904,6 @@ class DataStore(xr.Dataset):
 
         if sections:
             self.sections = sections
-        else:
-            assert self.sections, "sections are not defined"
 
         if method == "wls":
             assert st_var is not None and ast_var is not None, "Set `st_var`"
@@ -2232,7 +2251,7 @@ class DataStore(xr.Dataset):
         verbose=False,
         **kwargs,
     ):
-        """
+        r"""
         See example notebook 8 for an explanation on how to use this function.
         Calibrate the Stokes (`ds.st`) and anti-Stokes (`ds.ast`) of the forward
         channel and from the backward channel (`ds.rst`, `ds.rast`) data to
@@ -2439,8 +2458,6 @@ class DataStore(xr.Dataset):
 
         if sections:
             self.sections = sections
-        else:
-            assert self.sections, "sections are not defined"
 
         self.check_reference_section_values()
 
@@ -3454,7 +3471,7 @@ class DataStore(xr.Dataset):
         reduce_memory_usage=False,
         **kwargs,
     ):
-        """
+        r"""
         Estimation of the confidence intervals for the temperatures measured
         with a single-ended setup. It consists of five steps. First, the variances
         of the Stokes and anti-Stokes intensity measurements are estimated
@@ -4076,7 +4093,7 @@ class DataStore(xr.Dataset):
         reduce_memory_usage=False,
         **kwargs,
     ):
-        """
+        r"""
         Estimation of the confidence intervals for the temperatures measured
         with a double-ended setup.
         Double-ended setups require four additional steps to estimate the
@@ -4137,6 +4154,8 @@ class DataStore(xr.Dataset):
         with the mean of the :math:`T_{m,n,i}` values. Finally, the 95\%
         confidence interval for :math:`T_{m,n}` are estimated with the 2.5\% and
         97.5\% percentiles of :math:`T_{m,n,i}`.
+
+        Assumes sections are set.
 
         Parameters
         ----------
@@ -5124,6 +5143,11 @@ class DataStore(xr.Dataset):
         resid_da : xarray.DataArray
             The residuals as DataArray
         """
+        if sections is None:
+            sections = self.sections
+        else:
+            sections = self.validate_sections(sections)
+
         resid_temp = self.ufunc_per_section(
             sections=sections, label=label, temp_err=True, calc_per="all"
         )
@@ -5390,7 +5414,8 @@ class DataStore(xr.Dataset):
         return out
 
     def resample_datastore(*args, **kwargs):
-        raise "ds.resample_datastore() is deprecated. Use " "from dtscalibration import DataStore; DataStore(ds.resample()) " "instead. See example notebook 2."
+        raise "ds.resample_datastore() is deprecated. Use from dtscalibration import DataStore; " \
+              "DataStore(ds.resample()) instead. See example notebook 2."
 
 
 class ParameterIndexDoubleEnded:
@@ -6004,7 +6029,7 @@ def read_silixa_files(
     return ds
 
 
-def read_sensortran_files(directory, timezone_netcdf="UTC", silent=False, **kwargs):
+def read_sensortran_files(directory, timezone_input_files="UTC", timezone_netcdf="UTC", silent=False, **kwargs):
     """Read a folder with measurement files from a device of the Sensortran
     brand. Each measurement file contains values for a single timestep. Remember
     to check which timezone you are working in.
@@ -6015,6 +6040,10 @@ def read_sensortran_files(directory, timezone_netcdf="UTC", silent=False, **kwar
     ----------
     directory : str, Path
         Path to folder containing BinaryRawDTS and BinaryTemp files
+    timezone_input_files : str, optional
+        Timezone string of the measurement files.
+        Remember to check when measurements are taken.
+        Also if summertime is used.
     timezone_netcdf : str, optional
         Timezone string of the netcdf file. UTC follows CF-conventions.
     silent : bool
@@ -6050,6 +6079,7 @@ def read_sensortran_files(directory, timezone_netcdf="UTC", silent=False, **kwar
         data_vars, coords, attrs = read_sensortran_files_routine(
             filepathlist_dts,
             filepathlist_temp,
+            timezone_input_files=timezone_input_files,
             timezone_netcdf=timezone_netcdf,
             silent=silent,
         )
@@ -6066,6 +6096,7 @@ def read_apsensing_files(
     filepathlist=None,
     directory=None,
     file_ext="*.xml",
+    timezone_input_files="UTC",
     timezone_netcdf="UTC",
     silent=False,
     load_in_memory="auto",
@@ -6081,6 +6112,10 @@ def read_apsensing_files(
         List of paths that point the the silixa files
     directory : str, Path, optional
         Path to folder
+    timezone_input_files : str, optional
+        Timezone string of the measurement files.
+        Remember to check when measurements are taken.
+        Also if summertime is used.
     timezone_netcdf : str, optional
         Timezone string of the netcdf file. UTC follows CF-conventions.
     file_ext : str, optional
@@ -6135,6 +6170,7 @@ def read_apsensing_files(
     data_vars, coords, attrs = read_apsensing_files_routine(
         filepathlist,
         timezone_netcdf=timezone_netcdf,
+        timezone_input_files=timezone_input_files,
         silent=silent,
         load_in_memory=load_in_memory,
     )
@@ -6147,8 +6183,8 @@ def read_sensornet_files(
     filepathlist=None,
     directory=None,
     file_ext="*.ddf",
-    timezone_netcdf="UTC",
     timezone_input_files="UTC",
+    timezone_netcdf="UTC",
     silent=False,
     add_internal_fiber_length=50.0,
     fiber_length=None,
@@ -6164,12 +6200,12 @@ def read_sensornet_files(
         List of paths that point the the silixa files
     directory : str, Path, optional
         Path to folder
-    timezone_netcdf : str, optional
-        Timezone string of the netcdf file. UTC follows CF-conventions.
     timezone_input_files : str, optional
         Timezone string of the measurement files.
         Remember to check when measurements are taken.
         Also if summertime is used.
+    timezone_netcdf : str, optional
+        Timezone string of the netcdf file. UTC follows CF-conventions.
     file_ext : str, optional
         file extension of the measurement files
     silent : bool
