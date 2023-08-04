@@ -1305,7 +1305,7 @@ class DataStore(xr.Dataset):
             return var_I, resid_da
 
     def variance_stokes_linear(
-        self, st_label, sections=None, nbin=50, through_zero=True, plot_fit=False
+        self, st_label, sections=None, nbin=50, through_zero=False, plot_fit=False
     ):
         """
         Approximate the variance of the noise in Stokes intensity measurements
@@ -1457,6 +1457,7 @@ class DataStore(xr.Dataset):
             # VAR(Stokes) = slope * Stokes
             offset = 0.0
             slope = np.linalg.lstsq(st_sort_mean[:, None], st_sort_var, rcond=None)[0]
+
         else:
             # VAR(Stokes) = slope * Stokes + offset
             slope, offset = np.linalg.lstsq(
@@ -1472,7 +1473,9 @@ class DataStore(xr.Dataset):
                     f"not possible. Most likely, your {st_label} do "
                     f"not vary enough to fit a linear curve. Either "
                     f"use `through_zero` option or use "
-                    f"`ds.variance_stokes_constant()`"
+                    f"`ds.variance_stokes_constant()`. Another reason "
+                    f"could be that your sections are defined to be "
+                    f"wider than they actually are."
                 )
 
         def var_fun(stokes):
