@@ -19,6 +19,7 @@ from dtscalibration.calibrate_utils import match_sections
 from dtscalibration.calibrate_utils import parse_st_var
 from dtscalibration.datastore_utils import ParameterIndexDoubleEnded
 from dtscalibration.datastore_utils import ParameterIndexSingleEnded
+from dtscalibration.datastore_utils import check_deprecated_kwargs
 from dtscalibration.datastore_utils import check_timestep_allclose
 from dtscalibration.datastore_utils import ufunc_per_section_helper
 from dtscalibration.io_utils import _dim_attrs
@@ -766,73 +767,6 @@ class DataStore(xr.Dataset):
         """Returns the x-indices of the section. `sec` is a slice."""
         xis = self.x.astype(int) * 0 + np.arange(self.x.size, dtype=int)
         return xis.sel(x=sec).values
-
-    def check_deprecated_kwargs(self, kwargs):
-        """
-        Internal function that parses the `kwargs` for depreciated keyword
-        arguments.
-
-        Depreciated keywords raise an error, pending to be depreciated do not.
-        But this requires that the code currently deals with those arguments.
-
-        Parameters
-        ----------
-        kwargs : Dict
-            A dictionary with keyword arguments.
-
-        Returns
-        -------
-
-        """
-        msg = """Previously, it was possible to manually set the label from
-        which the Stokes and anti-Stokes were read within the DataStore
-        object. To reduce the clutter in the code base and be able to
-        maintain it, this option was removed.
-        See: https://github.com/dtscalibration/python-dts-calibration/issues/81
-
-        The new **fixed** names are: st, ast, rst, rast.
-
-        It is still possible to use the previous defaults, for example when
-        reading stored measurements from netCDF, by renaming the labels. The
-        old default labels were ST, AST, REV-ST, REV-AST.
-
-        ```
-        ds = open_datastore(path_to_old_file)
-        ds = ds.rename_labels()
-        ds.calibration_double_ended(
-            st_var=1.5,
-            ast_var=1.5,
-            rst_var=1.,
-            rast_var=1.,
-            method='wls')
-        ```
-
-        ds.tmpw.plot()
-        """
-        list_of_depr = [
-            "st_label",
-            "ast_label",
-            "rst_label",
-            "rast_label",
-            "transient_asym_att_x",
-            "transient_att_x",
-        ]
-        list_of_pending_depr = []
-
-        kwargs = {k: v for k, v in kwargs.items() if k not in list_of_pending_depr}
-
-        for k in kwargs:
-            if k in list_of_depr:
-                raise NotImplementedError(msg)
-
-        if len(kwargs) != 0:
-            raise NotImplementedError(
-                "The following keywords are not "
-                + "supported: "
-                + ", ".join(kwargs.keys())
-            )
-
-        pass
 
     def rename_labels(self, assertion=True):
         """
@@ -1667,52 +1601,6 @@ class DataStore(xr.Dataset):
 
         pass
 
-    def in_confidence_interval(self, ci_label, conf_ints=None, sections=None):
-        """
-        Returns an array with bools wether the temperature of the reference
-        sections are within the confidence intervals
-
-        Parameters
-        ----------
-        sections : Dict[str, List[slice]]
-        ci_label : str
-            The label of the data containing the confidence intervals.
-        conf_ints : Tuple
-            A tuple containing two floats between 0 and 1, representing the
-            levels between which the reference temperature should lay.
-
-        Returns
-        -------
-
-        """
-        if sections is None:
-            sections = self.sections
-        else:
-            sections = self.validate_sections(sections)
-
-        if conf_ints is None:
-            conf_ints = self[ci_label].values
-
-        assert len(conf_ints) == 2, "Please define conf_ints"
-
-        tmp_dn = self[ci_label].sel(CI=conf_ints[0], method="nearest")
-        tmp_up = self[ci_label].sel(CI=conf_ints[1], method="nearest")
-
-        ref = self.ufunc_per_section(
-            sections=sections, label="st", ref_temp_broadcasted=True, calc_per="all"
-        )
-        ix_resid = self.ufunc_per_section(
-            sections=sections, x_indices=True, calc_per="all"
-        )
-        ref_sorted = np.full(shape=tmp_dn.shape, fill_value=np.nan)
-        ref_sorted[ix_resid, :] = ref
-        ref_da = xr.DataArray(data=ref_sorted, coords=tmp_dn.coords)
-
-        mask_dn = ref_da >= tmp_dn
-        mask_up = ref_da <= tmp_up
-
-        return np.logical_and(mask_dn, mask_up)
-
     def set_trans_att(self, trans_att=None):
         """Gracefully set the locations that introduce directional differential
         attenuation
@@ -1899,7 +1787,7 @@ class DataStore(xr.Dataset):
     07Calibrate_single_wls.ipynb>`_
 
         """
-        self.check_deprecated_kwargs(kwargs)
+        check_deprecated_kwargs(kwargs)
         self.set_trans_att(trans_att=trans_att, **kwargs)
 
         if sections is not None:
@@ -2329,7 +2217,7 @@ class DataStore(xr.Dataset):
     08Calibrate_double_wls.ipynb>`_
         """
         # TODO: confidence intervals using the variance approximated by linear error propagation
-        self.check_deprecated_kwargs(kwargs)
+        check_deprecated_kwargs(kwargs)
 
         self.set_trans_att(trans_att=trans_att, **kwargs)
 
@@ -2713,272 +2601,6 @@ class DataStore(xr.Dataset):
 
         pass
 
-    def conf_int_single_ended(
-        self,
-        p_val="p_val",
-        p_cov="p_cov",
-        st_var=None,
-        ast_var=None,
-        conf_ints=None,
-        mc_sample_size=100,
-        da_random_state=None,
-        mc_remove_set_flag=True,
-        reduce_memory_usage=False,
-        **kwargs,
-    ):
-        r"""
-        Estimation of the confidence intervals for the temperatures measured
-        with a single-ended setup. It consists of five steps. First, the variances
-        of the Stokes and anti-Stokes intensity measurements are estimated
-        following the steps in Section 4 [1]_. A Normal
-        distribution is assigned to each intensity measurement that is centered
-        at the measurement and using the estimated variance. Second, a multi-
-        variate Normal distribution is assigned to the estimated parameters
-        using the covariance matrix from the calibration procedure presented in
-        Section 5 [1]_. Third, the distributions are sampled, and the
-        temperature is computed with Equation 12 [1]_. Fourth, step
-        three is repeated, e.g., 10,000 times for each location and for each
-        time. The resulting 10,000 realizations of the temperatures
-        approximate the probability density functions of the estimated
-        temperature at that location and time. Fifth, the standard uncertainties
-        are computed with the standard deviations of the realizations of the
-        temperatures, and the 95\% confidence intervals are computed from the
-        2.5\% and 97.5\% percentiles of the realizations of the temperatures.
-
-
-        Parameters
-        ----------
-        p_val : array-like, optional
-            Define `p_val`, `p_var`, `p_cov` if you used an external function
-            for calibration. Has size 2 + `nt`. First value is :math:`\gamma`,
-            second is :math:`\Delta \\alpha`, others are :math:`C` for each
-            timestep.
-            If set to False, no uncertainty in the parameters is propagated
-            into the confidence intervals. Similar to the spec sheets of the DTS
-            manufacturers. And similar to passing an array filled with zeros
-        p_cov : array-like, optional
-            The covariances of `p_val`.
-        st_var, ast_var : float, callable, array-like, optional
-            The variance of the measurement noise of the Stokes signals in the
-            forward direction. If `float` the variance of the noise from the
-            Stokes detector is described with a single value.
-            If `callable` the variance of the noise from the Stokes detector is
-            a function of the intensity, as defined in the callable function.
-            Or manually define a variance with a DataArray of the shape
-            `ds.st.shape`, where the variance can be a function of time and/or
-            x. Required if method is wls.
-        conf_ints : iterable object of float
-            A list with the confidence boundaries that are calculated. Valid
-            values are between
-            [0, 1].
-        mc_sample_size : int
-            Size of the monte carlo parameter set used to calculate the
-            confidence interval
-        da_random_state
-            For testing purposes. Similar to random seed. The seed for dask.
-            Makes random not so random. To produce reproducable results for
-            testing environments.
-        mc_remove_set_flag : bool
-            Remove the monte carlo data set, from which the CI and the
-            variance are calculated.
-        reduce_memory_usage : bool
-            Use less memory but at the expense of longer computation time
-
-
-        References
-        ----------
-        .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
-            of Temperature and Associated Uncertainty from Fiber-Optic Raman-
-            Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
-            https://doi.org/10.3390/s20082235
-        """
-        self.check_deprecated_kwargs(kwargs)
-
-        if da_random_state:
-            state = da_random_state
-        else:
-            state = da.random.RandomState()
-
-        no, nt = self.st.data.shape
-        if "trans_att" in self.keys():
-            nta = self.trans_att.size
-        else:
-            nta = 0
-
-        assert isinstance(p_val, (str, np.ndarray, np.generic))
-        if isinstance(p_val, str):
-            p_val = self[p_val].data
-
-        npar = p_val.size
-
-        # number of parameters
-        if npar == nt + 2 + nt * nta:
-            fixed_alpha = False
-        elif npar == 1 + no + nt + nt * nta:
-            fixed_alpha = True
-        else:
-            raise Exception("The size of `p_val` is not what I expected")
-
-        self.coords["mc"] = range(mc_sample_size)
-
-        if conf_ints:
-            self.coords["CI"] = conf_ints
-
-        # WLS
-        if isinstance(p_cov, str):
-            p_cov = self[p_cov].data
-        assert p_cov.shape == (npar, npar)
-
-        p_mc = sst.multivariate_normal.rvs(mean=p_val, cov=p_cov, size=mc_sample_size)
-
-        if fixed_alpha:
-            self["alpha_mc"] = (("mc", "x"), p_mc[:, 1 : no + 1])
-            self["c_mc"] = (("mc", "time"), p_mc[:, 1 + no : 1 + no + nt])
-        else:
-            self["dalpha_mc"] = (("mc",), p_mc[:, 1])
-            self["c_mc"] = (("mc", "time"), p_mc[:, 2 : nt + 2])
-
-        self["gamma_mc"] = (("mc",), p_mc[:, 0])
-        if nta:
-            self["ta_mc"] = (
-                ("mc", "trans_att", "time"),
-                np.reshape(p_mc[:, -nt * nta :], (mc_sample_size, nta, nt)),
-            )
-
-        rsize = (self.mc.size, self.x.size, self.time.size)
-
-        if reduce_memory_usage:
-            memchunk = da.ones(
-                (mc_sample_size, no, nt), chunks={0: -1, 1: 1, 2: "auto"}
-            ).chunks
-        else:
-            memchunk = da.ones(
-                (mc_sample_size, no, nt), chunks={0: -1, 1: "auto", 2: "auto"}
-            ).chunks
-
-        # Draw from the normal distributions for the Stokes intensities
-        for k, st_labeli, st_vari in zip(
-            ["r_st", "r_ast"], ["st", "ast"], [st_var, ast_var]
-        ):
-            # Load the mean as chunked Dask array, otherwise eats memory
-            if type(self[st_labeli].data) == da.core.Array:
-                loc = da.asarray(self[st_labeli].data, chunks=memchunk[1:])
-            else:
-                loc = da.from_array(self[st_labeli].data, chunks=memchunk[1:])
-
-            # Make sure variance is of size (no, nt)
-            if np.size(st_vari) > 1:
-                if st_vari.shape == self[st_labeli].shape:
-                    pass
-                else:
-                    st_vari = np.broadcast_to(st_vari, (no, nt))
-            else:
-                pass
-
-            # Load variance as chunked Dask array, otherwise eats memory
-            if type(st_vari) == da.core.Array:
-                st_vari_da = da.asarray(st_vari, chunks=memchunk[1:])
-
-            elif callable(st_vari) and type(self[st_labeli].data) == da.core.Array:
-                st_vari_da = da.asarray(
-                    st_vari(self[st_labeli]).data, chunks=memchunk[1:]
-                )
-
-            elif callable(st_vari) and type(self[st_labeli].data) != da.core.Array:
-                st_vari_da = da.from_array(
-                    st_vari(self[st_labeli]).data, chunks=memchunk[1:]
-                )
-
-            else:
-                st_vari_da = da.from_array(st_vari, chunks=memchunk[1:])
-
-            self[k] = (
-                ("mc", "x", "time"),
-                state.normal(
-                    loc=loc,  # has chunks=memchunk[1:]
-                    scale=st_vari_da**0.5,
-                    size=rsize,
-                    chunks=memchunk,
-                ),
-            )
-
-        ta_arr = np.zeros((mc_sample_size, no, nt))
-
-        if nta:
-            for ii, ta in enumerate(self["ta_mc"]):
-                for tai, taxi in zip(ta.values, self.trans_att.values):
-                    ta_arr[ii, self.x.values >= taxi] = (
-                        ta_arr[ii, self.x.values >= taxi] + tai
-                    )
-        self["ta_mc_arr"] = (("mc", "x", "time"), ta_arr)
-
-        if fixed_alpha:
-            self["tmpf_mc_set"] = (
-                self["gamma_mc"]
-                / (
-                    (
-                        np.log(self["r_st"])
-                        - np.log(self["r_ast"])
-                        + (self["c_mc"] + self["ta_mc_arr"])
-                    )
-                    + self["alpha_mc"]
-                )
-                - 273.15
-            )
-        else:
-            self["tmpf_mc_set"] = (
-                self["gamma_mc"]
-                / (
-                    (
-                        np.log(self["r_st"])
-                        - np.log(self["r_ast"])
-                        + (self["c_mc"] + self["ta_mc_arr"])
-                    )
-                    + (self["dalpha_mc"] * self.x)
-                )
-                - 273.15
-            )
-
-        avg_dims = ["mc"]
-
-        avg_axis = self["tmpf_mc_set"].get_axis_num(avg_dims)
-
-        self["tmpf_mc_var"] = (self["tmpf_mc_set"] - self["tmpf"]).var(
-            dim=avg_dims, ddof=1
-        )
-
-        if conf_ints:
-            new_chunks = ((len(conf_ints),),) + self["tmpf_mc_set"].chunks[1:]
-
-            qq = self["tmpf_mc_set"]
-
-            q = qq.data.map_blocks(
-                lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
-                chunks=new_chunks,  #
-                drop_axis=avg_axis,  # avg dimesnions are dropped from input arr
-                new_axis=0,
-            )  # The new CI dimension is added as first axis
-
-            self["tmpf_mc"] = (("CI", "x", "time"), q)
-
-        if mc_remove_set_flag:
-            drop_var = [
-                "gamma_mc",
-                "dalpha_mc",
-                "alpha_mc",
-                "c_mc",
-                "mc",
-                "r_st",
-                "r_ast",
-                "tmpf_mc_set",
-                "ta_mc_arr",
-            ]
-            for k in drop_var:
-                if k in self:
-                    del self[k]
-
-        pass
-
     def average_single_ended(
         self,
         p_val="p_val",
@@ -3123,7 +2745,7 @@ class DataStore(xr.Dataset):
         -------
 
         """
-        self.check_deprecated_kwargs(kwargs)
+        check_deprecated_kwargs(kwargs)
 
         if var_only_sections is not None:
             raise NotImplementedError()
@@ -3332,515 +2954,6 @@ class DataStore(xr.Dataset):
                     del self[k]
         pass
 
-    def conf_int_double_ended(
-        self,
-        p_val="p_val",
-        p_cov="p_cov",
-        st_var=None,
-        ast_var=None,
-        rst_var=None,
-        rast_var=None,
-        conf_ints=None,
-        mc_sample_size=100,
-        var_only_sections=False,
-        da_random_state=None,
-        mc_remove_set_flag=True,
-        reduce_memory_usage=False,
-        **kwargs,
-    ):
-        r"""
-        Estimation of the confidence intervals for the temperatures measured
-        with a double-ended setup.
-        Double-ended setups require four additional steps to estimate the
-        confidence intervals for the temperature. First, the variances of the
-        Stokes and anti-Stokes intensity measurements of the forward and
-        backward channels are estimated following the steps in
-        Section 4 [1]_. See `ds.variance_stokes_constant()`.
-        A Normal distribution is assigned to each
-        intensity measurement that is centered at the measurement and using the
-        estimated variance. Second, a multi-variate Normal distribution is
-        assigned to the estimated parameters using the covariance matrix from
-        the calibration procedure presented in Section 6 [1]_ (`p_cov`). Third,
-        Normal distributions are assigned for :math:`A` (`ds.alpha`)
-        for each location
-        outside of the reference sections. These distributions are centered
-        around :math:`A_p` and have variance :math:`\sigma^2\left[A_p\\right]`
-        given by Equations 44 and 45. Fourth, the distributions are sampled
-        and :math:`T_{\mathrm{F},m,n}` and :math:`T_{\mathrm{B},m,n}` are
-        computed with Equations 16 and 17, respectively. Fifth, step four is repeated to
-        compute, e.g., 10,000 realizations (`mc_sample_size`) of :math:`T_{\mathrm{F},m,n}` and
-        :math:`T_{\mathrm{B},m,n}` to approximate their probability density
-        functions. Sixth, the standard uncertainties of
-        :math:`T_{\mathrm{F},m,n}` and :math:`T_{\mathrm{B},m,n}`
-        (:math:`\sigma\left[T_{\mathrm{F},m,n}\\right]` and
-        :math:`\sigma\left[T_{\mathrm{B},m,n}\\right]`) are estimated with the
-        standard deviation of their realizations. Seventh, for each realization
-        :math:`i` the temperature :math:`T_{m,n,i}` is computed as the weighted
-        average of :math:`T_{\mathrm{F},m,n,i}` and
-        :math:`T_{\mathrm{B},m,n,i}`:
-
-        .. math::
-
-            T_{m,n,i} =\
-            \sigma^2\left[T_{m,n}\\right]\left({\\frac{T_{\mathrm{F},m,n,i}}{\
-            \sigma^2\left[T_{\mathrm{F},m,n}\\right]} +\
-            \\frac{T_{\mathrm{B},m,n,i}}{\
-            \sigma^2\left[T_{\mathrm{B},m,n}\\right]}}\\right)
-
-        where
-
-        .. math::
-
-            \sigma^2\left[T_{m,n}\\right] = \\frac{1}{1 /\
-            \sigma^2\left[T_{\mathrm{F},m,n}\\right] + 1 /\
-            \sigma^2\left[T_{\mathrm{B},m,n}\\right]}
-
-        The best estimate of the temperature :math:`T_{m,n}` is computed
-        directly from the best estimates of :math:`T_{\mathrm{F},m,n}` and
-        :math:`T_{\mathrm{B},m,n}` as:
-
-        .. math::
-            T_{m,n} =\
-            \sigma^2\left[T_{m,n}\\right]\left({\\frac{T_{\mathrm{F},m,n}}{\
-            \sigma^2\left[T_{\mathrm{F},m,n}\\right]} + \\frac{T_{\mathrm{B},m,n}}{\
-            \sigma^2\left[T_{\mathrm{B},m,n}\\right]}}\\right)
-
-        Alternatively, the best estimate of :math:`T_{m,n}` can be approximated
-        with the mean of the :math:`T_{m,n,i}` values. Finally, the 95\%
-        confidence interval for :math:`T_{m,n}` are estimated with the 2.5\% and
-        97.5\% percentiles of :math:`T_{m,n,i}`.
-
-        Assumes sections are set.
-
-        Parameters
-        ----------
-        p_val : array-like, optional
-            Define `p_val`, `p_var`, `p_cov` if you used an external function
-            for calibration. Has size `1 + 2 * nt + nx + 2 * nt * nta`.
-            First value is :math:`\gamma`, then `nt` times
-            :math:`D_\mathrm{F}`, then `nt` times
-            :math:`D_\mathrm{B}`, then for each location :math:`D_\mathrm{B}`,
-            then for each connector that introduces directional attenuation two
-            parameters per time step.
-        p_cov : array-like, optional
-            The covariances of `p_val`. Square matrix.
-            If set to False, no uncertainty in the parameters is propagated
-            into the confidence intervals. Similar to the spec sheets of the DTS
-            manufacturers. And similar to passing an array filled with zeros.
-        st_var, ast_var, rst_var, rast_var : float, callable, array-like, optional
-            The variance of the measurement noise of the Stokes signals in the
-            forward direction. If `float` the variance of the noise from the
-            Stokes detector is described with a single value.
-            If `callable` the variance of the noise from the Stokes detector is
-            a function of the intensity, as defined in the callable function.
-            Or manually define a variance with a DataArray of the shape
-            `ds.st.shape`, where the variance can be a function of time and/or
-            x. Required if method is wls.
-        conf_ints : iterable object of float
-            A list with the confidence boundaries that are calculated. Valid
-            values are between [0, 1].
-        mc_sample_size : int
-            Size of the monte carlo parameter set used to calculate the
-            confidence interval
-        var_only_sections : bool
-            useful if using the ci_avg_x_flag. Only calculates the var over the
-            sections, so that the values can be compared with accuracy along the
-            reference sections. Where the accuracy is the variance of the
-            residuals between the estimated temperature and temperature of the
-            water baths.
-        da_random_state
-            For testing purposes. Similar to random seed. The seed for dask.
-            Makes random not so random. To produce reproducable results for
-            testing environments.
-        mc_remove_set_flag : bool
-            Remove the monte carlo data set, from which the CI and the
-            variance are calculated.
-        reduce_memory_usage : bool
-            Use less memory but at the expense of longer computation time
-
-        Returns
-        -------
-
-        References
-        ----------
-        .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
-            of Temperature and Associated Uncertainty from Fiber-Optic Raman-
-            Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
-            https://doi.org/10.3390/s20082235
-
-        """
-
-        def create_da_ta2(no, i_splice, direction="fw", chunks=None):
-            """create mask array mc, o, nt"""
-
-            if direction == "fw":
-                arr = da.concatenate(
-                    (
-                        da.zeros(
-                            (1, i_splice, 1), chunks=((1, i_splice, 1)), dtype=bool
-                        ),
-                        da.ones(
-                            (1, no - i_splice, 1),
-                            chunks=(1, no - i_splice, 1),
-                            dtype=bool,
-                        ),
-                    ),
-                    axis=1,
-                ).rechunk((1, chunks[1], 1))
-            else:
-                arr = da.concatenate(
-                    (
-                        da.ones((1, i_splice, 1), chunks=(1, i_splice, 1), dtype=bool),
-                        da.zeros(
-                            (1, no - i_splice, 1),
-                            chunks=((1, no - i_splice, 1)),
-                            dtype=bool,
-                        ),
-                    ),
-                    axis=1,
-                ).rechunk((1, chunks[1], 1))
-            return arr
-
-        self.check_deprecated_kwargs(kwargs)
-
-        if da_random_state:
-            # In testing environments
-            assert isinstance(da_random_state, da.random.RandomState)
-            state = da_random_state
-        else:
-            state = da.random.RandomState()
-
-        if conf_ints:
-            assert "tmpw", (
-                "Current implementation requires you to "
-                'define "tmpw" when estimating confidence '
-                "intervals"
-            )
-
-        no, nt = self.st.shape
-        nta = self.trans_att.size
-        npar = 1 + 2 * nt + no + nt * 2 * nta  # number of parameters
-
-        rsize = (mc_sample_size, no, nt)
-
-        if reduce_memory_usage:
-            memchunk = da.ones(
-                (mc_sample_size, no, nt), chunks={0: -1, 1: 1, 2: "auto"}
-            ).chunks
-        else:
-            memchunk = da.ones(
-                (mc_sample_size, no, nt), chunks={0: -1, 1: "auto", 2: "auto"}
-            ).chunks
-
-        self.coords["mc"] = range(mc_sample_size)
-        if conf_ints:
-            self.coords["CI"] = conf_ints
-
-        assert isinstance(p_val, (str, np.ndarray, np.generic))
-        if isinstance(p_val, str):
-            p_val = self[p_val].values
-        assert p_val.shape == (npar,), (
-            "Did you set 'talpha' as "
-            "keyword argument of the "
-            "conf_int_double_ended() function?"
-        )
-
-        assert isinstance(p_cov, (str, np.ndarray, np.generic, bool))
-
-        if isinstance(p_cov, bool) and not p_cov:
-            # Exclude parameter uncertainty if p_cov == False
-            gamma = p_val[0]
-            d_fw = p_val[1 : nt + 1]
-            d_bw = p_val[1 + nt : 2 * nt + 1]
-            alpha = p_val[2 * nt + 1 : 2 * nt + 1 + no]
-
-            self["gamma_mc"] = (tuple(), gamma)
-            self["alpha_mc"] = (("x",), alpha)
-            self["df_mc"] = (("time",), d_fw)
-            self["db_mc"] = (("time",), d_bw)
-
-            if nta:
-                ta = p_val[2 * nt + 1 + no :].reshape((nt, 2, nta), order="F")
-                ta_fw = ta[:, 0, :]
-                ta_bw = ta[:, 1, :]
-
-                ta_fw_arr = np.zeros((no, nt))
-                for tai, taxi in zip(ta_fw.T, self.coords["trans_att"].values):
-                    ta_fw_arr[self.x.values >= taxi] = (
-                        ta_fw_arr[self.x.values >= taxi] + tai
-                    )
-
-                ta_bw_arr = np.zeros((no, nt))
-                for tai, taxi in zip(ta_bw.T, self.coords["trans_att"].values):
-                    ta_bw_arr[self.x.values < taxi] = (
-                        ta_bw_arr[self.x.values < taxi] + tai
-                    )
-
-                self["talpha_fw_mc"] = (("x", "time"), ta_fw_arr)
-                self["talpha_bw_mc"] = (("x", "time"), ta_bw_arr)
-
-        elif isinstance(p_cov, bool) and p_cov:
-            raise NotImplementedError("Not an implemented option. Check p_cov argument")
-
-        else:
-            # WLS
-            if isinstance(p_cov, str):
-                p_cov = self[p_cov].values
-            assert p_cov.shape == (npar, npar)
-
-            ix_sec = self.ufunc_per_section(x_indices=True, calc_per="all")
-            nx_sec = ix_sec.size
-            from_i = np.concatenate(
-                (
-                    np.arange(1 + 2 * nt),
-                    1 + 2 * nt + ix_sec,
-                    np.arange(1 + 2 * nt + no, 1 + 2 * nt + no + nt * 2 * nta),
-                )
-            )
-            iox_sec1, iox_sec2 = np.meshgrid(from_i, from_i, indexing="ij")
-            po_val = p_val[from_i]
-            po_cov = p_cov[iox_sec1, iox_sec2]
-
-            po_mc = sst.multivariate_normal.rvs(
-                mean=po_val, cov=po_cov, size=mc_sample_size
-            )
-
-            gamma = po_mc[:, 0]
-            d_fw = po_mc[:, 1 : nt + 1]
-            d_bw = po_mc[:, 1 + nt : 2 * nt + 1]
-
-            self["gamma_mc"] = (("mc",), gamma)
-            self["df_mc"] = (("mc", "time"), d_fw)
-            self["db_mc"] = (("mc", "time"), d_bw)
-
-            # calculate alpha seperately
-            alpha = np.zeros((mc_sample_size, no), dtype=float)
-            alpha[:, ix_sec] = po_mc[:, 1 + 2 * nt : 1 + 2 * nt + nx_sec]
-
-            not_ix_sec = np.array([i for i in range(no) if i not in ix_sec])
-
-            if np.any(not_ix_sec):
-                not_alpha_val = p_val[2 * nt + 1 + not_ix_sec]
-                not_alpha_var = p_cov[2 * nt + 1 + not_ix_sec, 2 * nt + 1 + not_ix_sec]
-
-                not_alpha_mc = np.random.normal(
-                    loc=not_alpha_val,
-                    scale=not_alpha_var**0.5,
-                    size=(mc_sample_size, not_alpha_val.size),
-                )
-
-                alpha[:, not_ix_sec] = not_alpha_mc
-
-            self["alpha_mc"] = (("mc", "x"), alpha)
-
-            if nta:
-                ta = po_mc[:, 2 * nt + 1 + nx_sec :].reshape(
-                    (mc_sample_size, nt, 2, nta), order="F"
-                )
-                ta_fw = ta[:, :, 0, :]
-                ta_bw = ta[:, :, 1, :]
-
-                ta_fw_arr = da.zeros(
-                    (mc_sample_size, no, nt), chunks=memchunk, dtype=float
-                )
-                for tai, taxi in zip(
-                    ta_fw.swapaxes(0, 2), self.coords["trans_att"].values
-                ):
-                    # iterate over the splices
-                    i_splice = sum(self.x.values < taxi)
-                    mask = create_da_ta2(no, i_splice, direction="fw", chunks=memchunk)
-
-                    ta_fw_arr += mask * tai.T[:, None, :]
-
-                ta_bw_arr = da.zeros(
-                    (mc_sample_size, no, nt), chunks=memchunk, dtype=float
-                )
-                for tai, taxi in zip(
-                    ta_bw.swapaxes(0, 2), self.coords["trans_att"].values
-                ):
-                    i_splice = sum(self.x.values < taxi)
-                    mask = create_da_ta2(no, i_splice, direction="bw", chunks=memchunk)
-
-                    ta_bw_arr += mask * tai.T[:, None, :]
-
-                self["talpha_fw_mc"] = (("mc", "x", "time"), ta_fw_arr)
-                self["talpha_bw_mc"] = (("mc", "x", "time"), ta_bw_arr)
-
-        # Draw from the normal distributions for the Stokes intensities
-        for k, st_labeli, st_vari in zip(
-            ["r_st", "r_ast", "r_rst", "r_rast"],
-            ["st", "ast", "rst", "rast"],
-            [st_var, ast_var, rst_var, rast_var],
-        ):
-            # Load the mean as chunked Dask array, otherwise eats memory
-            if type(self[st_labeli].data) == da.core.Array:
-                loc = da.asarray(self[st_labeli].data, chunks=memchunk[1:])
-            else:
-                loc = da.from_array(self[st_labeli].data, chunks=memchunk[1:])
-
-            # Make sure variance is of size (no, nt)
-            if np.size(st_vari) > 1:
-                if st_vari.shape == self[st_labeli].shape:
-                    pass
-                else:
-                    st_vari = np.broadcast_to(st_vari, (no, nt))
-            else:
-                pass
-
-            # Load variance as chunked Dask array, otherwise eats memory
-            if type(st_vari) == da.core.Array:
-                st_vari_da = da.asarray(st_vari, chunks=memchunk[1:])
-
-            elif callable(st_vari) and type(self[st_labeli].data) == da.core.Array:
-                st_vari_da = da.asarray(
-                    st_vari(self[st_labeli]).data, chunks=memchunk[1:]
-                )
-
-            elif callable(st_vari) and type(self[st_labeli].data) != da.core.Array:
-                st_vari_da = da.from_array(
-                    st_vari(self[st_labeli]).data, chunks=memchunk[1:]
-                )
-
-            else:
-                st_vari_da = da.from_array(st_vari, chunks=memchunk[1:])
-
-            self[k] = (
-                ("mc", "x", "time"),
-                state.normal(
-                    loc=loc,  # has chunks=memchunk[1:]
-                    scale=st_vari_da**0.5,
-                    size=rsize,
-                    chunks=memchunk,
-                ),
-            )
-
-        for label in ["tmpf", "tmpb"]:
-            if "tmpw" or label:
-                if label == "tmpf":
-                    if nta:
-                        self["tmpf_mc_set"] = (
-                            self["gamma_mc"]
-                            / (
-                                np.log(self["r_st"] / self["r_ast"])
-                                + self["df_mc"]
-                                + self["alpha_mc"]
-                                + self["talpha_fw_mc"]
-                            )
-                            - 273.15
-                        )
-                    else:
-                        self["tmpf_mc_set"] = (
-                            self["gamma_mc"]
-                            / (
-                                np.log(self["r_st"] / self["r_ast"])
-                                + self["df_mc"]
-                                + self["alpha_mc"]
-                            )
-                            - 273.15
-                        )
-                else:
-                    if nta:
-                        self["tmpb_mc_set"] = (
-                            self["gamma_mc"]
-                            / (
-                                np.log(self["r_rst"] / self["r_rast"])
-                                + self["db_mc"]
-                                - self["alpha_mc"]
-                                + self["talpha_bw_mc"]
-                            )
-                            - 273.15
-                        )
-                    else:
-                        self["tmpb_mc_set"] = (
-                            self["gamma_mc"]
-                            / (
-                                np.log(self["r_rst"] / self["r_rast"])
-                                + self["db_mc"]
-                                - self["alpha_mc"]
-                            )
-                            - 273.15
-                        )
-
-                if var_only_sections:
-                    # sets the values outside the reference sections to NaN
-                    xi = self.ufunc_per_section(x_indices=True, calc_per="all")
-                    x_mask_ = [True if ix in xi else False for ix in range(self.x.size)]
-                    x_mask = np.reshape(x_mask_, (1, -1, 1))
-                    self[label + "_mc_set"] = self[label + "_mc_set"].where(x_mask)
-
-                # subtract the mean temperature
-                q = self[label + "_mc_set"] - self[label]
-                self[label + "_mc_var"] = q.var(dim="mc", ddof=1)
-
-                if conf_ints:
-                    new_chunks = list(self[label + "_mc_set"].chunks)
-                    new_chunks[0] = (len(conf_ints),)
-                    avg_axis = self[label + "_mc_set"].get_axis_num("mc")
-                    q = self[label + "_mc_set"].data.map_blocks(
-                        lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
-                        chunks=new_chunks,  #
-                        drop_axis=avg_axis,
-                        # avg dimensions are dropped from input arr
-                        new_axis=0,
-                    )  # The new CI dimension is added as firsaxis
-
-                    self[label + "_mc"] = (("CI", "x", "time"), q)
-
-        # Weighted mean of the forward and backward
-        tmpw_var = 1 / (1 / self["tmpf_mc_var"] + 1 / self["tmpb_mc_var"])
-
-        q = (
-            self["tmpf_mc_set"] / self["tmpf_mc_var"]
-            + self["tmpb_mc_set"] / self["tmpb_mc_var"]
-        ) * tmpw_var
-
-        self["tmpw" + "_mc_set"] = q  #
-
-        self["tmpw"] = (
-            self["tmpf"] / self["tmpf_mc_var"] + self["tmpb"] / self["tmpb_mc_var"]
-        ) * tmpw_var
-
-        q = self["tmpw" + "_mc_set"] - self["tmpw"]
-        self["tmpw" + "_mc_var"] = q.var(dim="mc", ddof=1)
-
-        # Calculate the CI of the weighted MC_set
-        if conf_ints:
-            new_chunks_weighted = ((len(conf_ints),),) + memchunk[1:]
-            avg_axis = self["tmpw" + "_mc_set"].get_axis_num("mc")
-            q2 = self["tmpw" + "_mc_set"].data.map_blocks(
-                lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
-                chunks=new_chunks_weighted,  # Explicitly define output chunks
-                drop_axis=avg_axis,  # avg dimensions are dropped
-                new_axis=0,
-                dtype=float,
-            )  # The new CI dimension is added as first axis
-            self["tmpw" + "_mc"] = (("CI", "x", "time"), q2)
-
-        # Clean up the garbage. All arrays with a Monte Carlo dimension.
-        if mc_remove_set_flag:
-            remove_mc_set = [
-                "r_st",
-                "r_ast",
-                "r_rst",
-                "r_rast",
-                "gamma_mc",
-                "alpha_mc",
-                "df_mc",
-                "db_mc",
-            ]
-
-            for i in ["tmpf", "tmpb", "tmpw"]:
-                remove_mc_set.append(i + "_mc_set")
-
-            if nta:
-                remove_mc_set.append('talpha"_fw_mc')
-                remove_mc_set.append('talpha"_bw_mc')
-
-            for k in remove_mc_set:
-                if k in self:
-                    del self[k]
-        pass
-
     def average_double_ended(
         self,
         p_val="p_val",
@@ -4011,7 +3124,7 @@ class DataStore(xr.Dataset):
                 ).rechunk((1, chunks[1], 1))
             return arr
 
-        self.check_deprecated_kwargs(kwargs)
+        check_deprecated_kwargs(kwargs)
 
         if (ci_avg_x_flag1 or ci_avg_x_flag2) and (
             ci_avg_time_flag1 or ci_avg_time_flag2
@@ -4373,6 +3486,827 @@ class DataStore(xr.Dataset):
                     del self[k]
         pass
 
+    def conf_int_single_ended(
+        self,
+        p_val="p_val",
+        p_cov="p_cov",
+        st_var=None,
+        ast_var=None,
+        conf_ints=None,
+        mc_sample_size=100,
+        da_random_state=None,
+        mc_remove_set_flag=True,
+        reduce_memory_usage=False,
+        **kwargs,
+    ):
+        r"""
+        Estimation of the confidence intervals for the temperatures measured
+        with a single-ended setup. It consists of five steps. First, the variances
+        of the Stokes and anti-Stokes intensity measurements are estimated
+        following the steps in Section 4 [1]_. A Normal
+        distribution is assigned to each intensity measurement that is centered
+        at the measurement and using the estimated variance. Second, a multi-
+        variate Normal distribution is assigned to the estimated parameters
+        using the covariance matrix from the calibration procedure presented in
+        Section 5 [1]_. Third, the distributions are sampled, and the
+        temperature is computed with Equation 12 [1]_. Fourth, step
+        three is repeated, e.g., 10,000 times for each location and for each
+        time. The resulting 10,000 realizations of the temperatures
+        approximate the probability density functions of the estimated
+        temperature at that location and time. Fifth, the standard uncertainties
+        are computed with the standard deviations of the realizations of the
+        temperatures, and the 95\% confidence intervals are computed from the
+        2.5\% and 97.5\% percentiles of the realizations of the temperatures.
+
+
+        Parameters
+        ----------
+        p_val : array-like, optional
+            Define `p_val`, `p_var`, `p_cov` if you used an external function
+            for calibration. Has size 2 + `nt`. First value is :math:`\gamma`,
+            second is :math:`\Delta \\alpha`, others are :math:`C` for each
+            timestep.
+            If set to False, no uncertainty in the parameters is propagated
+            into the confidence intervals. Similar to the spec sheets of the DTS
+            manufacturers. And similar to passing an array filled with zeros
+        p_cov : array-like, optional
+            The covariances of `p_val`.
+        st_var, ast_var : float, callable, array-like, optional
+            The variance of the measurement noise of the Stokes signals in the
+            forward direction. If `float` the variance of the noise from the
+            Stokes detector is described with a single value.
+            If `callable` the variance of the noise from the Stokes detector is
+            a function of the intensity, as defined in the callable function.
+            Or manually define a variance with a DataArray of the shape
+            `ds.st.shape`, where the variance can be a function of time and/or
+            x. Required if method is wls.
+        conf_ints : iterable object of float
+            A list with the confidence boundaries that are calculated. Valid
+            values are between
+            [0, 1].
+        mc_sample_size : int
+            Size of the monte carlo parameter set used to calculate the
+            confidence interval
+        da_random_state
+            For testing purposes. Similar to random seed. The seed for dask.
+            Makes random not so random. To produce reproducable results for
+            testing environments.
+        mc_remove_set_flag : bool
+            Remove the monte carlo data set, from which the CI and the
+            variance are calculated.
+        reduce_memory_usage : bool
+            Use less memory but at the expense of longer computation time
+
+
+        References
+        ----------
+        .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
+            of Temperature and Associated Uncertainty from Fiber-Optic Raman-
+            Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
+            https://doi.org/10.3390/s20082235
+        """
+        check_deprecated_kwargs(kwargs)
+
+        if da_random_state:
+            state = da_random_state
+        else:
+            state = da.random.RandomState()
+
+        no, nt = self.st.data.shape
+        if "trans_att" in self.keys():
+            nta = self.trans_att.size
+        else:
+            nta = 0
+
+        assert isinstance(p_val, (str, np.ndarray, np.generic))
+        if isinstance(p_val, str):
+            p_val = self[p_val].data
+
+        npar = p_val.size
+
+        # number of parameters
+        if npar == nt + 2 + nt * nta:
+            fixed_alpha = False
+        elif npar == 1 + no + nt + nt * nta:
+            fixed_alpha = True
+        else:
+            raise Exception("The size of `p_val` is not what I expected")
+
+        self.coords["mc"] = range(mc_sample_size)
+
+        if conf_ints:
+            self.coords["CI"] = conf_ints
+
+        # WLS
+        if isinstance(p_cov, str):
+            p_cov = self[p_cov].data
+        assert p_cov.shape == (npar, npar)
+
+        p_mc = sst.multivariate_normal.rvs(mean=p_val, cov=p_cov, size=mc_sample_size)
+
+        if fixed_alpha:
+            self["alpha_mc"] = (("mc", "x"), p_mc[:, 1 : no + 1])
+            self["c_mc"] = (("mc", "time"), p_mc[:, 1 + no : 1 + no + nt])
+        else:
+            self["dalpha_mc"] = (("mc",), p_mc[:, 1])
+            self["c_mc"] = (("mc", "time"), p_mc[:, 2 : nt + 2])
+
+        self["gamma_mc"] = (("mc",), p_mc[:, 0])
+        if nta:
+            self["ta_mc"] = (
+                ("mc", "trans_att", "time"),
+                np.reshape(p_mc[:, -nt * nta :], (mc_sample_size, nta, nt)),
+            )
+
+        rsize = (self.mc.size, self.x.size, self.time.size)
+
+        if reduce_memory_usage:
+            memchunk = da.ones(
+                (mc_sample_size, no, nt), chunks={0: -1, 1: 1, 2: "auto"}
+            ).chunks
+        else:
+            memchunk = da.ones(
+                (mc_sample_size, no, nt), chunks={0: -1, 1: "auto", 2: "auto"}
+            ).chunks
+
+        # Draw from the normal distributions for the Stokes intensities
+        for k, st_labeli, st_vari in zip(
+            ["r_st", "r_ast"], ["st", "ast"], [st_var, ast_var]
+        ):
+            # Load the mean as chunked Dask array, otherwise eats memory
+            if type(self[st_labeli].data) == da.core.Array:
+                loc = da.asarray(self[st_labeli].data, chunks=memchunk[1:])
+            else:
+                loc = da.from_array(self[st_labeli].data, chunks=memchunk[1:])
+
+            # Make sure variance is of size (no, nt)
+            if np.size(st_vari) > 1:
+                if st_vari.shape == self[st_labeli].shape:
+                    pass
+                else:
+                    st_vari = np.broadcast_to(st_vari, (no, nt))
+            else:
+                pass
+
+            # Load variance as chunked Dask array, otherwise eats memory
+            if type(st_vari) == da.core.Array:
+                st_vari_da = da.asarray(st_vari, chunks=memchunk[1:])
+
+            elif callable(st_vari) and type(self[st_labeli].data) == da.core.Array:
+                st_vari_da = da.asarray(
+                    st_vari(self[st_labeli]).data, chunks=memchunk[1:]
+                )
+
+            elif callable(st_vari) and type(self[st_labeli].data) != da.core.Array:
+                st_vari_da = da.from_array(
+                    st_vari(self[st_labeli]).data, chunks=memchunk[1:]
+                )
+
+            else:
+                st_vari_da = da.from_array(st_vari, chunks=memchunk[1:])
+
+            self[k] = (
+                ("mc", "x", "time"),
+                state.normal(
+                    loc=loc,  # has chunks=memchunk[1:]
+                    scale=st_vari_da**0.5,
+                    size=rsize,
+                    chunks=memchunk,
+                ),
+            )
+
+        ta_arr = np.zeros((mc_sample_size, no, nt))
+
+        if nta:
+            for ii, ta in enumerate(self["ta_mc"]):
+                for tai, taxi in zip(ta.values, self.trans_att.values):
+                    ta_arr[ii, self.x.values >= taxi] = (
+                        ta_arr[ii, self.x.values >= taxi] + tai
+                    )
+        self["ta_mc_arr"] = (("mc", "x", "time"), ta_arr)
+
+        if fixed_alpha:
+            self["tmpf_mc_set"] = (
+                self["gamma_mc"]
+                / (
+                    (
+                        np.log(self["r_st"])
+                        - np.log(self["r_ast"])
+                        + (self["c_mc"] + self["ta_mc_arr"])
+                    )
+                    + self["alpha_mc"]
+                )
+                - 273.15
+            )
+        else:
+            self["tmpf_mc_set"] = (
+                self["gamma_mc"]
+                / (
+                    (
+                        np.log(self["r_st"])
+                        - np.log(self["r_ast"])
+                        + (self["c_mc"] + self["ta_mc_arr"])
+                    )
+                    + (self["dalpha_mc"] * self.x)
+                )
+                - 273.15
+            )
+
+        avg_dims = ["mc"]
+
+        avg_axis = self["tmpf_mc_set"].get_axis_num(avg_dims)
+
+        self["tmpf_mc_var"] = (self["tmpf_mc_set"] - self["tmpf"]).var(
+            dim=avg_dims, ddof=1
+        )
+
+        if conf_ints:
+            new_chunks = ((len(conf_ints),),) + self["tmpf_mc_set"].chunks[1:]
+
+            qq = self["tmpf_mc_set"]
+
+            q = qq.data.map_blocks(
+                lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
+                chunks=new_chunks,  #
+                drop_axis=avg_axis,  # avg dimesnions are dropped from input arr
+                new_axis=0,
+            )  # The new CI dimension is added as first axis
+
+            self["tmpf_mc"] = (("CI", "x", "time"), q)
+
+        if mc_remove_set_flag:
+            drop_var = [
+                "gamma_mc",
+                "dalpha_mc",
+                "alpha_mc",
+                "c_mc",
+                "mc",
+                "r_st",
+                "r_ast",
+                "tmpf_mc_set",
+                "ta_mc_arr",
+            ]
+            for k in drop_var:
+                if k in self:
+                    del self[k]
+
+        pass
+
+    def conf_int_double_ended(
+        self,
+        p_val="p_val",
+        p_cov="p_cov",
+        st_var=None,
+        ast_var=None,
+        rst_var=None,
+        rast_var=None,
+        conf_ints=None,
+        mc_sample_size=100,
+        var_only_sections=False,
+        da_random_state=None,
+        mc_remove_set_flag=True,
+        reduce_memory_usage=False,
+        **kwargs,
+    ):
+        r"""
+        Estimation of the confidence intervals for the temperatures measured
+        with a double-ended setup.
+        Double-ended setups require four additional steps to estimate the
+        confidence intervals for the temperature. First, the variances of the
+        Stokes and anti-Stokes intensity measurements of the forward and
+        backward channels are estimated following the steps in
+        Section 4 [1]_. See `ds.variance_stokes_constant()`.
+        A Normal distribution is assigned to each
+        intensity measurement that is centered at the measurement and using the
+        estimated variance. Second, a multi-variate Normal distribution is
+        assigned to the estimated parameters using the covariance matrix from
+        the calibration procedure presented in Section 6 [1]_ (`p_cov`). Third,
+        Normal distributions are assigned for :math:`A` (`ds.alpha`)
+        for each location
+        outside of the reference sections. These distributions are centered
+        around :math:`A_p` and have variance :math:`\sigma^2\left[A_p\\right]`
+        given by Equations 44 and 45. Fourth, the distributions are sampled
+        and :math:`T_{\mathrm{F},m,n}` and :math:`T_{\mathrm{B},m,n}` are
+        computed with Equations 16 and 17, respectively. Fifth, step four is repeated to
+        compute, e.g., 10,000 realizations (`mc_sample_size`) of :math:`T_{\mathrm{F},m,n}` and
+        :math:`T_{\mathrm{B},m,n}` to approximate their probability density
+        functions. Sixth, the standard uncertainties of
+        :math:`T_{\mathrm{F},m,n}` and :math:`T_{\mathrm{B},m,n}`
+        (:math:`\sigma\left[T_{\mathrm{F},m,n}\\right]` and
+        :math:`\sigma\left[T_{\mathrm{B},m,n}\\right]`) are estimated with the
+        standard deviation of their realizations. Seventh, for each realization
+        :math:`i` the temperature :math:`T_{m,n,i}` is computed as the weighted
+        average of :math:`T_{\mathrm{F},m,n,i}` and
+        :math:`T_{\mathrm{B},m,n,i}`:
+
+        .. math::
+
+            T_{m,n,i} =\
+            \sigma^2\left[T_{m,n}\\right]\left({\\frac{T_{\mathrm{F},m,n,i}}{\
+            \sigma^2\left[T_{\mathrm{F},m,n}\\right]} +\
+            \\frac{T_{\mathrm{B},m,n,i}}{\
+            \sigma^2\left[T_{\mathrm{B},m,n}\\right]}}\\right)
+
+        where
+
+        .. math::
+
+            \sigma^2\left[T_{m,n}\\right] = \\frac{1}{1 /\
+            \sigma^2\left[T_{\mathrm{F},m,n}\\right] + 1 /\
+            \sigma^2\left[T_{\mathrm{B},m,n}\\right]}
+
+        The best estimate of the temperature :math:`T_{m,n}` is computed
+        directly from the best estimates of :math:`T_{\mathrm{F},m,n}` and
+        :math:`T_{\mathrm{B},m,n}` as:
+
+        .. math::
+            T_{m,n} =\
+            \sigma^2\left[T_{m,n}\\right]\left({\\frac{T_{\mathrm{F},m,n}}{\
+            \sigma^2\left[T_{\mathrm{F},m,n}\\right]} + \\frac{T_{\mathrm{B},m,n}}{\
+            \sigma^2\left[T_{\mathrm{B},m,n}\\right]}}\\right)
+
+        Alternatively, the best estimate of :math:`T_{m,n}` can be approximated
+        with the mean of the :math:`T_{m,n,i}` values. Finally, the 95\%
+        confidence interval for :math:`T_{m,n}` are estimated with the 2.5\% and
+        97.5\% percentiles of :math:`T_{m,n,i}`.
+
+        Assumes sections are set.
+
+        Parameters
+        ----------
+        p_val : array-like, optional
+            Define `p_val`, `p_var`, `p_cov` if you used an external function
+            for calibration. Has size `1 + 2 * nt + nx + 2 * nt * nta`.
+            First value is :math:`\gamma`, then `nt` times
+            :math:`D_\mathrm{F}`, then `nt` times
+            :math:`D_\mathrm{B}`, then for each location :math:`D_\mathrm{B}`,
+            then for each connector that introduces directional attenuation two
+            parameters per time step.
+        p_cov : array-like, optional
+            The covariances of `p_val`. Square matrix.
+            If set to False, no uncertainty in the parameters is propagated
+            into the confidence intervals. Similar to the spec sheets of the DTS
+            manufacturers. And similar to passing an array filled with zeros.
+        st_var, ast_var, rst_var, rast_var : float, callable, array-like, optional
+            The variance of the measurement noise of the Stokes signals in the
+            forward direction. If `float` the variance of the noise from the
+            Stokes detector is described with a single value.
+            If `callable` the variance of the noise from the Stokes detector is
+            a function of the intensity, as defined in the callable function.
+            Or manually define a variance with a DataArray of the shape
+            `ds.st.shape`, where the variance can be a function of time and/or
+            x. Required if method is wls.
+        conf_ints : iterable object of float
+            A list with the confidence boundaries that are calculated. Valid
+            values are between [0, 1].
+        mc_sample_size : int
+            Size of the monte carlo parameter set used to calculate the
+            confidence interval
+        var_only_sections : bool
+            useful if using the ci_avg_x_flag. Only calculates the var over the
+            sections, so that the values can be compared with accuracy along the
+            reference sections. Where the accuracy is the variance of the
+            residuals between the estimated temperature and temperature of the
+            water baths.
+        da_random_state
+            For testing purposes. Similar to random seed. The seed for dask.
+            Makes random not so random. To produce reproducable results for
+            testing environments.
+        mc_remove_set_flag : bool
+            Remove the monte carlo data set, from which the CI and the
+            variance are calculated.
+        reduce_memory_usage : bool
+            Use less memory but at the expense of longer computation time
+
+        Returns
+        -------
+
+        References
+        ----------
+        .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
+            of Temperature and Associated Uncertainty from Fiber-Optic Raman-
+            Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
+            https://doi.org/10.3390/s20082235
+
+        """
+
+        def create_da_ta2(no, i_splice, direction="fw", chunks=None):
+            """create mask array mc, o, nt"""
+
+            if direction == "fw":
+                arr = da.concatenate(
+                    (
+                        da.zeros(
+                            (1, i_splice, 1), chunks=((1, i_splice, 1)), dtype=bool
+                        ),
+                        da.ones(
+                            (1, no - i_splice, 1),
+                            chunks=(1, no - i_splice, 1),
+                            dtype=bool,
+                        ),
+                    ),
+                    axis=1,
+                ).rechunk((1, chunks[1], 1))
+            else:
+                arr = da.concatenate(
+                    (
+                        da.ones((1, i_splice, 1), chunks=(1, i_splice, 1), dtype=bool),
+                        da.zeros(
+                            (1, no - i_splice, 1),
+                            chunks=((1, no - i_splice, 1)),
+                            dtype=bool,
+                        ),
+                    ),
+                    axis=1,
+                ).rechunk((1, chunks[1], 1))
+            return arr
+
+        check_deprecated_kwargs(kwargs)
+
+        if da_random_state:
+            # In testing environments
+            assert isinstance(da_random_state, da.random.RandomState)
+            state = da_random_state
+        else:
+            state = da.random.RandomState()
+
+        if conf_ints:
+            assert "tmpw", (
+                "Current implementation requires you to "
+                'define "tmpw" when estimating confidence '
+                "intervals"
+            )
+
+        no, nt = self.st.shape
+        nta = self.trans_att.size
+        npar = 1 + 2 * nt + no + nt * 2 * nta  # number of parameters
+
+        rsize = (mc_sample_size, no, nt)
+
+        if reduce_memory_usage:
+            memchunk = da.ones(
+                (mc_sample_size, no, nt), chunks={0: -1, 1: 1, 2: "auto"}
+            ).chunks
+        else:
+            memchunk = da.ones(
+                (mc_sample_size, no, nt), chunks={0: -1, 1: "auto", 2: "auto"}
+            ).chunks
+
+        self.coords["mc"] = range(mc_sample_size)
+        if conf_ints:
+            self.coords["CI"] = conf_ints
+
+        assert isinstance(p_val, (str, np.ndarray, np.generic))
+        if isinstance(p_val, str):
+            p_val = self[p_val].values
+        assert p_val.shape == (npar,), (
+            "Did you set 'talpha' as "
+            "keyword argument of the "
+            "conf_int_double_ended() function?"
+        )
+
+        assert isinstance(p_cov, (str, np.ndarray, np.generic, bool))
+
+        if isinstance(p_cov, bool) and not p_cov:
+            # Exclude parameter uncertainty if p_cov == False
+            gamma = p_val[0]
+            d_fw = p_val[1 : nt + 1]
+            d_bw = p_val[1 + nt : 2 * nt + 1]
+            alpha = p_val[2 * nt + 1 : 2 * nt + 1 + no]
+
+            self["gamma_mc"] = (tuple(), gamma)
+            self["alpha_mc"] = (("x",), alpha)
+            self["df_mc"] = (("time",), d_fw)
+            self["db_mc"] = (("time",), d_bw)
+
+            if nta:
+                ta = p_val[2 * nt + 1 + no :].reshape((nt, 2, nta), order="F")
+                ta_fw = ta[:, 0, :]
+                ta_bw = ta[:, 1, :]
+
+                ta_fw_arr = np.zeros((no, nt))
+                for tai, taxi in zip(ta_fw.T, self.coords["trans_att"].values):
+                    ta_fw_arr[self.x.values >= taxi] = (
+                        ta_fw_arr[self.x.values >= taxi] + tai
+                    )
+
+                ta_bw_arr = np.zeros((no, nt))
+                for tai, taxi in zip(ta_bw.T, self.coords["trans_att"].values):
+                    ta_bw_arr[self.x.values < taxi] = (
+                        ta_bw_arr[self.x.values < taxi] + tai
+                    )
+
+                self["talpha_fw_mc"] = (("x", "time"), ta_fw_arr)
+                self["talpha_bw_mc"] = (("x", "time"), ta_bw_arr)
+
+        elif isinstance(p_cov, bool) and p_cov:
+            raise NotImplementedError("Not an implemented option. Check p_cov argument")
+
+        else:
+            # WLS
+            if isinstance(p_cov, str):
+                p_cov = self[p_cov].values
+            assert p_cov.shape == (npar, npar)
+
+            ix_sec = self.ufunc_per_section(x_indices=True, calc_per="all")
+            nx_sec = ix_sec.size
+            from_i = np.concatenate(
+                (
+                    np.arange(1 + 2 * nt),
+                    1 + 2 * nt + ix_sec,
+                    np.arange(1 + 2 * nt + no, 1 + 2 * nt + no + nt * 2 * nta),
+                )
+            )
+            iox_sec1, iox_sec2 = np.meshgrid(from_i, from_i, indexing="ij")
+            po_val = p_val[from_i]
+            po_cov = p_cov[iox_sec1, iox_sec2]
+
+            po_mc = sst.multivariate_normal.rvs(
+                mean=po_val, cov=po_cov, size=mc_sample_size
+            )
+
+            gamma = po_mc[:, 0]
+            d_fw = po_mc[:, 1 : nt + 1]
+            d_bw = po_mc[:, 1 + nt : 2 * nt + 1]
+
+            self["gamma_mc"] = (("mc",), gamma)
+            self["df_mc"] = (("mc", "time"), d_fw)
+            self["db_mc"] = (("mc", "time"), d_bw)
+
+            # calculate alpha seperately
+            alpha = np.zeros((mc_sample_size, no), dtype=float)
+            alpha[:, ix_sec] = po_mc[:, 1 + 2 * nt : 1 + 2 * nt + nx_sec]
+
+            not_ix_sec = np.array([i for i in range(no) if i not in ix_sec])
+
+            if np.any(not_ix_sec):
+                not_alpha_val = p_val[2 * nt + 1 + not_ix_sec]
+                not_alpha_var = p_cov[2 * nt + 1 + not_ix_sec, 2 * nt + 1 + not_ix_sec]
+
+                not_alpha_mc = np.random.normal(
+                    loc=not_alpha_val,
+                    scale=not_alpha_var**0.5,
+                    size=(mc_sample_size, not_alpha_val.size),
+                )
+
+                alpha[:, not_ix_sec] = not_alpha_mc
+
+            self["alpha_mc"] = (("mc", "x"), alpha)
+
+            if nta:
+                ta = po_mc[:, 2 * nt + 1 + nx_sec :].reshape(
+                    (mc_sample_size, nt, 2, nta), order="F"
+                )
+                ta_fw = ta[:, :, 0, :]
+                ta_bw = ta[:, :, 1, :]
+
+                ta_fw_arr = da.zeros(
+                    (mc_sample_size, no, nt), chunks=memchunk, dtype=float
+                )
+                for tai, taxi in zip(
+                    ta_fw.swapaxes(0, 2), self.coords["trans_att"].values
+                ):
+                    # iterate over the splices
+                    i_splice = sum(self.x.values < taxi)
+                    mask = create_da_ta2(no, i_splice, direction="fw", chunks=memchunk)
+
+                    ta_fw_arr += mask * tai.T[:, None, :]
+
+                ta_bw_arr = da.zeros(
+                    (mc_sample_size, no, nt), chunks=memchunk, dtype=float
+                )
+                for tai, taxi in zip(
+                    ta_bw.swapaxes(0, 2), self.coords["trans_att"].values
+                ):
+                    i_splice = sum(self.x.values < taxi)
+                    mask = create_da_ta2(no, i_splice, direction="bw", chunks=memchunk)
+
+                    ta_bw_arr += mask * tai.T[:, None, :]
+
+                self["talpha_fw_mc"] = (("mc", "x", "time"), ta_fw_arr)
+                self["talpha_bw_mc"] = (("mc", "x", "time"), ta_bw_arr)
+
+        # Draw from the normal distributions for the Stokes intensities
+        for k, st_labeli, st_vari in zip(
+            ["r_st", "r_ast", "r_rst", "r_rast"],
+            ["st", "ast", "rst", "rast"],
+            [st_var, ast_var, rst_var, rast_var],
+        ):
+            # Load the mean as chunked Dask array, otherwise eats memory
+            if type(self[st_labeli].data) == da.core.Array:
+                loc = da.asarray(self[st_labeli].data, chunks=memchunk[1:])
+            else:
+                loc = da.from_array(self[st_labeli].data, chunks=memchunk[1:])
+
+            # Make sure variance is of size (no, nt)
+            if np.size(st_vari) > 1:
+                if st_vari.shape == self[st_labeli].shape:
+                    pass
+                else:
+                    st_vari = np.broadcast_to(st_vari, (no, nt))
+            else:
+                pass
+
+            # Load variance as chunked Dask array, otherwise eats memory
+            if type(st_vari) == da.core.Array:
+                st_vari_da = da.asarray(st_vari, chunks=memchunk[1:])
+
+            elif callable(st_vari) and type(self[st_labeli].data) == da.core.Array:
+                st_vari_da = da.asarray(
+                    st_vari(self[st_labeli]).data, chunks=memchunk[1:]
+                )
+
+            elif callable(st_vari) and type(self[st_labeli].data) != da.core.Array:
+                st_vari_da = da.from_array(
+                    st_vari(self[st_labeli]).data, chunks=memchunk[1:]
+                )
+
+            else:
+                st_vari_da = da.from_array(st_vari, chunks=memchunk[1:])
+
+            self[k] = (
+                ("mc", "x", "time"),
+                state.normal(
+                    loc=loc,  # has chunks=memchunk[1:]
+                    scale=st_vari_da**0.5,
+                    size=rsize,
+                    chunks=memchunk,
+                ),
+            )
+
+        for label in ["tmpf", "tmpb"]:
+            if "tmpw" or label:
+                if label == "tmpf":
+                    if nta:
+                        self["tmpf_mc_set"] = (
+                            self["gamma_mc"]
+                            / (
+                                np.log(self["r_st"] / self["r_ast"])
+                                + self["df_mc"]
+                                + self["alpha_mc"]
+                                + self["talpha_fw_mc"]
+                            )
+                            - 273.15
+                        )
+                    else:
+                        self["tmpf_mc_set"] = (
+                            self["gamma_mc"]
+                            / (
+                                np.log(self["r_st"] / self["r_ast"])
+                                + self["df_mc"]
+                                + self["alpha_mc"]
+                            )
+                            - 273.15
+                        )
+                else:
+                    if nta:
+                        self["tmpb_mc_set"] = (
+                            self["gamma_mc"]
+                            / (
+                                np.log(self["r_rst"] / self["r_rast"])
+                                + self["db_mc"]
+                                - self["alpha_mc"]
+                                + self["talpha_bw_mc"]
+                            )
+                            - 273.15
+                        )
+                    else:
+                        self["tmpb_mc_set"] = (
+                            self["gamma_mc"]
+                            / (
+                                np.log(self["r_rst"] / self["r_rast"])
+                                + self["db_mc"]
+                                - self["alpha_mc"]
+                            )
+                            - 273.15
+                        )
+
+                if var_only_sections:
+                    # sets the values outside the reference sections to NaN
+                    xi = self.ufunc_per_section(x_indices=True, calc_per="all")
+                    x_mask_ = [True if ix in xi else False for ix in range(self.x.size)]
+                    x_mask = np.reshape(x_mask_, (1, -1, 1))
+                    self[label + "_mc_set"] = self[label + "_mc_set"].where(x_mask)
+
+                # subtract the mean temperature
+                q = self[label + "_mc_set"] - self[label]
+                self[label + "_mc_var"] = q.var(dim="mc", ddof=1)
+
+                if conf_ints:
+                    new_chunks = list(self[label + "_mc_set"].chunks)
+                    new_chunks[0] = (len(conf_ints),)
+                    avg_axis = self[label + "_mc_set"].get_axis_num("mc")
+                    q = self[label + "_mc_set"].data.map_blocks(
+                        lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
+                        chunks=new_chunks,  #
+                        drop_axis=avg_axis,
+                        # avg dimensions are dropped from input arr
+                        new_axis=0,
+                    )  # The new CI dimension is added as firsaxis
+
+                    self[label + "_mc"] = (("CI", "x", "time"), q)
+
+        # Weighted mean of the forward and backward
+        tmpw_var = 1 / (1 / self["tmpf_mc_var"] + 1 / self["tmpb_mc_var"])
+
+        q = (
+            self["tmpf_mc_set"] / self["tmpf_mc_var"]
+            + self["tmpb_mc_set"] / self["tmpb_mc_var"]
+        ) * tmpw_var
+
+        self["tmpw" + "_mc_set"] = q  #
+
+        self["tmpw"] = (
+            self["tmpf"] / self["tmpf_mc_var"] + self["tmpb"] / self["tmpb_mc_var"]
+        ) * tmpw_var
+
+        q = self["tmpw" + "_mc_set"] - self["tmpw"]
+        self["tmpw" + "_mc_var"] = q.var(dim="mc", ddof=1)
+
+        # Calculate the CI of the weighted MC_set
+        if conf_ints:
+            new_chunks_weighted = ((len(conf_ints),),) + memchunk[1:]
+            avg_axis = self["tmpw" + "_mc_set"].get_axis_num("mc")
+            q2 = self["tmpw" + "_mc_set"].data.map_blocks(
+                lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
+                chunks=new_chunks_weighted,  # Explicitly define output chunks
+                drop_axis=avg_axis,  # avg dimensions are dropped
+                new_axis=0,
+                dtype=float,
+            )  # The new CI dimension is added as first axis
+            self["tmpw" + "_mc"] = (("CI", "x", "time"), q2)
+
+        # Clean up the garbage. All arrays with a Monte Carlo dimension.
+        if mc_remove_set_flag:
+            remove_mc_set = [
+                "r_st",
+                "r_ast",
+                "r_rst",
+                "r_rast",
+                "gamma_mc",
+                "alpha_mc",
+                "df_mc",
+                "db_mc",
+            ]
+
+            for i in ["tmpf", "tmpb", "tmpw"]:
+                remove_mc_set.append(i + "_mc_set")
+
+            if nta:
+                remove_mc_set.append('talpha"_fw_mc')
+                remove_mc_set.append('talpha"_bw_mc')
+
+            for k in remove_mc_set:
+                if k in self:
+                    del self[k]
+        pass
+
+    def in_confidence_interval(self, ci_label, conf_ints=None, sections=None):
+        """
+        Returns an array with bools wether the temperature of the reference
+        sections are within the confidence intervals
+
+        Parameters
+        ----------
+        sections : Dict[str, List[slice]]
+        ci_label : str
+            The label of the data containing the confidence intervals.
+        conf_ints : Tuple
+            A tuple containing two floats between 0 and 1, representing the
+            levels between which the reference temperature should lay.
+
+        Returns
+        -------
+
+        """
+        if sections is None:
+            sections = self.sections
+        else:
+            sections = self.validate_sections(sections)
+
+        if conf_ints is None:
+            conf_ints = self[ci_label].values
+
+        assert len(conf_ints) == 2, "Please define conf_ints"
+
+        tmp_dn = self[ci_label].sel(CI=conf_ints[0], method="nearest")
+        tmp_up = self[ci_label].sel(CI=conf_ints[1], method="nearest")
+
+        ref = self.ufunc_per_section(
+            sections=sections, label="st", ref_temp_broadcasted=True, calc_per="all"
+        )
+        ix_resid = self.ufunc_per_section(
+            sections=sections, x_indices=True, calc_per="all"
+        )
+        ref_sorted = np.full(shape=tmp_dn.shape, fill_value=np.nan)
+        ref_sorted[ix_resid, :] = ref
+        ref_da = xr.DataArray(data=ref_sorted, coords=tmp_dn.coords)
+
+        mask_dn = ref_da >= tmp_dn
+        mask_up = ref_da <= tmp_up
+
+        return np.logical_and(mask_dn, mask_up)
+
     def temperature_residuals(self, label=None, sections=None):
         """
         Compute the temperature residuals, between the known temperature of the
@@ -4572,4 +4506,7 @@ class DataStore(xr.Dataset):
         return out
 
     def resample_datastore(*args, **kwargs):
-        raise "ds.resample_datastore() is deprecated. Use from dtscalibration import DataStore; " "DataStore(ds.resample()) instead. See example notebook 2."
+        raise (
+            "ds.resample_datastore() is deprecated. Use from dtscalibration import DataStore; "
+            "DataStore(ds.resample()) instead. See example notebook 2."
+        )

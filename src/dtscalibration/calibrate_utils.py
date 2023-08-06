@@ -20,7 +20,7 @@ def parse_st_var(ds, st_var, st_label="st"):
         If `callable` the variance of the noise from the Stokes detector is
         a function of the intensity, as defined in the callable function.
         Or when the variance is a function of the intensity (Poisson
-        distributed) define a DataArray of the shape shape as ds.st, where the
+        distributed) define a DataArray of the shape as ds.st, where the
         variance can be a function of time and/or x.
     st_label : string
         Name of the (reverse) stokes/anti-stokes data variable which is being
