@@ -2386,7 +2386,7 @@ class DataStore(xr.Dataset):
 
         if method == "wls":
             p_cov, p_val, p_var = calibration_double_ended_helper(
-                self
+                self,
                 st_var,
                 ast_var,
                 rst_var,
