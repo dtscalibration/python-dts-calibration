@@ -21,6 +21,9 @@ from dtscalibration.calibrate_utils import parse_st_var
 from dtscalibration.calibrate_utils import wls_sparse
 from dtscalibration.calibrate_utils import wls_stats
 from dtscalibration.datastore_utils import check_timestep_allclose
+from dtscalibration.datastore_utils import ParameterIndexDoubleEnded
+from dtscalibration.datastore_utils import ParameterIndexSingleEnded
+from dtscalibration.datastore_utils import ufunc_per_section_helper
 from dtscalibration.io_utils import _dim_attrs
 
 dtsattr_namelist = ["double_ended_flag"]
@@ -970,6 +973,8 @@ class DataStore(xr.Dataset):
         04Calculate_variance_Stokes.ipynb>`_
         """
 
+        #         var_I, resid = variance_stokes_constant_util(st_label, sections=None, reshape_residuals=True)
+        # def variance_stokes_constant_util(st_label, sections=None, reshape_residuals=True):
         def func_fit(p, xs):
             return p[:xs, None] * p[None, xs:]
 
@@ -1900,7 +1905,7 @@ class DataStore(xr.Dataset):
         self.check_deprecated_kwargs(kwargs)
         self.set_trans_att(trans_att=trans_att, **kwargs)
 
-        if sections:
+        if sections is not None:
             self.sections = sections
 
         if method == "wls":
@@ -2454,7 +2459,7 @@ class DataStore(xr.Dataset):
 
         self.set_trans_att(trans_att=trans_att, **kwargs)
 
-        if sections:
+        if sections is not None:
             self.sections = sections
 
         self.check_reference_section_values()
@@ -5288,470 +5293,31 @@ class DataStore(xr.Dataset):
         if sections is None:
             sections = self.sections
 
-        if not func:
-
-            def func(a):
-                """
-
-                Parameters
-                ----------
-                a
-
-                Returns
-                -------
-
-                """
-                return a
-
-        elif isinstance(func, str) and func == "var":
-
-            def func(a):
-                """
-
-                Parameters
-                ----------
-                a
-
-                Returns
-                -------
-
-                """
-                return np.var(a, ddof=1)
-
+        if label is None:
+            dataarray = None
         else:
-            assert callable(func)
+            dataarray = self[label]
 
-        assert calc_per in ["all", "section", "stretch"]
-
-        if not x_indices and (
-            (label and hasattr(self[label].data, "chunks"))
-            or (
-                subtract_from_label
-                and hasattr(self[subtract_from_label].data, "chunks")
-            )
-        ):
-            concat = da.concatenate
+        if x_indices:
+            x_coords = self.x
+            reference_dataset = None
         else:
-            concat = np.concatenate
+            x_coords = None
+            reference_dataset = {k: self[k] for k in sections}
 
-        out = dict()
-
-        for k, section in sections.items():
-            out[k] = []
-            for stretch in section:
-                if x_indices:
-                    assert not subtract_from_label
-                    assert not temp_err
-                    assert not ref_temp_broadcasted
-                    # so it is slicable with x-indices
-                    self["_x_indices"] = self.x.astype(int) * 0 + np.arange(self.x.size)
-                    arg1 = self["_x_indices"].sel(x=stretch).data
-                    del self["_x_indices"]
-
-                else:
-                    arg1 = self[label].sel(x=stretch).data
-
-                if subtract_from_label:
-                    # calculate std wrt other series
-                    # check_dims(self, [subtract_from_label],
-                    #            correct_dims=('x', 'time'))
-
-                    assert not temp_err
-
-                    arg2 = self[subtract_from_label].sel(x=stretch).data
-                    out[k].append(arg1 - arg2)
-
-                elif temp_err:
-                    # calculate std wrt reference temperature of the
-                    # corresponding bath
-                    arg2 = self[k].data
-                    out[k].append(arg1 - arg2)
-
-                elif ref_temp_broadcasted:
-                    assert not temp_err
-                    assert not subtract_from_label
-
-                    arg2 = da.broadcast_to(self[k].data, arg1.shape)
-                    out[k].append(arg2)
-
-                else:
-                    # calculate std wrt mean value
-                    out[k].append(arg1)
-
-            if calc_per == "stretch":
-                out[k] = [func(argi, **func_kwargs) for argi in out[k]]
-
-            elif calc_per == "section":
-                # flatten the out_dict to sort them
-                start = [i.start for i in section]
-                i_sorted = np.argsort(start)
-                out_flat_sort = [out[k][i] for i in i_sorted]
-                out[k] = func(concat(out_flat_sort), **func_kwargs)
-
-        if calc_per == "all":
-            # flatten the out_dict to sort them
-            start = [item.start for sublist in sections.values() for item in sublist]
-            i_sorted = np.argsort(start)
-            out_flat = [item for sublist in out.values() for item in sublist]
-            out_flat_sort = [out_flat[i] for i in i_sorted]
-            out = func(concat(out_flat_sort, axis=0), **func_kwargs)
-
-            if (
-                hasattr(out, "chunks")
-                and len(out.chunks) > 0
-                and "x" in self[label].dims
-            ):
-                # also sum the chunksize in the x dimension
-                # first find out where the x dim is
-                ixdim = self[label].dims.index("x")
-                c_old = out.chunks
-                c_new = list(c_old)
-                c_new[ixdim] = sum(c_old[ixdim])
-                out = out.rechunk(c_new)
-
+        out = ufunc_per_section_helper(
+            x_coords=x_coords,
+            sections=sections,
+            func=func,
+            dataarray=dataarray,
+            subtract_from_dataarray=subtract_from_label,
+            reference_dataset=reference_dataset,
+            subtract_reference_from_dataarray=temp_err,
+            ref_temp_broadcasted=ref_temp_broadcasted,
+            calc_per=calc_per,
+            **func_kwargs,
+        )
         return out
 
     def resample_datastore(*args, **kwargs):
         raise "ds.resample_datastore() is deprecated. Use from dtscalibration import DataStore; " "DataStore(ds.resample()) instead. See example notebook 2."
-
-
-class ParameterIndexDoubleEnded:
-    """
-    npar = 1 + 2 * nt + nx + 2 * nt * nta
-    assert pval.size == npar
-    assert p_var.size == npar
-    if calc_cov:
-        assert p_cov.shape == (npar, npar)
-    gamma = pval[0]
-    d_fw = pval[1:nt + 1]
-    d_bw = pval[1 + nt:1 + 2 * nt]
-    alpha = pval[1 + 2 * nt:1 + 2 * nt + nx]
-    # store calibration parameters in DataStore
-    self["gamma"] = (tuple(), gamma)
-    self["alpha"] = (('x',), alpha)
-    self["df"] = (('time',), d_fw)
-    self["db"] = (('time',), d_bw)
-    if nta > 0:
-        ta = pval[1 + 2 * nt + nx:].reshape((nt, 2, nta), order='F')
-        self['talpha_fw'] = (('time', 'trans_att'), ta[:, 0, :])
-        self['talpha_bw'] = (('time', 'trans_att'), ta[:, 1, :])
-    """
-
-    def __init__(self, nt, nx, nta, fix_gamma=False, fix_alpha=False):
-        self.nt = nt
-        self.nx = nx
-        self.nta = nta
-        self.fix_gamma = fix_gamma
-        self.fix_alpha = fix_alpha
-
-    @property
-    def all(self):
-        return np.concatenate(
-            (self.gamma, self.df, self.db, self.alpha, self.ta.flatten(order="F"))
-        )
-
-    @property
-    def npar(self):
-        if not self.fix_gamma and not self.fix_alpha:
-            return 1 + 2 * self.nt + self.nx + 2 * self.nt * self.nta
-        elif self.fix_gamma and not self.fix_alpha:
-            return 2 * self.nt + self.nx + 2 * self.nt * self.nta
-        elif not self.fix_gamma and self.fix_alpha:
-            return 1 + 2 * self.nt + 2 * self.nt * self.nta
-        elif self.fix_gamma and self.fix_alpha:
-            return 2 * self.nt + 2 * self.nt * self.nta
-
-    @property
-    def gamma(self):
-        if self.fix_gamma:
-            return []
-        else:
-            return [0]
-
-    @property
-    def df(self):
-        if self.fix_gamma:
-            return list(range(self.nt))
-        else:
-            return list(range(1, self.nt + 1))
-
-    @property
-    def db(self):
-        if self.fix_gamma:
-            return list(range(self.nt, 2 * self.nt))
-        else:
-            return list(range(1 + self.nt, 1 + 2 * self.nt))
-
-    @property
-    def alpha(self):
-        if self.fix_alpha:
-            return []
-        elif self.fix_gamma:
-            return list(range(2 * self.nt, 1 + 2 * self.nt + self.nx))
-        elif not self.fix_gamma:
-            return list(range(1 + 2 * self.nt, 1 + 2 * self.nt + self.nx))
-
-    @property
-    def ta(self):
-        if self.nta == 0:
-            return np.zeros((self.nt, 2, 0))
-        elif not self.fix_gamma and not self.fix_alpha:
-            arr = np.arange(1 + 2 * self.nt + self.nx, self.npar)
-        elif self.fix_gamma and not self.fix_alpha:
-            arr = np.arange(2 * self.nt + self.nx, self.npar)
-        elif not self.fix_gamma and self.fix_alpha:
-            arr = np.arange(1 + 2 * self.nt, self.npar)
-        elif self.fix_gamma and self.fix_alpha:
-            arr = np.arange(2 * self.nt, self.npar)
-
-        return arr.reshape((self.nt, 2, self.nta), order="F")
-
-    @property
-    def taf(self):
-        """
-        Use `.reshape((nt, nta))` to convert array to (time-dim and transatt-dim). Order is the default C order.
-        ta = pval[1 + 2 * nt + nx:].reshape((nt, 2, nta), order='F')
-        self['talpha_fw'] = (('time', 'trans_att'), ta[:, 0, :])
-        """
-        return self.ta[:, 0, :].flatten(order="C")
-
-    @property
-    def tab(self):
-        """
-        Use `.reshape((nt, nta))` to convert array to (time-dim and transatt-dim). Order is the default C order.
-        ta = pval[1 + 2 * nt + nx:].reshape((nt, 2, nta), order='F')
-        self['talpha_bw'] = (('time', 'trans_att'), ta[:, 1, :])
-        """
-        return self.ta[:, 1, :].flatten(order="C")
-
-    def get_ta_pars(self, pval):
-        if self.nta > 0:
-            if pval.ndim == 1:
-                return np.take_along_axis(pval[None, None], self.ta, axis=-1)
-
-            else:
-                # assume shape is (a, npar) and returns shape (nt, 2, nta, a)
-                assert pval.shape[1] == self.npar and pval.ndim == 2
-                return np.stack([self.get_ta_pars(v) for v in pval], axis=-1)
-
-        else:
-            return np.zeros(shape=(self.nt, 2, 0))
-
-    def get_taf_pars(self, pval):
-        """returns taf parameters of shape (nt, nta) or (nt, nta, a)"""
-        return self.get_ta_pars(pval=pval)[:, 0, :]
-
-    def get_tab_pars(self, pval):
-        """returns taf parameters of shape (nt, nta) or (nt, nta, a)"""
-        return self.get_ta_pars(pval=pval)[:, 1, :]
-
-    def get_taf_values(self, pval, x, trans_att, axis=""):
-        """returns taf parameters of shape (nx, nt)"""
-        pval = np.atleast_2d(pval)
-
-        assert pval.ndim == 2 and pval.shape[1] == self.npar
-
-        arr_out = np.zeros((self.nx, self.nt))
-
-        if self.nta == 0:
-            pass
-
-        elif axis == "":
-            assert pval.shape[0] == 1
-
-            arr = np.transpose(self.get_taf_pars(pval), axes=(1, 2, 0))  # (nta, 1, nt)
-
-            for tai, taxi in zip(arr, trans_att):
-                arr_out[x >= taxi] += tai
-
-        elif axis == "x":
-            assert pval.shape[0] == self.nx
-
-            arr = np.transpose(self.get_taf_pars(pval), axes=(1, 2, 0))  # (nta, nx, nt)
-
-            for tai, taxi in zip(arr, trans_att):
-                # loop over nta, tai has shape (x, t)
-                arr_out[x >= taxi] += tai[x >= taxi]
-
-        elif axis == "time":
-            assert pval.shape[0] == self.nt
-
-            # arr (nt, nta, nt) to have shape (nta, nt, nt)
-            arr = np.transpose(self.get_taf_pars(pval), axes=(1, 2, 0))
-
-            for tai, taxi in zip(arr, trans_att):
-                # loop over nta, tai has shape (t, t)
-                arr_out[x >= taxi] += np.diag(tai)[None]
-
-        return arr_out
-
-    def get_tab_values(self, pval, x, trans_att, axis=""):
-        """returns tab parameters of shape (nx, nt)"""
-        assert pval.shape[-1] == self.npar
-
-        arr_out = np.zeros((self.nx, self.nt))
-
-        if self.nta == 0:
-            pass
-
-        elif axis == "":
-            pval = np.squeeze(pval)
-            assert pval.ndim == 1
-            arr = np.transpose(self.get_tab_pars(pval), axes=(1, 0))
-
-            for tai, taxi in zip(arr, trans_att):
-                arr_out[x < taxi] += tai
-
-        elif axis == "x":
-            assert pval.ndim == 2 and pval.shape[0] == self.nx
-
-            arr = np.transpose(self.get_tab_pars(pval), axes=(1, 2, 0))
-
-            for tai, taxi in zip(arr, trans_att):
-                # loop over nta, tai has shape (x, t)
-                arr_out[x < taxi] += tai[x < taxi]
-
-        elif axis == "time":
-            assert pval.ndim == 2 and pval.shape[0] == self.nt
-
-            # arr (nt, nta, nt) to have shape (nta, nt, nt)
-            arr = np.transpose(self.get_tab_pars(pval), axes=(1, 2, 0))
-
-            for tai, taxi in zip(arr, trans_att):
-                # loop over nta, tai has shape (t, t)
-                arr_out[x < taxi] += np.diag(tai)
-
-        return arr_out
-
-
-class ParameterIndexSingleEnded:
-    """
-    if parameter fixed, they are not in
-    npar = 1 + 1 + nt + nta * nt
-    """
-
-    def __init__(self, nt, nx, nta, includes_alpha=False, includes_dalpha=True):
-        assert not (
-            includes_alpha and includes_dalpha
-        ), "Cannot hold both dalpha and alpha"
-        self.nt = nt
-        self.nx = nx
-        self.nta = nta
-        self.includes_alpha = includes_alpha
-        self.includes_dalpha = includes_dalpha
-
-    @property
-    def all(self):
-        return np.concatenate(
-            (self.gamma, self.dalpha, self.alpha, self.c, self.ta.flatten(order="F"))
-        )
-
-    @property
-    def npar(self):
-        if self.includes_alpha:
-            return 1 + self.nx + self.nt + self.nta * self.nt
-        elif self.includes_dalpha:
-            return 1 + 1 + self.nt + self.nta * self.nt
-        else:
-            return 1 + self.nt + self.nta * self.nt
-
-    @property
-    def gamma(self):
-        return [0]
-
-    @property
-    def dalpha(self):
-        if self.includes_dalpha:
-            return [1]
-        else:
-            return []
-
-    @property
-    def alpha(self):
-        if self.includes_alpha:
-            return list(range(1, 1 + self.nx))
-        else:
-            return []
-
-    @property
-    def c(self):
-        if self.includes_alpha:
-            return list(range(1 + self.nx, 1 + self.nx + self.nt))
-        elif self.includes_dalpha:
-            return list(range(1 + 1, 1 + 1 + self.nt))
-        else:
-            return list(range(1, 1 + self.nt))
-
-    @property
-    def taf(self):
-        """returns taf parameters of shape (nt, nta) or (nt, nta, a)"""
-        # ta = p_val[-nt * nta:].reshape((nt, nta), order='F')
-        # self["talpha"] = (('time', 'trans_att'), ta[:, :])
-        if self.includes_alpha:
-            return np.arange(
-                1 + self.nx + self.nt, 1 + self.nx + self.nt + self.nt * self.nta
-            ).reshape((self.nt, self.nta), order="F")
-        elif self.includes_dalpha:
-            return np.arange(
-                1 + 1 + self.nt, 1 + 1 + self.nt + self.nt * self.nta
-            ).reshape((self.nt, self.nta), order="F")
-        else:
-            return np.arange(1 + self.nt, 1 + self.nt + self.nt * self.nta).reshape(
-                (self.nt, self.nta), order="F"
-            )
-
-    def get_taf_pars(self, pval):
-        if self.nta > 0:
-            if pval.ndim == 1:
-                # returns shape (nta, nt)
-                assert len(pval) == self.npar, "Length of pval is incorrect"
-                return np.stack([pval[tafi] for tafi in self.taf.T])
-
-            else:
-                # assume shape is (a, npar) and returns shape (nta, nt, a)
-                assert pval.shape[1] == self.npar and pval.ndim == 2
-                return np.stack([self.get_taf_pars(v) for v in pval], axis=-1)
-
-        else:
-            return np.zeros(shape=(self.nt, 0))
-
-    def get_taf_values(self, pval, x, trans_att, axis=""):
-        """returns taf parameters of shape (nx, nt)"""
-        # assert pval.ndim == 2 and pval.shape[1] == self.npar
-
-        arr_out = np.zeros((self.nx, self.nt))
-
-        if self.nta == 0:
-            pass
-
-        elif axis == "":
-            pval = pval.flatten()
-            assert pval.shape == (self.npar,)
-            arr = self.get_taf_pars(pval)
-            assert arr.shape == (
-                self.nta,
-                self.nt,
-            )
-
-            for tai, taxi in zip(arr, trans_att):
-                arr_out[x >= taxi] += tai
-
-        elif axis == "x":
-            assert pval.shape == (self.nx, self.npar)
-            arr = self.get_taf_pars(pval)
-            assert arr.shape == (self.nta, self.nx, self.nt)
-
-            for tai, taxi in zip(arr, trans_att):
-                # loop over nta, tai has shape (x, t)
-                arr_out[x >= taxi] += tai[x >= taxi]
-
-        elif axis == "time":
-            assert pval.shape == (self.nt, self.npar)
-            arr = self.get_taf_pars(pval)
-            assert arr.shape == (self.nta, self.nt, self.nt)
-
-            for tai, taxi in zip(arr, trans_att):
-                # loop over nta, tai has shape (t, t)
-                arr_out[x >= taxi] += np.diag(tai)[None]
-
-        return arr_out
