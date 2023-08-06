@@ -46,6 +46,147 @@ def parse_st_var(ds, st_var, st_label="st"):
     return st_var_sec
 
 
+def calibration_single_ended_helper(
+    self,
+    st_var,
+    ast_var,
+    fix_alpha,
+    fix_dalpha,
+    fix_gamma,
+    matching_indices,
+    nt,
+    nta,
+    nx,
+    solver,
+):
+    """Only used in `calibration_single_ended()`"""
+    for input_item in [st_var, ast_var]:
+        assert input_item is not None, (
+            "For wls define all " "variances (`st_var`, " "`ast_var`) "
+        )
+    calc_cov = True
+    split = calibration_single_ended_solver(
+        self,
+        st_var,
+        ast_var,
+        calc_cov=calc_cov,
+        solver="external_split",
+        matching_indices=matching_indices,
+    )
+    y = split["y"]
+    w = split["w"]
+
+    # Stack all X's
+    if fix_alpha:
+        assert not fix_dalpha, "Use either `fix_dalpha` or `fix_alpha`"
+        assert fix_alpha[0].size == self.x.size, (
+            "fix_alpha also needs to be defined outside the reference " "sections"
+        )
+        assert fix_alpha[1].size == self.x.size, (
+            "fix_alpha also needs to be defined outside the reference " "sections"
+        )
+        p_val = split["p0_est_alpha"].copy()
+
+        if np.any(matching_indices):
+            raise NotImplementedError(
+                "Configuring fix_alpha and matching sections requires extra code"
+            )
+
+        X = sp.hstack(
+            (split["X_gamma"], split["X_alpha"], split["X_c"], split["X_TA"])
+        ).tocsr()
+        ip_use = list(range(1 + nx + nt + nta * nt))
+
+    else:
+        X = sp.vstack(
+            (
+                sp.hstack(
+                    (
+                        split["X_gamma"],
+                        split["X_dalpha"],
+                        split["X_c"],
+                        split["X_TA"],
+                    )
+                ),
+                split["X_m"],
+            )
+        ).tocsr()
+        p_val = split["p0_est_dalpha"].copy()
+        ip_use = list(range(1 + 1 + nt + nta * nt))
+    p_var = np.zeros_like(p_val)
+    p_cov = np.zeros((p_val.size, p_val.size), dtype=float)
+    if fix_gamma is not None:
+        ip_remove = [0]
+        ip_use = [i for i in ip_use if i not in ip_remove]
+        p_val[ip_remove] = fix_gamma[0]
+        p_var[ip_remove] = fix_gamma[1]
+
+        X_gamma = (
+            sp.vstack((split["X_gamma"], split["X_m"].tocsr()[:, 0].tocoo()))
+            .toarray()
+            .flatten()
+        )
+
+        y -= fix_gamma[0] * X_gamma
+        w = 1 / (1 / w + fix_gamma[1] * X_gamma)
+    if fix_alpha is not None:
+        ip_remove = list(range(1, nx + 1))
+        ip_use = [i for i in ip_use if i not in ip_remove]
+        p_val[ip_remove] = fix_alpha[0]
+        p_var[ip_remove] = fix_alpha[1]
+
+        # X_alpha needs to be vertically extended to support matching sections
+        y -= split["X_alpha"].dot(fix_alpha[0])
+        w = 1 / (1 / w + split["X_alpha"].dot(fix_alpha[1]))
+    if fix_dalpha is not None:
+        ip_remove = [1]
+        ip_use = [i for i in ip_use if i not in ip_remove]
+        p_val[ip_remove] = fix_dalpha[0]
+        p_var[ip_remove] = fix_dalpha[1]
+
+        y -= np.hstack(
+            (
+                fix_dalpha[0] * split["X_dalpha"].toarray().flatten(),
+                (
+                    fix_dalpha[0]
+                    * split["X_m"].tocsr()[:, 1].tocoo().toarray().flatten()
+                ),
+            )
+        )
+        w = 1 / (
+            1 / w
+            + np.hstack(
+                (
+                    fix_dalpha[1] * split["X_dalpha"].toarray().flatten(),
+                    (
+                        fix_dalpha[1]
+                        * split["X_m"].tocsr()[:, 1].tocoo().toarray().flatten()
+                    ),
+                )
+            )
+        )
+    if solver == "sparse":
+        out = wls_sparse(
+            X[:, ip_use],
+            y,
+            w=w,
+            x0=p_val[ip_use],
+            calc_cov=calc_cov,
+            verbose=False,
+        )
+
+    elif solver == "stats":
+        out = wls_stats(X[:, ip_use], y, w=w, calc_cov=calc_cov, verbose=False)
+
+    else:
+        assert 0, "Unknown solver"
+    p_val[ip_use] = out[0]
+    p_var[ip_use] = out[1]
+    np.fill_diagonal(p_cov, p_var)  # set variance of all fixed params
+    p_cov[np.ix_(ip_use, ip_use)] = out[2]
+    return p_cov, p_val, p_var
+
+
 def calibration_single_ended_solver(  # noqa: MC0001
     ds,
     st_var=None,
@@ -340,6 +481,623 @@ def calibration_single_ended_solver(  # noqa: MC0001
         raise ValueError("Choose a valid solver")
 
     return (p_sol, p_var, p_cov) if calc_cov else (p_sol, p_var)
+
+
+def calibration_double_ended_helper(
+    self,
+    st_var,
+    ast_var,
+    rst_var,
+    rast_var,
+    fix_alpha,
+    fix_gamma,
+    nt,
+    nta,
+    nx,
+    nx_sec,
+    ix_sec,
+    matching_indices,
+    solver,
+    verbose,
+):
+    if fix_alpha or fix_gamma:
+        split = calibration_double_ended_solver(
+            self,
+            st_var,
+            ast_var,
+            rst_var,
+            rast_var,
+            calc_cov=True,
+            solver="external_split",
+            matching_indices=matching_indices,
+            verbose=verbose,
+        )
+    else:
+        out = calibration_double_ended_solver(
+            self,
+            st_var,
+            ast_var,
+            rst_var,
+            rast_var,
+            calc_cov=True,
+            solver=solver,
+            matching_indices=matching_indices,
+            verbose=verbose,
+        )
+
+        p_val, p_var, p_cov = out
+    # adjust split to fix parameters
+    """Wrapped in a function to reduce memory usage.
+                Constructing:
+                Z_gamma (nt * nx, 1). Data: positive 1/temp
+                Z_D (nt * nx, nt). Data: ones
+                E (nt * nx, nx). Data: ones
+                Zero_gamma (nt * nx, 1)
+                zero_d (nt * nx, nt)
+                Z_TA_fw (nt * nx, nta * 2 * nt) minus ones
+                Z_TA_bw (nt * nx, nta * 2 * nt) minus ones
+                Z_TA_E (nt * nx, nta * 2 * nt)
+                I_fw = 1/Tref*gamma - D_fw - E - TA_fw
+                I_bw = 1/Tref*gamma - D_bw + E - TA_bw
+                (I_bw - I_fw) / 2 = D_fw/2 - D_bw/2 + E + TA_fw/2 - TA_bw/2 Eq42
+                """
+    if fix_alpha and fix_gamma:
+        assert np.size(fix_alpha[0]) == self.x.size, "define alpha for each location"
+        assert (
+            np.size(fix_alpha[1]) == self.x.size
+        ), "define var alpha for each location"
+        m = (
+            "The integrated differential attenuation is zero at the "
+            "first index of the reference sections."
+        )
+        assert np.abs(fix_alpha[0][ix_sec[0]]) < 1e-8, m
+        # The array with the integrated differential att is termed E
+
+        if np.any(matching_indices):
+            n_E_in_cal = split["ix_from_cal_match_to_glob"].size
+            p0_est = np.concatenate(
+                (
+                    split["p0_est"][1 : 1 + 2 * nt],
+                    split["p0_est"][1 + 2 * nt + n_E_in_cal :],
+                )
+            )
+            X_E1 = sp.csr_matrix(([], ([], [])), shape=(nt * nx_sec, self.x.size))
+            X_E1[:, ix_sec[1:]] = split["E"]
+            X_E2 = X_E1[:, split["ix_from_cal_match_to_glob"]]
+            X_E = sp.vstack(
+                (
+                    -X_E2,
+                    X_E2,
+                    split["E_match_F"],
+                    split["E_match_B"],
+                    split["E_match_no_cal"],
+                )
+            )
+
+            X_gamma = (
+                sp.vstack(
+                    (
+                        split["Z_gamma"],
+                        split["Z_gamma"],
+                        split["Zero_eq12_gamma"],
+                        split["Zero_eq12_gamma"],
+                        split["Zero_eq3_gamma"],
+                    )
+                )
+                .toarray()
+                .flatten()
+            )
+
+            X = sp.vstack(
+                (
+                    sp.hstack((-split["Z_D"], split["Zero_d"], split["Z_TA_fw"])),
+                    sp.hstack((split["Zero_d"], -split["Z_D"], split["Z_TA_bw"])),
+                    sp.hstack((split["Zero_d_eq12"], split["Z_TA_eq1"])),
+                    sp.hstack((split["Zero_d_eq12"], split["Z_TA_eq2"])),
+                    sp.hstack((split["d_no_cal"], split["Z_TA_eq3"])),
+                )
+            )
+
+            y = np.concatenate(
+                (
+                    split["y_F"],
+                    split["y_B"],
+                    split["y_eq1"],
+                    split["y_eq2"],
+                    split["y_eq3"],
+                )
+            )
+            y -= X_E.dot(fix_alpha[0][split["ix_from_cal_match_to_glob"]])
+            y -= fix_gamma[0] * X_gamma
+
+            # variances are added. weight is the inverse of the variance
+            # of the observations
+            w_ = np.concatenate(
+                (
+                    split["w_F"],
+                    split["w_B"],
+                    split["w_eq1"],
+                    split["w_eq2"],
+                    split["w_eq3"],
+                )
+            )
+            w = 1 / (
+                1 / w_
+                + X_E.dot(fix_alpha[1][split["ix_from_cal_match_to_glob"]])
+                + fix_gamma[1] * X_gamma
+            )
+
+        else:
+            # X_gamma
+            X_E = sp.vstack((-split["E"], split["E"]))
+            X_gamma = (
+                sp.vstack((split["Z_gamma"], split["Z_gamma"])).toarray().flatten()
+            )
+            # Use only the remaining coefficients
+            # Stack all X's
+            X = sp.vstack(
+                (
+                    sp.hstack((-split["Z_D"], split["Zero_d"], split["Z_TA_fw"])),
+                    sp.hstack((split["Zero_d"], -split["Z_D"], split["Z_TA_bw"])),
+                )
+            )
+
+            # Move the coefficients times the fixed gamma to the
+            # observations
+            y = np.concatenate((split["y_F"], split["y_B"]))
+            y -= X_E.dot(fix_alpha[0][ix_sec[1:]])
+            y -= fix_gamma[0] * X_gamma
+            # variances are added. weight is the inverse of the variance
+            # of the observations
+            w_ = np.concatenate((split["w_F"], split["w_B"]))
+            w = 1 / (
+                1 / w_ + X_E.dot(fix_alpha[1][ix_sec[1:]]) + fix_gamma[1] * X_gamma
+            )
+
+            # [C_1, C_2, .., C_nt, TA_fw_a_1, TA_fw_a_2, TA_fw_a_nt,
+            # TA_bw_a_1, TA_bw_a_2, TA_bw_a_nt] Then continues with
+            # TA for connector b.
+            p0_est = np.concatenate(
+                (
+                    split["p0_est"][1 : 1 + 2 * nt],
+                    split["p0_est"][1 + 2 * nt + nx_sec - 1 :],
+                )
+            )
+
+        if solver == "sparse":
+            out = wls_sparse(X, y, w=w, x0=p0_est, calc_cov=True, verbose=False)
+
+        elif solver == "stats":
+            out = wls_stats(X, y, w=w, calc_cov=True, verbose=False)
+
+        # Added fixed gamma and its variance to the solution
+        p_val = np.concatenate(
+            ([fix_gamma[0]], out[0][: 2 * nt], fix_alpha[0], out[0][2 * nt :])
+        )
+        p_var = np.concatenate(
+            ([fix_gamma[1]], out[1][: 2 * nt], fix_alpha[1], out[1][2 * nt :])
+        )
+
+        # whether it returns a copy or a view depends on what
+        # version of numpy you are using
+        p_cov = np.diag(p_var).copy()
+        from_i = np.concatenate(
+            (
+                np.arange(1, 2 * nt + 1),
+                np.arange(1 + 2 * nt + nx, 1 + 2 * nt + nx + nta * nt * 2),
+            )
+        )
+        iox_sec1, iox_sec2 = np.meshgrid(from_i, from_i, indexing="ij")
+        p_cov[iox_sec1, iox_sec2] = out[2]
+
+    elif fix_gamma:
+        if np.any(matching_indices):
+            # n_E_in_cal = split['ix_from_cal_match_to_glob'].size
+            p0_est = split["p0_est"][1:]
+            X_E1 = sp.csr_matrix(([], ([], [])), shape=(nt * nx_sec, self.x.size))
+            from_i = ix_sec[1:]
+            X_E1[:, from_i] = split["E"]
+            X_E2 = X_E1[:, split["ix_from_cal_match_to_glob"]]
+            X = sp.vstack(
+                (
+                    sp.hstack(
+                        (
+                            -split["Z_D"],
+                            split["Zero_d"],
+                            -X_E2,
+                            split["Z_TA_fw"],
+                        )
+                    ),
+                    sp.hstack((split["Zero_d"], -split["Z_D"], X_E2, split["Z_TA_bw"])),
+                    sp.hstack(
+                        (
+                            split["Zero_d_eq12"],
+                            split["E_match_F"],
+                            split["Z_TA_eq1"],
+                        )
+                    ),
+                    sp.hstack(
+                        (
+                            split["Zero_d_eq12"],
+                            split["E_match_B"],
+                            split["Z_TA_eq2"],
+                        )
+                    ),
+                    sp.hstack(
+                        (
+                            split["d_no_cal"],
+                            split["E_match_no_cal"],
+                            split["Z_TA_eq3"],
+                        )
+                    ),
+                )
+            )
+            X_gamma = (
+                sp.vstack(
+                    (
+                        split["Z_gamma"],
+                        split["Z_gamma"],
+                        split["Zero_eq12_gamma"],
+                        split["Zero_eq12_gamma"],
+                        split["Zero_eq3_gamma"],
+                    )
+                )
+                .toarray()
+                .flatten()
+            )
+
+            y = np.concatenate(
+                (
+                    split["y_F"],
+                    split["y_B"],
+                    split["y_eq1"],
+                    split["y_eq2"],
+                    split["y_eq3"],
+                )
+            )
+            y -= fix_gamma[0] * X_gamma
+
+            # variances are added. weight is the inverse of the variance
+            # of the observations
+            w_ = np.concatenate(
+                (
+                    split["w_F"],
+                    split["w_B"],
+                    split["w_eq1"],
+                    split["w_eq2"],
+                    split["w_eq3"],
+                )
+            )
+            w = 1 / (1 / w_ + fix_gamma[1] * X_gamma)
+
+        else:
+            X_gamma = (
+                sp.vstack((split["Z_gamma"], split["Z_gamma"])).toarray().flatten()
+            )
+            # Use only the remaining coefficients
+            X = sp.vstack(
+                (
+                    sp.hstack(
+                        (
+                            -split["Z_D"],
+                            split["Zero_d"],
+                            -split["E"],
+                            split["Z_TA_fw"],
+                        )
+                    ),
+                    sp.hstack(
+                        (
+                            split["Zero_d"],
+                            -split["Z_D"],
+                            split["E"],
+                            split["Z_TA_bw"],
+                        )
+                    ),
+                )
+            )
+            # Move the coefficients times the fixed gamma to the
+            # observations
+            y = np.concatenate((split["y_F"], split["y_B"]))
+            y -= fix_gamma[0] * X_gamma
+            # variances are added. weight is the inverse of the variance
+            # of the observations
+            w_ = np.concatenate((split["w_F"], split["w_B"]))
+            w = 1 / (1 / w_ + fix_gamma[1] * X_gamma)
+
+            p0_est = split["p0_est"][1:]
+
+        if solver == "sparse":
+            out = wls_sparse(X, y, w=w, x0=p0_est, calc_cov=True, verbose=False)
+
+        elif solver == "stats":
+            out = wls_stats(X, y, w=w, calc_cov=True, verbose=False)
+
+        # put E outside of reference section in solution
+        # concatenating makes a copy of the data instead of using a
+        # pointer
+        ds_sub = self[["st", "ast", "rst", "rast", "trans_att"]]
+        ds_sub["df"] = (("time",), out[0][:nt])
+        ds_sub["df_var"] = (("time",), out[1][:nt])
+        ds_sub["db"] = (("time",), out[0][nt : 2 * nt])
+        ds_sub["db_var"] = (("time",), out[1][nt : 2 * nt])
+
+        if nta > 0:
+            if np.any(matching_indices):
+                n_E_in_cal = split["ix_from_cal_match_to_glob"].size
+                ta = out[0][2 * nt + n_E_in_cal :].reshape((nt, 2, nta), order="F")
+                ta_var = out[1][2 * nt + n_E_in_cal :].reshape((nt, 2, nta), order="F")
+
+            else:
+                ta = out[0][2 * nt + nx_sec - 1 :].reshape((nt, 2, nta), order="F")
+                ta_var = out[1][2 * nt + nx_sec - 1 :].reshape((nt, 2, nta), order="F")
+
+            talpha_fw = ta[:, 0, :]
+            talpha_bw = ta[:, 1, :]
+            talpha_fw_var = ta_var[:, 0, :]
+            talpha_bw_var = ta_var[:, 1, :]
+        else:
+            talpha_fw = None
+            talpha_bw = None
+            talpha_fw_var = None
+            talpha_bw_var = None
+
+        E_all_exact, E_all_var_exact = calc_alpha_double(
+            mode="exact",
+            ds=ds_sub,
+            st_var=st_var,
+            ast_var=ast_var,
+            rst_var=rst_var,
+            rast_var=rast_var,
+            ix_alpha_is_zero=ix_sec[0],
+            talpha_fw=talpha_fw,
+            talpha_bw=talpha_bw,
+            talpha_fw_var=talpha_fw_var,
+            talpha_bw_var=talpha_bw_var,
+        )
+
+        if not np.any(matching_indices):
+            # Added fixed gamma and its variance to the solution. And
+            # expand to include locations outside reference sections.
+            p_val = np.concatenate(
+                (
+                    [fix_gamma[0]],
+                    out[0][: 2 * nt],
+                    E_all_exact,
+                    out[0][2 * nt + nx_sec - 1 :],
+                )
+            )
+            p_val[1 + 2 * nt + ix_sec[1:]] = out[0][2 * nt : 2 * nt + nx_sec - 1]
+            p_val[1 + 2 * nt + ix_sec[0]] = 0.0
+            p_var = np.concatenate(
+                (
+                    [fix_gamma[1]],
+                    out[1][: 2 * nt],
+                    E_all_var_exact,
+                    out[1][2 * nt + nx_sec - 1 :],
+                )
+            )
+            p_var[1 + 2 * nt + ix_sec[1:]] = out[1][2 * nt : 2 * nt + nx_sec - 1]
+        else:
+            n_E_in_cal = split["ix_from_cal_match_to_glob"].size
+
+            # Added fixed gamma and its variance to the solution. And
+            # expand to include locations outside reference sections.
+            p_val = np.concatenate(
+                (
+                    [fix_gamma[0]],
+                    out[0][: 2 * nt],
+                    E_all_exact,
+                    out[0][2 * nt + n_E_in_cal :],
+                )
+            )
+            p_val[1 + 2 * nt + split["ix_from_cal_match_to_glob"]] = out[0][
+                2 * nt : 2 * nt + n_E_in_cal
+            ]
+            p_val[1 + 2 * nt + ix_sec[0]] = 0.0
+            p_var = np.concatenate(
+                (
+                    [fix_gamma[1]],
+                    out[1][: 2 * nt],
+                    E_all_var_exact,
+                    out[1][2 * nt + n_E_in_cal :],
+                )
+            )
+            p_var[1 + 2 * nt + split["ix_from_cal_match_to_glob"]] = out[1][
+                2 * nt : 2 * nt + n_E_in_cal
+            ]
+
+        p_cov = np.diag(p_var).copy()
+
+        if not np.any(matching_indices):
+            from_i = np.concatenate(
+                (
+                    np.arange(1, 2 * nt + 1),
+                    2 * nt + 1 + ix_sec[1:],
+                    np.arange(1 + 2 * nt + nx, 1 + 2 * nt + nx + nta * nt * 2),
+                )
+            )
+        else:
+            from_i = np.concatenate(
+                (
+                    np.arange(1, 2 * nt + 1),
+                    2 * nt + 1 + split["ix_from_cal_match_to_glob"],
+                    np.arange(1 + 2 * nt + nx, 1 + 2 * nt + nx + nta * nt * 2),
+                )
+            )
+
+        iox_sec1, iox_sec2 = np.meshgrid(from_i, from_i, indexing="ij")
+        p_cov[iox_sec1, iox_sec2] = out[2]
+
+    elif fix_alpha:
+        assert np.size(fix_alpha[0]) == self.x.size, "define alpha for each location"
+        assert (
+            np.size(fix_alpha[1]) == self.x.size
+        ), "define var alpha for each location"
+        m = (
+            "The integrated differential attenuation is zero at the "
+            "first index of the reference sections."
+        )
+        assert np.abs(fix_alpha[0][ix_sec[0]]) < 1e-6, m
+        # The array with the integrated differential att is termed E
+
+        if not np.any(matching_indices):
+            # X_gamma
+            X_E = sp.vstack((-split["E"], split["E"]))
+            # Use only the remaining coefficients
+            # Stack all X's
+            X = sp.vstack(
+                (
+                    sp.hstack(
+                        (
+                            split["Z_gamma"],
+                            -split["Z_D"],
+                            split["Zero_d"],
+                            split["Z_TA_fw"],
+                        )
+                    ),
+                    sp.hstack(
+                        (
+                            split["Z_gamma"],
+                            split["Zero_d"],
+                            -split["Z_D"],
+                            split["Z_TA_bw"],
+                        )
+                    ),
+                )
+            )
+            # Move the coefficients times the fixed gamma to the
+            # observations
+            y = np.concatenate((split["y_F"], split["y_B"]))
+            y -= X_E.dot(fix_alpha[0][ix_sec[1:]])
+
+            # variances are added. weight is the inverse of the variance
+            # of the observations
+            w_ = np.concatenate((split["w_F"], split["w_B"]))
+            w = 1 / (1 / w_ + X_E.dot(fix_alpha[1][ix_sec[1:]]))
+
+            p0_est = np.concatenate(
+                (
+                    split["p0_est"][: 1 + 2 * nt],
+                    split["p0_est"][1 + 2 * nt + nx_sec - 1 :],
+                )
+            )
+
+        else:
+            n_E_in_cal = split["ix_from_cal_match_to_glob"].size
+            p0_est = np.concatenate(
+                (
+                    split["p0_est"][: 1 + 2 * nt],
+                    split["p0_est"][1 + 2 * nt + n_E_in_cal :],
+                )
+            )
+            X_E1 = sp.csr_matrix(([], ([], [])), shape=(nt * nx_sec, self.x.size))
+            X_E1[:, ix_sec[1:]] = split["E"]
+            X_E2 = X_E1[:, split["ix_from_cal_match_to_glob"]]
+            X_E = sp.vstack(
+                (
+                    -X_E2,
+                    X_E2,
+                    split["E_match_F"],
+                    split["E_match_B"],
+                    split["E_match_no_cal"],
+                )
+            )
+
+            X = sp.vstack(
+                (
+                    sp.hstack(
+                        (
+                            split["Z_gamma"],
+                            -split["Z_D"],
+                            split["Zero_d"],
+                            split["Z_TA_fw"],
+                        )
+                    ),
+                    sp.hstack(
+                        (
+                            split["Z_gamma"],
+                            split["Zero_d"],
+                            -split["Z_D"],
+                            split["Z_TA_bw"],
+                        )
+                    ),
+                    sp.hstack(
+                        (
+                            split["Zero_eq12_gamma"],
+                            split["Zero_d_eq12"],
+                            split["Z_TA_eq1"],
+                        )
+                    ),
+                    sp.hstack(
+                        (
+                            split["Zero_eq12_gamma"],
+                            split["Zero_d_eq12"],
+                            split["Z_TA_eq2"],
+                        )
+                    ),
+                    sp.hstack(
+                        (
+                            split["Zero_eq3_gamma"],
+                            split["d_no_cal"],
+                            split["Z_TA_eq3"],
+                        )
+                    ),
+                )
+            )
+
+            y = np.concatenate(
+                (
+                    split["y_F"],
+                    split["y_B"],
+                    split["y_eq1"],
+                    split["y_eq2"],
+                    split["y_eq3"],
+                )
+            )
+            y -= X_E.dot(fix_alpha[0][split["ix_from_cal_match_to_glob"]])
+
+            # variances are added. weight is the inverse of the variance
+            # of the observations
+            w_ = np.concatenate(
+                (
+                    split["w_F"],
+                    split["w_B"],
+                    split["w_eq1"],
+                    split["w_eq2"],
+                    split["w_eq3"],
+                )
+            )
+            w = 1 / (1 / w_ + X_E.dot(fix_alpha[1][split["ix_from_cal_match_to_glob"]]))
+
+        if solver == "sparse":
+            out = wls_sparse(X, y, w=w, x0=p0_est, calc_cov=True, verbose=False)
+
+        elif solver == "stats":
+            out = wls_stats(X, y, w=w, calc_cov=True, verbose=False)
+
+        # Added fixed gamma and its variance to the solution
+        p_val = np.concatenate(
+            (out[0][: 1 + 2 * nt], fix_alpha[0], out[0][1 + 2 * nt :])
+        )
+        p_var = np.concatenate(
+            (out[1][: 1 + 2 * nt], fix_alpha[1], out[1][1 + 2 * nt :])
+        )
+
+        p_cov = np.diag(p_var).copy()
+
+        from_i = np.concatenate(
+            (
+                np.arange(1 + 2 * nt),
+                np.arange(1 + 2 * nt + nx, 1 + 2 * nt + nx + nta * nt * 2),
+            )
+        )
+
+        iox_sec1, iox_sec2 = np.meshgrid(from_i, from_i, indexing="ij")
+        p_cov[iox_sec1, iox_sec2] = out[2]
+
+    else:
+        pass
+    return p_cov, p_val, p_var
 
 
 def calibration_double_ended_solver(  # noqa: MC0001
