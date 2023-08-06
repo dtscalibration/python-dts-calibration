@@ -20,6 +20,8 @@ Changed
 * Requiring netcdf4 >= 1.6.4
 * Optional dependencies of xarray that improve performance are now required by default.
 * variance_stokes_linear() does not default through zero anymore.
+* Refactored calibration_single_ended and calibration_double_ended()
+* Moved ParameterIndices classes to calibration_utils.py
 * Flox included in requirements to speed up resampling via xarray ([Xarray #5734](https://github.com/pydata/xarray/pull/5734)).
 
 Removed

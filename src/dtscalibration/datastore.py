@@ -13,6 +13,8 @@ import yaml
 from scipy.optimize import minimize
 from scipy.sparse import linalg as ln
 
+from dtscalibration.calibrate_utils import calibration_single_ended_helper
+from dtscalibration.calibrate_utils import calibration_double_ended_helper
 from dtscalibration.calibrate_utils import match_sections
 from dtscalibration.calibrate_utils import parse_st_var
 from dtscalibration.datastore_utils import ParameterIndexDoubleEnded
@@ -1931,7 +1933,8 @@ class DataStore(xr.Dataset):
         )
 
         if method == "wls":
-            p_cov, p_val, p_var = self.calibration_single_ended_helper(
+            p_cov, p_val, p_var = calibration_single_ended_helper(
+                self,
                 st_var,
                 ast_var,
                 fix_alpha,
@@ -2382,7 +2385,8 @@ class DataStore(xr.Dataset):
             matching_indices = match_sections(self, matching_sections)
 
         if method == "wls":
-            p_cov, p_val, p_var = self.calibration_double_ended_helper(
+            p_cov, p_val, p_var = calibration_double_ended_helper(
+                self
                 st_var,
                 ast_var,
                 rst_var,
