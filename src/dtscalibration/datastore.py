@@ -13,8 +13,8 @@ import yaml
 from scipy.optimize import minimize
 from scipy.sparse import linalg as ln
 
-from dtscalibration.calibrate_utils import calibration_single_ended_helper
 from dtscalibration.calibrate_utils import calibration_double_ended_helper
+from dtscalibration.calibrate_utils import calibration_single_ended_helper
 from dtscalibration.calibrate_utils import match_sections
 from dtscalibration.calibrate_utils import parse_st_var
 from dtscalibration.datastore_utils import ParameterIndexDoubleEnded
