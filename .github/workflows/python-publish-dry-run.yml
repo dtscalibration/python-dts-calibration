@@ -20,7 +20,7 @@ permissions:
   contents: read
 
 jobs:
-  deploy:
+  deploy-dry-run:
 
     runs-on: ubuntu-latest
 
