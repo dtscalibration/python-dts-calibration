@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 from typing import Optional
 from typing import Union
 
+import dask.array as da
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
@@ -54,30 +55,412 @@ def check_dims(
             )
 
 
-def get_netcdf_encoding(
-    ds: "DataStore", zlib: bool = True, complevel: int = 5, **kwargs
-) -> dict:
-    """Get default netcdf compression parameters. The same for each data variable.
+class ParameterIndexDoubleEnded:
+    """
+    npar = 1 + 2 * nt + nx + 2 * nt * nta
+    assert pval.size == npar
+    assert p_var.size == npar
+    if calc_cov:
+        assert p_cov.shape == (npar, npar)
+    gamma = pval[0]
+    d_fw = pval[1:nt + 1]
+    d_bw = pval[1 + nt:1 + 2 * nt]
+    alpha = pval[1 + 2 * nt:1 + 2 * nt + nx]
+    # store calibration parameters in DataStore
+    self["gamma"] = (tuple(), gamma)
+    self["alpha"] = (('x',), alpha)
+    self["df"] = (('time',), d_fw)
+    self["db"] = (('time',), d_bw)
+    if nta > 0:
+        ta = pval[1 + 2 * nt + nx:].reshape((nt, 2, nta), order='F')
+        self['talpha_fw'] = (('time', 'trans_att'), ta[:, 0, :])
+        self['talpha_bw'] = (('time', 'trans_att'), ta[:, 1, :])
+    """
 
-    TODO: Truncate precision to XML precision per data variable
+    def __init__(self, nt, nx, nta, fix_gamma=False, fix_alpha=False):
+        self.nt = nt
+        self.nx = nx
+        self.nta = nta
+        self.fix_gamma = fix_gamma
+        self.fix_alpha = fix_alpha
 
+    @property
+    def all(self):
+        return np.concatenate(
+            (self.gamma, self.df, self.db, self.alpha, self.ta.flatten(order="F"))
+        )
+
+    @property
+    def npar(self):
+        if not self.fix_gamma and not self.fix_alpha:
+            return 1 + 2 * self.nt + self.nx + 2 * self.nt * self.nta
+        elif self.fix_gamma and not self.fix_alpha:
+            return 2 * self.nt + self.nx + 2 * self.nt * self.nta
+        elif not self.fix_gamma and self.fix_alpha:
+            return 1 + 2 * self.nt + 2 * self.nt * self.nta
+        elif self.fix_gamma and self.fix_alpha:
+            return 2 * self.nt + 2 * self.nt * self.nta
+
+    @property
+    def gamma(self):
+        if self.fix_gamma:
+            return []
+        else:
+            return [0]
+
+    @property
+    def df(self):
+        if self.fix_gamma:
+            return list(range(self.nt))
+        else:
+            return list(range(1, self.nt + 1))
+
+    @property
+    def db(self):
+        if self.fix_gamma:
+            return list(range(self.nt, 2 * self.nt))
+        else:
+            return list(range(1 + self.nt, 1 + 2 * self.nt))
+
+    @property
+    def alpha(self):
+        if self.fix_alpha:
+            return []
+        elif self.fix_gamma:
+            return list(range(2 * self.nt, 1 + 2 * self.nt + self.nx))
+        elif not self.fix_gamma:
+            return list(range(1 + 2 * self.nt, 1 + 2 * self.nt + self.nx))
+
+    @property
+    def ta(self):
+        if self.nta == 0:
+            return np.zeros((self.nt, 2, 0))
+        elif not self.fix_gamma and not self.fix_alpha:
+            arr = np.arange(1 + 2 * self.nt + self.nx, self.npar)
+        elif self.fix_gamma and not self.fix_alpha:
+            arr = np.arange(2 * self.nt + self.nx, self.npar)
+        elif not self.fix_gamma and self.fix_alpha:
+            arr = np.arange(1 + 2 * self.nt, self.npar)
+        elif self.fix_gamma and self.fix_alpha:
+            arr = np.arange(2 * self.nt, self.npar)
+
+        return arr.reshape((self.nt, 2, self.nta), order="F")
+
+    @property
+    def taf(self):
+        """
+        Use `.reshape((nt, nta))` to convert array to (time-dim and transatt-dim). Order is the default C order.
+        ta = pval[1 + 2 * nt + nx:].reshape((nt, 2, nta), order='F')
+        self['talpha_fw'] = (('time', 'trans_att'), ta[:, 0, :])
+        """
+        return self.ta[:, 0, :].flatten(order="C")
+
+    @property
+    def tab(self):
+        """
+        Use `.reshape((nt, nta))` to convert array to (time-dim and transatt-dim). Order is the default C order.
+        ta = pval[1 + 2 * nt + nx:].reshape((nt, 2, nta), order='F')
+        self['talpha_bw'] = (('time', 'trans_att'), ta[:, 1, :])
+        """
+        return self.ta[:, 1, :].flatten(order="C")
+
+    def get_ta_pars(self, pval):
+        if self.nta > 0:
+            if pval.ndim == 1:
+                return np.take_along_axis(pval[None, None], self.ta, axis=-1)
+
+            else:
+                # assume shape is (a, npar) and returns shape (nt, 2, nta, a)
+                assert pval.shape[1] == self.npar and pval.ndim == 2
+                return np.stack([self.get_ta_pars(v) for v in pval], axis=-1)
+
+        else:
+            return np.zeros(shape=(self.nt, 2, 0))
+
+    def get_taf_pars(self, pval):
+        """returns taf parameters of shape (nt, nta) or (nt, nta, a)"""
+        return self.get_ta_pars(pval=pval)[:, 0, :]
+
+    def get_tab_pars(self, pval):
+        """returns taf parameters of shape (nt, nta) or (nt, nta, a)"""
+        return self.get_ta_pars(pval=pval)[:, 1, :]
+
+    def get_taf_values(self, pval, x, trans_att, axis=""):
+        """returns taf parameters of shape (nx, nt)"""
+        pval = np.atleast_2d(pval)
+
+        assert pval.ndim == 2 and pval.shape[1] == self.npar
+
+        arr_out = np.zeros((self.nx, self.nt))
+
+        if self.nta == 0:
+            pass
+
+        elif axis == "":
+            assert pval.shape[0] == 1
+
+            arr = np.transpose(self.get_taf_pars(pval), axes=(1, 2, 0))  # (nta, 1, nt)
+
+            for tai, taxi in zip(arr, trans_att):
+                arr_out[x >= taxi] += tai
+
+        elif axis == "x":
+            assert pval.shape[0] == self.nx
+
+            arr = np.transpose(self.get_taf_pars(pval), axes=(1, 2, 0))  # (nta, nx, nt)
+
+            for tai, taxi in zip(arr, trans_att):
+                # loop over nta, tai has shape (x, t)
+                arr_out[x >= taxi] += tai[x >= taxi]
+
+        elif axis == "time":
+            assert pval.shape[0] == self.nt
+
+            # arr (nt, nta, nt) to have shape (nta, nt, nt)
+            arr = np.transpose(self.get_taf_pars(pval), axes=(1, 2, 0))
+
+            for tai, taxi in zip(arr, trans_att):
+                # loop over nta, tai has shape (t, t)
+                arr_out[x >= taxi] += np.diag(tai)[None]
+
+        return arr_out
+
+    def get_tab_values(self, pval, x, trans_att, axis=""):
+        """returns tab parameters of shape (nx, nt)"""
+        assert pval.shape[-1] == self.npar
+
+        arr_out = np.zeros((self.nx, self.nt))
+
+        if self.nta == 0:
+            pass
+
+        elif axis == "":
+            pval = np.squeeze(pval)
+            assert pval.ndim == 1
+            arr = np.transpose(self.get_tab_pars(pval), axes=(1, 0))
+
+            for tai, taxi in zip(arr, trans_att):
+                arr_out[x < taxi] += tai
+
+        elif axis == "x":
+            assert pval.ndim == 2 and pval.shape[0] == self.nx
+
+            arr = np.transpose(self.get_tab_pars(pval), axes=(1, 2, 0))
+
+            for tai, taxi in zip(arr, trans_att):
+                # loop over nta, tai has shape (x, t)
+                arr_out[x < taxi] += tai[x < taxi]
+
+        elif axis == "time":
+            assert pval.ndim == 2 and pval.shape[0] == self.nt
+
+            # arr (nt, nta, nt) to have shape (nta, nt, nt)
+            arr = np.transpose(self.get_tab_pars(pval), axes=(1, 2, 0))
+
+            for tai, taxi in zip(arr, trans_att):
+                # loop over nta, tai has shape (t, t)
+                arr_out[x < taxi] += np.diag(tai)
+
+        return arr_out
+
+
+class ParameterIndexSingleEnded:
+    """
+    if parameter fixed, they are not in
+    npar = 1 + 1 + nt + nta * nt
+    """
+
+    def __init__(self, nt, nx, nta, includes_alpha=False, includes_dalpha=True):
+        assert not (
+            includes_alpha and includes_dalpha
+        ), "Cannot hold both dalpha and alpha"
+        self.nt = nt
+        self.nx = nx
+        self.nta = nta
+        self.includes_alpha = includes_alpha
+        self.includes_dalpha = includes_dalpha
+
+    @property
+    def all(self):
+        return np.concatenate(
+            (self.gamma, self.dalpha, self.alpha, self.c, self.ta.flatten(order="F"))
+        )
+
+    @property
+    def npar(self):
+        if self.includes_alpha:
+            return 1 + self.nx + self.nt + self.nta * self.nt
+        elif self.includes_dalpha:
+            return 1 + 1 + self.nt + self.nta * self.nt
+        else:
+            return 1 + self.nt + self.nta * self.nt
+
+    @property
+    def gamma(self):
+        return [0]
+
+    @property
+    def dalpha(self):
+        if self.includes_dalpha:
+            return [1]
+        else:
+            return []
+
+    @property
+    def alpha(self):
+        if self.includes_alpha:
+            return list(range(1, 1 + self.nx))
+        else:
+            return []
+
+    @property
+    def c(self):
+        if self.includes_alpha:
+            return list(range(1 + self.nx, 1 + self.nx + self.nt))
+        elif self.includes_dalpha:
+            return list(range(1 + 1, 1 + 1 + self.nt))
+        else:
+            return list(range(1, 1 + self.nt))
+
+    @property
+    def taf(self):
+        """returns taf parameters of shape (nt, nta) or (nt, nta, a)"""
+        # ta = p_val[-nt * nta:].reshape((nt, nta), order='F')
+        # self["talpha"] = (('time', 'trans_att'), ta[:, :])
+        if self.includes_alpha:
+            return np.arange(
+                1 + self.nx + self.nt, 1 + self.nx + self.nt + self.nt * self.nta
+            ).reshape((self.nt, self.nta), order="F")
+        elif self.includes_dalpha:
+            return np.arange(
+                1 + 1 + self.nt, 1 + 1 + self.nt + self.nt * self.nta
+            ).reshape((self.nt, self.nta), order="F")
+        else:
+            return np.arange(1 + self.nt, 1 + self.nt + self.nt * self.nta).reshape(
+                (self.nt, self.nta), order="F"
+            )
+
+    def get_taf_pars(self, pval):
+        if self.nta > 0:
+            if pval.ndim == 1:
+                # returns shape (nta, nt)
+                assert len(pval) == self.npar, "Length of pval is incorrect"
+                return np.stack([pval[tafi] for tafi in self.taf.T])
+
+            else:
+                # assume shape is (a, npar) and returns shape (nta, nt, a)
+                assert pval.shape[1] == self.npar and pval.ndim == 2
+                return np.stack([self.get_taf_pars(v) for v in pval], axis=-1)
+
+        else:
+            return np.zeros(shape=(self.nt, 0))
+
+    def get_taf_values(self, pval, x, trans_att, axis=""):
+        """returns taf parameters of shape (nx, nt)"""
+        # assert pval.ndim == 2 and pval.shape[1] == self.npar
+
+        arr_out = np.zeros((self.nx, self.nt))
+
+        if self.nta == 0:
+            pass
+
+        elif axis == "":
+            pval = pval.flatten()
+            assert pval.shape == (self.npar,)
+            arr = self.get_taf_pars(pval)
+            assert arr.shape == (
+                self.nta,
+                self.nt,
+            )
+
+            for tai, taxi in zip(arr, trans_att):
+                arr_out[x >= taxi] += tai
+
+        elif axis == "x":
+            assert pval.shape == (self.nx, self.npar)
+            arr = self.get_taf_pars(pval)
+            assert arr.shape == (self.nta, self.nx, self.nt)
+
+            for tai, taxi in zip(arr, trans_att):
+                # loop over nta, tai has shape (x, t)
+                arr_out[x >= taxi] += tai[x >= taxi]
+
+        elif axis == "time":
+            assert pval.shape == (self.nt, self.npar)
+            arr = self.get_taf_pars(pval)
+            assert arr.shape == (self.nta, self.nt, self.nt)
+
+            for tai, taxi in zip(arr, trans_att):
+                # loop over nta, tai has shape (t, t)
+                arr_out[x >= taxi] += np.diag(tai)[None]
+
+        return arr_out
+
+
+def check_deprecated_kwargs(kwargs):
+    """
+    Internal function that parses the `kwargs` for depreciated keyword
+    arguments.
+
+    Depreciated keywords raise an error, pending to be depreciated do not.
+    But this requires that the code currently deals with those arguments.
 
     Parameters
     ----------
-    zlib
-    complevel
-    ds : DataStore
+    kwargs : Dict
+        A dictionary with keyword arguments.
 
     Returns
     -------
-    encoding:
-        Encoding dictionary.
-    """
-    comp = dict(zlib=zlib, complevel=complevel)
-    comp.update(kwargs)
-    encoding = {var: comp for var in ds.data_vars}
 
-    return encoding
+    """
+    msg = """Previously, it was possible to manually set the label from
+    which the Stokes and anti-Stokes were read within the DataStore
+    object. To reduce the clutter in the code base and be able to
+    maintain it, this option was removed.
+    See: https://github.com/dtscalibration/python-dts-calibration/issues/81
+
+    The new **fixed** names are: st, ast, rst, rast.
+
+    It is still possible to use the previous defaults, for example when
+    reading stored measurements from netCDF, by renaming the labels. The
+    old default labels were ST, AST, REV-ST, REV-AST.
+
+    ```
+    ds = open_datastore(path_to_old_file)
+    ds = ds.rename_labels()
+    ds.calibration_double_ended(
+        st_var=1.5,
+        ast_var=1.5,
+        rst_var=1.,
+        rast_var=1.,
+        method='wls')
+    ```
+
+    ds.tmpw.plot()
+    """
+    list_of_depr = [
+        "st_label",
+        "ast_label",
+        "rst_label",
+        "rast_label",
+        "transient_asym_att_x",
+        "transient_att_x",
+    ]
+    list_of_pending_depr = []
+
+    kwargs = {k: v for k, v in kwargs.items() if k not in list_of_pending_depr}
+
+    for k in kwargs:
+        if k in list_of_depr:
+            raise NotImplementedError(msg)
+
+    if len(kwargs) != 0:
+        raise NotImplementedError(
+            "The following keywords are not " + "supported: " + ", ".join(kwargs.keys())
+        )
+
+    pass
 
 
 def check_timestep_allclose(ds: "DataStore", eps: float = 0.01) -> None:
@@ -119,6 +502,32 @@ def check_timestep_allclose(ds: "DataStore", eps: float = 0.01) -> None:
         )
 
 
+def get_netcdf_encoding(
+    ds: "DataStore", zlib: bool = True, complevel: int = 5, **kwargs
+) -> dict:
+    """Get default netcdf compression parameters. The same for each data variable.
+
+    TODO: Truncate precision to XML precision per data variable
+
+
+    Parameters
+    ----------
+    zlib
+    complevel
+    ds : DataStore
+
+    Returns
+    -------
+    encoding:
+        Encoding dictionary.
+    """
+    comp = dict(zlib=zlib, complevel=complevel)
+    comp.update(kwargs)
+    encoding = {var: comp for var in ds.data_vars}
+
+    return encoding
+
+
 def merge_double_ended(
     ds_fw: "DataStore",
     ds_bw: "DataStore",
@@ -145,6 +554,7 @@ def merge_double_ended(
         Manually estimated cable length to base alignment on
     plot_result : bool
         Plot the aligned Stokes of the forward and backward channels
+    verbose : bool
 
     Returns
     -------
@@ -539,3 +949,261 @@ def suggest_cable_shift_double_ended(
         plt.tight_layout()
 
     return ishift1, ishift2
+
+
+def ufunc_per_section_helper(
+    sections=None,
+    func=None,
+    x_coords=None,
+    reference_dataset=None,
+    dataarray=None,
+    subtract_from_dataarray=None,
+    subtract_reference_from_dataarray=False,
+    ref_temp_broadcasted=False,
+    calc_per="stretch",
+    **func_kwargs,
+):
+    """
+    User function applied to parts of the cable. Super useful,
+    many options and slightly
+    complicated.
+
+    The function `func` is taken over all the timesteps and calculated
+    per `calc_per`. This
+    is returned as a dictionary
+
+    Parameters
+    ----------
+    sections : Dict[str, List[slice]], optional
+        If `None` is supplied, `ds.sections` is used. Define calibration
+        sections. Each section requires a reference temperature time series,
+        such as the temperature measured by an external temperature sensor.
+        They should already be part of the DataStore object. `sections`
+        is defined with a dictionary with its keywords of the
+        names of the reference temperature time series. Its values are
+        lists of slice objects, where each slice object is a fiber stretch
+        that has the reference temperature. Afterwards, `sections` is stored
+        under `ds.sections`.
+    func : callable, str
+        A numpy function, or lambda function to apply to each 'calc_per'.
+    x_coords : xarray.DataArray, optional
+        x-coordinates, stored as ds.x. If supplied, returns the x-indices of
+        the reference sections.
+    reference_dataset : xarray.Dataset or Dict, optional
+        Contains the reference temperature timeseries refered to in `sections`.
+        Not required if `x_indices`.
+    dataarray : xarray.DataArray, optional
+        Pass your DataArray of which you want to compute the statistics. Has an
+        (x,) dimension or (x, time) dimensions.
+    subtract_from_dataarray : xarray.DataArray, optional
+        Pass your DataArray of which you want to subtract from `dataarray` before you
+        compute the statistics. Has an (x,) dimension or (x, time) dimensions.
+    subtract_reference_from_dataarray : bool
+        If True the reference temperature according to sections is subtracted from
+        dataarray before computing statistics
+    ref_temp_broadcasted : bool
+        Use if you want to return the reference temperature of shape of the reference
+        sections
+    calc_per : {'all', 'section', 'stretch'}
+    func_kwargs : dict
+        Dictionary with options that are passed to func
+
+    Returns
+    -------
+
+    Examples
+    --------
+
+    1. Calculate the variance of the residuals in the along ALL the\
+    reference sections wrt the temperature of the water baths
+
+    >>> tmpf_var = ufunc_per_section_helper(
+    >>>     func='var',
+    >>>     calc_per='all',
+    >>>     dataarray=d['tmpf'],
+    >>>     subtract_reference_from_dataarray=True)
+
+    2. Calculate the variance of the residuals in the along PER\
+    reference section wrt the temperature of the water baths
+
+    >>> tmpf_var = ufunc_per_section_helper
+    >>>     func='var',
+    >>>     calc_per='stretch',
+    >>>     dataarray=d['tmpf'],
+    >>>     subtract_reference_from_dataarray=True)
+
+    3. Calculate the variance of the residuals in the along PER\
+    water bath wrt the temperature of the water baths
+
+    >>> tmpf_var = ufunc_per_section_helper(
+    >>>     func='var',
+    >>>     calc_per='section',
+    >>>     dataarray=d['tmpf'],
+    >>>     subtract_reference_from_dataarray=True)
+
+    4. Obtain the coordinates of the measurements per section
+
+    >>> locs = ufunc_per_section_helper(
+    >>>     func=None,
+    >>>     dataarray=d.x,
+    >>>     subtract_reference_from_dataarray=False,
+    >>>     ref_temp_broadcasted=False,
+    >>>     calc_per='stretch')
+
+    5. Number of observations per stretch
+
+    >>> nlocs = ufunc_per_section_helper(
+    >>>     func=len,
+    >>>     dataarray=d.x,
+    >>>     subtract_reference_from_dataarray=False,
+    >>>     ref_temp_broadcasted=False,
+    >>>     calc_per='stretch')
+
+    6. broadcast the temperature of the reference sections to\
+    stretch/section/all dimensions. The value of the reference\
+    temperature (a timeseries) is broadcasted to the shape of self[\
+    label]. The dataarray is not used for anything else.
+
+    >>> temp_ref = ufunc_per_section_helper(
+    >>>     dataarray=d["st"],
+    >>>     ref_temp_broadcasted=True,
+    >>>     calc_per='all')
+
+    7. x-coordinate index
+
+    >>> ix_loc = ufunc_per_section_helperx_coords=d.x)
+
+
+    Note
+    ----
+    If `dataarray` or `subtract_from_dataarray` is a Dask array, a Dask
+    array is returned else a numpy array is returned
+    """
+    if not func:
+
+        def func(a):
+            """
+
+            Parameters
+            ----------
+            a
+
+            Returns
+            -------
+
+            """
+            return a
+
+    elif isinstance(func, str) and func == "var":
+
+        def func(a):
+            """
+
+            Parameters
+            ----------
+            a
+
+            Returns
+            -------
+
+            """
+            return np.var(a, ddof=1)
+
+    else:
+        assert callable(func)
+
+    assert calc_per in ["all", "section", "stretch"]
+
+    if x_coords is None and (
+        (dataarray is not None and hasattr(dataarray.data, "chunks"))
+        or (subtract_from_dataarray and hasattr(subtract_from_dataarray.data, "chunks"))
+    ):
+        concat = da.concatenate
+    else:
+        concat = np.concatenate
+
+    out = dict()
+
+    for k, section in sections.items():
+        out[k] = []
+        for stretch in section:
+            if x_coords is not None:
+                # get indices from stretches
+                assert subtract_from_dataarray is None
+                assert not subtract_reference_from_dataarray
+                assert not ref_temp_broadcasted
+                # so it is slicable with x-indices
+                _x_indices = x_coords.astype(int) * 0 + np.arange(x_coords.size)
+                arg1 = _x_indices.sel(x=stretch).data
+                out[k].append(arg1)
+
+            elif (
+                subtract_from_dataarray is not None
+                and not subtract_reference_from_dataarray
+                and not ref_temp_broadcasted
+            ):
+                # calculate std wrt other series
+                arg1 = dataarray.sel(x=stretch).data
+                arg2 = subtract_from_dataarray.sel(x=stretch).data
+                out[k].append(arg1 - arg2)
+
+            elif (
+                subtract_from_dataarray is None
+                and subtract_reference_from_dataarray
+                and not ref_temp_broadcasted
+            ):
+                # calculate std wrt reference temperature of the corresponding bath
+                arg1 = dataarray.sel(x=stretch).data
+                arg2 = reference_dataset[k].data
+                out[k].append(arg1 - arg2)
+
+            elif (
+                subtract_from_dataarray is None
+                and not subtract_reference_from_dataarray
+                and ref_temp_broadcasted
+            ):
+                # Broadcast the reference temperature to the length of the stretch
+                arg1 = dataarray.sel(x=stretch).data
+                arg2 = da.broadcast_to(reference_dataset[k].data, arg1.shape)
+                out[k].append(arg2)
+
+            elif (
+                subtract_from_dataarray is None
+                and not subtract_reference_from_dataarray
+                and not ref_temp_broadcasted
+            ):
+                # calculate std wrt mean value
+                arg1 = dataarray.sel(x=stretch).data
+                out[k].append(arg1)
+
+        if calc_per == "stretch":
+            out[k] = [func(argi, **func_kwargs) for argi in out[k]]
+
+        elif calc_per == "section":
+            # flatten the out_dict to sort them
+            start = [i.start for i in section]
+            i_sorted = np.argsort(start)
+            out_flat_sort = [out[k][i] for i in i_sorted]
+            out[k] = func(concat(out_flat_sort), **func_kwargs)
+
+        elif calc_per == "all":
+            pass
+
+    if calc_per == "all":
+        # flatten the out_dict to sort them
+        start = [item.start for sublist in sections.values() for item in sublist]
+        i_sorted = np.argsort(start)
+        out_flat = [item for sublist in out.values() for item in sublist]
+        out_flat_sort = [out_flat[i] for i in i_sorted]
+        out = func(concat(out_flat_sort, axis=0), **func_kwargs)
+
+        if hasattr(out, "chunks") and len(out.chunks) > 0 and "x" in dataarray.dims:
+            # also sum the chunksize in the x dimension
+            # first find out where the x dim is
+            ixdim = dataarray.dims.index("x")
+            c_old = out.chunks
+            c_new = list(c_old)
+            c_new[ixdim] = sum(c_old[ixdim])
+            out = out.rechunk(c_new)
+
+    return out

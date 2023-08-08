@@ -12,12 +12,16 @@ Added
 Fixed
 
 * Single-ended measurements with `fix_alpha` failed due to a bug introduced in v2.0.0 ([#173](https://github.com/dtscalibration/python-dts-calibration/pull/173)).
+* Headers in example notebooks and their appearance in the docs are now at correct levels
 
 Changed
 
 * Standardized parameter names. Reduced the freedom in choosing parameter names and dimension names in favor of simplifying the code.
 * Requiring netcdf4 >= 1.6.4
 * Optional dependencies of xarray that improve performance are now required by default.
+* variance_stokes_linear() does not default through zero anymore.
+* Refactored calibration_single_ended and calibration_double_ended()
+* Moved ParameterIndices classes to calibration_utils.py
 * Flox included in requirements to speed up resampling via xarray ([Xarray #5734](https://github.com/pydata/xarray/pull/5734)).
 
 Removed
