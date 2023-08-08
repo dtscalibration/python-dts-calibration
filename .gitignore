@@ -42,6 +42,8 @@ htmlcov
 *.mo
 
 # Mr Developer
+.mypy_cache
+.ruff_cache
 .mr.developer.cfg
 .project
 .pydevproject
