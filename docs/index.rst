@@ -6,7 +6,6 @@ Contents
    :maxdepth: 3
 
    readme
-   installation
    learn_by_examples
    reference/index
    contributing
