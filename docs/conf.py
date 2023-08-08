@@ -70,7 +70,7 @@ napoleon_use_rtype = False
 napoleon_use_param = False
 
 # sphinx_automodapi.automodapi
-numpydoc_show_class_members = False
+numpydoc_show_class_members = True
 
 # -- nbsphinx configuration --
 nbsphinx_allow_errors = False
