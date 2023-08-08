@@ -12,7 +12,7 @@ Added
 Fixed
 
 * Single-ended measurements with `fix_alpha` failed due to a bug introduced in v2.0.0 ([#173](https://github.com/dtscalibration/python-dts-calibration/pull/173)).
-* Fixes headers in example notebooks and their appearance in the docs
+* Headers in example notebooks and their appearance in the docs are now at correct levels
 
 Changed
 
