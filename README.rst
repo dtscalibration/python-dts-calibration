@@ -108,6 +108,6 @@ Cite the specific implementation / repository via Zenodo:
 
     >>> import dtscalibration
     >>> dtscalibration.__version__
-    '1.0.0'
+    '2.0.0'
 2. Go to `Zenodo <https://zenodo.org/search?q=conceptrecid:%221410097%22&sort=-version&all_versions=True>`_ and follow the link to the version of interest.
 3. The citation is found on the bottom right of the page.
