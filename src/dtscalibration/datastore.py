@@ -23,6 +23,7 @@ from dtscalibration.datastore_utils import check_deprecated_kwargs
 from dtscalibration.datastore_utils import check_timestep_allclose
 from dtscalibration.datastore_utils import ufunc_per_section_helper
 from dtscalibration.io_utils import _dim_attrs
+from dtscalibration.calibration.section_utils import set_sections, validate_sections
 
 dtsattr_namelist = ["double_ended_flag"]
 dim_attrs = {k: v for kl, v in _dim_attrs.items() for k in kl}
@@ -121,7 +122,7 @@ class DataStore(xr.Dataset):
             self.attrs["_sections"] = yaml.dump(None)
 
         if "sections" in kwargs:
-            self.sections = kwargs["sections"]
+            self = set_sections(self, kwargs["sections"])
 
         pass
 
@@ -209,78 +210,9 @@ class DataStore(xr.Dataset):
 
         return yaml.load(self.attrs["_sections"], Loader=yaml.UnsafeLoader)
 
-    @sections.setter
-    def sections(self, sections: Dict[str, List[slice]]):
-        sections_validated = None
-
-        if sections is not None:
-            sections_validated = self.validate_sections(sections=sections)
-
-        self.attrs["_sections"] = yaml.dump(sections_validated)
-        pass
-
     @sections.deleter
     def sections(self):
-        self.sections = None
-        pass
-
-    def validate_sections(self, sections: Dict[str, List[slice]]):
-        assert isinstance(sections, dict)
-
-        # be less restrictive for capitalized labels
-        # find lower cases label
-        labels = np.reshape(
-            [[s.lower(), s] for s in self.data_vars.keys()], (-1,)
-        ).tolist()
-
-        sections_fix = dict()
-        for k, v in sections.items():
-            if k.lower() in labels:
-                i_lower_case = labels.index(k.lower())
-                i_normal_case = i_lower_case + 1
-                k_normal_case = labels[i_normal_case]
-                sections_fix[k_normal_case] = v
-            else:
-                assert k in self.data_vars, (
-                    "The keys of the "
-                    "sections-dictionary should "
-                    "refer to a valid timeserie "
-                    "already stored in "
-                    "ds.data_vars "
-                )
-
-        sections_fix_slice_fixed = dict()
-
-        for k, v in sections_fix.items():
-            assert isinstance(v, (list, tuple)), (
-                "The values of the sections-dictionary "
-                "should be lists of slice objects."
-            )
-
-            for vi in v:
-                assert isinstance(vi, slice), (
-                    "The values of the sections-dictionary should "
-                    "be lists of slice objects."
-                )
-
-                assert self.x.sel(x=vi).size > 0, (
-                    f"Better define the {k} section. You tried {vi}, "
-                    "which is not within the x-dimension"
-                )
-
-            # sorted stretches
-            stretch_unsort = [slice(float(vi.start), float(vi.stop)) for vi in v]
-            stretch_start = [i.start for i in stretch_unsort]
-            stretch_i_sorted = np.argsort(stretch_start)
-            sections_fix_slice_fixed[k] = [stretch_unsort[i] for i in stretch_i_sorted]
-
-        # Prevent overlapping slices
-        ix_sec = self.ufunc_per_section(
-            sections=sections_fix_slice_fixed, x_indices=True, calc_per="all"
-        )
-        assert np.unique(ix_sec).size == ix_sec.size, "The sections are overlapping"
-
-        return sections_fix_slice_fixed
+        self.attrs["_sections"] = yaml.dump(None)
 
     def check_reference_section_values(self):
         """
@@ -952,7 +884,7 @@ class DataStore(xr.Dataset):
         if sections is None:
             sections = self.sections
         else:
-            sections = self.validate_sections(sections)
+            sections = validate_sections(self, sections)
 
         assert self[st_label].dims[0] == "x", "Stokes are transposed"
 
@@ -1132,7 +1064,7 @@ class DataStore(xr.Dataset):
         if sections is None:
             sections = self.sections
         else:
-            sections = self.validate_sections(sections)
+            sections = validate_sections(self, sections)
 
         assert self[st_label].dims[0] == "x", "Stokes are transposed"
 
@@ -1390,7 +1322,7 @@ class DataStore(xr.Dataset):
         if sections is None:
             sections = self.sections
         else:
-            sections = self.validate_sections(sections)
+            sections = validate_sections(self, sections)
 
         assert self[st_label].dims[0] == "x", "Stokes are transposed"
         _, resid = self.variance_stokes(sections=sections, st_label=st_label)
@@ -1616,7 +1548,7 @@ class DataStore(xr.Dataset):
             If multiple locations are defined, the losses are added.
 
         """
-        if "trans_att" in self.coords and self.trans_att.size > 0:
+        if "trans_att" in self.coords and self["trans_att"].size > 0:
             raise_warning = 0
 
             del_keys = []
@@ -1638,12 +1570,12 @@ class DataStore(xr.Dataset):
             trans_att = []
 
         self["trans_att"] = trans_att
-        self.trans_att.attrs = dim_attrs["trans_att"]
+        self["trans_att"].attrs = dim_attrs["trans_att"]
         pass
 
     def calibration_single_ended(
         self,
-        sections=None,
+        sections,
         st_var=None,
         ast_var=None,
         method="wls",
@@ -1790,8 +1722,7 @@ class DataStore(xr.Dataset):
         check_deprecated_kwargs(kwargs)
         self.set_trans_att(trans_att=trans_att, **kwargs)
 
-        if sections is not None:
-            self.sections = sections
+        self = set_sections(self, sections)  # TODO: don't change object in-place.
 
         if method == "wls":
             assert st_var is not None and ast_var is not None, "Set `st_var`"
@@ -1802,7 +1733,7 @@ class DataStore(xr.Dataset):
         nt = self["time"].size
         nta = self.trans_att.size
 
-        assert self.st.dims[0] == "x", "Stokes are transposed"
+        assert self["st"].dims[0] == "x", "Stokes are transposed"
         assert self.ast.dims[0] == "x", "Stokes are transposed"
 
         if matching_sections:
@@ -1996,7 +1927,7 @@ class DataStore(xr.Dataset):
 
     def calibration_double_ended(
         self,
-        sections=None,
+        sections,
         st_var=None,
         ast_var=None,
         rst_var=None,
@@ -2221,8 +2152,7 @@ class DataStore(xr.Dataset):
 
         self.set_trans_att(trans_att=trans_att, **kwargs)
 
-        if sections is not None:
-            self.sections = sections
+        self = set_sections(self, sections)  # TODO: don't change object in-place.
 
         self.check_reference_section_values()
 
@@ -4282,7 +4212,7 @@ class DataStore(xr.Dataset):
         if sections is None:
             sections = self.sections
         else:
-            sections = self.validate_sections(sections)
+            sections = validate_sections(self, sections)
 
         if conf_ints is None:
             conf_ints = self[ci_label].values
@@ -4335,7 +4265,7 @@ class DataStore(xr.Dataset):
         if sections is None:
             sections = self.sections
         else:
-            sections = self.validate_sections(sections)
+            sections = validate_sections(self, sections)
 
         resid_temp = self.ufunc_per_section(
             sections=sections, label=label, temp_err=True, calc_per="all"

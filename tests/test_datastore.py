@@ -20,6 +20,7 @@ from dtscalibration import read_silixa_files
 from dtscalibration.datastore_utils import merge_double_ended
 from dtscalibration.datastore_utils import shift_double_ended
 from dtscalibration.datastore_utils import suggest_cable_shift_double_ended
+from dtscalibration.calibration.section_utils import set_sections
 
 np.random.seed(0)
 
@@ -156,21 +157,20 @@ def test_sections_property():
         "probe1Temperature": [slice(0.0, 17.0), slice(70.0, 80.0)],  # cold bath
         "probe2Temperature": [slice(24.0, 34.0), slice(85.0, 95.0)],  # warm bath
     }
-    ds.sections = sections1
+    ds = set_sections(ds, sections1)
 
-    assert isinstance(ds._sections, str)
+    assert isinstance(ds.attrs["_sections"], str)
 
     assert ds.sections == sections1
     assert ds.sections != sections2
 
     # test if accepts singleton numpy arrays
-    ds.sections = {
-        "probe1Temperature": [slice(np.array(0.0), np.array(17.0)), slice(70.0, 80.0)]
-    }
-
-    # delete property
-    del ds.sections
-    assert ds.sections is None
+    ds = set_sections(
+        ds,
+        {
+            "probe1Temperature": [slice(np.array(0.0), np.array(17.0)), slice(70.0, 80.0)]
+        }
+    )
 
 
 def test_io_sections_property():
@@ -190,7 +190,7 @@ def test_io_sections_property():
     }
     ds["x"].attrs["units"] = "m"
 
-    ds.sections = sections
+    ds = set_sections(ds, sections)
 
     # Create a temporary file to write data to.
     # 'with' method is used so the file is closed by tempfile
