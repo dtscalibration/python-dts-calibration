@@ -111,6 +111,7 @@ lint = [
 ]
 format = ["black .", "isort .", "lint",]
 test = ["pytest ./src/ ./tests/",]  # --doctest-modules
+fast-test = ["pytest ./tests/ -m \"not slow\"",]
 coverage = [
   "pytest --cov --cov-report term --cov-report xml --junitxml=xunit-result.xml tests/",
 ]
