@@ -134,6 +134,9 @@ test = ["pytest ./src/ ./tests/",]  # --doctest-modules
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
 
 [tool.ruff]
 select = [  # It would be nice to have the commented out checks working.

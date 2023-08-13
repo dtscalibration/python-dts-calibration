@@ -57,6 +57,7 @@ def assert_almost_equal_verbose(actual, desired, verbose=False, **kwargs):
     pass
 
 
+@pytest.mark.slow  # Execution time ~20 seconds
 def test_variance_input_types_single():
     import dask.array as da
 
@@ -222,6 +223,7 @@ def test_variance_input_types_single():
     pass
 
 
+@pytest.mark.slow  # Execution time ~0.5 minute
 def test_variance_input_types_double():
     import dask.array as da
 
@@ -454,6 +456,7 @@ def test_variance_input_types_double():
     pass
 
 
+@pytest.mark.slow  # Execution time ~0.5 minute
 def test_double_ended_variance_estimate_synthetic():
     import dask.array as da
 
@@ -780,6 +783,7 @@ def test_variance_of_stokes_synthetic():
     pass
 
 
+@pytest.mark.slow  # Execution time ~20 seconds
 def test_variance_of_stokes_linear_synthetic():
     """
     Produces a synthetic Stokes measurement with a known noise distribution.
@@ -851,6 +855,7 @@ def test_variance_of_stokes_linear_synthetic():
     pass
 
 
+@pytest.mark.slow  # Execution time ~20 seconds
 def test_exponential_variance_of_stokes():
     correct_var = 11.86535
     filepath = data_dir_double_ended2
@@ -2556,6 +2561,7 @@ def test_double_ended_exponential_variance_estimate_synthetic():
     pass
 
 
+@pytest.mark.slow  # Execution time ~2 minutes.
 def test_estimate_variance_of_temperature_estimate():
     import dask.array as da
 
@@ -3591,12 +3597,11 @@ def test_average_measurements_single_ended():
 
     ds = ds_.sel(x=slice(0, 100))  # only calibrate parts of the fiber
     sections = {"probe2Temperature": [slice(6.0, 14.0)]}  # warm bath
-    ds = set_sections(ds, sections)
 
     st_var, ast_var = 5.0, 5.0
 
     ds.calibration_single_ended(
-        st_var=st_var, ast_var=ast_var, method="wls", solver="sparse"
+        sections=sections, st_var=st_var, ast_var=ast_var, method="wls", solver="sparse"
     )
     ds.average_single_ended(
         p_val="p_val",
