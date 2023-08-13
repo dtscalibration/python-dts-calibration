@@ -10,7 +10,6 @@ from dtscalibration import DataStore
 from dtscalibration import read_silixa_files
 from dtscalibration.calibrate_utils import wls_sparse
 from dtscalibration.calibrate_utils import wls_stats
-from dtscalibration.calibration.section_utils import set_sections
 
 np.random.seed(0)
 

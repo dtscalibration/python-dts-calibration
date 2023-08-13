@@ -17,10 +17,10 @@ from dtscalibration import read_apsensing_files
 from dtscalibration import read_sensornet_files
 from dtscalibration import read_sensortran_files
 from dtscalibration import read_silixa_files
+from dtscalibration.calibration.section_utils import set_sections
 from dtscalibration.datastore_utils import merge_double_ended
 from dtscalibration.datastore_utils import shift_double_ended
 from dtscalibration.datastore_utils import suggest_cable_shift_double_ended
-from dtscalibration.calibration.section_utils import set_sections
 
 np.random.seed(0)
 
@@ -168,8 +168,11 @@ def test_sections_property():
     ds = set_sections(
         ds,
         {
-            "probe1Temperature": [slice(np.array(0.0), np.array(17.0)), slice(70.0, 80.0)]
-        }
+            "probe1Temperature": [
+                slice(np.array(0.0), np.array(17.0)),
+                slice(70.0, 80.0),
+            ]
+        },
     )
 
 

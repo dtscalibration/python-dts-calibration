@@ -1,7 +1,10 @@
-import xarray as xr
-from typing import Dict, List
-import yaml
+from typing import Dict
+from typing import List
+
 import numpy as np
+import xarray as xr
+import yaml
+
 from dtscalibration.datastore_utils import ufunc_per_section_helper
 
 
@@ -20,9 +23,7 @@ def validate_sections(ds: xr.Dataset, sections: Dict[str, List[slice]]):
 
     # be less restrictive for capitalized labels
     # find lower cases label
-    labels = np.reshape(
-        [[s.lower(), s] for s in ds.data_vars.keys()], (-1,)
-    ).tolist()
+    labels = np.reshape([[s.lower(), s] for s in ds.data_vars.keys()], (-1,)).tolist()
 
     sections_fix = dict()
     for k, v in sections.items():
@@ -44,8 +45,7 @@ def validate_sections(ds: xr.Dataset, sections: Dict[str, List[slice]]):
 
     for k, v in sections_fix.items():
         assert isinstance(v, (list, tuple)), (
-            "The values of the sections-dictionary "
-            "should be lists of slice objects."
+            "The values of the sections-dictionary " "should be lists of slice objects."
         )
 
         for vi in v:
