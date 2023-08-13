@@ -1090,14 +1090,15 @@ def test_double_ended_wls_estimate_synthetic_df_and_db_are_different():
         attrs={"isDoubleEnded": "1"},
     )
 
-    ds = set_sections(ds, {
+    sections = {
         "cold": [slice(0.0, 0.09 * cable_len)],
         "warm": [slice(0.9 * cable_len, cable_len)],
-    })
+    }
 
     real_ans2 = np.concatenate(([gamma], df, db, E_real[:, 0]))
 
     ds.calibration_double_ended(
+        sections=sections,
         st_var=1.5,
         ast_var=1.5,
         rst_var=1.0,
@@ -1208,14 +1209,15 @@ def test_reneaming_old_default_labels_to_new_fixed_labels():
     )
     ds = ds.rename_labels()
 
-    ds = set_sections(ds, {
+    sections = {
         "cold": [slice(0.0, 0.09 * cable_len)],
         "warm": [slice(0.9 * cable_len, cable_len)],
-    })
+    }
 
     real_ans2 = np.concatenate(([gamma], df, db, E_real[:, 0]))
 
     ds.calibration_double_ended(
+        sections=sections,
         st_var=1.5,
         ast_var=1.5,
         rst_var=1.0,
@@ -1313,12 +1315,13 @@ def test_fail_if_st_labels_are_passed_to_calibration_function():
     )
     ds = ds.rename_labels()
 
-    ds = set_sections(ds, {
+    sections = {
         "cold": [slice(0.0, 0.09 * cable_len)],
         "warm": [slice(0.9 * cable_len, cable_len)],
-    })
+    }
 
     ds.calibration_double_ended(
+        sections=sections,
         st_label="ST",
         ast_label="AST",
         rst_label="REV-ST",
@@ -1419,15 +1422,16 @@ def test_double_ended_asymmetrical_attenuation():
         attrs={"isDoubleEnded": "1"},
     )
 
-    ds = set_sections(ds, {
+    sections = {
         "cold": [slice(0.0, x[nx_per_sec - 1]), slice(x[-nx_per_sec], x[-1])],
         "warm": [
             slice(x[nx_per_sec], x[2 * nx_per_sec - 1]),
             slice(x[-2 * nx_per_sec], x[-1 * nx_per_sec - 1]),
         ],
-    })
+    }
 
     ds.calibration_double_ended(
+        sections=sections,
         st_var=1.5,
         ast_var=1.5,
         rst_var=1.0,
@@ -1457,6 +1461,7 @@ def test_double_ended_asymmetrical_attenuation():
 
     # About to be depreciated
     ds.calibration_double_ended(
+        sections=sections,
         st_var=1.5,
         ast_var=1.5,
         rst_var=1.0,
@@ -1555,12 +1560,13 @@ def test_double_ended_one_matching_section_and_one_asym_att():
         attrs={"isDoubleEnded": "1"},
     )
 
-    ds = set_sections(ds, {
+    sections = {
         "cold": [slice(0.0, x[nx_per_sec - 1])],
         "warm": [slice(x[nx_per_sec], x[2 * nx_per_sec - 1])],
-    })
+    }
 
     ds.calibration_double_ended(
+        sections=sections,
         st_var=1.5,
         ast_var=1.5,
         rst_var=1.0,
@@ -1673,10 +1679,10 @@ def test_double_ended_two_matching_sections_and_two_asym_atts():
         attrs={"isDoubleEnded": "1"},
     )
 
-    ds = set_sections(ds, {
+    sections = {
         "cold": [slice(0.0, x[nx_per_sec - 1])],
         "warm": [slice(x[nx_per_sec], x[2 * nx_per_sec - 1])],
-    })
+    }
     ms = [
         (
             slice(x[2 * nx_per_sec], x[3 * nx_per_sec - 1]),
@@ -1691,6 +1697,7 @@ def test_double_ended_two_matching_sections_and_two_asym_atts():
     ]
 
     ds.calibration_double_ended(
+        sections=sections,
         st_var=0.5,
         ast_var=0.5,
         rst_var=0.1,
@@ -2078,12 +2085,13 @@ def test_double_ended_fix_alpha_matching_sections_and_one_asym_att():
         attrs={"isDoubleEnded": "1"},
     )
 
-    ds = set_sections(ds, {
+    sections = {
         "cold": [slice(0.0, x[nx_per_sec - 1])],
         "warm": [slice(x[nx_per_sec], x[2 * nx_per_sec - 1])],
-    })
+    }
 
     ds.calibration_double_ended(
+        sections=sections,
         st_var=1.5,
         ast_var=1.5,
         rst_var=1.0,
@@ -2110,6 +2118,7 @@ def test_double_ended_fix_alpha_matching_sections_and_one_asym_att():
     alpha_var_adj = ds.alpha_var.values.copy()
 
     ds.calibration_double_ended(
+        sections=sections,
         st_var=1.5,
         ast_var=1.5,
         rst_var=1.0,
@@ -2216,12 +2225,13 @@ def test_double_ended_fix_alpha_gamma_matching_sections_and_one_asym_att():
         attrs={"isDoubleEnded": "1"},
     )
 
-    ds = set_sections(ds, {
+    sections = {
         "cold": [slice(0.0, x[nx_per_sec - 1])],
         "warm": [slice(x[nx_per_sec], x[2 * nx_per_sec - 1])],
-    })
+    }
 
     ds.calibration_double_ended(
+        sections=sections,
         st_var=1.5,
         ast_var=1.5,
         rst_var=1.0,
@@ -2248,6 +2258,7 @@ def test_double_ended_fix_alpha_gamma_matching_sections_and_one_asym_att():
     alpha_var_adj = ds.alpha_var.values.copy()
 
     ds.calibration_double_ended(
+        sections=sections,
         st_var=1.5,
         ast_var=1.5,
         rst_var=1.0,
@@ -2355,12 +2366,13 @@ def test_double_ended_fix_gamma_matching_sections_and_one_asym_att():
         attrs={"isDoubleEnded": "1"},
     )
 
-    ds = set_sections(ds, {
+    sections = {
         "cold": [slice(0.0, x[nx_per_sec - 1])],
         "warm": [slice(x[nx_per_sec], x[2 * nx_per_sec - 1])],
-    })
+    }
 
     ds.calibration_double_ended(
+        sections=sections,
         st_var=1.5,
         ast_var=1.5,
         rst_var=1.0,
@@ -3646,11 +3658,11 @@ def test_average_measurements_double_ended():
         "probe1Temperature": [slice(7.5, 17.0), slice(70.0, 80.0)],  # cold bath
         "probe2Temperature": [slice(24.0, 34.0), slice(85.0, 95.0)],  # warm bath
     }
-    ds = set_sections(ds, sections)
 
     st_var, ast_var, rst_var, rast_var = 5.0, 5.0, 5.0, 5.0
 
     ds.calibration_double_ended(
+        sections=sections,
         st_var=st_var,
         ast_var=ast_var,
         rst_var=rst_var,
