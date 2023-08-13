@@ -1,7 +1,5 @@
 import os
 import warnings
-from typing import Dict
-from typing import List
 
 import dask
 import dask.array as da
@@ -17,13 +15,14 @@ from dtscalibration.calibrate_utils import calibration_double_ended_helper
 from dtscalibration.calibrate_utils import calibration_single_ended_helper
 from dtscalibration.calibrate_utils import match_sections
 from dtscalibration.calibrate_utils import parse_st_var
+from dtscalibration.calibration.section_utils import set_sections
+from dtscalibration.calibration.section_utils import validate_sections
 from dtscalibration.datastore_utils import ParameterIndexDoubleEnded
 from dtscalibration.datastore_utils import ParameterIndexSingleEnded
 from dtscalibration.datastore_utils import check_deprecated_kwargs
 from dtscalibration.datastore_utils import check_timestep_allclose
 from dtscalibration.datastore_utils import ufunc_per_section_helper
 from dtscalibration.io_utils import _dim_attrs
-from dtscalibration.calibration.section_utils import set_sections, validate_sections
 
 dtsattr_namelist = ["double_ended_flag"]
 dim_attrs = {k: v for kl, v in _dim_attrs.items() for k in kl}

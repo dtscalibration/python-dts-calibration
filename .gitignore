@@ -64,6 +64,8 @@ docs/_build
 .build
 .ve
 .env
+.venv
+.vscode
 .cache
 .pytest
 .bootstrap
