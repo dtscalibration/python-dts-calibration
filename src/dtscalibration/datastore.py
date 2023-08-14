@@ -219,12 +219,6 @@ class DataStore(xr.Dataset):
               "ds.dts.calibrate_single_ended() or ds.dts.calibrate_double_ended()."
         raise NotImplementedError(msg)
 
-    @sections.setter
-    def sections(self, value):
-        msg = "Not possible anymore. Instead, pass the sections as an argument to \n" \
-              "ds.dts.calibrate_single_ended() or ds.dts.calibrate_double_ended()."
-        raise NotImplementedError(msg)
-
     def check_reference_section_values(self):
         """
         Checks if the values of the used sections are of the right datatype
