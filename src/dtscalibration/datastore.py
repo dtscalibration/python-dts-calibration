@@ -876,9 +876,6 @@ class DataStore(xr.Dataset):
         dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
         04Calculate_variance_Stokes.ipynb>`_
         """
-
-        #         var_I, resid = variance_stokes_constant_util(st_label, sections=None, reshape_residuals=True)
-        # def variance_stokes_constant_util(st_label, sections=None, reshape_residuals=True):
         def func_fit(p, xs):
             return p[:xs, None] * p[None, xs:]
 
@@ -1020,7 +1017,12 @@ class DataStore(xr.Dataset):
 
         Parameters
         ----------
-        reshape_residuals
+        suppress_info : bool, optional
+            Suppress print statements.
+        use_statsmodels : bool, optional
+            Use statsmodels to fit the exponential. If `False`, use scipy.
+        reshape_residuals : bool, optional
+            Reshape the residuals to the shape of the Stokes intensity
         st_label : str
             label of the Stokes, anti-Stokes measurement.
             E.g., st, ast, rst, rast
@@ -1706,6 +1708,9 @@ class DataStore(xr.Dataset):
             variance of the estimate of dalpha.
             Covariances between alpha and other parameters are not accounted
             for.
+        fix_alpha : Tuple[array-like, array-like], optional
+            A tuple containing two array-likes. The first array-like is the integrated
+            differential attenuation of length x, and the second item is its variance.
 
         Returns
         -------
@@ -3035,7 +3040,7 @@ class DataStore(xr.Dataset):
                 arr = da.concatenate(
                     (
                         da.zeros(
-                            (1, i_splice, 1), chunks=((1, i_splice, 1)), dtype=bool
+                            (1, i_splice, 1), chunks=(1, i_splice, 1), dtype=bool
                         ),
                         da.ones(
                             (1, no - i_splice, 1),
@@ -3051,7 +3056,7 @@ class DataStore(xr.Dataset):
                         da.ones((1, i_splice, 1), chunks=(1, i_splice, 1), dtype=bool),
                         da.zeros(
                             (1, no - i_splice, 1),
-                            chunks=((1, no - i_splice, 1)),
+                            chunks=(1, no - i_splice, 1),
                             dtype=bool,
                         ),
                     ),
@@ -3832,7 +3837,7 @@ class DataStore(xr.Dataset):
                 arr = da.concatenate(
                     (
                         da.zeros(
-                            (1, i_splice, 1), chunks=((1, i_splice, 1)), dtype=bool
+                            (1, i_splice, 1), chunks=(1, i_splice, 1), dtype=bool
                         ),
                         da.ones(
                             (1, no - i_splice, 1),
@@ -3848,7 +3853,7 @@ class DataStore(xr.Dataset):
                         da.ones((1, i_splice, 1), chunks=(1, i_splice, 1), dtype=bool),
                         da.zeros(
                             (1, no - i_splice, 1),
-                            chunks=((1, no - i_splice, 1)),
+                            chunks=(1, no - i_splice, 1),
                             dtype=bool,
                         ),
                     ),
