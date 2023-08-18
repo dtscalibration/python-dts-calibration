@@ -55,7 +55,7 @@ dependencies = [
     "numpy>=1.22.4",        # >= 1.22 for full quantile method support in xarray
     "dask",
     "pandas",
-    "xarray[parallel]",     # numbagg (llvmlite) is a pain to install
+    "xarray[parallel]",     # numbagg (llvmlite) is a pain to install with pip
     "bottleneck",           # speed up Xarray
     "flox",                 # speed up Xarray
     "pyyaml>=6.0.1",

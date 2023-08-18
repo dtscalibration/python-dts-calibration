@@ -135,7 +135,7 @@ def ufunc_per_section(
     1. Calculate the variance of the residuals in the along ALL the\
     reference sections wrt the temperature of the water baths
 
-    >>> tmpf_var = d.ufunc_per_section(
+    >>> tmpf_var = d.ufunc_per_section(sections, 
     >>>     func='var',
     >>>     calc_per='all',
     >>>     label='tmpf',
@@ -144,7 +144,7 @@ def ufunc_per_section(
     2. Calculate the variance of the residuals in the along PER\
     reference section wrt the temperature of the water baths
 
-    >>> tmpf_var = d.ufunc_per_section(
+    >>> tmpf_var = d.ufunc_per_section(sections, 
     >>>     func='var',
     >>>     calc_per='stretch',
     >>>     label='tmpf',
@@ -153,7 +153,7 @@ def ufunc_per_section(
     3. Calculate the variance of the residuals in the along PER\
     water bath wrt the temperature of the water baths
 
-    >>> tmpf_var = d.ufunc_per_section(
+    >>> tmpf_var = d.ufunc_per_section(sections, 
     >>>     func='var',
     >>>     calc_per='section',
     >>>     label='tmpf',
@@ -161,7 +161,7 @@ def ufunc_per_section(
 
     4. Obtain the coordinates of the measurements per section
 
-    >>> locs = d.ufunc_per_section(
+    >>> locs = d.ufunc_per_section(sections, 
     >>>     func=None,
     >>>     label='x',
     >>>     temp_err=False,
@@ -170,7 +170,7 @@ def ufunc_per_section(
 
     5. Number of observations per stretch
 
-    >>> nlocs = d.ufunc_per_section(
+    >>> nlocs = d.ufunc_per_section(sections, 
     >>>     func=len,
     >>>     label='x',
     >>>     temp_err=False,
@@ -182,14 +182,14 @@ def ufunc_per_section(
     temperature (a timeseries) is broadcasted to the shape of self[\
     label]. The self[label] is not used for anything else.
 
-    >>> temp_ref = d.ufunc_per_section(
+    >>> temp_ref = d.ufunc_per_section(sections, 
     >>>     label='st',
     >>>     ref_temp_broadcasted=True,
     >>>     calc_per='all')
 
     7. x-coordinate index
 
-    >>> ix_loc = d.ufunc_per_section(x_indices=True)
+    >>> ix_loc = d.ufunc_per_section(sections, x_indices=True)
 
 
     Note

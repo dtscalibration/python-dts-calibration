@@ -509,13 +509,14 @@ def plot_accuracy(
 
 
 def plot_sigma_report(
-    ds, temp_label, temp_var_acc_label, temp_var_prec_label=None, itimes=None
+    ds, sections, temp_label, temp_var_acc_label, temp_var_prec_label=None, itimes=None
 ):
     """Returns two sub-plots. first a temperature with confidence boundaries.
 
     Parameters
     ----------
     ds
+    sections
     temp_label
     temp_var_label
     itimes
@@ -573,11 +574,20 @@ def plot_sigma_report(
         #     temp_err=True,
         #     axis=0)
         sigma_est = ds.ufunc_per_section(
-            label=temp_label, func=np.std, temp_err=True, calc_per="stretch", axis=0
+            sections=sections,
+            label=temp_label,
+            func=np.std,
+            temp_err=True,
+            calc_per="stretch",
+            axis=0,
         )
     else:
         sigma_est = ds.ufunc_per_section(
-            label=temp_label, func=np.std, temp_err=True, calc_per="stretch"
+            sections=sections,
+            label=temp_label,
+            func=np.std,
+            temp_err=True,
+            calc_per="stretch",
         )
 
     for (k, v), (k_se, v_se) in zip(ds.sections.items(), sigma_est.items()):
@@ -628,9 +638,13 @@ def plot_sigma_report(
     ax1.set_ylabel(r"Temperature [$^\circ$C]")
 
     err_ref = ds.ufunc_per_section(
-        label=temp_label, func=None, temp_err=True, calc_per="stretch"
+        sections=sections,
+        label=temp_label,
+        func=None,
+        temp_err=True,
+        calc_per="stretch",
     )
-    x_ref = ds.ufunc_per_section(label="x", calc_per="stretch")
+    x_ref = ds.ufunc_per_section(sections=sections, label="x", calc_per="stretch")
 
     for (k, v), (k_se, v_se), (kx, vx) in zip(
         ds.sections.items(), err_ref.items(), x_ref.items()

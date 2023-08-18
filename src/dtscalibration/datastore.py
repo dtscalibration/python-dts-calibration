@@ -1754,7 +1754,9 @@ class DataStore(xr.Dataset):
         else:
             matching_indices = None
 
-        ix_sec = self.ufunc_per_section(x_indices=True, calc_per="all")
+        ix_sec = self.ufunc_per_section(
+            sections=sections, x_indices=True, calc_per="all"
+        )
         assert not np.any(self.st.isel(x=ix_sec) <= 0.0), (
             "There is uncontrolled noise in the ST signal. Are your sections"
             "correctly defined?"
@@ -1767,6 +1769,7 @@ class DataStore(xr.Dataset):
         if method == "wls":
             p_cov, p_val, p_var = calibration_single_ended_helper(
                 self,
+                sections,
                 st_var,
                 ast_var,
                 fix_alpha,
@@ -2172,7 +2175,9 @@ class DataStore(xr.Dataset):
         nx = self.x.size
         nt = self["time"].size
         nta = self.trans_att.size
-        ix_sec = self.ufunc_per_section(x_indices=True, calc_per="all")
+        ix_sec = self.ufunc_per_section(
+            sections=sections, x_indices=True, calc_per="all"
+        )
         nx_sec = ix_sec.size
 
         assert self.st.dims[0] == "x", "Stokes are transposed"
@@ -2218,6 +2223,7 @@ class DataStore(xr.Dataset):
         if method == "wls":
             p_cov, p_val, p_var = calibration_double_ended_helper(
                 self,
+                sections,
                 st_var,
                 ast_var,
                 rst_var,
@@ -2899,6 +2905,7 @@ class DataStore(xr.Dataset):
 
     def average_double_ended(
         self,
+        sections=None,
         p_val="p_val",
         p_cov="p_cov",
         st_var=None,
@@ -3083,6 +3090,7 @@ class DataStore(xr.Dataset):
             pass
 
         self.conf_int_double_ended(
+            sections=sections,
             p_val=p_val,
             p_cov=p_cov,
             st_var=st_var,
@@ -3695,6 +3703,7 @@ class DataStore(xr.Dataset):
 
     def conf_int_double_ended(
         self,
+        sections=None,
         p_val="p_val",
         p_cov="p_cov",
         st_var=None,
@@ -3947,7 +3956,9 @@ class DataStore(xr.Dataset):
                 p_cov = self[p_cov].values
             assert p_cov.shape == (npar, npar)
 
-            ix_sec = self.ufunc_per_section(x_indices=True, calc_per="all")
+            ix_sec = self.ufunc_per_section(
+                sections=sections, x_indices=True, calc_per="all"
+            )
             nx_sec = ix_sec.size
             from_i = np.concatenate(
                 (
@@ -4122,7 +4133,9 @@ class DataStore(xr.Dataset):
 
                 if var_only_sections:
                     # sets the values outside the reference sections to NaN
-                    xi = self.ufunc_per_section(x_indices=True, calc_per="all")
+                    xi = self.ufunc_per_section(
+                        sections=sections, x_indices=True, calc_per="all"
+                    )
                     x_mask_ = [True if ix in xi else False for ix in range(self.x.size)]
                     x_mask = np.reshape(x_mask_, (1, -1, 1))
                     self[label + "_mc_set"] = self[label + "_mc_set"].where(x_mask)
@@ -4354,6 +4367,7 @@ class DataStore(xr.Dataset):
         reference sections wrt the temperature of the water baths
 
         >>> tmpf_var = d.ufunc_per_section(
+        >>>     sections=sections, 
         >>>     func='var',
         >>>     calc_per='all',
         >>>     label='tmpf',
@@ -4363,6 +4377,7 @@ class DataStore(xr.Dataset):
         reference section wrt the temperature of the water baths
 
         >>> tmpf_var = d.ufunc_per_section(
+        >>>     sections=sections, 
         >>>     func='var',
         >>>     calc_per='stretch',
         >>>     label='tmpf',
@@ -4372,6 +4387,7 @@ class DataStore(xr.Dataset):
         water bath wrt the temperature of the water baths
 
         >>> tmpf_var = d.ufunc_per_section(
+        >>>     sections=sections, 
         >>>     func='var',
         >>>     calc_per='section',
         >>>     label='tmpf',
@@ -4380,6 +4396,7 @@ class DataStore(xr.Dataset):
         4. Obtain the coordinates of the measurements per section
 
         >>> locs = d.ufunc_per_section(
+        >>>     sections=sections, 
         >>>     func=None,
         >>>     label='x',
         >>>     temp_err=False,
@@ -4389,6 +4406,7 @@ class DataStore(xr.Dataset):
         5. Number of observations per stretch
 
         >>> nlocs = d.ufunc_per_section(
+        >>>     sections=sections, 
         >>>     func=len,
         >>>     label='x',
         >>>     temp_err=False,
@@ -4407,7 +4425,7 @@ class DataStore(xr.Dataset):
 
         7. x-coordinate index
 
-        >>> ix_loc = d.ufunc_per_section(x_indices=True)
+        >>> ix_loc = d.ufunc_per_section(sections=sections, x_indices=True)
 
 
         Note
@@ -4415,9 +4433,8 @@ class DataStore(xr.Dataset):
         If `self[label]` or `self[subtract_from_label]` is a Dask array, a Dask
         array is returned else a numpy array is returned
         """
-        if sections is None:
-            sections = self.sections
-
+        # if sections is None:
+        #     sections = self.sections
         if label is None:
             dataarray = None
         else:
@@ -4426,7 +4443,10 @@ class DataStore(xr.Dataset):
         if x_indices:
             x_coords = self.x
             reference_dataset = None
+            
         else:
+            sections = validate_sections(self, sections)
+
             x_coords = None
             reference_dataset = {k: self[k] for k in sections}
 
