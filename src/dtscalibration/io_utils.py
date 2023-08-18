@@ -1,4 +1,3 @@
-# coding=utf-8
 import os
 import struct
 from contextlib import contextmanager
@@ -1263,8 +1262,8 @@ def read_sensortran_files_routine(
     AST = np.zeros((nx, ntime), dtype=np.int32)
     TMP = np.zeros((nx, ntime))
 
-    ST_zero = np.zeros((ntime))
-    AST_zero = np.zeros((ntime))
+    ST_zero = np.zeros(ntime)
+    AST_zero = np.zeros(ntime)
 
     for ii in range(ntime):
         data_dts, meta_dts = read_sensortran_single(filepathlist_dts[ii])
@@ -1468,7 +1467,7 @@ def read_apsensing_files_routine(
             + "/{0}wellLogSet/{0}wellLog"
         ).format(namespace)
     )
-    logdata_tree = logtree.find("./{0}logData".format(namespace))
+    logdata_tree = logtree.find(f"./{namespace}logData")
 
     # Amount of datapoints is the size of the logdata tree
     nx = len(logdata_tree)
@@ -1490,7 +1489,7 @@ def read_apsensing_files_routine(
     attrs["backwardMeasurementChannel"] = "N/A"
 
     data_item_names = [
-        attrs["wellbore:wellLogSet:wellLog:logCurveInfo_{0}:mnemonic".format(x)]
+        attrs[f"wellbore:wellLogSet:wellLog:logCurveInfo_{x}:mnemonic"]
         for x in range(0, 4)
     ]
 
@@ -1591,7 +1590,7 @@ def read_apsensing_files_routine(
             data_vars[tld[name]] = (["x", "time"], data_arri, dim_attrs_apsensing[name])
         else:
             raise ValueError(
-                "Dont know what to do with the" + " {} data column".format(name)
+                "Dont know what to do with the" + f" {name} data column"
             )
 
     _time_dtype = [("filename_tstamp", np.int64), ("acquisitionTime", "<U29")]

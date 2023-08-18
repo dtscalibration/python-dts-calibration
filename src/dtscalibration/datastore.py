@@ -144,11 +144,11 @@ class DataStore(xr.Dataset):
                 unit = ""
 
             for k, v in self.sections.items():
-                preamble_new += "    {0: <23}".format(k)
+                preamble_new += f"    {k: <23}"
 
                 # Compute statistics reference section timeseries
-                sec_stat = "({0:6.2f}".format(float(self[k].mean()))
-                sec_stat += " +/-{0:5.2f}".format(float(self[k].std()))
+                sec_stat = f"({float(self[k].mean()):6.2f}"
+                sec_stat += f" +/-{float(self[k].std()):5.2f}"
                 sec_stat += "\N{DEGREE SIGN}C)\t"
                 preamble_new += sec_stat
 
@@ -425,7 +425,7 @@ class DataStore(xr.Dataset):
             if value is None:
                 self.attrs[attribute] = ""
 
-        return super(DataStore, self).to_netcdf(
+        return super().to_netcdf(
             path,
             mode,
             format=format,
@@ -552,7 +552,7 @@ class DataStore(xr.Dataset):
         paths = [
             os.path.join(
                 folder_path,
-                filename_preamble + "{:04d}".format(ix) + filename_extension,
+                filename_preamble + f"{ix:04d}" + filename_extension,
             )
             for ix in range(len(x))
         ]

@@ -1,5 +1,3 @@
-from typing import Dict
-from typing import List
 
 import numpy as np
 import xarray as xr
@@ -8,7 +6,7 @@ import yaml
 from dtscalibration.datastore_utils import ufunc_per_section_helper
 
 
-def set_sections(ds: xr.Dataset, sections: Dict[str, List[slice]]) -> xr.Dataset:
+def set_sections(ds: xr.Dataset, sections: dict[str, list[slice]]) -> xr.Dataset:
     sections_validated = None
 
     if sections is not None:
@@ -18,7 +16,7 @@ def set_sections(ds: xr.Dataset, sections: Dict[str, List[slice]]) -> xr.Dataset
     return ds
 
 
-def validate_sections(ds: xr.Dataset, sections: Dict[str, List[slice]]):
+def validate_sections(ds: xr.Dataset, sections: dict[str, list[slice]]):
     assert isinstance(sections, dict)
 
     # be less restrictive for capitalized labels

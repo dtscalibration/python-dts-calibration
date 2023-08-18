@@ -1,4 +1,3 @@
-# coding=utf-8
 import matplotlib.colors as colors
 import matplotlib.pyplot as plt
 import numpy as np
@@ -539,7 +538,7 @@ def plot_sigma_report(
     for lbl, clr in zip([2.0, 1.0], colors):
         y1 = temp - lbl * stds
         y2 = temp + lbl * stds
-        label_str = "{0:2.2f}".format(lbl) + r"$\sigma$ confidence interval"
+        label_str = f"{lbl:2.2f}" + r"$\sigma$ confidence interval"
         ax1.fill_between(
             y1.x,
             y1,
@@ -607,11 +606,11 @@ def plot_sigma_report(
             tbx, tby = (vi.start + vi.stop) / 2, val
             tbt = (
                 r"$\sigma_{Est}$ = "
-                + "{0:2.3f}".format(sig_dts.data)
+                + f"{sig_dts.data:2.3f}"
                 + r"$^\circ$C"
                 + "\n"
                 + r"$\sigma_{DTS}$ = "
-                + "{0:2.3f}".format(v_sei)
+                + f"{v_sei:2.3f}"
                 + r"$^\circ$C"
             )
             ax1.annotate(

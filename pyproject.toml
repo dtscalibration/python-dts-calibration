@@ -150,7 +150,7 @@ select = [  # It would be nice to have the commented out checks working.
   # "D",  # pydocstyle
   # "C90",  # mccabe complexity
   # "N",  # PEP8-naming
-  # "UP",  # pyupgrade (upgrade syntax to current syntax)
+  "UP",  # pyupgrade (upgrade syntax to current syntax)
   "PLE",  # Pylint error https://github.com/charliermarsh/ruff#error-ple
   # "PLR",  # Pylint refactor (e.g. too-many-arguments)
   # "PLW",  # Pylint warning (useless-else-on-loop)
@@ -166,7 +166,7 @@ ignore = [
   "E501",  # Line too long (want to have fixed
 ]
 # Allow autofix for all enabled rules (when `--fix`) is provided.
-fixable = ["E", "F"]
+fixable = ["E", "F", "UP", "PLE"]
 unfixable = []
 line-length = 88
 exclude = ["docs", "build"]
