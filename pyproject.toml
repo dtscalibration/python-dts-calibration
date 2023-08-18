@@ -19,13 +19,13 @@ disable = true  # Requires confirmation when publishing to pypi.
 
 [project]
 name = "dtscalibration"
-description = "A Python package to load raw DTS files, perform a calibration, and plot the result."
+description = "Load Distributed Temperature Sensing (DTS) files, calibrate the temperature and estimate its uncertainty."
 readme = "README.rst"
 license = "BSD-3-Clause"
 requires-python = ">=3.9, <3.12"
 authors = [
-  {email = "bdestombe@gmail.com"},
-  {name = "Bas des Tombe, Bart Schilperoort"}
+  {name = "Bas des Tombe", email = "bdestombe@gmail.com"},
+  {name = "Bart Schilperoort", email = "b.schilperoort@gmail.com"},
 ]
 maintainers = [
   {name = "Bas des Tombe", email = "bdestombe@gmail.com"},
@@ -52,10 +52,12 @@ classifiers = [
     "Topic :: Utilities",
 ]
 dependencies = [
-    "numpy>=1.22.4",  # xarray: recommended to use >= 1.22 for full quantile method support
+    "numpy>=1.22.4",        # >= 1.22 for full quantile method support in xarray
     "dask",
     "pandas",
-    "xarray[parallel,accel]",
+    "xarray[parallel]",     # numbagg (llvmlite) is a pain to install
+    "bottleneck",           # speed up Xarray
+    "flox",                 # speed up Xarray
     "pyyaml>=6.0.1",
     "xmltodict",
     "scipy",
@@ -74,13 +76,13 @@ dev = [
     "isort",
     "black[jupyter]",
     "mypy",
-    "types-PyYAML",  # for pyyaml types
+    "types-PyYAML",     # for pyyaml types
     "types-xmltodict",  # for xmltodict types
-    "pandas-stubs",  # for pandas types
+    "pandas-stubs",     # for pandas types
     "pytest",
     "pytest-cov",
     "jupyter",
-    "nbformat",  # Needed to run the tests
+    "nbformat",         # Needed to run the tests
 ]
 docs = [  # Required for ReadTheDocs
     "IPython",

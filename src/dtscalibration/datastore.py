@@ -215,8 +215,10 @@ class DataStore(xr.Dataset):
 
     @sections.setter
     def sections(self, value):
-        msg = "Not possible anymore. Instead, pass the sections as an argument to \n" \
-              "ds.dts.calibrate_single_ended() or ds.dts.calibrate_double_ended()."
+        msg = (
+            "Not possible anymore. Instead, pass the sections as an argument to \n"
+            "ds.dts.calibrate_single_ended() or ds.dts.calibrate_double_ended()."
+        )
         raise NotImplementedError(msg)
 
     def check_reference_section_values(self):
@@ -876,6 +878,7 @@ class DataStore(xr.Dataset):
         dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
         04Calculate_variance_Stokes.ipynb>`_
         """
+
         def func_fit(p, xs):
             return p[:xs, None] * p[None, xs:]
 
@@ -3039,9 +3042,7 @@ class DataStore(xr.Dataset):
             if direction == "fw":
                 arr = da.concatenate(
                     (
-                        da.zeros(
-                            (1, i_splice, 1), chunks=(1, i_splice, 1), dtype=bool
-                        ),
+                        da.zeros((1, i_splice, 1), chunks=(1, i_splice, 1), dtype=bool),
                         da.ones(
                             (1, no - i_splice, 1),
                             chunks=(1, no - i_splice, 1),
@@ -3836,9 +3837,7 @@ class DataStore(xr.Dataset):
             if direction == "fw":
                 arr = da.concatenate(
                     (
-                        da.zeros(
-                            (1, i_splice, 1), chunks=(1, i_splice, 1), dtype=bool
-                        ),
+                        da.zeros((1, i_splice, 1), chunks=(1, i_splice, 1), dtype=bool),
                         da.ones(
                             (1, no - i_splice, 1),
                             chunks=(1, no - i_splice, 1),
