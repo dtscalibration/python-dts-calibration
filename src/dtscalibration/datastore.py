@@ -21,6 +21,7 @@ from dtscalibration.datastore_utils import ParameterIndexDoubleEnded
 from dtscalibration.datastore_utils import ParameterIndexSingleEnded
 from dtscalibration.datastore_utils import check_deprecated_kwargs
 from dtscalibration.datastore_utils import check_timestep_allclose
+from dtscalibration.datastore_utils import get_params_from_pval
 from dtscalibration.datastore_utils import ufunc_per_section_helper
 from dtscalibration.io_utils import _dim_attrs
 
@@ -2258,215 +2259,243 @@ class DataStore(xr.Dataset):
         assert p_var.size == ip.npar
         assert p_cov.shape == (ip.npar, ip.npar)
 
-        # save estimates and variances to datastore, skip covariances
-        self["gamma"] = (tuple(), p_val[ip.gamma].item())
-        self["alpha"] = (("x",), p_val[ip.alpha])
-        self["df"] = (("time",), p_val[ip.df])
-        self["db"] = (("time",), p_val[ip.db])
-
-        if nta:
-            self["talpha_fw"] = (
-                ("time", "trans_att"),
-                p_val[ip.taf].reshape((nt, nta), order="C"),
-            )
-            self["talpha_bw"] = (
-                ("time", "trans_att"),
-                p_val[ip.tab].reshape((nt, nta), order="C"),
-            )
-            self["talpha_fw_var"] = (
-                ("time", "trans_att"),
-                p_var[ip.taf].reshape((nt, nta), order="C"),
-            )
-            self["talpha_bw_var"] = (
-                ("time", "trans_att"),
-                p_var[ip.tab].reshape((nt, nta), order="C"),
-            )
-        else:
-            self["talpha_fw"] = (("time", "trans_att"), np.zeros((nt, 0)))
-            self["talpha_bw"] = (("time", "trans_att"), np.zeros((nt, 0)))
-            self["talpha_fw_var"] = (("time", "trans_att"), np.zeros((nt, 0)))
-            self["talpha_bw_var"] = (("time", "trans_att"), np.zeros((nt, 0)))
-
-        self["talpha_fw_full"] = (
-            ("x", "time"),
-            ip.get_taf_values(
-                pval=p_val, x=self.x.values, trans_att=self.trans_att.values, axis=""
-            ),
-        )
-        self["talpha_bw_full"] = (
-            ("x", "time"),
-            ip.get_tab_values(
-                pval=p_val, x=self.x.values, trans_att=self.trans_att.values, axis=""
-            ),
-        )
-
-        self["tmpf"] = (
-            self.gamma
-            / (
-                np.log(self.st / self.ast)
-                + self["df"]
-                + self.alpha
-                + self["talpha_fw_full"]
-            )
-            - 273.15
-        )
-
-        self["tmpb"] = (
-            self.gamma
-            / (
-                np.log(self.rst / self.rast)
-                + self["db"]
-                - self.alpha
-                + self["talpha_bw_full"]
-            )
-            - 273.15
-        )
-
-        self["gamma_var"] = (tuple(), p_var[ip.gamma].item())
-        self["alpha_var"] = (("x",), p_var[ip.alpha])
-        self["df_var"] = (("time",), p_var[ip.df])
-        self["db_var"] = (("time",), p_var[ip.db])
-        self["talpha_fw_full_var"] = (
-            ("x", "time"),
-            ip.get_taf_values(
-                pval=p_var, x=self.x.values, trans_att=self.trans_att.values, axis=""
-            ),
-        )
-        self["talpha_bw_full_var"] = (
-            ("x", "time"),
-            ip.get_tab_values(
-                pval=p_var, x=self.x.values, trans_att=self.trans_att.values, axis=""
-            ),
+        coords = {"x": self["x"], "time": self["time"], "trans_att": self["trans_att"]}
+        params = get_params_from_pval(ip, p_val, coords)
+        param_covs = get_params_from_pval(ip, p_var, coords)
+        out = xr.Dataset(
+            {
+                "tmpf": params["gamma"]
+                / (
+                    np.log(self.st / self.ast)
+                    + params["df"]
+                    + params["alpha"]
+                    + params["talpha_fw_full"]
+                )
+                - 273.15,
+                "tmpb": params["gamma"]
+                / (
+                    np.log(self.rst / self.rast)
+                    + params["db"]
+                    - params["alpha"]
+                    + params["talpha_bw_full"]
+                )
+                - 273.15,
+            }
         )
 
         # extract covariances and ensure broadcastable to (nx, nt)
-        sigma2_gamma_df = p_cov[np.ix_(ip.gamma, ip.df)]
-        sigma2_gamma_db = p_cov[np.ix_(ip.gamma, ip.db)]
-        sigma2_gamma_alpha = p_cov[np.ix_(ip.alpha, ip.gamma)]
-        sigma2_df_db = p_cov[ip.df, ip.db][None]  # Shape is [0, nt] ?
-        sigma2_alpha_df = p_cov[np.ix_(ip.alpha, ip.df)]
-        sigma2_alpha_db = p_cov[np.ix_(ip.alpha, ip.db)]
-        sigma2_tafw_gamma = ip.get_taf_values(
-            pval=p_cov[ip.gamma],
-            x=self.x.values,
-            trans_att=self.trans_att.values,
-            axis="",
+        param_covs["gamma_df"] = (("time",), p_cov[np.ix_(ip.gamma, ip.df)][0])
+        param_covs["gamma_db"] = (("time",), p_cov[np.ix_(ip.gamma, ip.db)][0])
+        param_covs["gamma_alpha"] = (("x",), p_cov[np.ix_(ip.alpha, ip.gamma)][:, 0])
+        param_covs["df_db"] = (
+            ("time",),
+            p_cov[ip.df, ip.db],
         )
-        sigma2_tabw_gamma = ip.get_tab_values(
-            pval=p_cov[ip.gamma],
-            x=self.x.values,
-            trans_att=self.trans_att.values,
-            axis="",
+        param_covs["alpha_df"] = (
+            (
+                "x",
+                "time",
+            ),
+            p_cov[np.ix_(ip.alpha, ip.df)],
         )
-        sigma2_tafw_alpha = ip.get_taf_values(
-            pval=p_cov[ip.alpha],
-            x=self.x.values,
-            trans_att=self.trans_att.values,
-            axis="x",
+        param_covs["alpha_db"] = (
+            (
+                "x",
+                "time",
+            ),
+            p_cov[np.ix_(ip.alpha, ip.db)],
         )
-        sigma2_tabw_alpha = ip.get_tab_values(
-            pval=p_cov[ip.alpha],
-            x=self.x.values,
-            trans_att=self.trans_att.values,
-            axis="x",
+        param_covs["tafw_gamma"] = (
+            (
+                "x",
+                "time",
+            ),
+            ip.get_taf_values(
+                pval=p_cov[ip.gamma],
+                x=self.x.values,
+                trans_att=self.trans_att.values,
+                axis="",
+            ),
         )
-        sigma2_tafw_df = ip.get_taf_values(
-            pval=p_cov[ip.df],
-            x=self.x.values,
-            trans_att=self.trans_att.values,
-            axis="time",
+        param_covs["tabw_gamma"] = (
+            (
+                "x",
+                "time",
+            ),
+            ip.get_tab_values(
+                pval=p_cov[ip.gamma],
+                x=self.x.values,
+                trans_att=self.trans_att.values,
+                axis="",
+            ),
         )
-        sigma2_tafw_db = ip.get_taf_values(
-            pval=p_cov[ip.db],
-            x=self.x.values,
-            trans_att=self.trans_att.values,
-            axis="time",
+        param_covs["tafw_alpha"] = (
+            (
+                "x",
+                "time",
+            ),
+            ip.get_taf_values(
+                pval=p_cov[ip.alpha],
+                x=self.x.values,
+                trans_att=self.trans_att.values,
+                axis="x",
+            ),
         )
-        sigma2_tabw_db = ip.get_tab_values(
-            pval=p_cov[ip.db],
-            x=self.x.values,
-            trans_att=self.trans_att.values,
-            axis="time",
+        param_covs["tabw_alpha"] = (
+            (
+                "x",
+                "time",
+            ),
+            ip.get_tab_values(
+                pval=p_cov[ip.alpha],
+                x=self.x.values,
+                trans_att=self.trans_att.values,
+                axis="x",
+            ),
         )
-        sigma2_tabw_df = ip.get_tab_values(
-            pval=p_cov[ip.df],
-            x=self.x.values,
-            trans_att=self.trans_att.values,
-            axis="time",
+        param_covs["tafw_df"] = (
+            (
+                "x",
+                "time",
+            ),
+            ip.get_taf_values(
+                pval=p_cov[ip.df],
+                x=self.x.values,
+                trans_att=self.trans_att.values,
+                axis="time",
+            ),
+        )
+        param_covs["tafw_db"] = (
+            (
+                "x",
+                "time",
+            ),
+            ip.get_taf_values(
+                pval=p_cov[ip.db],
+                x=self.x.values,
+                trans_att=self.trans_att.values,
+                axis="time",
+            ),
+        )
+        param_covs["tabw_db"] = (
+            (
+                "x",
+                "time",
+            ),
+            ip.get_tab_values(
+                pval=p_cov[ip.db],
+                x=self.x.values,
+                trans_att=self.trans_att.values,
+                axis="time",
+            ),
+        )
+        param_covs["tabw_df"] = (
+            (
+                "x",
+                "time",
+            ),
+            ip.get_tab_values(
+                pval=p_cov[ip.df],
+                x=self.x.values,
+                trans_att=self.trans_att.values,
+                axis="time",
+            ),
         )
         # sigma2_tafw_tabw
 
-        tmpf = self["tmpf"] + 273.15
-        tmpb = self["tmpb"] + 273.15
+        tmpf = out["tmpf"] + 273.15
+        tmpb = out["tmpb"] + 273.15
 
         deriv_dict = dict(
-            T_gamma_fw=tmpf / self.gamma,
-            T_st_fw=-(tmpf**2) / (self.gamma * self.st),
-            T_ast_fw=tmpf**2 / (self.gamma * self.ast),
-            T_df_fw=-(tmpf**2) / self.gamma,
-            T_alpha_fw=-(tmpf**2) / self.gamma,
-            T_ta_fw=-(tmpf**2) / self.gamma,
-            T_gamma_bw=tmpb / self.gamma,
-            T_rst_bw=-(tmpb**2) / (self.gamma * self.rst),
-            T_rast_bw=tmpb**2 / (self.gamma * self.rast),
-            T_db_bw=-(tmpb**2) / self.gamma,
-            T_alpha_bw=tmpb**2 / self.gamma,
-            T_ta_bw=-(tmpb**2) / self.gamma,
+            T_gamma_fw=tmpf / params["gamma"],
+            T_st_fw=-(tmpf**2) / (params["gamma"] * self.st),
+            T_ast_fw=tmpf**2 / (params["gamma"] * self.ast),
+            T_df_fw=-(tmpf**2) / params["gamma"],
+            T_alpha_fw=-(tmpf**2) / params["gamma"],
+            T_ta_fw=-(tmpf**2) / params["gamma"],
+            T_gamma_bw=tmpb / params["gamma"],
+            T_rst_bw=-(tmpb**2) / (params["gamma"] * self.rst),
+            T_rast_bw=tmpb**2 / (params["gamma"] * self.rast),
+            T_db_bw=-(tmpb**2) / params["gamma"],
+            T_alpha_bw=tmpb**2 / params["gamma"],
+            T_ta_bw=-(tmpb**2) / params["gamma"],
         )
         deriv_ds = xr.Dataset(deriv_dict)
-        self["deriv"] = deriv_ds.to_array(dim="com2")
+        out["deriv"] = deriv_ds.to_array(dim="com2")
 
         var_fw_dict = dict(
             dT_dst=deriv_ds.T_st_fw**2 * parse_st_var(self, st_var, st_label="st"),
             dT_dast=deriv_ds.T_ast_fw**2
             * parse_st_var(self, ast_var, st_label="ast"),
-            dT_gamma=deriv_ds.T_gamma_fw**2 * self["gamma_var"],
-            dT_ddf=deriv_ds.T_df_fw**2 * self["df_var"],
-            dT_dalpha=deriv_ds.T_alpha_fw**2 * self["alpha_var"],
-            dT_dta=deriv_ds.T_ta_fw**2 * self["talpha_fw_full_var"],
-            dgamma_ddf=(2 * deriv_ds.T_gamma_fw * deriv_ds.T_df_fw * sigma2_gamma_df),
-            dgamma_dalpha=(
-                2 * deriv_ds.T_gamma_fw * deriv_ds.T_alpha_fw * sigma2_gamma_alpha
+            dT_gamma=deriv_ds.T_gamma_fw**2 * param_covs["gamma"],
+            dT_ddf=deriv_ds.T_df_fw**2 * param_covs["df"],
+            dT_dalpha=deriv_ds.T_alpha_fw**2 * param_covs["alpha"],
+            dT_dta=deriv_ds.T_ta_fw**2 * param_covs["talpha_fw_full"],
+            dgamma_ddf=(
+                2 * deriv_ds.T_gamma_fw * deriv_ds.T_df_fw * param_covs["gamma_df"]
             ),
-            dalpha_ddf=(2 * deriv_ds.T_alpha_fw * deriv_ds.T_df_fw * sigma2_alpha_df),
-            dta_dgamma=(2 * deriv_ds.T_ta_fw * deriv_ds.T_gamma_fw * sigma2_tafw_gamma),
-            dta_ddf=(2 * deriv_ds.T_ta_fw * deriv_ds.T_df_fw * sigma2_tafw_df),
-            dta_dalpha=(2 * deriv_ds.T_ta_fw * deriv_ds.T_alpha_fw * sigma2_tafw_alpha),
+            dgamma_dalpha=(
+                2
+                * deriv_ds.T_gamma_fw
+                * deriv_ds.T_alpha_fw
+                * param_covs["gamma_alpha"]
+            ),
+            dalpha_ddf=(
+                2 * deriv_ds.T_alpha_fw * deriv_ds.T_df_fw * param_covs["alpha_df"]
+            ),
+            dta_dgamma=(
+                2 * deriv_ds.T_ta_fw * deriv_ds.T_gamma_fw * param_covs["tafw_gamma"]
+            ),
+            dta_ddf=(2 * deriv_ds.T_ta_fw * deriv_ds.T_df_fw * param_covs["tafw_df"]),
+            dta_dalpha=(
+                2 * deriv_ds.T_ta_fw * deriv_ds.T_alpha_fw * param_covs["tafw_alpha"]
+            ),
         )
         var_bw_dict = dict(
             dT_drst=deriv_ds.T_rst_bw**2
             * parse_st_var(self, rst_var, st_label="rst"),
             dT_drast=deriv_ds.T_rast_bw**2
             * parse_st_var(self, rast_var, st_label="rast"),
-            dT_gamma=deriv_ds.T_gamma_bw**2 * self["gamma_var"],
-            dT_ddb=deriv_ds.T_db_bw**2 * self["db_var"],
-            dT_dalpha=deriv_ds.T_alpha_bw**2 * self["alpha_var"],
-            dT_dta=deriv_ds.T_ta_bw**2 * self["talpha_bw_full_var"],
-            dgamma_ddb=(2 * deriv_ds.T_gamma_bw * deriv_ds.T_db_bw * sigma2_gamma_db),
-            dgamma_dalpha=(
-                2 * deriv_ds.T_gamma_bw * deriv_ds.T_alpha_bw * sigma2_gamma_alpha
+            dT_gamma=deriv_ds.T_gamma_bw**2 * param_covs["gamma"],
+            dT_ddb=deriv_ds.T_db_bw**2 * param_covs["db"],
+            dT_dalpha=deriv_ds.T_alpha_bw**2 * param_covs["alpha"],
+            dT_dta=deriv_ds.T_ta_bw**2 * param_covs["talpha_bw_full"],
+            dgamma_ddb=(
+                2 * deriv_ds.T_gamma_bw * deriv_ds.T_db_bw * param_covs["gamma_db"]
             ),
-            dalpha_ddb=(2 * deriv_ds.T_alpha_bw * deriv_ds.T_db_bw * sigma2_alpha_db),
-            dta_dgamma=(2 * deriv_ds.T_ta_bw * deriv_ds.T_gamma_bw * sigma2_tabw_gamma),
-            dta_ddb=(2 * deriv_ds.T_ta_bw * deriv_ds.T_db_bw * sigma2_tabw_db),
-            dta_dalpha=(2 * deriv_ds.T_ta_bw * deriv_ds.T_alpha_bw * sigma2_tabw_alpha),
+            dgamma_dalpha=(
+                2
+                * deriv_ds.T_gamma_bw
+                * deriv_ds.T_alpha_bw
+                * param_covs["gamma_alpha"]
+            ),
+            dalpha_ddb=(
+                2 * deriv_ds.T_alpha_bw * deriv_ds.T_db_bw * param_covs["alpha_db"]
+            ),
+            dta_dgamma=(
+                2 * deriv_ds.T_ta_bw * deriv_ds.T_gamma_bw * param_covs["tabw_gamma"]
+            ),
+            dta_ddb=(2 * deriv_ds.T_ta_bw * deriv_ds.T_db_bw * param_covs["tabw_db"]),
+            dta_dalpha=(
+                2 * deriv_ds.T_ta_bw * deriv_ds.T_alpha_bw * param_covs["tabw_alpha"]
+            ),
         )
 
-        self["var_fw_da"] = xr.Dataset(var_fw_dict).to_array(dim="comp_fw")
-        self["var_bw_da"] = xr.Dataset(var_bw_dict).to_array(dim="comp_bw")
+        out["var_fw_da"] = xr.Dataset(var_fw_dict).to_array(dim="comp_fw")
+        out["var_bw_da"] = xr.Dataset(var_bw_dict).to_array(dim="comp_bw")
 
-        self["tmpf_var"] = self["var_fw_da"].sum(dim="comp_fw")
-        self["tmpb_var"] = self["var_bw_da"].sum(dim="comp_bw")
+        out["tmpf_var"] = out["var_fw_da"].sum(dim="comp_fw")
+        out["tmpb_var"] = out["var_bw_da"].sum(dim="comp_bw")
 
         # First estimate of tmpw_var
-        self["tmpw_var" + "_approx"] = 1 / (1 / self["tmpf_var"] + 1 / self["tmpb_var"])
-        self["tmpw"] = (
-            (tmpf / self["tmpf_var"] + tmpb / self["tmpb_var"])
-            * self["tmpw_var" + "_approx"]
+        out["tmpw_var" + "_approx"] = 1 / (1 / out["tmpf_var"] + 1 / out["tmpb_var"])
+        out["tmpw"] = (
+            (tmpf / out["tmpf_var"] + tmpb / out["tmpb_var"])
+            * out["tmpw_var" + "_approx"]
         ) - 273.15
 
-        weightsf = self["tmpw_var" + "_approx"] / self["tmpf_var"]
-        weightsb = self["tmpw_var" + "_approx"] / self["tmpb_var"]
+        weightsf = out["tmpw_var" + "_approx"] / out["tmpf_var"]
+        weightsb = out["tmpw_var" + "_approx"] / out["tmpb_var"]
 
         deriv_dict2 = dict(
             T_gamma_w=weightsf * deriv_dict["T_gamma_fw"]
@@ -2493,61 +2522,85 @@ class DataStore(xr.Dataset):
             * parse_st_var(self, rst_var, st_label="rst"),
             dT_drast=deriv_ds2.T_rast_w**2
             * parse_st_var(self, rast_var, st_label="rast"),
-            dT_gamma=deriv_ds2.T_gamma_w**2 * self["gamma_var"],
-            dT_ddf=deriv_ds2.T_df_w**2 * self["df_var"],
-            dT_ddb=deriv_ds2.T_db_w**2 * self["db_var"],
-            dT_dalpha=deriv_ds2.T_alpha_w**2 * self["alpha_var"],
-            dT_dtaf=deriv_ds2.T_taf_w**2 * self["talpha_fw_full_var"],
-            dT_dtab=deriv_ds2.T_tab_w**2 * self["talpha_bw_full_var"],
-            dgamma_ddf=2 * deriv_ds2.T_gamma_w * deriv_ds2.T_df_w * sigma2_gamma_df,
-            dgamma_ddb=2 * deriv_ds2.T_gamma_w * deriv_ds2.T_db_w * sigma2_gamma_db,
+            dT_gamma=deriv_ds2.T_gamma_w**2 * param_covs["gamma"],
+            dT_ddf=deriv_ds2.T_df_w**2 * param_covs["df"],
+            dT_ddb=deriv_ds2.T_db_w**2 * param_covs["db"],
+            dT_dalpha=deriv_ds2.T_alpha_w**2 * param_covs["alpha"],
+            dT_dtaf=deriv_ds2.T_taf_w**2 * param_covs["talpha_fw_full"],
+            dT_dtab=deriv_ds2.T_tab_w**2 * param_covs["talpha_bw_full"],
+            dgamma_ddf=2
+            * deriv_ds2.T_gamma_w
+            * deriv_ds2.T_df_w
+            * param_covs["gamma_df"],
+            dgamma_ddb=2
+            * deriv_ds2.T_gamma_w
+            * deriv_ds2.T_db_w
+            * param_covs["gamma_db"],
             dgamma_dalpha=2
             * deriv_ds2.T_gamma_w
             * deriv_ds2.T_alpha_w
-            * sigma2_gamma_alpha,
-            dgamma_dtaf=2 * deriv_ds2.T_gamma_w * deriv_ds2.T_taf_w * sigma2_tafw_gamma,
-            dgamma_dtab=2 * deriv_ds2.T_gamma_w * deriv_ds2.T_tab_w * sigma2_tabw_gamma,
-            ddf_ddb=2 * deriv_ds2.T_df_w * deriv_ds2.T_db_w * sigma2_df_db,
-            ddf_dalpha=2 * deriv_ds2.T_df_w * deriv_ds2.T_alpha_w * sigma2_alpha_df,
-            ddf_dtaf=2 * deriv_ds2.T_df_w * deriv_ds2.T_taf_w * sigma2_tafw_df,
-            ddf_dtab=2 * deriv_ds2.T_df_w * deriv_ds2.T_tab_w * sigma2_tabw_df,
-            ddb_dalpha=2 * deriv_ds2.T_db_w * deriv_ds2.T_alpha_w * sigma2_alpha_db,
-            ddb_dtaf=2 * deriv_ds2.T_db_w * deriv_ds2.T_taf_w * sigma2_tafw_db,
-            ddb_dtab=2 * deriv_ds2.T_db_w * deriv_ds2.T_tab_w * sigma2_tabw_db,
-            # dtaf_dtab=2 * deriv_ds2.T_tab_w * deriv_ds2.T_tab_w * sigma2_tafw_tabw,
+            * param_covs["gamma_alpha"],
+            dgamma_dtaf=2
+            * deriv_ds2.T_gamma_w
+            * deriv_ds2.T_taf_w
+            * param_covs["tafw_gamma"],
+            dgamma_dtab=2
+            * deriv_ds2.T_gamma_w
+            * deriv_ds2.T_tab_w
+            * param_covs["tabw_gamma"],
+            ddf_ddb=2 * deriv_ds2.T_df_w * deriv_ds2.T_db_w * param_covs["df_db"],
+            ddf_dalpha=2
+            * deriv_ds2.T_df_w
+            * deriv_ds2.T_alpha_w
+            * param_covs["alpha_df"],
+            ddf_dtaf=2 * deriv_ds2.T_df_w * deriv_ds2.T_taf_w * param_covs["tafw_df"],
+            ddf_dtab=2 * deriv_ds2.T_df_w * deriv_ds2.T_tab_w * param_covs["tabw_df"],
+            ddb_dalpha=2
+            * deriv_ds2.T_db_w
+            * deriv_ds2.T_alpha_w
+            * param_covs["alpha_db"],
+            ddb_dtaf=2 * deriv_ds2.T_db_w * deriv_ds2.T_taf_w * param_covs["tafw_db"],
+            ddb_dtab=2 * deriv_ds2.T_db_w * deriv_ds2.T_tab_w * param_covs["tabw_db"],
+            # dtaf_dtab=2 * deriv_ds2.T_tab_w * deriv_ds2.T_tab_w * param_covs["tafw_tabw"],
         )
-        self["var_w_da"] = xr.Dataset(var_w_dict).to_array(dim="comp_w")
-        self["tmpw_var"] = self["var_w_da"].sum(dim="comp_w")
+        out["var_w_da"] = xr.Dataset(var_w_dict).to_array(dim="comp_w")
+        out["tmpw_var"] = out["var_w_da"].sum(dim="comp_w")
 
+        # Compute uncertainty solely due to noise in Stokes signal, neglecting parameter uncenrtainty
         tmpf_var_excl_par = (
-            self["var_fw_da"].sel(comp_fw=["dT_dst", "dT_dast"]).sum(dim="comp_fw")
+            out["var_fw_da"].sel(comp_fw=["dT_dst", "dT_dast"]).sum(dim="comp_fw")
         )
         tmpb_var_excl_par = (
-            self["var_bw_da"].sel(comp_bw=["dT_drst", "dT_drast"]).sum(dim="comp_bw")
+            out["var_bw_da"].sel(comp_bw=["dT_drst", "dT_drast"]).sum(dim="comp_bw")
         )
-        self["tmpw_var" + "_lower"] = 1 / (
-            1 / tmpf_var_excl_par + 1 / tmpb_var_excl_par
-        )
+        out["tmpw_var" + "_lower"] = 1 / (1 / tmpf_var_excl_par + 1 / tmpb_var_excl_par)
 
-        self["tmpf"].attrs.update(_dim_attrs[("tmpf",)])
-        self["tmpb"].attrs.update(_dim_attrs[("tmpb",)])
-        self["tmpw"].attrs.update(_dim_attrs[("tmpw",)])
-        self["tmpf_var"].attrs.update(_dim_attrs[("tmpf_var",)])
-        self["tmpb_var"].attrs.update(_dim_attrs[("tmpb_var",)])
-        self["tmpw_var"].attrs.update(_dim_attrs[("tmpw_var",)])
-        self["tmpw_var" + "_approx"].attrs.update(_dim_attrs[("tmpw_var_approx",)])
-        self["tmpw_var" + "_lower"].attrs.update(_dim_attrs[("tmpw_var_lower",)])
+        out["tmpf"].attrs.update(_dim_attrs[("tmpf",)])
+        out["tmpb"].attrs.update(_dim_attrs[("tmpb",)])
+        out["tmpw"].attrs.update(_dim_attrs[("tmpw",)])
+        out["tmpf_var"].attrs.update(_dim_attrs[("tmpf_var",)])
+        out["tmpb_var"].attrs.update(_dim_attrs[("tmpb_var",)])
+        out["tmpw_var"].attrs.update(_dim_attrs[("tmpw_var",)])
+        out["tmpw_var" + "_approx"].attrs.update(_dim_attrs[("tmpw_var_approx",)])
+        out["tmpw_var" + "_lower"].attrs.update(_dim_attrs[("tmpw_var_lower",)])
 
         drop_vars = [
             k for k, v in self.items() if {"params1", "params2"}.intersection(v.dims)
         ]
 
         for k in drop_vars:
+            print(f"removing {k}")
             del self[k]
 
-        self["p_val"] = (("params1",), p_val)
-        self["p_cov"] = (("params1", "params2"), p_cov)
+        out["p_val"] = (("params1",), p_val)
+        out["p_cov"] = (("params1", "params2"), p_cov)
 
+        out.update(params)
+
+        for key, da in param_covs.items():
+            out[key + "_var"] = da
+
+        self.update(out)
         pass
 
     def average_single_ended(
@@ -2879,6 +2932,7 @@ class DataStore(xr.Dataset):
                 )  # The new CI dimension is added as
                 # firsaxis
                 self["tmpf_mc_avg2"] = (("CI", x_dim2), qq)
+
         # Clean up the garbage. All arrays with a Monte Carlo dimension.
         if mc_remove_set_flag:
             remove_mc_set = [

@@ -528,6 +528,45 @@ def get_netcdf_encoding(
     return encoding
 
 
+def get_params_from_pval(ip, p_val, coords):
+    assert len(p_val) == ip.npar, "Length of p_val is incorrect"
+
+    params = xr.Dataset(coords=coords)
+
+    # save estimates and variances to datastore, skip covariances
+    params["gamma"] = (tuple(), p_val[ip.gamma].item())
+    params["alpha"] = (("x",), p_val[ip.alpha])
+    params["df"] = (("time",), p_val[ip.df])
+    params["db"] = (("time",), p_val[ip.db])
+
+    if ip.nta:
+        params["talpha_fw"] = (
+            ("time", "trans_att"),
+            p_val[ip.taf].reshape((ip.nt, ip.nta), order="C"),
+        )
+        params["talpha_bw"] = (
+            ("time", "trans_att"),
+            p_val[ip.tab].reshape((ip.nt, ip.nta), order="C"),
+        )
+    else:
+        params["talpha_fw"] = (("time", "trans_att"), np.zeros((ip.nt, 0)))
+        params["talpha_bw"] = (("time", "trans_att"), np.zeros((ip.nt, 0)))
+
+    params["talpha_fw_full"] = (
+        ("x", "time"),
+        ip.get_taf_values(
+            pval=p_val, x=params.x.values, trans_att=params.trans_att.values, axis=""
+        ),
+    )
+    params["talpha_bw_full"] = (
+        ("x", "time"),
+        ip.get_tab_values(
+            pval=p_val, x=params.x.values, trans_att=params.trans_att.values, axis=""
+        ),
+    )
+    return params
+
+
 def merge_double_ended(
     ds_fw: "DataStore",
     ds_bw: "DataStore",
