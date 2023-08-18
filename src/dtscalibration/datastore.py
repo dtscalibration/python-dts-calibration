@@ -2260,8 +2260,9 @@ class DataStore(xr.Dataset):
         assert p_cov.shape == (ip.npar, ip.npar)
 
         coords = {"x": self["x"], "time": self["time"], "trans_att": self["trans_att"]}
-        params = get_params_from_pval(ip, p_val, coords)
-        param_covs = get_params_from_pval(ip, p_var, coords)
+        params = get_params_from_pval(ip, coords, p_val=p_val)
+        param_covs = get_params_from_pval(ip, coords, p_val=p_var, p_cov=p_cov)
+
         out = xr.Dataset(
             {
                 "tmpf": params["gamma"]
@@ -2282,126 +2283,6 @@ class DataStore(xr.Dataset):
                 - 273.15,
             }
         )
-
-        # extract covariances and ensure broadcastable to (nx, nt)
-        param_covs["gamma_df"] = (("time",), p_cov[np.ix_(ip.gamma, ip.df)][0])
-        param_covs["gamma_db"] = (("time",), p_cov[np.ix_(ip.gamma, ip.db)][0])
-        param_covs["gamma_alpha"] = (("x",), p_cov[np.ix_(ip.alpha, ip.gamma)][:, 0])
-        param_covs["df_db"] = (
-            ("time",),
-            p_cov[ip.df, ip.db],
-        )
-        param_covs["alpha_df"] = (
-            (
-                "x",
-                "time",
-            ),
-            p_cov[np.ix_(ip.alpha, ip.df)],
-        )
-        param_covs["alpha_db"] = (
-            (
-                "x",
-                "time",
-            ),
-            p_cov[np.ix_(ip.alpha, ip.db)],
-        )
-        param_covs["tafw_gamma"] = (
-            (
-                "x",
-                "time",
-            ),
-            ip.get_taf_values(
-                pval=p_cov[ip.gamma],
-                x=self.x.values,
-                trans_att=self.trans_att.values,
-                axis="",
-            ),
-        )
-        param_covs["tabw_gamma"] = (
-            (
-                "x",
-                "time",
-            ),
-            ip.get_tab_values(
-                pval=p_cov[ip.gamma],
-                x=self.x.values,
-                trans_att=self.trans_att.values,
-                axis="",
-            ),
-        )
-        param_covs["tafw_alpha"] = (
-            (
-                "x",
-                "time",
-            ),
-            ip.get_taf_values(
-                pval=p_cov[ip.alpha],
-                x=self.x.values,
-                trans_att=self.trans_att.values,
-                axis="x",
-            ),
-        )
-        param_covs["tabw_alpha"] = (
-            (
-                "x",
-                "time",
-            ),
-            ip.get_tab_values(
-                pval=p_cov[ip.alpha],
-                x=self.x.values,
-                trans_att=self.trans_att.values,
-                axis="x",
-            ),
-        )
-        param_covs["tafw_df"] = (
-            (
-                "x",
-                "time",
-            ),
-            ip.get_taf_values(
-                pval=p_cov[ip.df],
-                x=self.x.values,
-                trans_att=self.trans_att.values,
-                axis="time",
-            ),
-        )
-        param_covs["tafw_db"] = (
-            (
-                "x",
-                "time",
-            ),
-            ip.get_taf_values(
-                pval=p_cov[ip.db],
-                x=self.x.values,
-                trans_att=self.trans_att.values,
-                axis="time",
-            ),
-        )
-        param_covs["tabw_db"] = (
-            (
-                "x",
-                "time",
-            ),
-            ip.get_tab_values(
-                pval=p_cov[ip.db],
-                x=self.x.values,
-                trans_att=self.trans_att.values,
-                axis="time",
-            ),
-        )
-        param_covs["tabw_df"] = (
-            (
-                "x",
-                "time",
-            ),
-            ip.get_tab_values(
-                pval=p_cov[ip.df],
-                x=self.x.values,
-                trans_att=self.trans_att.values,
-                axis="time",
-            ),
-        )
-        # sigma2_tafw_tabw
 
         tmpf = out["tmpf"] + 273.15
         tmpb = out["tmpb"] + 273.15
@@ -2597,7 +2478,7 @@ class DataStore(xr.Dataset):
 
         out.update(params)
 
-        for key, da in param_covs.items():
+        for key, da in param_covs.data_vars.items():
             out[key + "_var"] = da
 
         self.update(out)

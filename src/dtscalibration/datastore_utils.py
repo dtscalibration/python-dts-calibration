@@ -528,42 +528,171 @@ def get_netcdf_encoding(
     return encoding
 
 
-def get_params_from_pval(ip, p_val, coords):
-    assert len(p_val) == ip.npar, "Length of p_val is incorrect"
+def get_params_from_pval(ip, coords, p_val=None, p_cov=None):
+    if p_val is not None:
+        assert len(p_val) == ip.npar, "Length of p_val is incorrect"
 
-    params = xr.Dataset(coords=coords)
+        params = xr.Dataset(coords=coords)
 
-    # save estimates and variances to datastore, skip covariances
-    params["gamma"] = (tuple(), p_val[ip.gamma].item())
-    params["alpha"] = (("x",), p_val[ip.alpha])
-    params["df"] = (("time",), p_val[ip.df])
-    params["db"] = (("time",), p_val[ip.db])
+        # save estimates and variances to datastore, skip covariances
+        params["gamma"] = (tuple(), p_val[ip.gamma].item())
+        params["alpha"] = (("x",), p_val[ip.alpha])
+        params["df"] = (("time",), p_val[ip.df])
+        params["db"] = (("time",), p_val[ip.db])
 
-    if ip.nta:
-        params["talpha_fw"] = (
-            ("time", "trans_att"),
-            p_val[ip.taf].reshape((ip.nt, ip.nta), order="C"),
+        if ip.nta:
+            params["talpha_fw"] = (
+                ("time", "trans_att"),
+                p_val[ip.taf].reshape((ip.nt, ip.nta), order="C"),
+            )
+            params["talpha_bw"] = (
+                ("time", "trans_att"),
+                p_val[ip.tab].reshape((ip.nt, ip.nta), order="C"),
+            )
+        else:
+            params["talpha_fw"] = (("time", "trans_att"), np.zeros((ip.nt, 0)))
+            params["talpha_bw"] = (("time", "trans_att"), np.zeros((ip.nt, 0)))
+
+        params["talpha_fw_full"] = (
+            ("x", "time"),
+            ip.get_taf_values(
+                pval=p_val,
+                x=params.x.values,
+                trans_att=params.trans_att.values,
+                axis="",
+            ),
         )
-        params["talpha_bw"] = (
-            ("time", "trans_att"),
-            p_val[ip.tab].reshape((ip.nt, ip.nta), order="C"),
+        params["talpha_bw_full"] = (
+            ("x", "time"),
+            ip.get_tab_values(
+                pval=p_val,
+                x=params.x.values,
+                trans_att=params.trans_att.values,
+                axis="",
+            ),
         )
-    else:
-        params["talpha_fw"] = (("time", "trans_att"), np.zeros((ip.nt, 0)))
-        params["talpha_bw"] = (("time", "trans_att"), np.zeros((ip.nt, 0)))
+    if p_cov is not None:
+        assert p_cov.shape == (ip.npar, ip.npar), "Shape of p_cov is incorrect"
 
-    params["talpha_fw_full"] = (
-        ("x", "time"),
-        ip.get_taf_values(
-            pval=p_val, x=params.x.values, trans_att=params.trans_att.values, axis=""
-        ),
-    )
-    params["talpha_bw_full"] = (
-        ("x", "time"),
-        ip.get_tab_values(
-            pval=p_val, x=params.x.values, trans_att=params.trans_att.values, axis=""
-        ),
-    )
+        # extract covariances and ensure broadcastable to (nx, nt)
+        params["gamma_df"] = (("time",), p_cov[np.ix_(ip.gamma, ip.df)][0])
+        params["gamma_db"] = (("time",), p_cov[np.ix_(ip.gamma, ip.db)][0])
+        params["gamma_alpha"] = (("x",), p_cov[np.ix_(ip.alpha, ip.gamma)][:, 0])
+        params["df_db"] = (
+            ("time",),
+            p_cov[ip.df, ip.db],
+        )
+        params["alpha_df"] = (
+            (
+                "x",
+                "time",
+            ),
+            p_cov[np.ix_(ip.alpha, ip.df)],
+        )
+        params["alpha_db"] = (
+            (
+                "x",
+                "time",
+            ),
+            p_cov[np.ix_(ip.alpha, ip.db)],
+        )
+        params["tafw_gamma"] = (
+            (
+                "x",
+                "time",
+            ),
+            ip.get_taf_values(
+                pval=p_cov[ip.gamma],
+                x=params["x"].values,
+                trans_att=params["trans_att"].values,
+                axis="",
+            ),
+        )
+        params["tabw_gamma"] = (
+            (
+                "x",
+                "time",
+            ),
+            ip.get_tab_values(
+                pval=p_cov[ip.gamma],
+                x=params["x"].values,
+                trans_att=params["trans_att"].values,
+                axis="",
+            ),
+        )
+        params["tafw_alpha"] = (
+            (
+                "x",
+                "time",
+            ),
+            ip.get_taf_values(
+                pval=p_cov[ip.alpha],
+                x=params["x"].values,
+                trans_att=params["trans_att"].values,
+                axis="x",
+            ),
+        )
+        params["tabw_alpha"] = (
+            (
+                "x",
+                "time",
+            ),
+            ip.get_tab_values(
+                pval=p_cov[ip.alpha],
+                x=params["x"].values,
+                trans_att=params["trans_att"].values,
+                axis="x",
+            ),
+        )
+        params["tafw_df"] = (
+            (
+                "x",
+                "time",
+            ),
+            ip.get_taf_values(
+                pval=p_cov[ip.df],
+                x=params["x"].values,
+                trans_att=params["trans_att"].values,
+                axis="time",
+            ),
+        )
+        params["tafw_db"] = (
+            (
+                "x",
+                "time",
+            ),
+            ip.get_taf_values(
+                pval=p_cov[ip.db],
+                x=params["x"].values,
+                trans_att=params["trans_att"].values,
+                axis="time",
+            ),
+        )
+        params["tabw_db"] = (
+            (
+                "x",
+                "time",
+            ),
+            ip.get_tab_values(
+                pval=p_cov[ip.db],
+                x=params["x"].values,
+                trans_att=params["trans_att"].values,
+                axis="time",
+            ),
+        )
+        params["tabw_df"] = (
+            (
+                "x",
+                "time",
+            ),
+            ip.get_tab_values(
+                pval=p_cov[ip.df],
+                x=params["x"].values,
+                trans_att=params["trans_att"].values,
+                axis="time",
+            ),
+        )
+        # sigma2_tafw_tabw
     return params
 
 
