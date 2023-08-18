@@ -56,8 +56,8 @@ dependencies = [
     "dask",
     "pandas",
     "xarray[parallel]",     # numbagg (llvmlite) is a pain to install with pip
-    "bottleneck",           # speed up Xarray
-    "flox",                 # speed up Xarray
+    "bottleneck",           # optional, speed up Xarray
+    "flox",                 # optional, speed up Xarray
     "pyyaml>=6.0.1",
     "xmltodict",
     "scipy",
@@ -74,13 +74,14 @@ dev = [
     "bump2version",
     "ruff",
     "isort",
-    "black[jupyter]",
-    "mypy",
+    "black[jupyter]",   # for formatting
+    "mypy",             # for type checking
     "types-PyYAML",     # for pyyaml types
     "types-xmltodict",  # for xmltodict types
     "pandas-stubs",     # for pandas types
     "pytest",
-    "pytest-cov",
+    "pytest-cov",       # for coverage
+    "pytest-xdist",     # for parallel testing
     "jupyter",
     "nbformat",         # Needed to run the tests
 ]
@@ -112,8 +113,8 @@ lint = [
   "mypy src/",
 ]
 format = ["black .", "isort .", "lint",]
-test = ["pytest ./src/ ./tests/",]  # --doctest-modules
-fast-test = ["pytest ./tests/ -m \"not slow\"",]
+test = ["pytest -n auto ./src/ ./tests/",]
+fast-test = ["pytest -n auto ./tests/ -m \"not slow\"",]
 coverage = [
   "pytest --cov --cov-report term --cov-report xml --junitxml=xunit-result.xml tests/",
 ]
@@ -149,7 +150,7 @@ select = [  # It would be nice to have the commented out checks working.
   # "D",  # pydocstyle
   # "C90",  # mccabe complexity
   # "N",  # PEP8-naming
-  # "UP",  # pyupgrade (upgrade syntax to current syntax)
+  "UP",  # pyupgrade (upgrade syntax to current syntax)
   "PLE",  # Pylint error https://github.com/charliermarsh/ruff#error-ple
   # "PLR",  # Pylint refactor (e.g. too-many-arguments)
   # "PLW",  # Pylint warning (useless-else-on-loop)
