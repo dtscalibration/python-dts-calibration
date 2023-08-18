@@ -4443,7 +4443,7 @@ class DataStore(xr.Dataset):
         if x_indices:
             x_coords = self.x
             reference_dataset = None
-            
+
         else:
             sections = validate_sections(self, sections)
 

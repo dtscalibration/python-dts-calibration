@@ -583,21 +583,29 @@ def test_double_ended_variance_estimate_synthetic():
     )
 
     # Calibrated variance
-    stdsf1 = ds.ufunc_per_section(sections=sections,
-        label="tmpf", func=np.std, temp_err=True, calc_per="stretch"
+    stdsf1 = ds.ufunc_per_section(
+        sections=sections, label="tmpf", func=np.std, temp_err=True, calc_per="stretch"
     )
-    stdsb1 = ds.ufunc_per_section(sections=sections,
-        label="tmpb", func=np.std, temp_err=True, calc_per="stretch"
+    stdsb1 = ds.ufunc_per_section(
+        sections=sections, label="tmpb", func=np.std, temp_err=True, calc_per="stretch"
     )
 
     # Use a single timestep to better check if the parameter uncertainties propagate
     ds1 = ds.isel(time=1)
     # Estimated VAR
-    stdsf2 = ds1.ufunc_per_section(sections=sections,
-        label="tmpf_mc_var", func=np.mean, temp_err=False, calc_per="stretch"
+    stdsf2 = ds1.ufunc_per_section(
+        sections=sections,
+        label="tmpf_mc_var",
+        func=np.mean,
+        temp_err=False,
+        calc_per="stretch",
     )
-    stdsb2 = ds1.ufunc_per_section(sections=sections,
-        label="tmpb_mc_var", func=np.mean, temp_err=False, calc_per="stretch"
+    stdsb2 = ds1.ufunc_per_section(
+        sections=sections,
+        label="tmpb_mc_var",
+        func=np.mean,
+        temp_err=False,
+        calc_per="stretch",
     )
 
     for (_, v1), (_, v2) in zip(stdsf1.items(), stdsf2.items()):
@@ -707,15 +715,24 @@ def test_single_ended_variance_estimate_synthetic():
     )
 
     # Calibrated variance
-    stdsf1 = ds.ufunc_per_section(sections=sections,
-        label="tmpf", func=np.std, temp_err=True, calc_per="stretch", ddof=1
+    stdsf1 = ds.ufunc_per_section(
+        sections=sections,
+        label="tmpf",
+        func=np.std,
+        temp_err=True,
+        calc_per="stretch",
+        ddof=1,
     )
 
     # Use a single timestep to better check if the parameter uncertainties propagate
     ds1 = ds.isel(time=1)
     # Estimated VAR
-    stdsf2 = ds1.ufunc_per_section(sections=sections,
-        label="tmpf_mc_var", func=np.mean, temp_err=False, calc_per="stretch"
+    stdsf2 = ds1.ufunc_per_section(
+        sections=sections,
+        label="tmpf_mc_var",
+        func=np.mean,
+        temp_err=False,
+        calc_per="stretch",
     )
 
     for (_, v1), (_, v2) in zip(stdsf1.items(), stdsf2.items()):
@@ -2536,22 +2553,30 @@ def test_double_ended_exponential_variance_estimate_synthetic():
     )
 
     # Calibrated variance
-    stdsf1 = ds.ufunc_per_section(sections=sections,
-        label="tmpf", func=np.std, temp_err=True, calc_per="stretch"
+    stdsf1 = ds.ufunc_per_section(
+        sections=sections, label="tmpf", func=np.std, temp_err=True, calc_per="stretch"
     )
-    stdsb1 = ds.ufunc_per_section(sections=sections,
-        label="tmpb", func=np.std, temp_err=True, calc_per="stretch"
+    stdsb1 = ds.ufunc_per_section(
+        sections=sections, label="tmpb", func=np.std, temp_err=True, calc_per="stretch"
     )
 
     # Use a single timestep to better check if the parameter uncertainties propagate
     ds1 = ds.isel(time=1)
 
     # Estimated VAR
-    stdsf2 = ds1.ufunc_per_section(sections=sections,
-        label="tmpf_mc_var", func=np.mean, temp_err=False, calc_per="stretch"
+    stdsf2 = ds1.ufunc_per_section(
+        sections=sections,
+        label="tmpf_mc_var",
+        func=np.mean,
+        temp_err=False,
+        calc_per="stretch",
     )
-    stdsb2 = ds1.ufunc_per_section(sections=sections,
-        label="tmpb_mc_var", func=np.mean, temp_err=False, calc_per="stretch"
+    stdsb2 = ds1.ufunc_per_section(
+        sections=sections,
+        label="tmpb_mc_var",
+        func=np.mean,
+        temp_err=False,
+        calc_per="stretch",
     )
 
     for (_, v1), (_, v2) in zip(stdsf1.items(), stdsf2.items()):
@@ -3534,16 +3559,25 @@ def test_single_ended_exponential_variance_estimate_synthetic():
     )
 
     # Calibrated variance
-    stdsf1 = ds.ufunc_per_section(sections=sections,
-        label="tmpf", func=np.var, temp_err=True, calc_per="stretch", ddof=1
+    stdsf1 = ds.ufunc_per_section(
+        sections=sections,
+        label="tmpf",
+        func=np.var,
+        temp_err=True,
+        calc_per="stretch",
+        ddof=1,
     )
 
     # Use a single timestep to better check if the parameter uncertainties
     # propagate
     ds1 = ds.isel(time=1)
     # Estimated VAR
-    stdsf2 = ds1.ufunc_per_section(sections=sections,
-        label="tmpf_mc_var", func=np.mean, temp_err=False, calc_per="stretch"
+    stdsf2 = ds1.ufunc_per_section(
+        sections=sections,
+        label="tmpf_mc_var",
+        func=np.mean,
+        temp_err=False,
+        calc_per="stretch",
     )
 
     for (_, v1), (_, v2) in zip(stdsf1.items(), stdsf2.items()):

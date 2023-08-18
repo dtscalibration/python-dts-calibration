@@ -893,7 +893,7 @@ def calibration_double_ended_helper(
                     [fix_gamma[0]],
                     out[0][: 2 * nt],
                     E_all_exact,
-                    out[0][2 * nt + n_E_in_cal:],
+                    out[0][2 * nt + n_E_in_cal :],
                 )
             )
             p_val[1 + 2 * nt + split["ix_from_cal_match_to_glob"]] = out[0][
@@ -993,7 +993,7 @@ def calibration_double_ended_helper(
             p0_est = np.concatenate(
                 (
                     split["p0_est"][: 1 + 2 * nt],
-                    split["p0_est"][1 + 2 * nt + n_E_in_cal:],
+                    split["p0_est"][1 + 2 * nt + n_E_in_cal :],
                 )
             )
             X_E1 = sp.csr_matrix(([], ([], [])), shape=(nt * nx_sec, self.x.size))
