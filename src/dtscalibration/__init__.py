@@ -1,4 +1,3 @@
-# coding=utf-8
 from dtscalibration.datastore import DataStore
 from dtscalibration.datastore_utils import check_dims
 from dtscalibration.datastore_utils import check_timestep_allclose

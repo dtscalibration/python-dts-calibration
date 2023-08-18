@@ -4,12 +4,9 @@ import warnings
 import dask
 import dask.array as da
 import numpy as np
-import scipy.sparse as sp
 import scipy.stats as sst
 import xarray as xr
 import yaml
-from scipy.optimize import minimize
-from scipy.sparse import linalg as ln
 
 from dtscalibration.calibrate_utils import calibration_double_ended_helper
 from dtscalibration.calibrate_utils import calibration_single_ended_helper
@@ -24,6 +21,9 @@ from dtscalibration.datastore_utils import check_timestep_allclose
 from dtscalibration.datastore_utils import get_params_from_pval
 from dtscalibration.datastore_utils import ufunc_per_section_helper
 from dtscalibration.io_utils import _dim_attrs
+from dtscalibration.variance_helpers import variance_stokes_constant_helper
+from dtscalibration.variance_helpers import variance_stokes_exponential_helper
+from dtscalibration.variance_helpers import variance_stokes_linear_helper
 
 dtsattr_namelist = ["double_ended_flag"]
 dim_attrs = {k: v for kl, v in _dim_attrs.items() for k in kl}
@@ -879,21 +879,12 @@ class DataStore(xr.Dataset):
         dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
         04Calculate_variance_Stokes.ipynb>`_
         """
-
-        def func_fit(p, xs):
-            return p[:xs, None] * p[None, xs:]
-
-        def func_cost(p, data, xs):
-            fit = func_fit(p, xs)
-            return np.sum((fit - data) ** 2)
-
         if sections is None:
             sections = self.sections
         else:
             sections = validate_sections(self, sections)
 
-        assert self[st_label].dims[0] == "x", "Stokes are transposed"
-
+        assert self[st_label].dims[0] == "x", f"{st_label} are transposed"
         check_timestep_allclose(self, eps=0.01)
 
         # should maybe be per section. But then residuals
@@ -904,25 +895,7 @@ class DataStore(xr.Dataset):
             )
         )[0]
 
-        resid_list = []
-
-        for k, v in data_dict.items():
-            for vi in v:
-                nxs, nt = vi.shape
-                npar = nt + nxs
-
-                p1 = np.ones(npar) * vi.mean() ** 0.5
-
-                res = minimize(func_cost, p1, args=(vi, nxs), method="Powell")
-                assert res.success, "Unable to fit. Try variance_stokes_exponential"
-
-                fit = func_fit(res.x, nxs)
-                resid_list.append(fit - vi)
-
-        resid = np.concatenate(resid_list)
-
-        # unbiased estimater ddof=1, originally thought it was npar
-        var_I = resid.var(ddof=1)
+        var_I, resid = variance_stokes_constant_helper(data_dict)
 
         if not reshape_residuals:
             return var_I, resid
@@ -1096,89 +1069,12 @@ class DataStore(xr.Dataset):
                 x_list.append(da.tile(_x, nt))
                 len_stretch_list.append(_x.size)
 
-        n_sections = len(len_stretch_list)  # number of sections
-        n_locs = sum(len_stretch_list)  # total number of locations along cable used
-        # for reference.
-
         x = np.concatenate(x_list)  # coordinates are already in memory
         y = np.concatenate(y_list)
 
-        data1 = x
-        data2 = np.ones(sum(len_stretch_list) * nt)
-        data = np.concatenate([data1, data2])
-
-        # alpha is NOT the same for all -> one column per section
-        coords1row = np.arange(nt * n_locs)
-        coords1col = np.hstack(
-            [np.ones(in_locs * nt) * i for i, in_locs in enumerate(len_stretch_list)]
-        )  # C for
-
-        # second calibration parameter is different per section and per timestep
-        coords2row = np.arange(nt * n_locs)
-        coords2col = np.hstack(
-            [
-                np.repeat(
-                    np.arange(i * nt + n_sections, (i + 1) * nt + n_sections), in_locs
-                )
-                for i, in_locs in enumerate(len_stretch_list)
-            ]
-        )  # C for
-        coords = (
-            np.concatenate([coords1row, coords2row]),
-            np.concatenate([coords1col, coords2col]),
+        var_I, resid = variance_stokes_exponential_helper(
+            nt, x, y, len_stretch_list, use_statsmodels, suppress_info
         )
-
-        lny = np.log(y)
-        w = y.copy()  # 1/std.
-
-        ddof = n_sections + nt * n_sections  # see numpy documentation on ddof
-
-        if use_statsmodels:
-            # returns the same answer with statsmodel
-            import statsmodels.api as sm
-
-            X = sp.coo_matrix(
-                (data, coords), shape=(nt * n_locs, ddof), dtype=float, copy=False
-            )
-
-            mod_wls = sm.WLS(lny, X.toarray(), weights=w**2)
-            res_wls = mod_wls.fit()
-            # print(res_wls.summary())
-            a = res_wls.params
-
-        else:
-            wdata = data * np.hstack((w, w))
-            wX = sp.coo_matrix(
-                (wdata, coords),
-                shape=(nt * n_locs, n_sections + nt * n_sections),
-                dtype=float,
-                copy=False,
-            )
-
-            wlny = lny * w
-
-            p0_est = np.asarray(n_sections * [0.0] + nt * n_sections * [8])
-            # noinspection PyTypeChecker
-            a = ln.lsqr(wX, wlny, x0=p0_est, show=not suppress_info, calc_var=False)[0]
-
-        beta = a[:n_sections]
-        beta_expand_to_sec = np.hstack(
-            [
-                np.repeat(float(beta[i]), leni * nt)
-                for i, leni in enumerate(len_stretch_list)
-            ]
-        )
-        G = np.asarray(a[n_sections:])
-        G_expand_to_sec = np.hstack(
-            [
-                np.repeat(G[i * nt : (i + 1) * nt], leni)
-                for i, leni in enumerate(len_stretch_list)
-            ]
-        )
-
-        I_est = np.exp(G_expand_to_sec) * np.exp(x * beta_expand_to_sec)
-        resid = I_est - y
-        var_I = resid.var(ddof=1)
 
         if not reshape_residuals:
             return var_I, resid
@@ -1336,60 +1232,25 @@ class DataStore(xr.Dataset):
             sections = validate_sections(self, sections)
 
         assert self[st_label].dims[0] == "x", "Stokes are transposed"
-        _, resid = self.variance_stokes(sections=sections, st_label=st_label)
+        _, resid = self.variance_stokes(
+            sections=sections, st_label=st_label, reshape_residuals=False
+        )
 
         ix_sec = self.ufunc_per_section(
             sections=sections, x_indices=True, calc_per="all"
         )
-        st = self.isel(x=ix_sec)[st_label].values.ravel()
-        diff_st = resid.isel(x=ix_sec).values.ravel()
 
-        # Adjust nbin silently to fit residuals in
-        # rectangular matrix and use numpy for computation
-        nbin_ = nbin
-        while st.size % nbin_:
-            nbin_ -= 1
+        st = self[st_label].isel(x=ix_sec).values.ravel()
+        diff_st = resid.ravel()
 
-        if nbin_ != nbin:
-            print(
-                "Estimation of linear variance of",
-                st_label,
-                "Adjusting nbin to:",
-                nbin_,
-            )
-            nbin = nbin_
-
-        isort = np.argsort(st)
-        st_sort_mean = st[isort].reshape((nbin, -1)).mean(axis=1)
-        st_sort_var = diff_st[isort].reshape((nbin, -1)).var(axis=1)
-
-        if through_zero:
-            # VAR(Stokes) = slope * Stokes
-            offset = 0.0
-            slope = np.linalg.lstsq(st_sort_mean[:, None], st_sort_var, rcond=None)[0]
-
-        else:
-            # VAR(Stokes) = slope * Stokes + offset
-            slope, offset = np.linalg.lstsq(
-                np.hstack((st_sort_mean[:, None], np.ones((nbin, 1)))),
-                st_sort_var,
-                rcond=None,
-            )[0]
-
-            if offset < 0:
-                warnings.warn(
-                    f"Warning! Offset of variance_stokes_linear() "
-                    f"of {st_label} is negative. This is phisically "
-                    f"not possible. Most likely, your {st_label} do "
-                    f"not vary enough to fit a linear curve. Either "
-                    f"use `through_zero` option or use "
-                    f"`ds.variance_stokes_constant()`. Another reason "
-                    f"could be that your sections are defined to be "
-                    f"wider than they actually are."
-                )
-
-        def var_fun(stokes):
-            return slope * stokes + offset
+        (
+            slope,
+            offset,
+            st_sort_mean,
+            st_sort_var,
+            resid,
+            var_fun,
+        ) = variance_stokes_linear_helper(st, diff_st, nbin, through_zero)
 
         if plot_fit:
             plt.figure()
