@@ -18,7 +18,8 @@ from dtscalibration.datastore_utils import ParameterIndexDoubleEnded
 from dtscalibration.datastore_utils import ParameterIndexSingleEnded
 from dtscalibration.datastore_utils import check_deprecated_kwargs
 from dtscalibration.datastore_utils import check_timestep_allclose
-from dtscalibration.datastore_utils import get_params_from_pval
+from dtscalibration.datastore_utils import get_params_from_pval_double_ended
+from dtscalibration.datastore_utils import get_params_from_pval_single_ended
 from dtscalibration.datastore_utils import ufunc_per_section_helper
 from dtscalibration.io_utils import _dim_attrs
 from dtscalibration.variance_helpers import variance_stokes_constant_helper
@@ -1331,80 +1332,6 @@ class DataStore(xr.Dataset):
 
         return st**-2 * st_var + ast**-2 * ast_var
 
-    def inverse_variance_weighted_mean(
-        self,
-        tmp1="tmpf",
-        tmp2="tmpb",
-        tmp1_var="tmpf_mc_var",
-        tmp2_var="tmpb_mc_var",
-        tmpw_store="tmpw",
-        tmpw_var_store="tmpw_var",
-    ):
-        """
-        Average two temperature datasets with the inverse of the variance as
-        weights. The two
-        temperature datasets `tmp1` and `tmp2` with their variances
-        `tmp1_var` and `tmp2_var`,
-        respectively. Are averaged and stored in the DataStore.
-
-        Parameters
-        ----------
-        tmp1 : str
-            The label of the first temperature dataset that is averaged
-        tmp2 : str
-            The label of the second temperature dataset that is averaged
-        tmp1_var : str
-            The variance of tmp1
-        tmp2_var : str
-            The variance of tmp2
-        tmpw_store : str
-            The label of the averaged temperature dataset
-        tmpw_var_store : str
-            The label of the variance of the averaged temperature dataset
-
-        Returns
-        -------
-
-        """
-
-        self[tmpw_var_store] = 1 / (1 / self[tmp1_var] + 1 / self[tmp2_var])
-
-        self[tmpw_store] = (
-            self[tmp1] / self[tmp1_var] + self[tmp2] / self[tmp2_var]
-        ) * self[tmpw_var_store]
-
-        pass
-
-    def inverse_variance_weighted_mean_array(
-        self,
-        tmp_label="tmpf",
-        tmp_var_label="tmpf_mc_var",
-        tmpw_store="tmpw",
-        tmpw_var_store="tmpw_var",
-        dim="time",
-    ):
-        """
-        Calculates the weighted average across a dimension.
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-
-        See Also
-        --------
-        - https://en.wikipedia.org/wiki/Inverse-variance_weighting
-
-        """
-        self[tmpw_var_store] = 1 / (1 / self[tmp_var_label]).sum(dim=dim)
-
-        self[tmpw_store] = (self[tmp_label] / self[tmp_var_label]).sum(dim=dim) / (
-            1 / self[tmp_var_label]
-        ).sum(dim=dim)
-
-        pass
-
     def set_trans_att(self, trans_att=None):
         """Gracefully set the locations that introduce directional differential
         attenuation
@@ -1669,52 +1596,12 @@ class DataStore(xr.Dataset):
         assert p_cov.shape == (ip.npar, ip.npar)
 
         # store calibration parameters in DataStore
-        self["gamma"] = (tuple(), p_val[ip.gamma].item())
-        self["gamma_var"] = (tuple(), p_var[ip.gamma].item())
-
-        if nta > 0:
-            self["talpha_fw"] = (
-                ("trans_att", "time"),
-                ip.get_taf_pars(p_val),
-            )
-            self["talpha_fw_var"] = (
-                ("trans_att", "time"),
-                ip.get_taf_pars(p_var),
-            )
-        else:
-            self["talpha_fw"] = (("trans_att", "time"), np.zeros((0, nt)))
-            self["talpha_fw_var"] = (("trans_att", "time"), np.zeros((0, nt)))
-
-        self["c"] = (("time",), p_val[ip.c])
-        self["c_var"] = (("time",), p_var[ip.c])
-
-        if fix_alpha:
-            self["alpha"] = (("x",), fix_alpha[0])
-            self["alpha_var"] = (("x",), fix_alpha[1])
-
-        else:
-            self["dalpha"] = (tuple(), p_val[ip.dalpha].item())
-            self["dalpha_var"] = (tuple(), p_var[ip.dalpha].item())
-
-            self["alpha"] = self.dalpha * self.x
-            self["alpha_var"] = self["dalpha_var"] * self.x**2
-
-        self["talpha_fw_full"] = (
-            ("x", "time"),
-            ip.get_taf_values(
-                pval=p_val, x=self.x.values, trans_att=self.trans_att.values, axis=""
-            ),
-        )
-        self["talpha_fw_full_var"] = (
-            ("x", "time"),
-            ip.get_taf_values(
-                pval=p_var, x=self.x.values, trans_att=self.trans_att.values, axis=""
-            ),
-        )
+        coords = {"x": self["x"], "time": self["time"], "trans_att": self["trans_att"]}
+        params, param_covs = get_params_from_pval_single_ended(ip, coords, p_val=p_val, p_var=p_var, p_cov=p_cov, fix_alpha=fix_alpha)
 
         tmpf = self.gamma / (
-            (np.log(self.st / self.ast) + (self.c + self["talpha_fw_full"]))
-            + self.alpha
+            (np.log(self.st / self.ast) + (params["c"] + params["talpha_fw_full"]))
+            + params["alpha"]
         )
         self["tmpf"] = tmpf - 273.15
 
@@ -1729,58 +1616,36 @@ class DataStore(xr.Dataset):
             T_ta_fw=-(tmpf**2) / self.gamma,
         )
         deriv_ds = xr.Dataset(deriv_dict)
-        # self["deriv"] = deriv_ds.to_array(dim="com2")
 
-        sigma2_gamma_c = p_cov[np.ix_(ip.gamma, ip.c)]
-        sigma2_tafw_gamma = ip.get_taf_values(
-            pval=p_cov[ip.gamma],
-            x=self.x.values,
-            trans_att=self.trans_att.values,
-            axis="",
-        )
-        sigma2_tafw_c = ip.get_taf_values(
-            pval=p_cov[ip.c],
-            x=self.x.values,
-            trans_att=self.trans_att.values,
-            axis="time",
-        )
         var_fw_dict = dict(
             dT_dst=deriv_ds.T_st_fw**2 * parse_st_var(self, st_var, st_label="st"),
             dT_dast=deriv_ds.T_ast_fw**2
             * parse_st_var(self, ast_var, st_label="ast"),
-            dT_gamma=deriv_ds.T_gamma_fw**2 * self["gamma_var"],
-            dT_dc=deriv_ds.T_c_fw**2 * self["c_var"],
+            dT_gamma=deriv_ds.T_gamma_fw**2 * param_covs["gamma"],
+            dT_dc=deriv_ds.T_c_fw**2 * param_covs["c"],
             dT_ddalpha=deriv_ds.T_alpha_fw**2
-            * self["alpha_var"],  # same as dT_dalpha
-            dT_dta=deriv_ds.T_ta_fw**2 * self["talpha_fw_full_var"],
-            dgamma_dc=(2 * deriv_ds.T_gamma_fw * deriv_ds.T_c_fw * sigma2_gamma_c),
-            dta_dgamma=(2 * deriv_ds.T_ta_fw * deriv_ds.T_gamma_fw * sigma2_tafw_gamma),
-            dta_dc=(2 * deriv_ds.T_ta_fw * deriv_ds.T_c_fw * sigma2_tafw_c),
+            * param_covs["alpha"],  # same as dT_dalpha
+            dT_dta=deriv_ds.T_ta_fw**2 * param_covs["talpha_fw_full"],
+            dgamma_dc=(2 * deriv_ds.T_gamma_fw * deriv_ds.T_c_fw * param_covs["gamma_c"]),
+            dta_dgamma=(2 * deriv_ds.T_ta_fw * deriv_ds.T_gamma_fw * param_covs["tafw_gamma"]),
+            dta_dc=(2 * deriv_ds.T_ta_fw * deriv_ds.T_c_fw * param_covs["tafw_c"]),
         )
 
         if not fix_alpha:
             # These correlations don't exist in case of fix_alpha. Including them reduces tmpf_var.
-            sigma2_gamma_dalpha = p_cov[np.ix_(ip.dalpha, ip.gamma)]
-            sigma2_dalpha_c = p_cov[np.ix_(ip.dalpha, ip.c)]
-            sigma2_tafw_dalpha = ip.get_taf_values(
-                pval=p_cov[ip.dalpha],
-                x=self.x.values,
-                trans_att=self.trans_att.values,
-                axis="",
-            )
             var_fw_dict.update(
                 dict(
                     dgamma_ddalpha=(
                         2
                         * deriv_ds.T_gamma_fw
                         * deriv_ds.T_dalpha_fw
-                        * sigma2_gamma_dalpha
+                        * param_covs["gamma_dalpha"]
                     ),
                     ddalpha_dc=(
-                        2 * deriv_ds.T_dalpha_fw * deriv_ds.T_c_fw * sigma2_dalpha_c
+                        2 * deriv_ds.T_dalpha_fw * deriv_ds.T_c_fw * param_covs["dalpha_c"]
                     ),
                     dta_ddalpha=(
-                        2 * deriv_ds.T_ta_fw * deriv_ds.T_dalpha_fw * sigma2_tafw_dalpha
+                        2 * deriv_ds.T_ta_fw * deriv_ds.T_dalpha_fw * param_covs["tafw_dalpha"]
                     ),
                 )
             )
@@ -2121,8 +1986,8 @@ class DataStore(xr.Dataset):
         assert p_cov.shape == (ip.npar, ip.npar)
 
         coords = {"x": self["x"], "time": self["time"], "trans_att": self["trans_att"]}
-        params = get_params_from_pval(ip, coords, p_val=p_val)
-        param_covs = get_params_from_pval(ip, coords, p_val=p_var, p_cov=p_cov)
+        params = get_params_from_pval_double_ended(ip, coords, p_val=p_val)
+        param_covs = get_params_from_pval_double_ended(ip, coords, p_val=p_var, p_cov=p_cov)
 
         out = xr.Dataset(
             {
