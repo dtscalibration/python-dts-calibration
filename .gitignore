@@ -72,3 +72,4 @@ docs/_build
 .appveyor.token
 *.bak
 .vscode/settings.json
+*.code-workspace
