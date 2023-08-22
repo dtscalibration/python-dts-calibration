@@ -423,10 +423,9 @@ def read_apsensing_files(
 
     else:
         warnings.warn(
-            "AP sensing device "
-            '"{0}"'.format(device)
-            + " has not been tested.\nPlease open an issue on github"
-            + " and provide an example file"
+            "AP sensing device {device}"
+            " has not been tested.\nPlease open an issue on github"
+            " and provide an example file"
         )
 
     data_vars, coords, attrs = read_apsensing_files_routine(
@@ -544,10 +543,9 @@ def read_sensornet_files(
     else:
         flip_reverse_measurements = False
         warnings.warn(
-            "Sensornet .dff version "
-            '"{0}"'.format(ddf_version)
-            + " has not been tested.\nPlease open an issue on github"
-            + " and provide an example file"
+            f"Sensornet .dff version {ddf_version}"
+            " has not been tested.\nPlease open an issue on github"
+            " and provide an example file"
         )
 
     data_vars, coords, attrs = read_sensornet_files_routine_v3(

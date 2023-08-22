@@ -1597,23 +1597,26 @@ class DataStore(xr.Dataset):
 
         # store calibration parameters in DataStore
         coords = {"x": self["x"], "time": self["time"], "trans_att": self["trans_att"]}
-        params, param_covs = get_params_from_pval_single_ended(ip, coords, p_val=p_val, p_var=p_var, p_cov=p_cov, fix_alpha=fix_alpha)
+        params, param_covs = get_params_from_pval_single_ended(
+            ip, coords, p_val=p_val, p_var=p_var, p_cov=p_cov, fix_alpha=fix_alpha
+        )
 
-        tmpf = self.gamma / (
+        tmpf = params["gamma"] / (
             (np.log(self.st / self.ast) + (params["c"] + params["talpha_fw_full"]))
             + params["alpha"]
         )
-        self["tmpf"] = tmpf - 273.15
+        out = xr.Dataset({"tmpf": tmpf - 273.15})
+        out["tmpf"].attrs.update(_dim_attrs[("tmpf",)])
 
         # tmpf_var
         deriv_dict = dict(
-            T_gamma_fw=tmpf / self.gamma,
-            T_st_fw=-(tmpf**2) / (self.gamma * self.st),
-            T_ast_fw=tmpf**2 / (self.gamma * self.ast),
-            T_c_fw=-(tmpf**2) / self.gamma,
-            T_dalpha_fw=-self.x * (tmpf**2) / self.gamma,
-            T_alpha_fw=-(tmpf**2) / self.gamma,
-            T_ta_fw=-(tmpf**2) / self.gamma,
+            T_gamma_fw=tmpf / params["gamma"],
+            T_st_fw=-(tmpf**2) / (params["gamma"] * self.st),
+            T_ast_fw=tmpf**2 / (params["gamma"] * self.ast),
+            T_c_fw=-(tmpf**2) / params["gamma"],
+            T_dalpha_fw=-self.x * (tmpf**2) / params["gamma"],
+            T_alpha_fw=-(tmpf**2) / params["gamma"],
+            T_ta_fw=-(tmpf**2) / params["gamma"],
         )
         deriv_ds = xr.Dataset(deriv_dict)
 
@@ -1626,8 +1629,12 @@ class DataStore(xr.Dataset):
             dT_ddalpha=deriv_ds.T_alpha_fw**2
             * param_covs["alpha"],  # same as dT_dalpha
             dT_dta=deriv_ds.T_ta_fw**2 * param_covs["talpha_fw_full"],
-            dgamma_dc=(2 * deriv_ds.T_gamma_fw * deriv_ds.T_c_fw * param_covs["gamma_c"]),
-            dta_dgamma=(2 * deriv_ds.T_ta_fw * deriv_ds.T_gamma_fw * param_covs["tafw_gamma"]),
+            dgamma_dc=(
+                2 * deriv_ds.T_gamma_fw * deriv_ds.T_c_fw * param_covs["gamma_c"]
+            ),
+            dta_dgamma=(
+                2 * deriv_ds.T_ta_fw * deriv_ds.T_gamma_fw * param_covs["tafw_gamma"]
+            ),
             dta_dc=(2 * deriv_ds.T_ta_fw * deriv_ds.T_c_fw * param_covs["tafw_c"]),
         )
 
@@ -1642,19 +1649,23 @@ class DataStore(xr.Dataset):
                         * param_covs["gamma_dalpha"]
                     ),
                     ddalpha_dc=(
-                        2 * deriv_ds.T_dalpha_fw * deriv_ds.T_c_fw * param_covs["dalpha_c"]
+                        2
+                        * deriv_ds.T_dalpha_fw
+                        * deriv_ds.T_c_fw
+                        * param_covs["dalpha_c"]
                     ),
                     dta_ddalpha=(
-                        2 * deriv_ds.T_ta_fw * deriv_ds.T_dalpha_fw * param_covs["tafw_dalpha"]
+                        2
+                        * deriv_ds.T_ta_fw
+                        * deriv_ds.T_dalpha_fw
+                        * param_covs["tafw_dalpha"]
                     ),
                 )
             )
 
-        self["var_fw_da"] = xr.Dataset(var_fw_dict).to_array(dim="comp_fw")
-        self["tmpf_var"] = self["var_fw_da"].sum(dim="comp_fw")
-
-        self["tmpf"].attrs.update(_dim_attrs[("tmpf",)])
-        self["tmpf_var"].attrs.update(_dim_attrs[("tmpf_var",)])
+        out["var_fw_da"] = xr.Dataset(var_fw_dict).to_array(dim="comp_fw")
+        out["tmpf_var"] = out["var_fw_da"].sum(dim="comp_fw")
+        out["tmpf_var"].attrs.update(_dim_attrs[("tmpf_var",)])
 
         drop_vars = [
             k for k, v in self.items() if {"params1", "params2"}.intersection(v.dims)
@@ -1663,9 +1674,14 @@ class DataStore(xr.Dataset):
         for k in drop_vars:
             del self[k]
 
-        self["p_val"] = (("params1",), p_val)
-        self["p_cov"] = (("params1", "params2"), p_cov)
+        out["p_val"] = (("params1",), p_val)
+        out["p_cov"] = (("params1", "params2"), p_cov)
 
+        out.update(params)
+        for key, dataarray in param_covs.data_vars.items():
+            out[key + "_var"] = dataarray
+
+        self.update(out)
         pass
 
     def calibration_double_ended(
@@ -1987,7 +2003,9 @@ class DataStore(xr.Dataset):
 
         coords = {"x": self["x"], "time": self["time"], "trans_att": self["trans_att"]}
         params = get_params_from_pval_double_ended(ip, coords, p_val=p_val)
-        param_covs = get_params_from_pval_double_ended(ip, coords, p_val=p_var, p_cov=p_cov)
+        param_covs = get_params_from_pval_double_ended(
+            ip, coords, p_val=p_var, p_cov=p_cov
+        )
 
         out = xr.Dataset(
             {
@@ -2203,9 +2221,8 @@ class DataStore(xr.Dataset):
         out["p_cov"] = (("params1", "params2"), p_cov)
 
         out.update(params)
-
-        for key, da in param_covs.data_vars.items():
-            out[key + "_var"] = da
+        for key, dataarray in param_covs.data_vars.items():
+            out[key + "_var"] = dataarray
 
         self.update(out)
         pass

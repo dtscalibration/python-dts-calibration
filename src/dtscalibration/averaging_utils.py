@@ -1,5 +1,3 @@
-
-
 def inverse_variance_weighted_mean(
     self,
     tmp1="tmpf",
@@ -43,6 +41,7 @@ def inverse_variance_weighted_mean(
     ) * self[tmpw_var_store]
 
     pass
+
 
 def inverse_variance_weighted_mean_array(
     self,

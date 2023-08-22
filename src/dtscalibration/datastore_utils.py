@@ -693,9 +693,11 @@ def get_params_from_pval_double_ended(ip, coords, p_val=None, p_cov=None):
         )
         # sigma2_tafw_tabw
     return params
-    
 
-def get_params_from_pval_single_ended(ip, coords, p_val=None, p_var=None, p_cov=None, fix_alpha=None):
+
+def get_params_from_pval_single_ended(
+    ip, coords, p_val=None, p_var=None, p_cov=None, fix_alpha=None
+):
     assert len(p_val) == ip.npar, "Length of p_val is incorrect"
 
     params = xr.Dataset(coords=coords)
@@ -729,42 +731,56 @@ def get_params_from_pval_single_ended(ip, coords, p_val=None, p_var=None, p_cov=
         param_covs["dalpha"] = (tuple(), p_var[ip.dalpha].item())
 
         params["alpha"] = params["dalpha"] * params["x"]
-        param_covs["alpha"] = param_covs["dalpha"] * params["x"]**2
+        param_covs["alpha"] = param_covs["dalpha"] * params["x"] ** 2
 
-        param_covs["gamma_dalpha"] = p_cov[np.ix_(ip.dalpha, ip.gamma)]
-        param_covs["dalpha_c"] = p_cov[np.ix_(ip.dalpha, ip.c)]
-        param_covs["tafw_dalpha"] = ip.get_taf_values(
-            pval=p_cov[ip.dalpha],
-            x=params["x"].values, 
-            trans_att=params["trans_att"].values,
-            axis="",
+        param_covs["gamma_dalpha"] = (tuple(), p_cov[np.ix_(ip.dalpha, ip.gamma)][0, 0])
+        param_covs["dalpha_c"] = (("time",), p_cov[np.ix_(ip.dalpha, ip.c)][0, :])
+        param_covs["tafw_dalpha"] = (
+            ("x", "time"),
+            ip.get_taf_values(
+                pval=p_cov[ip.dalpha],
+                x=params["x"].values,
+                trans_att=params["trans_att"].values,
+                axis="",
+            ),
         )
 
     params["talpha_fw_full"] = (
         ("x", "time"),
         ip.get_taf_values(
-            pval=p_val, x=params["x"].values, trans_att=params["trans_att"].values, axis=""
+            pval=p_val,
+            x=params["x"].values,
+            trans_att=params["trans_att"].values,
+            axis="",
         ),
     )
     param_covs["talpha_fw_full"] = (
         ("x", "time"),
         ip.get_taf_values(
-            pval=p_var, x=params["x"].values, trans_att=params["trans_att"].values, axis=""
+            pval=p_var,
+            x=params["x"].values,
+            trans_att=params["trans_att"].values,
+            axis="",
         ),
     )
-
-    param_covs["gamma_c"] = p_cov[np.ix_(ip.gamma, ip.c)]
-    param_covs["tafw_gamma"] = ip.get_taf_values(
-        pval=p_cov[ip.gamma],
-        x=params["x"].values,
-        trans_att=params["trans_att"].values,
-        axis="",
+    param_covs["gamma_c"] = (("time",), p_cov[np.ix_(ip.gamma, ip.c)][0, :])
+    param_covs["tafw_gamma"] = (
+        ("x", "time"),
+        ip.get_taf_values(
+            pval=p_cov[ip.gamma],
+            x=params["x"].values,
+            trans_att=params["trans_att"].values,
+            axis="",
+        ),
     )
-    param_covs["tafw_c"] = ip.get_taf_values(
-        pval=p_cov[ip.c],
-        x=params["x"].values,
-        trans_att=params["trans_att"].values,
-        axis="time",
+    param_covs["tafw_c"] = (
+        ("x", "time"),
+        ip.get_taf_values(
+            pval=p_cov[ip.c],
+            x=params["x"].values,
+            trans_att=params["trans_att"].values,
+            axis="time",
+        ),
     )
     return params, param_covs
 
