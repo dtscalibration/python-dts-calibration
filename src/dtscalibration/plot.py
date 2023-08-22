@@ -630,8 +630,7 @@ def plot_sigma_report(
         )
     else:
         ax1.set_title(
-            "Projected uncertainty at t={} compared to standard error "
-            "in baths".format(itimes)
+            f"Projected uncertainty at t={itimes} compared to standard error in baths"
         )
     ax1.legend()
     ax1.set_ylabel(r"Temperature [$^\circ$C]")

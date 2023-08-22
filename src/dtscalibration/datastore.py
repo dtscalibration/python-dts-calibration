@@ -155,7 +155,7 @@ class DataStore(xr.Dataset):
 
                 # print sections
                 vl = [
-                    "{0:.2f}{2} - {1:.2f}{2}".format(vi.start, vi.stop, unit)
+                    f"{vi.start:.2f}{unit} - {vi.stop:.2f}{unit}"
                     for vi in v
                 ]
                 preamble_new += " and ".join(vl) + "\n"
