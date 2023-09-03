@@ -130,7 +130,11 @@ def test_variance_input_types_single():
     )
 
     ds.conf_int_single_ended(
-        st_var=st_var, ast_var=st_var, mc_sample_size=100, da_random_state=state
+        st_var=st_var,
+        ast_var=st_var,
+        mc_sample_size=100,
+        da_random_state=state,
+        mc_remove_set_flag=False,
     )
 
     assert_almost_equal_verbose(
