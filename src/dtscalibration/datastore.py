@@ -3649,6 +3649,7 @@ class DataStore(xr.Dataset):
                 p_cov = self[p_cov].values
             assert p_cov.shape == (npar, npar)
 
+            assert sections is not None, "Define sections"
             ix_sec = self.ufunc_per_section(
                 sections=sections, x_indices=True, calc_per="all"
             )
