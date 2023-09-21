@@ -1,4 +1,5 @@
 from dtscalibration.datastore import DataStore
+from dtscalibration.datastore_accessor import DtsAccessor
 from dtscalibration.datastore_utils import check_dims
 from dtscalibration.datastore_utils import check_timestep_allclose
 from dtscalibration.datastore_utils import get_netcdf_encoding
