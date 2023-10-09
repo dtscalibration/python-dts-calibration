@@ -949,124 +949,6 @@ def test_double_ended_wls_estimate_synthetic_df_and_db_are_different():
     pass
 
 
-def test_reneaming_old_default_labels_to_new_fixed_labels():
-    """Same as
-    `test_double_ended_wls_estimate_synthetic_df_and_db_are_different`
-    Which runs fast, but using the renaming function."""
-
-    cable_len = 100.0
-    nt = 3
-    time = np.arange(nt)
-    x = np.linspace(0.0, cable_len, 8)
-    ts_cold = np.ones(nt) * 4.0 + np.cos(time) * 4
-    ts_warm = np.ones(nt) * 20.0 + -np.sin(time) * 4
-
-    C_p = 1324  # 1/2 * E0 * v * K_+/lam_+^4
-    eta_pf = np.cos(time) / 10 + 1  # eta_+ (gain factor forward channel)
-    eta_pb = np.sin(time) / 10 + 1  # eta_- (gain factor backward channel)
-    C_m = 5000.0
-    eta_mf = np.cos(time + np.pi / 8) / 10 + 1
-    eta_mb = np.sin(time + np.pi / 8) / 10 + 1
-    dalpha_r = 0.005284
-    dalpha_m = 0.004961
-    dalpha_p = 0.005607
-    gamma = 482.6
-
-    temp_real_kelvin = np.zeros((len(x), nt)) + 273.15
-    temp_real_kelvin[x < 0.2 * cable_len] += ts_cold[None]
-    temp_real_kelvin[x > 0.85 * cable_len] += ts_warm[None]
-    temp_real_celsius = temp_real_kelvin - 273.15
-
-    st = (
-        eta_pf[None]
-        * C_p
-        * np.exp(-dalpha_r * x[:, None])
-        * np.exp(-dalpha_p * x[:, None])
-        * np.exp(gamma / temp_real_kelvin)
-        / (np.exp(gamma / temp_real_kelvin) - 1)
-    )
-    ast = (
-        eta_mf[None]
-        * C_m
-        * np.exp(-dalpha_r * x[:, None])
-        * np.exp(-dalpha_m * x[:, None])
-        / (np.exp(gamma / temp_real_kelvin) - 1)
-    )
-    rst = (
-        eta_pb[None]
-        * C_p
-        * np.exp(-dalpha_r * (-x[:, None] + cable_len))
-        * np.exp(-dalpha_p * (-x[:, None] + cable_len))
-        * np.exp(gamma / temp_real_kelvin)
-        / (np.exp(gamma / temp_real_kelvin) - 1)
-    )
-    rast = (
-        eta_mb[None]
-        * C_m
-        * np.exp(-dalpha_r * (-x[:, None] + cable_len))
-        * np.exp(-dalpha_m * (-x[:, None] + cable_len))
-        / (np.exp(gamma / temp_real_kelvin) - 1)
-    )
-
-    c_f = np.log(eta_mf * C_m / (eta_pf * C_p))
-    c_b = np.log(eta_mb * C_m / (eta_pb * C_p))
-
-    dalpha = dalpha_p - dalpha_m  # \Delta\alpha
-    alpha_int = cable_len * dalpha
-
-    df = c_f  # reference section starts at first x-index
-    db = c_b + alpha_int
-    i_fw = np.log(st / ast)
-    i_bw = np.log(rst / rast)
-
-    E_real = (i_bw - i_fw) / 2 + (db - df) / 2
-
-    ds = Dataset(
-        {
-            "ST": (["x", "time"], st),
-            "AST": (["x", "time"], ast),
-            "REV-ST": (["x", "time"], rst),
-            "REV-AST": (["x", "time"], rast),
-            "userAcquisitionTimeFW": (["time"], np.ones(nt)),
-            "userAcquisitionTimeBW": (["time"], np.ones(nt)),
-            "cold": (["time"], ts_cold),
-            "warm": (["time"], ts_warm),
-        },
-        coords={"x": x, "time": time},
-        attrs={"isDoubleEnded": "1"},
-    )
-    ds = ds.rename_labels()
-
-    sections = {
-        "cold": [slice(0.0, 0.09 * cable_len)],
-        "warm": [slice(0.9 * cable_len, cable_len)],
-    }
-
-    real_ans2 = np.concatenate(([gamma], df, db, E_real[:, 0]))
-
-    ds.dts.calibration_double_ended(
-        sections=sections,
-        st_var=1.5,
-        ast_var=1.5,
-        rst_var=1.0,
-        rast_var=1.0,
-        method="wls",
-        solver="sparse",
-        fix_gamma=(gamma, 0.0),
-    )
-
-    assert_almost_equal_verbose(df, ds.df.values, decimal=14)
-    assert_almost_equal_verbose(db, ds.db.values, decimal=13)
-    assert_almost_equal_verbose(
-        x * (dalpha_p - dalpha_m), ds.alpha.values - ds.alpha.values[0], decimal=13
-    )
-    assert np.all(np.abs(real_ans2 - ds.p_val.values) < 1e-10)
-    assert_almost_equal_verbose(temp_real_celsius, ds.tmpf.values, decimal=10)
-    assert_almost_equal_verbose(temp_real_celsius, ds.tmpb.values, decimal=10)
-    assert_almost_equal_verbose(temp_real_celsius, ds.tmpw.values, decimal=10)
-    pass
-
-
 @pytest.mark.xfail
 def test_fail_if_st_labels_are_passed_to_calibration_function():
     """Same as
@@ -2538,7 +2420,6 @@ def test_single_ended_wls_estimate_synthetic():
     They should be the same as the parameters used to create the synthetic
     measurment set"""
 
-    # from dtscalibration import DataStore
     cable_len = 100.0
     nt = 50
     time = np.arange(nt)
