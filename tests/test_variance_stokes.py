@@ -3,8 +3,8 @@ import os
 import numpy as np
 import pytest
 from scipy import stats
+import xarray as xr
 
-from dtscalibration import DataStore
 from dtscalibration import read_silixa_files
 from dtscalibration.variance_stokes import variance_stokes_exponential
 from dtscalibration.variance_stokes import variance_stokes_constant
@@ -96,7 +96,7 @@ def test_variance_of_stokes_synthetic():
 
     y += stats.norm.rvs(size=y.size, scale=yvar**0.5).reshape(y.shape)
 
-    ds = DataStore(
+    ds = xr.Dataset(
         {
             "st": (["x", "time"], y),
             "probe1Temperature": (["time"], range(nt)),

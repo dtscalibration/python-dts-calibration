@@ -7,7 +7,6 @@ import warnings
 import numpy as np
 import xarray as xr
 
-from dtscalibration import DataStore
 from dtscalibration.io_utils import apsensing_xml_version_check
 from dtscalibration.io_utils import read_apsensing_files_routine
 from dtscalibration.io_utils import read_sensornet_files_routine_v3

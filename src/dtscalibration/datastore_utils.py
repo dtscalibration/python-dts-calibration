@@ -8,12 +8,9 @@ import numpy as np
 import numpy.typing as npt
 import xarray as xr
 
-if TYPE_CHECKING:
-    from dtscalibration import DataStore
-
 
 def check_dims(
-    ds: "DataStore",
+    ds: xr.Dataset,
     labels: Union[list[str], tuple[str]],
     correct_dims: Optional[tuple[str]] = None,
 ) -> None:

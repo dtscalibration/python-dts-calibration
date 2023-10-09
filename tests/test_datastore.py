@@ -9,7 +9,6 @@ import dask.array as da
 import numpy as np
 import pytest
 
-from dtscalibration import DataStore
 from dtscalibration import open_datastore
 from dtscalibration import open_mf_datastore
 from dtscalibration import read_apsensing_files
