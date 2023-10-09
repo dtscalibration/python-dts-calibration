@@ -5,14 +5,16 @@ import xarray as xr
 from scipy.sparse import linalg as ln
 
 
-def parse_st_var(ds, st_var, st_label="st"):
+def parse_st_var(st, st_var):
     """
     Utility function to check the st_var input and to return in DataArray
     format.
 
     Parameters
     ----------
-    ds : DataStore
+    st : DataArray
+        Stokes/anti-stokes data variable for which the variance is being parsed.
+
     st_var : float, callable, array-like
         If `float` the variance of the noise from the Stokes detector is
         described with a single value.
@@ -21,25 +23,23 @@ def parse_st_var(ds, st_var, st_label="st"):
         Or when the variance is a function of the intensity (Poisson
         distributed) define a DataArray of the shape as ds.st, where the
         variance can be a function of time and/or x.
-    st_label : string
-        Name of the (reverse) stokes/anti-stokes data variable which is being
-        parsed.
 
     Returns
     -------
-    Parsed st_var
+    st_var_sec : DataArray
+        The variance of the noise from the Stokes detector.
     """
     if callable(st_var):
-        st_var_sec = st_var(ds[st_label])
+        st_var_sec = st_var(st)
     else:
-        st_var_sec = xr.ones_like(ds[st_label]) * st_var
+        st_var_sec = xr.ones_like(st) * st_var
 
     assert np.all(np.isfinite(st_var_sec)), (
-        "NaN/inf values detected in " + st_label + "_var. Please check input."
+        "NaN/inf values detected in computed st_var. Please check input."
     )
 
     assert np.all(st_var_sec > 0.0), (
-        "Negative values detected in " + st_label + "_var. Please check input."
+        "Negative values detected in computed st_var. Please check input."
     )
 
     return st_var_sec
@@ -54,16 +54,14 @@ def calibration_single_ended_helper(
     fix_dalpha,
     fix_gamma,
     matching_indices,
-    nt,
-    nta,
-    nx,
+    trans_att,
     solver,
 ):
     """Only used in `calibration_single_ended()`"""
-    for input_item in [st_var, ast_var]:
-        assert input_item is not None, (
-            "For wls define all " "variances (`st_var`, " "`ast_var`) "
-        )
+    nt = self.dts.nt
+    nx = self.dts.nx
+    nta = len(trans_att)
+
     calc_cov = True
     split = calibration_single_ended_solver(
         self,
@@ -73,6 +71,7 @@ def calibration_single_ended_helper(
         calc_cov=calc_cov,
         solver="external_split",
         matching_indices=matching_indices,
+        trans_att=trans_att
     )
     y = split["y"]
     w = split["w"]
@@ -80,11 +79,11 @@ def calibration_single_ended_helper(
     # Stack all X's
     if fix_alpha:
         assert not fix_dalpha, "Use either `fix_dalpha` or `fix_alpha`"
-        assert fix_alpha[0].size == self.x.size, (
-            "fix_alpha also needs to be defined outside the reference " "sections"
+        assert fix_alpha[0].size == nx, (
+            "fix_alpha also needs to be defined outside the reference sections"
         )
-        assert fix_alpha[1].size == self.x.size, (
-            "fix_alpha also needs to be defined outside the reference " "sections"
+        assert fix_alpha[1].size == nx, (
+            "fix_alpha also needs to be defined outside the reference sections"
         )
         p_val = split["p0_est_alpha"].copy()
 
@@ -196,6 +195,7 @@ def calibration_single_ended_solver(  # noqa: MC0001
     calc_cov=True,
     solver="sparse",
     matching_indices=None,
+    trans_att=[],
     verbose=False,
 ):
     """
@@ -237,7 +237,7 @@ def calibration_single_ended_solver(  # noqa: MC0001
 
     """
     # get ix_sec argsort so the sections are in order of increasing x
-    ix_sec = ds.ufunc_per_section(sections=sections, x_indices=True, calc_per="all")
+    ix_sec = ds.dts.ufunc_per_section(sections=sections, x_indices=True, calc_per="all")
     ds_sec = ds.isel(x=ix_sec)
 
     x_sec = ds_sec["x"].values
@@ -245,7 +245,7 @@ def calibration_single_ended_solver(  # noqa: MC0001
     nx = x_sec.size
     nt = ds.time.size
     no = ds.x.size
-    nta = ds.trans_att.size
+    nta = len(trans_att)
     nm = matching_indices.shape[0] if np.any(matching_indices) else 0
 
     if np.any(matching_indices):
@@ -256,7 +256,7 @@ def calibration_single_ended_solver(  # noqa: MC0001
     p0_est_alpha = np.asarray([485.0] + no * [0.0] + nt * [1.4] + nta * nt * [0.0])
 
     # X \gamma  # Eq.34
-    cal_ref = ds.ufunc_per_section(
+    cal_ref = ds.dts.ufunc_per_section(
         sections=sections, label="st", ref_temp_broadcasted=True, calc_per="all"
     )
     # cal_ref = cal_ref  # sort by increasing x
@@ -287,10 +287,10 @@ def calibration_single_ended_solver(  # noqa: MC0001
     )
 
     # X ta #not documented
-    if ds.trans_att.size > 0:
+    if nta > 0:
         TA_list = []
 
-        for transient_att_xi in ds.trans_att.values:
+        for transient_att_xi in trans_att:
             # first index on the right hand side a the difficult splice
             # Deal with connector outside of fiber
             if transient_att_xi >= x_sec[-1]:
@@ -339,10 +339,10 @@ def calibration_single_ended_solver(  # noqa: MC0001
         )
 
         # make TA matrix
-        if ds.trans_att.size > 0:
+        if nta > 0:
             transient_m_data = np.zeros((nm, nta))
             for ii, row in enumerate(matching_indices):
-                for jj, transient_att_xi in enumerate(ds.trans_att.values):
+                for jj, transient_att_xi in enumerate(trans_att):
                     transient_m_data[ii, jj] = np.logical_and(
                         transient_att_xi > x_all[row[0]],
                         transient_att_xi < x_all[row[1]],
@@ -388,8 +388,8 @@ def calibration_single_ended_solver(  # noqa: MC0001
 
     # w
     if st_var is not None:
-        st_var_sec = parse_st_var(ds, st_var, st_label="st").isel(x=ix_sec).values
-        ast_var_sec = parse_st_var(ds, ast_var, st_label="ast").isel(x=ix_sec).values
+        st_var_sec = parse_st_var(ds.st, st_var).isel(x=ix_sec).values
+        ast_var_sec = parse_st_var(ds.ast, ast_var).isel(x=ix_sec).values
 
         w = (
             1
@@ -400,22 +400,22 @@ def calibration_single_ended_solver(  # noqa: MC0001
 
         if np.any(matching_indices):
             st_var_ms0 = (
-                parse_st_var(ds, st_var, st_label="st")
+                parse_st_var(ds.st, st_var)
                 .isel(x=matching_indices[:, 0])
                 .values
             )
             st_var_ms1 = (
-                parse_st_var(ds, st_var, st_label="st")
+                parse_st_var(ds.st, st_var)
                 .isel(x=matching_indices[:, 1])
                 .values
             )
             ast_var_ms0 = (
-                parse_st_var(ds, ast_var, st_label="ast")
+                parse_st_var(ds.ast, ast_var)
                 .isel(x=matching_indices[:, 0])
                 .values
             )
             ast_var_ms1 = (
-                parse_st_var(ds, ast_var, st_label="ast")
+                parse_st_var(ds.ast, ast_var)
                 .isel(x=matching_indices[:, 1])
                 .values
             )
@@ -1173,14 +1173,14 @@ def calibration_double_ended_solver(  # noqa: MC0001
     -------
 
     """
-    ix_sec = ds.ufunc_per_section(sections=sections, x_indices=True, calc_per="all")
+    ix_sec = ds.dts.ufunc_per_section(sections=sections, x_indices=True, calc_per="all")
     ds_sec = ds.isel(x=ix_sec)
     ix_alpha_is_zero = ix_sec[0]  # per definition of E
 
     x_sec = ds_sec["x"].values
     nx_sec = x_sec.size
     nt = ds.time.size
-    nta = ds.trans_att.size
+    nta = ds.dts.nta
 
     # Calculate E as initial estimate for the E calibration.
     # Does not require ta to be passed on
@@ -1209,10 +1209,10 @@ def calibration_double_ended_solver(  # noqa: MC0001
     y_B = np.log(ds_sec.rst / ds_sec.rast).values.ravel()
 
     # w
-    st_var_sec = parse_st_var(ds, st_var, st_label="st").isel(x=ix_sec).values
-    ast_var_sec = parse_st_var(ds, ast_var, st_label="ast").isel(x=ix_sec).values
-    rst_var_sec = parse_st_var(ds, rst_var, st_label="rst").isel(x=ix_sec).values
-    rast_var_sec = parse_st_var(ds, rast_var, st_label="rast").isel(x=ix_sec).values
+    st_var_sec = parse_st_var(ds.st, st_var).isel(x=ix_sec).values
+    ast_var_sec = parse_st_var(ds.ast, ast_var).isel(x=ix_sec).values
+    rst_var_sec = parse_st_var(ds.rst, rst_var).isel(x=ix_sec).values
+    rast_var_sec = parse_st_var(ds.rast, rast_var).isel(x=ix_sec).values
 
     w_F = (
         1
@@ -1335,27 +1335,27 @@ def calibration_double_ended_solver(  # noqa: MC0001
 
         y = np.concatenate((y_F, y_B, y_eq1, y_eq2, y_eq3))
 
-        st_var_hix = parse_st_var(ds, st_var, st_label="st").isel(x=hix).values
-        ast_var_hix = parse_st_var(ds, ast_var, st_label="ast").isel(x=hix).values
-        rst_var_hix = parse_st_var(ds, rst_var, st_label="rst").isel(x=hix).values
-        rast_var_hix = parse_st_var(ds, rast_var, st_label="rast").isel(x=hix).values
+        st_var_hix = parse_st_var(ds.st, st_var).isel(x=hix).values
+        ast_var_hix = parse_st_var(ds.ast, ast_var).isel(x=hix).values
+        rst_var_hix = parse_st_var(ds.rst, rst_var).isel(x=hix).values
+        rast_var_hix = parse_st_var(ds.rast, rast_var).isel(x=hix).values
 
-        st_var_tix = parse_st_var(ds, st_var, st_label="st").isel(x=tix).values
-        ast_var_tix = parse_st_var(ds, ast_var, st_label="ast").isel(x=tix).values
-        rst_var_tix = parse_st_var(ds, rst_var, st_label="rst").isel(x=tix).values
-        rast_var_tix = parse_st_var(ds, rast_var, st_label="rast").isel(x=tix).values
+        st_var_tix = parse_st_var(ds.st, st_var).isel(x=tix).values
+        ast_var_tix = parse_st_var(ds.ast, ast_var).isel(x=tix).values
+        rst_var_tix = parse_st_var(ds.rst, rst_var).isel(x=tix).values
+        rast_var_tix = parse_st_var(ds.rast, rast_var).isel(x=tix).values
 
         st_var_mnc = (
-            parse_st_var(ds, st_var, st_label="st").isel(x=ix_match_not_cal).values
+            parse_st_var(ds.st, st_var).isel(x=ix_match_not_cal).values
         )
         ast_var_mnc = (
-            parse_st_var(ds, ast_var, st_label="ast").isel(x=ix_match_not_cal).values
+            parse_st_var(ds.ast, ast_var).isel(x=ix_match_not_cal).values
         )
         rst_var_mnc = (
-            parse_st_var(ds, rst_var, st_label="rst").isel(x=ix_match_not_cal).values
+            parse_st_var(ds.rst, rst_var).isel(x=ix_match_not_cal).values
         )
         rast_var_mnc = (
-            parse_st_var(ds, rast_var, st_label="rast").isel(x=ix_match_not_cal).values
+            parse_st_var(ds.rast, rast_var).isel(x=ix_match_not_cal).values
         )
 
         w_eq1 = 1 / (
@@ -1456,7 +1456,7 @@ def calibration_double_ended_solver(  # noqa: MC0001
     # the int diff att for outside the reference sections.
 
     # calculate talpha_fw and bw for attenuation
-    if ds.trans_att.size > 0:
+    if ds.dts.nta > 0:
         if np.any(matching_indices):
             ta = p_sol[1 + 2 * nt + ix_from_cal_match_to_glob.size :].reshape(
                 (nt, 2, nta), order="F"
@@ -1846,7 +1846,7 @@ def construct_submatrices(sections, nt, nx, ds, trans_att, x_sec):
 
     # Z \gamma  # Eq.47
     cal_ref = np.array(
-        ds.ufunc_per_section(
+        ds.dts.ufunc_per_section(
             sections=sections, label="st", ref_temp_broadcasted=True, calc_per="all"
         )
     )
@@ -2154,7 +2154,7 @@ def calc_alpha_double(
             D_F_var = ds["df_var"]
             D_B_var = ds["db_var"]
 
-            if ds.trans_att.size > 0:
+            if ds.dts.nta > 0:
                 # Can be improved by including covariances. That reduces the
                 # uncert.
 
@@ -2228,10 +2228,10 @@ def calc_df_db_double_est(ds, sections, ix_alpha_is_zero, gamma_est):
     Ibwx0 = np.log(
         ds.rst.isel(x=ix_alpha_is_zero) / ds.rast.isel(x=ix_alpha_is_zero)
     ).values
-    ref_temps_refs = ds.ufunc_per_section(
+    ref_temps_refs = ds.dts.ufunc_per_section(
         sections=sections, label="st", ref_temp_broadcasted=True, calc_per="all"
     )
-    ix_sec = ds.ufunc_per_section(sections=sections, x_indices=True, calc_per="all")
+    ix_sec = ds.dts.ufunc_per_section(sections=sections, x_indices=True, calc_per="all")
     ref_temps_x0 = (
         ref_temps_refs[ix_sec == ix_alpha_is_zero].flatten().compute() + 273.15
     )

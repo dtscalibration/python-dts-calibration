@@ -167,3 +167,30 @@ def variance_stokes_linear_helper(st_sec, resid_sec, nbin, through_zero):
         return slope * stokes + offset
 
     return slope, offset, st_sort_mean, st_sort_var, resid_sec, var_fun
+
+
+def check_allclose_acquisitiontime(acquisitiontime, eps: float = 0.05) -> None:
+    """
+    Check if all acquisition times are of equal duration. For now it is not possible to calibrate
+    over timesteps if the acquisition time of timesteps varies, as the Stokes variance
+    would change over time.
+
+    The acquisition time is stored for single ended measurements in userAcquisitionTime,
+    for double ended measurements in userAcquisitionTimeFW and userAcquisitionTimeBW.
+
+    Parameters
+    ----------
+    ds : DataStore
+    eps : float
+        Default accepts 1% of relative variation between min and max acquisition time.
+
+    Returns
+    -------
+    """
+    dtmin = acquisitiontime.min()
+    dtmax = acquisitiontime.max()
+    dtavg = (dtmin + dtmax) / 2
+    assert (dtmax - dtmin) / dtavg < eps, (
+        "Acquisition time is Forward channel not equal for all time steps"
+    )
+    pass

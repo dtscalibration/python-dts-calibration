@@ -17,7 +17,6 @@ from dtscalibration.calibration.section_utils import validate_sections
 from dtscalibration.datastore_utils import ParameterIndexDoubleEnded
 from dtscalibration.datastore_utils import ParameterIndexSingleEnded
 from dtscalibration.datastore_utils import check_deprecated_kwargs
-from dtscalibration.datastore_utils import check_timestep_allclose
 from dtscalibration.datastore_utils import get_params_from_pval_double_ended
 from dtscalibration.datastore_utils import get_params_from_pval_single_ended
 from dtscalibration.datastore_utils import ufunc_per_section_helper
@@ -883,7 +882,7 @@ class DataStore(xr.Dataset):
             sections = validate_sections(self, sections)
 
         assert self[st_label].dims[0] == "x", f"{st_label} are transposed"
-        check_timestep_allclose(self, eps=0.01)
+        # check_timestep_allclose(self, eps=0.01)
 
         # should maybe be per section. But then residuals
         # seem to be correlated between stretches. I don't know why.. BdT.
@@ -1050,7 +1049,7 @@ class DataStore(xr.Dataset):
 
         assert self[st_label].dims[0] == "x", "Stokes are transposed"
 
-        check_timestep_allclose(self, eps=0.01)
+        # check_timestep_allclose(self, eps=0.01)
 
         nt = self.time.size
 
@@ -1328,46 +1327,6 @@ class DataStore(xr.Dataset):
             ast_var = np.asarray(ast_var, dtype=float)
 
         return st**-2 * st_var + ast**-2 * ast_var
-
-    def set_trans_att(self, trans_att=None):
-        """Gracefully set the locations that introduce directional differential
-        attenuation
-
-        Parameters
-        ----------
-        trans_att : iterable, optional
-            Splices can cause jumps in differential attenuation. Normal single
-            ended calibration assumes these are not present. An additional loss
-            term is added in the 'shadow' of the splice. Each location
-            introduces an additional nt parameters to solve for. Requiring
-            either an additional calibration section or matching sections.
-            If multiple locations are defined, the losses are added.
-
-        """
-        if "trans_att" in self.coords and self["trans_att"].size > 0:
-            raise_warning = 0
-
-            del_keys = []
-            for k, v in self.data_vars.items():
-                if "trans_att" in v.dims:
-                    del_keys.append(k)
-
-            for del_key in del_keys:
-                del self[del_key]
-
-            if raise_warning:
-                m = (
-                    "trans_att was set before. All `data_vars` that make use "
-                    "of the `trans_att` coordinates were deleted: " + str(del_keys)
-                )
-                warnings.warn(m)
-
-        if trans_att is None:
-            trans_att = []
-
-        self["trans_att"] = trans_att
-        self["trans_att"].attrs = dim_attrs["trans_att"]
-        pass
 
     def calibration_single_ended(
         self,

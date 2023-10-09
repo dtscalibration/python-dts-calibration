@@ -462,43 +462,41 @@ def check_deprecated_kwargs(kwargs):
     pass
 
 
-def check_timestep_allclose(ds: "DataStore", eps: float = 0.01) -> None:
-    """
-    Check if all timesteps are of equal size. For now it is not possible to calibrate
-    over timesteps if the acquisition time of timesteps varies, as the Stokes variance
-    would change over time.
+# def check_timestep_allclose(ds: "DataStore", eps: float = 0.05) -> None:
+#     """
+#     Check if all timesteps are of equal size. For now it is not possible to calibrate
+#     over timesteps if the acquisition time of timesteps varies, as the Stokes variance
+#     would change over time.
 
-    The acquisition time is stored for single ended measurements in userAcquisitionTime,
-    for double ended measurements in userAcquisitionTimeFW and userAcquisitionTimeBW.
+#     The acquisition time is stored for single ended measurements in userAcquisitionTime,
+#     for double ended measurements in userAcquisitionTimeFW and userAcquisitionTimeBW.
 
-    Parameters
-    ----------
-    ds : DataStore
-    eps : float
-        Default accepts 1% of relative variation between min and max acquisition time.
+#     Parameters
+#     ----------
+#     ds : DataStore
+#     eps : float
+#         Default accepts 1% of relative variation between min and max acquisition time.
 
-    Returns
-    -------
+#     Returns
+#     -------
+#     """
+#     dt = ds["userAcquisitionTimeFW"].data
+#     dtmin = dt.min()
+#     dtmax = dt.max()
+#     dtavg = (dtmin + dtmax) / 2
+#     assert (dtmax - dtmin) / dtavg < eps, (
+#         "Acquisition time is Forward channel not equal for all time steps"
+#     )
 
-    """
-    dim = ds.channel_configuration["chfw"]["acquisitiontime_label"]
-    dt = ds[dim].data
-    dtmin = dt.min()
-    dtmax = dt.max()
-    dtavg = (dtmin + dtmax) / 2
-    assert (dtmax - dtmin) / dtavg < eps, (
-        "Acquisition time is Forward channel not equal for all " "time steps"
-    )
-
-    if ds.is_double_ended:
-        dim = ds.channel_configuration["chbw"]["acquisitiontime_label"]
-        dt = ds[dim].data
-        dtmin = dt.min()
-        dtmax = dt.max()
-        dtavg = (dtmin + dtmax) / 2
-        assert (dtmax - dtmin) / dtavg < eps, (
-            "Acquisition time Backward channel is not equal " "for all time steps"
-        )
+#     if "userAcquisitionTimeBW" in ds:
+#         dt = ds["userAcquisitionTimeBW"].data
+#         dtmin = dt.min()
+#         dtmax = dt.max()
+#         dtavg = (dtmin + dtmax) / 2
+#         assert (dtmax - dtmin) / dtavg < eps, (
+#             "Acquisition time Backward channel is not equal for all time steps"
+#         )
+#     pass
 
 
 def get_netcdf_encoding(
@@ -698,7 +696,14 @@ def get_params_from_pval_double_ended(ip, coords, p_val=None, p_cov=None):
 def get_params_from_pval_single_ended(
     ip, coords, p_val=None, p_var=None, p_cov=None, fix_alpha=None
 ):
-    assert len(p_val) == ip.npar, "Length of p_val is incorrect"
+    if p_val is not None:
+        assert len(p_val) == ip.npar, "Length of p_val is incorrect"
+
+    if p_var is not None:
+        assert len(p_var) == ip.npar, "Length of p_var is incorrect"
+
+    if p_cov is not None:
+        assert p_cov.shape == (ip.npar, ip.npar), "Shape of p_cov is incorrect"
 
     params = xr.Dataset(coords=coords)
     param_covs = xr.Dataset(coords=coords)
@@ -1328,7 +1333,7 @@ def ufunc_per_section_helper(
 
     7. x-coordinate index
 
-    >>> ix_loc = ufunc_per_section_helperx_coords=d.x)
+    >>> ix_loc = ufunc_per_section_helper(x_coords=d.x)
 
 
     Note
@@ -1370,6 +1375,7 @@ def ufunc_per_section_helper(
         assert callable(func)
 
     assert calc_per in ["all", "section", "stretch"]
+    assert "x_indices" not in func_kwargs, "pass x_coords arg instead"
 
     if x_coords is None and (
         (dataarray is not None and hasattr(dataarray.data, "chunks"))
@@ -1389,6 +1395,8 @@ def ufunc_per_section_helper(
                 assert subtract_from_dataarray is None
                 assert not subtract_reference_from_dataarray
                 assert not ref_temp_broadcasted
+                assert not func_kwargs, "Unsupported kwargs"
+
                 # so it is slicable with x-indices
                 _x_indices = x_coords.astype(int) * 0 + np.arange(x_coords.size)
                 arg1 = _x_indices.sel(x=stretch).data

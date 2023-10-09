@@ -1,7 +1,5 @@
 from dtscalibration.datastore import DataStore
-from dtscalibration.datastore_accessor import DtsAccessor
 from dtscalibration.datastore_utils import check_dims
-from dtscalibration.datastore_utils import check_timestep_allclose
 from dtscalibration.datastore_utils import get_netcdf_encoding
 from dtscalibration.datastore_utils import merge_double_ended
 from dtscalibration.datastore_utils import shift_double_ended
@@ -28,7 +26,6 @@ __all__ = [
     "read_sensortran_files",
     "read_silixa_files",
     "check_dims",
-    "check_timestep_allclose",
     "get_netcdf_encoding",
     "merge_double_ended",
     "shift_double_ended",

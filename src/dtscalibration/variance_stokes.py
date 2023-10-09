@@ -8,9 +8,10 @@ from dtscalibration.variance_helpers import variance_stokes_exponential_helper
 from dtscalibration.variance_helpers import variance_stokes_linear_helper
 from dtscalibration.calibration.section_utils import validate_sections_definition
 from dtscalibration.calibration.section_utils import validate_no_overlapping_sections
+from dtscalibration.variance_helpers import check_allclose_acquisitiontime
 
 
-def variance_stokes_constant(st, sections, reshape_residuals=True):
+def variance_stokes_constant(st, sections, acquisitiontime, reshape_residuals=True):
     """
     Approximate the variance of the noise in Stokes intensity measurements
     with one value, suitable for small setups.
@@ -116,6 +117,7 @@ def variance_stokes_constant(st, sections, reshape_residuals=True):
     """
     validate_sections_definition(sections=sections)
     validate_no_overlapping_sections(sections=sections)
+    check_allclose_acquisitiontime(acquisitiontime=acquisitiontime)
 
     assert st.dims[0] == "x", "DataArray is transposed"
 
@@ -149,6 +151,7 @@ def variance_stokes_constant(st, sections, reshape_residuals=True):
 def variance_stokes_exponential(
     st,
     sections,
+    acquisitiontime,
     use_statsmodels=False,
     suppress_info=True,
     reshape_residuals=True,
@@ -281,6 +284,7 @@ def variance_stokes_exponential(
     """
     validate_sections_definition(sections=sections)
     validate_no_overlapping_sections(sections=sections)
+    check_allclose_acquisitiontime(acquisitiontime=acquisitiontime)
 
     assert st.dims[0] == "x", "Stokes are transposed"
     nt = st.coords["time"].size
@@ -339,10 +343,10 @@ def variance_stokes_exponential(
         resid_da = xr.DataArray(data=resid_sorted, coords=st.coords)
 
         return var_I, resid_da
-    
+
 
 def variance_stokes_linear(
-    st, sections, nbin=50, through_zero=False, plot_fit=False
+    st, sections, acquisitiontime, nbin=50, through_zero=False, plot_fit=False
 ):
     """
     Approximate the variance of the noise in Stokes intensity measurements
@@ -457,6 +461,7 @@ def variance_stokes_linear(
     """
     validate_sections_definition(sections=sections)
     validate_no_overlapping_sections(sections=sections)
+    check_allclose_acquisitiontime(acquisitiontime=acquisitiontime)
 
     assert st.dims[0] == "x", "Stokes are transposed"
     _, resid = variance_stokes_constant(
