@@ -5,14 +5,12 @@ import yaml
 from dtscalibration.datastore_utils import ufunc_per_section_helper
 
 
-def set_sections(ds: xr.Dataset, sections: dict[str, list[slice]]) -> xr.Dataset:
-    sections_validated = None
+def set_sections(ds: xr.Dataset, sections: dict[str, list[slice]] = None):
+    ds.attrs["_sections"] = yaml.dump(sections)
 
-    if sections is not None:
-        sections_validated = validate_sections(ds, sections=sections)
 
-    ds.attrs["_sections"] = yaml.dump(sections_validated)
-    return ds
+def set_matching_sections(ds: xr.Dataset, matching_sections: dict[str, list[slice]] = None):
+    ds.attrs["_matching_sections"] = yaml.dump(matching_sections)
 
 
 def validate_no_overlapping_sections(sections: dict[str, list[slice]]):
@@ -132,39 +130,6 @@ def validate_sections(ds: xr.Dataset, sections: dict[str, list[slice]]):
                 f"Better define the {k} section. You tried {vi}, "
                 "which is not within the x-dimension"
             )
-
-    # for k, v in sections.items():
-    #     assert isinstance(v, (list, tuple)), (
-    #         "The values of the sections-dictionary " "should be lists of slice objects."
-    #     )
-
-    #     for vi in v:
-    #         assert isinstance(vi, slice), (
-    #             "The values of the sections-dictionary should "
-    #             "be lists of slice objects."
-    #         )
-
-    #         assert ds.x.sel(x=vi).size > 0, (
-    #             f"Better define the {k} section. You tried {vi}, "
-    #             "which is not within the x-dimension"
-    #         )
-
-    #     # sorted stretches
-    #     stretch_unsort = [slice(float(vi.start), float(vi.stop)) for vi in v]
-    #     stretch_start = [i.start for i in stretch_unsort]
-    #     stretch_i_sorted = np.argsort(stretch_start)
-    #     sections_fix_slice_fixed[k] = [stretch_unsort[i] for i in stretch_i_sorted]
-    #     all_stretches.extend(sections_fix_slice_fixed[k])
-
-    # # Check for overlapping slices
-    # all_start_stop = [[stretch.start, stretch.stop] for stretch in all_stretches]
-    # isorted_start = np.argsort([i[0] for i in all_start_stop])
-    # all_start_stop_startsort = [all_start_stop[i] for i in isorted_start]
-    # all_start_stop_startsort_flat = sum(all_start_stop_startsort, [])
-    # assert all_start_stop_startsort_flat == sorted(
-    #     all_start_stop_startsort_flat), \
-    #     "Sections contains overlapping stretches"
-
     pass
 
 

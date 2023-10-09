@@ -125,7 +125,7 @@ def test_variance_input_types_single():
     # Test float input
     st_var = 5.0
 
-    ds.dts.calibration_single_ended(
+    ds.dts.calibrate_single_ended(
         sections=sections, st_var=st_var, ast_var=st_var, method="wls", solver="sparse"
     )
 
@@ -150,7 +150,7 @@ def test_variance_input_types_single():
         offset = 0
         return slope * stokes + offset
 
-    ds.dts.calibration_single_ended(
+    ds.dts.calibrate_single_ended(
         sections=sections,
         st_var=callable_st_var,
         ast_var=callable_st_var,
@@ -174,7 +174,7 @@ def test_variance_input_types_single():
 
     # Test input with shape of (ntime, nx)
     st_var = ds.st.values * 0 + 20.0
-    ds.dts.calibration_single_ended(
+    ds.dts.calibrate_single_ended(
         sections=sections, st_var=st_var, ast_var=st_var, method="wls", solver="sparse"
     )
 
@@ -189,7 +189,7 @@ def test_variance_input_types_single():
         ds.st.mean(dim="time").values * 0 + np.linspace(10, 50, num=ds.st.x.size)
     )
 
-    ds.dts.calibration_single_ended(
+    ds.dts.calibrate_single_ended(
         sections=sections, st_var=st_var, ast_var=st_var, method="wls", solver="sparse"
     )
 
@@ -207,7 +207,7 @@ def test_variance_input_types_single():
     # Test input with shape (ntime)
     st_var = ds.st.mean(dim="x").values * 0 + np.linspace(5, 200, num=nt)
 
-    ds.dts.calibration_single_ended(
+    ds.dts.calibrate_single_ended(
         sections=sections, st_var=st_var, ast_var=st_var, method="wls", solver="sparse"
     )
 
@@ -693,7 +693,7 @@ def test_single_ended_variance_estimate_synthetic():
     mast_var = float(mast_var)
 
     # MC variqnce
-    ds.dts.calibration_single_ended(
+    ds.dts.calibrate_single_ended(
         sections=sections,
         st_var=mst_var,
         ast_var=mast_var,
@@ -2595,7 +2595,7 @@ def test_single_ended_wls_estimate_synthetic():
     }
 
     # WLS
-    out = ds.dts.calibration_single_ended(
+    out = ds.dts.calibrate_single_ended(
         sections=sections, st_var=1.0, ast_var=1.0, method="wls", solver="sparse"
     )
     ds.update(out)
@@ -2671,7 +2671,7 @@ def test_single_ended_wls_fix_dalpha_synthetic():
 
     # Test fix_dalpha
     ds_dalpha = ds_ori.copy()
-    out = ds_dalpha.dts.calibration_single_ended(
+    out = ds_dalpha.dts.calibrate_single_ended(
         sections=sections,
         st_var=1.0,
         ast_var=1.0,
@@ -2690,7 +2690,7 @@ def test_single_ended_wls_fix_dalpha_synthetic():
 
     # Test fix_alpha
     ds_alpha = ds_ori.copy()
-    out = ds_alpha.dts.calibration_single_ended(
+    out = ds_alpha.dts.calibrate_single_ended(
         sections=sections,
         st_var=1.0,
         ast_var=1.0,
@@ -2771,7 +2771,7 @@ def test_single_ended_wls_fix_gamma_synthetic():
     }
 
     # WLS
-    out = ds.dts.calibration_single_ended(
+    out = ds.dts.calibrate_single_ended(
         sections=sections,
         st_var=1.0,
         ast_var=1.0,
@@ -2850,7 +2850,7 @@ def test_single_ended_wls_fix_gamma_fix_dalpha_synthetic():
     }
 
     # WLS
-    out = ds.dts.calibration_single_ended(
+    out = ds.dts.calibrate_single_ended(
         sections=sections,
         st_var=1.0,
         ast_var=1.0,
@@ -2942,7 +2942,7 @@ def test_single_ended_trans_att_synthetic():
     ds_test = ds.copy(deep=True)
 
     # WLS
-    out = ds_test.dts.calibration_single_ended(
+    out = ds_test.dts.calibrate_single_ended(
         sections=sections,
         st_var=1.0,
         ast_var=1.0,
@@ -2963,7 +2963,7 @@ def test_single_ended_trans_att_synthetic():
     ds_test = ds.copy(deep=True)
 
     # Test fixing gamma + transient att.
-    out = ds_test.dts.calibration_single_ended(
+    out = ds_test.dts.calibrate_single_ended(
         sections=sections,
         st_var=1.0,
         ast_var=1.0,
@@ -2985,7 +2985,7 @@ def test_single_ended_trans_att_synthetic():
     ds_test = ds.copy(deep=True)
 
     # Test fixing alpha + transient att.
-    out = ds_test.dts.calibration_single_ended(
+    out = ds_test.dts.calibrate_single_ended(
         sections=sections,
         st_var=1.0,
         ast_var=1.0,
@@ -3089,7 +3089,7 @@ def test_single_ended_matching_sections_synthetic():
     ds_test = ds.copy(deep=True)
 
     # WLS
-    out = ds_test.dts.calibration_single_ended(
+    out = ds_test.dts.calibrate_single_ended(
         sections=sections,
         st_var=1.0,
         ast_var=1.0,
@@ -3111,7 +3111,7 @@ def test_single_ended_matching_sections_synthetic():
     ds_test = ds.copy(deep=True)
 
     # Test fixing gamma + transient att.
-    out = ds_test.dts.calibration_single_ended(
+    out = ds_test.dts.calibrate_single_ended(
         sections=sections,
         st_var=1.0,
         ast_var=1.0,
@@ -3134,7 +3134,7 @@ def test_single_ended_matching_sections_synthetic():
     ds_test = ds.copy(deep=True)
 
     # Test fixing dalpha + transient att.
-    out = ds_test.dts.calibration_single_ended(
+    out = ds_test.dts.calibrate_single_ended(
         sections=sections,
         st_var=1.0,
         ast_var=1.0,
@@ -3157,7 +3157,7 @@ def test_single_ended_matching_sections_synthetic():
     ds_test = ds.copy(deep=True)
 
     # Test fixing gamma & dalpha + transient att.
-    out = ds_test.dts.calibration_single_ended(
+    out = ds_test.dts.calibrate_single_ended(
         sections=sections,
         st_var=1.0,
         ast_var=1.0,
@@ -3179,7 +3179,7 @@ def test_single_ended_matching_sections_synthetic():
     )
 
     # Test conf. ints. for the combination of everything
-    out_conf = ds_test.dts.conf_int_single_ended(
+    out_conf = ds_test.dts.monte_carlo_single_ended(
         result=out,
         st_var=1.0,
         ast_var=1.0,
@@ -3290,7 +3290,7 @@ def test_single_ended_exponential_variance_estimate_synthetic():
     )
 
     # MC variqnce
-    out = ds.dts.calibration_single_ended(
+    out = ds.dts.calibrate_single_ended(
         sections=sections,
         st_var=mst_var,
         ast_var=mast_var,
@@ -3309,7 +3309,7 @@ def test_single_ended_exponential_variance_estimate_synthetic():
         calc_per="stretch",
         ddof=1,
     )
-    out_ci = ds2.dts.conf_int_single_ended(
+    out_ci = ds2.dts.monte_carlo_single_ended(
         result=out,
         st_var=mst_var,
         ast_var=mast_var,
@@ -3394,7 +3394,7 @@ def test_average_measurements_single_ended():
 
     st_var, ast_var = 5.0, 5.0
 
-    ds.dts.calibration_single_ended(
+    ds.dts.calibrate_single_ended(
         sections=sections, st_var=st_var, ast_var=ast_var, method="wls", solver="sparse"
     )
     ds.average_single_ended(
