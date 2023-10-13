@@ -29,10 +29,11 @@ class DtsAccessor:
         self.time = xarray_obj.time
         self.nt = self.time.size
 
+        # None if doesn't exist
         self.st = xarray_obj.get("st")
         self.ast = xarray_obj.get("ast")
-        self.rst = xarray_obj.get("rst")    # None if doesn't exist
-        self.rast = xarray_obj.get("rast")  # None is doesn't exist
+        self.rst = xarray_obj.get("rst")    
+        self.rast = xarray_obj.get("rast")
 
         self.acquisitiontime_fw = xarray_obj.get("userAcquisitionTimeFW")
         self.acquisitiontime_bw = xarray_obj.get("userAcquisitionTimeBW")

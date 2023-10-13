@@ -10,7 +10,8 @@ from dtscalibration.calibrate_utils import wls_sparse
 from dtscalibration.calibrate_utils import wls_stats
 from dtscalibration.datastore_accessor import DtsAccessor  # noqa: F401
 from dtscalibration.variance_stokes import variance_stokes_exponential
-
+from dtscalibration.variance_stokes import variance_stokes_constant
+from dtscalibration.variance_stokes import variance_stokes_linear
 
 np.random.seed(0)
 
@@ -129,7 +130,7 @@ def test_variance_input_types_single():
         sections=sections, st_var=st_var, ast_var=st_var, method="wls", solver="sparse"
     )
 
-    ds.dts.conf_int_single_ended(
+    ds.dts.monte_carlo_single_ended(
         st_var=st_var,
         ast_var=st_var,
         mc_sample_size=100,
@@ -158,7 +159,7 @@ def test_variance_input_types_single():
         solver="sparse",
     )
 
-    ds.conf_int_single_ended(
+    ds.monte_carlo_single_ended(
         st_var=callable_st_var,
         ast_var=callable_st_var,
         mc_sample_size=100,
@@ -178,7 +179,7 @@ def test_variance_input_types_single():
         sections=sections, st_var=st_var, ast_var=st_var, method="wls", solver="sparse"
     )
 
-    ds.dts.conf_int_single_ended(
+    ds.dts.monte_carlo_single_ended(
         st_var=st_var, ast_var=st_var, mc_sample_size=100, da_random_state=state
     )
 
@@ -193,7 +194,7 @@ def test_variance_input_types_single():
         sections=sections, st_var=st_var, ast_var=st_var, method="wls", solver="sparse"
     )
 
-    ds.dts.conf_int_single_ended(
+    ds.dts.monte_carlo_single_ended(
         st_var=st_var, ast_var=st_var, mc_sample_size=100, da_random_state=state
     )
 
@@ -211,7 +212,7 @@ def test_variance_input_types_single():
         sections=sections, st_var=st_var, ast_var=st_var, method="wls", solver="sparse"
     )
 
-    ds.dts.conf_int_single_ended(
+    ds.dts.monte_carlo_single_ended(
         st_var=st_var, ast_var=st_var, mc_sample_size=100, da_random_state=state
     )
 
@@ -701,7 +702,7 @@ def test_single_ended_variance_estimate_synthetic():
         solver="sparse",
     )
 
-    ds.dts.conf_int_single_ended(
+    ds.dts.monte_carlo_single_ended(
         p_val="p_val",
         p_cov="p_cov",
         st_var=mst_var,
