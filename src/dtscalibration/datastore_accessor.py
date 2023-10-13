@@ -757,7 +757,7 @@ class DtsAccessor:
         params = out.copy()
         params.coords["mc"] = range(mc_sample_size)
 
-        no, nt = self.st.data.shape
+        no, nt = self.st.shape
         nta = result["trans_att"].size
 
         p_val = result["p_val"].data
@@ -772,12 +772,7 @@ class DtsAccessor:
             fixed_alpha = True
         else:
             raise Exception("The size of `p_val` is not what I expected")
-        
-        assert isinstance(p_val, (str, np.ndarray, np.generic))
-        if isinstance(p_val, str):
-            p_val = self[p_val].data
 
-        npar = p_val.size
         p_mc = sst.multivariate_normal.rvs(mean=p_val, cov=p_cov, size=mc_sample_size)
 
         if fixed_alpha:
@@ -809,9 +804,6 @@ class DtsAccessor:
         # Draw from the normal distributions for the Stokes intensities
         for key_mc, sti, st_vari in zip(["r_st", "r_ast"], [self.st, self.ast], 
                                         [st_var, ast_var]):
-        # for k, st_labeli, st_vari in zip(
-        #     ["r_st", "r_ast"], ["st", "ast"], [st_var, ast_var]
-        # ):
             # Load the mean as chunked Dask array, otherwise eats memory
             if type(sti.data) == da.core.Array:
                 loc = da.asarray(sti.data, chunks=memchunk[1:])
@@ -918,20 +910,18 @@ class DtsAccessor:
 
     def monte_carlo_double_ended(
         self,
-        sections=None,
-        p_val="p_val",
-        p_cov="p_cov",
-        st_var=None,
-        ast_var=None,
-        rst_var=None,
-        rast_var=None,
-        conf_ints=None,
+        result,
+        st_var,
+        ast_var,
+        rst_var,
+        rast_var,
+        conf_ints,
         mc_sample_size=100,
         var_only_sections=False,
+        exclude_parameter_uncertainty=False,
         da_random_state=None,
         mc_remove_set_flag=True,
-        reduce_memory_usage=False,
-        **kwargs,
+        reduce_memory_usage=False
     ):
         r"""
         Estimation of the confidence intervals for the temperatures measured
@@ -1053,6 +1043,7 @@ class DtsAccessor:
             Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
             https://doi.org/10.3390/s20082235
 
+        TODO: Use get_params_from_pval_double_ended() to extract parameter sets from mc
         """
 
         def create_da_ta2(no, i_splice, direction="fw", chunks=None):
@@ -1084,9 +1075,6 @@ class DtsAccessor:
                 ).rechunk((1, chunks[1], 1))
             return arr
 
-        out = xr.Dataset()
-        params = xr.Dataset()
-
         if da_random_state:
             # In testing environments
             assert isinstance(da_random_state, da.random.RandomState)
@@ -1094,16 +1082,26 @@ class DtsAccessor:
         else:
             state = da.random.RandomState()
 
-        if conf_ints:
-            assert "tmpw", (
-                "Current implementation requires you to "
-                'define "tmpw" when estimating confidence '
-                "intervals"
-            )
+        out = xr.Dataset(coords={"x": self.x, "time": self.time, "trans_att": result["trans_att"]}).copy()
+        out.coords["x"].attrs = dim_attrs["x"]
+        out.coords["trans_att"].attrs = dim_attrs["trans_att"]
+        out.coords["CI"] = conf_ints
+
+        set_sections(out, result.dts.sections)
+        set_matching_sections(out, result.dts.matching_sections)
+
+        params = out.copy()  # Contains all mc sampled parameters
+        params.coords["mc"] = range(mc_sample_size)
 
         no, nt = self.st.shape
-        nta = self.trans_att.size
-        npar = 1 + 2 * nt + no + nt * 2 * nta  # number of parameters
+        nta = result["trans_att"].size
+
+        p_val = result["p_val"].data
+        p_cov = result["p_cov"].data
+
+        npar = p_val.size
+        npar_valid = 1 + 2 * nt + no + nt * 2 * nta
+        assert npar == npar_valid, "Inconsistent result object"
 
         rsize = (mc_sample_size, no, nt)
 
@@ -1116,26 +1114,7 @@ class DtsAccessor:
                 (mc_sample_size, no, nt), chunks={0: -1, 1: "auto", 2: "auto"}
             ).chunks
 
-        params.coords["mc"] = range(mc_sample_size)
-        params.coords["x"] = self.x
-        params.coords["time"] = self.time
-
-        if conf_ints:
-            self.coords["CI"] = conf_ints
-            params.coords["CI"] = conf_ints
-
-        assert isinstance(p_val, (str, np.ndarray, np.generic))
-        if isinstance(p_val, str):
-            p_val = self[p_val].values
-        assert p_val.shape == (npar,), (
-            "Did you set 'talpha' as "
-            "keyword argument of the "
-            "conf_int_double_ended() function?"
-        )
-
-        assert isinstance(p_cov, (str, np.ndarray, np.generic, bool))
-
-        if isinstance(p_cov, bool) and not p_cov:
+        if exclude_parameter_uncertainty:
             # Exclude parameter uncertainty if p_cov == False
             gamma = p_val[0]
             d_fw = p_val[1 : nt + 1]
@@ -1167,16 +1146,8 @@ class DtsAccessor:
                 params["talpha_fw_mc"] = (("x", "time"), ta_fw_arr)
                 params["talpha_bw_mc"] = (("x", "time"), ta_bw_arr)
 
-        elif isinstance(p_cov, bool) and p_cov:
-            raise NotImplementedError("Not an implemented option. Check p_cov argument")
-
         else:
-            # WLS
-            if isinstance(p_cov, str):
-                p_cov = self[p_cov].values
-            assert p_cov.shape == (npar, npar)
-
-            assert sections is not None, "Define sections"
+            sections = result.dts.sections
             ix_sec = self.ufunc_per_section(
                 sections=sections, x_indices=True, calc_per="all"
             )
@@ -1306,80 +1277,79 @@ class DtsAccessor:
             )
 
         for label in ["tmpf", "tmpb"]:
-            if "tmpw" or label:
-                if label == "tmpf":
-                    if nta:
-                        params["tmpf_mc_set"] = (
-                            params["gamma_mc"]
-                            / (
-                                np.log(params["r_st"] / params["r_ast"])
-                                + params["df_mc"]
-                                + params["alpha_mc"]
-                                + params["talpha_fw_mc"]
-                            )
-                            - 273.15
+            if label == "tmpf":
+                if nta:
+                    params["tmpf_mc_set"] = (
+                        params["gamma_mc"]
+                        / (
+                            np.log(params["r_st"] / params["r_ast"])
+                            + params["df_mc"]
+                            + params["alpha_mc"]
+                            + params["talpha_fw_mc"]
                         )
-                    else:
-                        params["tmpf_mc_set"] = (
-                            params["gamma_mc"]
-                            / (
-                                np.log(params["r_st"] / params["r_ast"])
-                                + params["df_mc"]
-                                + params["alpha_mc"]
-                            )
-                            - 273.15
-                        )
-                else:
-                    if nta:
-                        params["tmpb_mc_set"] = (
-                            params["gamma_mc"]
-                            / (
-                                np.log(params["r_rst"] / params["r_rast"])
-                                + params["db_mc"]
-                                - params["alpha_mc"]
-                                + params["talpha_bw_mc"]
-                            )
-                            - 273.15
-                        )
-                    else:
-                        params["tmpb_mc_set"] = (
-                            params["gamma_mc"]
-                            / (
-                                np.log(params["r_rst"] / params["r_rast"])
-                                + params["db_mc"]
-                                - params["alpha_mc"]
-                            )
-                            - 273.15
-                        )
-
-                if var_only_sections:
-                    # sets the values outside the reference sections to NaN
-                    xi = self.ufunc_per_section(
-                        sections=sections, x_indices=True, calc_per="all"
+                        - 273.15
                     )
-                    x_mask_ = [
-                        True if ix in xi else False for ix in range(params.x.size)
-                    ]
-                    x_mask = np.reshape(x_mask_, (1, -1, 1))
-                    params[label + "_mc_set"] = params[label + "_mc_set"].where(x_mask)
+                else:
+                    params["tmpf_mc_set"] = (
+                        params["gamma_mc"]
+                        / (
+                            np.log(params["r_st"] / params["r_ast"])
+                            + params["df_mc"]
+                            + params["alpha_mc"]
+                        )
+                        - 273.15
+                    )
+            else:
+                if nta:
+                    params["tmpb_mc_set"] = (
+                        params["gamma_mc"]
+                        / (
+                            np.log(params["r_rst"] / params["r_rast"])
+                            + params["db_mc"]
+                            - params["alpha_mc"]
+                            + params["talpha_bw_mc"]
+                        )
+                        - 273.15
+                    )
+                else:
+                    params["tmpb_mc_set"] = (
+                        params["gamma_mc"]
+                        / (
+                            np.log(params["r_rst"] / params["r_rast"])
+                            + params["db_mc"]
+                            - params["alpha_mc"]
+                        )
+                        - 273.15
+                    )
 
-                # subtract the mean temperature
-                q = params[label + "_mc_set"] - self[label]
-                out[label + "_mc_var"] = q.var(dim="mc", ddof=1)
+            if var_only_sections:
+                # sets the values outside the reference sections to NaN
+                xi = self.ufunc_per_section(
+                    sections=sections, x_indices=True, calc_per="all"
+                )
+                x_mask_ = [
+                    True if ix in xi else False for ix in range(params.x.size)
+                ]
+                x_mask = np.reshape(x_mask_, (1, -1, 1))
+                params[label + "_mc_set"] = params[label + "_mc_set"].where(x_mask)
 
-                if conf_ints:
-                    new_chunks = list(params[label + "_mc_set"].chunks)
-                    new_chunks[0] = (len(conf_ints),)
-                    avg_axis = params[label + "_mc_set"].get_axis_num("mc")
-                    q = params[label + "_mc_set"].data.map_blocks(
-                        lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
-                        chunks=new_chunks,  #
-                        drop_axis=avg_axis,
-                        # avg dimensions are dropped from input arr
-                        new_axis=0,
-                    )  # The new CI dimension is added as firsaxis
+            # subtract the mean temperature
+            q = params[label + "_mc_set"] - self[label]
+            out[label + "_mc_var"] = q.var(dim="mc", ddof=1)
 
-                    out[label + "_mc"] = (("CI", "x", "time"), q)
+            if conf_ints:
+                new_chunks = list(params[label + "_mc_set"].chunks)
+                new_chunks[0] = (len(conf_ints),)
+                avg_axis = params[label + "_mc_set"].get_axis_num("mc")
+                q = params[label + "_mc_set"].data.map_blocks(
+                    lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
+                    chunks=new_chunks,  #
+                    drop_axis=avg_axis,
+                    # avg dimensions are dropped from input arr
+                    new_axis=0,
+                )  # The new CI dimension is added as firsaxis
+
+                out[label + "_mc"] = (("CI", "x", "time"), q)
 
         # Weighted mean of the forward and backward
         tmpw_var = 1 / (1 / out["tmpf_mc_var"] + 1 / out["tmpb_mc_var"])
