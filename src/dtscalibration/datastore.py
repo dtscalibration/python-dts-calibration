@@ -80,7 +80,13 @@ class DataStore(xr.Dataset):
     """
 
     def __init__(self, *args, autofill_dim_attrs=True, **kwargs):
-        super().__init__(*args, **kwargs)
+        with warnings.catch_warnings():
+            # Filter out nanosecond precision warning: no good way to avoid ATM.
+            warnings.filterwarnings(
+                "ignore",
+                message="Converting non-nanosecond precision timedelta values to nanosecond precision.",
+            )
+            super().__init__(*args, **kwargs)
 
         # check order of the dimensions of the data_vars
         # first 'x' (if in initiated DataStore), then 'time', then the rest
@@ -2256,8 +2262,8 @@ class DataStore(xr.Dataset):
         ----------
         p_val : array-like, optional
             Define `p_val`, `p_var`, `p_cov` if you used an external function
-            for calibration. Has size 2 + `nt`. First value is :math:`\gamma`,
-            second is :math:`\Delta \\alpha`, others are :math:`C` for each
+            for calibration. Has size 2 + `nt`. First value is :math:`\\gamma`,
+            second is :math:`\\Delta \\alpha`, others are :math:`C` for each
             timestep.
             If set to False, no uncertainty in the parameters is propagated
             into the confidence intervals. Similar to the spec sheets of the DTS

@@ -1,3 +1,4 @@
+import warnings
 from typing import TYPE_CHECKING
 from typing import Optional
 from typing import Union
@@ -1146,8 +1147,13 @@ def suggest_cable_shift_double_ended(
             rast = ds["rast"].data[:nx2]
             x2 = ds["x"].data[i_shift:]
 
-        i_f = np.log(st / ast)
-        i_b = np.log(rst / rast)
+        with warnings.catch_warnings():
+            # Supress log(x/0) warnings. The data will result in NaNs values.
+            warnings.filterwarnings(
+                "ignore", message="invalid value encountered in log"
+            )
+            i_f = np.log(st / ast)
+            i_b = np.log(rst / rast)
 
         att = (i_b - i_f) / 2  # varianble E in article
 
