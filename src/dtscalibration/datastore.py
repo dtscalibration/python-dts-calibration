@@ -21,7 +21,7 @@ from dtscalibration.datastore_utils import check_timestep_allclose
 from dtscalibration.datastore_utils import get_params_from_pval_double_ended
 from dtscalibration.datastore_utils import get_params_from_pval_single_ended
 from dtscalibration.datastore_utils import ufunc_per_section_helper
-from dtscalibration.io_utils import _dim_attrs
+from dtscalibration.io.utils import _dim_attrs
 from dtscalibration.variance_helpers import variance_stokes_constant_helper
 from dtscalibration.variance_helpers import variance_stokes_exponential_helper
 from dtscalibration.variance_helpers import variance_stokes_linear_helper
