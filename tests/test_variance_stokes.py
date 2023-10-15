@@ -570,22 +570,22 @@ def test_double_ended_variance_estimate_synthetic():
         method="wls",
         solver="sparse",
     )
+    out["cold"] = ds.cold
+    out["warm"] = ds.warm
 
     assert_almost_equal_verbose(out["tmpf"].mean(), 12.0, decimal=2)
     assert_almost_equal_verbose(out["tmpb"].mean(), 12.0, decimal=3)
     
     # Calibrated variance
     stdsf1 = out.dts.ufunc_per_section(
-        sections=sections, label="tmpf", func=np.std, temp_err=True, calc_per="stretch"
+        sections=sections, label="tmpf", func=np.std, temp_err=True, calc_per="stretch", suppress_section_validation=True,
     )
     stdsb1 = out.dts.ufunc_per_section(
-        sections=sections, label="tmpb", func=np.std, temp_err=True, calc_per="stretch"
+        sections=sections, label="tmpb", func=np.std, temp_err=True, calc_per="stretch", suppress_section_validation=True,
     )
 
     out2 = ds.dts.monte_carlo_double_ended(
-        sections=sections,
-        p_val="p_val",
-        p_cov="p_cov",
+        result=out,
         st_var=mst_var,
         ast_var=mast_var,
         rst_var=mrst_var,
@@ -594,6 +594,9 @@ def test_double_ended_variance_estimate_synthetic():
         mc_sample_size=100,
         da_random_state=state,
     )
+
+    out2["cold"] = ds.cold
+    out2["warm"] = ds.warm
 
     # Use a single timestep to better check if the parameter uncertainties propagate
     ds1 = out2.isel(time=1)
@@ -604,6 +607,7 @@ def test_double_ended_variance_estimate_synthetic():
         func=np.mean,
         temp_err=False,
         calc_per="stretch",
+        suppress_section_validation=True,
     )
     stdsb2 = ds1.dts.ufunc_per_section(
         sections=sections,
@@ -611,6 +615,7 @@ def test_double_ended_variance_estimate_synthetic():
         func=np.mean,
         temp_err=False,
         calc_per="stretch",
+        suppress_section_validation=True,
     )
 
     for (_, v1), (_, v2) in zip(stdsf1.items(), stdsf2.items()):

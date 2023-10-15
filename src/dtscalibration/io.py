@@ -6,6 +6,7 @@ import warnings
 
 import numpy as np
 import xarray as xr
+from xarray import Dataset
 
 from dtscalibration.io_utils import apsensing_xml_version_check
 from dtscalibration.io_utils import read_apsensing_files_routine
@@ -41,7 +42,7 @@ def open_datastore(
 
     Parameters
     ----------
-    filename_or_obj : str, Path, file or xarray.backends.*DataStore
+    filename_or_obj : str, Path, file or xarray.backends.*Dataset
         Strings and Path objects are interpreted as a path to a netCDF file
         or an OpenDAP URL and opened with python-netCDF4, unless the filename
         ends with .gz, in which case the file is gunzipped and opened with
@@ -137,7 +138,7 @@ def open_datastore(
         drop_variables=drop_variables,
         backend_kwargs=backend_kwargs,
     ) as ds_xr:
-        ds = DataStore(
+        ds = Dataset(
             data_vars=ds_xr.data_vars,
             coords=ds_xr.coords,
             attrs=ds_xr.attrs,
@@ -187,7 +188,7 @@ def open_mf_datastore(
         assert paths, "No files match found with: " + path
 
     with open_mfdataset(paths=paths, combine=combine, **kwargs) as xds:
-        ds = DataStore(data_vars=xds.data_vars, coords=xds.coords, attrs=xds.attrs)
+        ds = Dataset(data_vars=xds.data_vars, coords=xds.coords, attrs=xds.attrs)
 
         # to support deprecated st_labels
         ds = ds.rename_labels(assertion=False)
@@ -232,11 +233,11 @@ def read_silixa_files(
     load_in_memory : {'auto', True, False}
         If 'auto' the Stokes data is only loaded to memory for small files
     kwargs : dict-like, optional
-        keyword-arguments are passed to DataStore initialization
+        keyword-arguments are passed to Dataset initialization
 
     Returns
     -------
-    datastore : DataStore
+    datastore : Dataset
         The newly created datastore.
     """
 
@@ -284,7 +285,7 @@ def read_silixa_files(
             "Silixa xml version " + f"{xml_version} not implemented"
         )
 
-    ds = DataStore(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
+    ds = Dataset(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
     return ds
 
 
@@ -310,11 +311,11 @@ def read_sensortran_files(
     silent : bool
         If set tot True, some verbose texts are not printed to stdout/screen
     kwargs : dict-like, optional
-        keyword-arguments are passed to DataStore initialization
+        keyword-arguments are passed to Dataset initialization
 
     Returns
     -------
-    datastore : DataStore
+    datastore : Dataset
         The newly created datastore.
     """
 
@@ -349,7 +350,7 @@ def read_sensortran_files(
             "Sensortran binary version " + f"{version} not implemented"
         )
 
-    ds = DataStore(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
+    ds = Dataset(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
     return ds
 
 
@@ -386,7 +387,7 @@ def read_apsensing_files(
     load_in_memory : {'auto', True, False}
         If 'auto' the Stokes data is only loaded to memory for small files
     kwargs : dict-like, optional
-        keyword-arguments are passed to DataStore initialization
+        keyword-arguments are passed to Dataset initialization
 
     Notes
     -----
@@ -394,7 +395,7 @@ def read_apsensing_files(
 
     Returns
     -------
-    datastore : DataStore
+    datastore : Dataset
         The newly created datastore.
     """
     if not file_ext == "*.xml":
@@ -435,7 +436,7 @@ def read_apsensing_files(
         load_in_memory=load_in_memory,
     )
 
-    ds = DataStore(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
+    ds = Dataset(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
     return ds
 
 
@@ -479,7 +480,7 @@ def read_sensornet_files(
         device. If left to `None`, it is approximated with
         `x[-1] - add_internal_fiber_length`.
     kwargs : dict-like, optional
-        keyword-arguments are passed to DataStore initialization
+        keyword-arguments are passed to Dataset initialization
 
     Notes
     -----
@@ -489,7 +490,7 @@ def read_sensornet_files(
 
     Returns
     -------
-    datastore : DataStore
+    datastore : Dataset
         The newly created datastore.
     """
     if filepathlist is None:
@@ -557,5 +558,5 @@ def read_sensornet_files(
         flip_reverse_measurements=flip_reverse_measurements,
     )
 
-    ds = DataStore(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
+    ds = Dataset(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
     return ds

@@ -400,6 +400,10 @@ class DtsAccessor:
         if not suppress_section_validation:
             validate_sections_definition(sections=sections)
             validate_no_overlapping_sections(sections=sections)
+
+        if temp_err or ref_temp_broadcasted:
+            for k in sections:
+                assert k in self._obj, f"{k} is not in the Dataset but is in `sections` and is required to compute temp_err"
         
         if label is None:
             dataarray = None
@@ -1912,8 +1916,9 @@ class DtsAccessor:
 
         return out
     
-    def average_single_ended(
+    def average_monte_carlo_single_ended(
         self,
+        result,
         st_var,
         ast_var,
         conf_ints=None,
@@ -1938,17 +1943,9 @@ class DtsAccessor:
 
         Parameters
         ----------
-        p_val : array-like, optional
-            Define `p_val`, `p_var`, `p_cov` if you used an external function
-            for calibration. Has size 2 + `nt`. First value is :math:`\gamma`,
-            second is :math:`\Delta \\alpha`, others are :math:`C` for each
-            timestep.
-            If set to False, no uncertainty in the parameters is propagated
-            into the confidence intervals. Similar to the spec sheets of the DTS
-            manufacturers. And similar to passing an array filled with zeros
-        p_cov : array-like, optional
-            The covariances of `p_val`.
-        st_var, ast_var : float, callable, array-like, optional
+        result : xr.Dataset
+            The result from the `calibrate_single_ended()` method.
+        st_var, ast_var : float, callable, array-like
             The variance of the measurement noise of the Stokes signals in the
             forward direction. If `float` the variance of the noise from the
             Stokes detector is described with a single value.
@@ -2045,12 +2042,15 @@ class DtsAccessor:
         Returns
         -------
 
-        """
-        out = xr.Dataset()
+        """    
+        # out contains the state
+        out = xr.Dataset(coords={"x": self.x, "time": self.time, "trans_att": result["trans_att"]}).copy()
+        out.coords["x"].attrs = dim_attrs["x"]
+        out.coords["trans_att"].attrs = dim_attrs["trans_att"]
+        out.coords["CI"] = conf_ints
 
-        mcparams = self.conf_int_single_ended(
-            p_val=p_val,
-            p_cov=p_cov,
+        mcparams = self.monte_carlo_single_ended(
+            result=result,
             st_var=st_var,
             ast_var=ast_var,
             conf_ints=None,
@@ -2059,7 +2059,7 @@ class DtsAccessor:
             mc_remove_set_flag=False,
             reduce_memory_usage=reduce_memory_usage,
         )
-        mcparams["tmpf"] = self["tmpf"]
+        mcparams["tmpf"] = result["tmpf"]
 
         if ci_avg_time_sel is not None:
             time_dim2 = "time" + "_avg"
@@ -2252,18 +2252,15 @@ class DtsAccessor:
                 if k in out:
                     del out[k]
 
-        self.update(out)
-        pass
+        return out
 
-    def average_double_ended(
+    def average_monte_carlo_double_ended(
         self,
-        sections=None,
-        p_val="p_val",
-        p_cov="p_cov",
-        st_var=None,
-        ast_var=None,
-        rst_var=None,
-        rast_var=None,
+        result,
+        st_var,
+        ast_var,
+        rst_var,
+        rast_var,
         conf_ints=None,
         mc_sample_size=100,
         ci_avg_time_flag1=False,
@@ -2286,17 +2283,9 @@ class DtsAccessor:
 
         Parameters
         ----------
-        p_val : array-like, optional
-            Define `p_val`, `p_var`, `p_cov` if you used an external function
-            for calibration. Has size 2 + `nt`. First value is :math:`\\gamma`,
-            second is :math:`\\Delta \\alpha`, others are :math:`C` for each
-            timestep.
-            If set to False, no uncertainty in the parameters is propagated
-            into the confidence intervals. Similar to the spec sheets of the DTS
-            manufacturers. And similar to passing an array filled with zeros
-        p_cov : array-like, optional
-            The covariances of `p_val`.
-        st_var, ast_var, rst_var, rast_var : float, callable, array-like, optional
+        result : xr.Dataset
+            The result from the `calibrate_double_ended()` method.
+        st_var, ast_var, rst_var, rast_var : float, callable, array-like
             The variance of the measurement noise of the Stokes signals in the
             forward direction. If `float` the variance of the noise from the
             Stokes detector is described with a single value.
@@ -2395,36 +2384,39 @@ class DtsAccessor:
 
         """
 
-        def create_da_ta2(no, i_splice, direction="fw", chunks=None):
-            """create mask array mc, o, nt"""
+        # def create_da_ta2(no, i_splice, direction="fw", chunks=None):
+        #     """create mask array mc, o, nt"""
 
-            if direction == "fw":
-                arr = da.concatenate(
-                    (
-                        da.zeros((1, i_splice, 1), chunks=(1, i_splice, 1), dtype=bool),
-                        da.ones(
-                            (1, no - i_splice, 1),
-                            chunks=(1, no - i_splice, 1),
-                            dtype=bool,
-                        ),
-                    ),
-                    axis=1,
-                ).rechunk((1, chunks[1], 1))
-            else:
-                arr = da.concatenate(
-                    (
-                        da.ones((1, i_splice, 1), chunks=(1, i_splice, 1), dtype=bool),
-                        da.zeros(
-                            (1, no - i_splice, 1),
-                            chunks=(1, no - i_splice, 1),
-                            dtype=bool,
-                        ),
-                    ),
-                    axis=1,
-                ).rechunk((1, chunks[1], 1))
-            return arr
+        #     if direction == "fw":
+        #         arr = da.concatenate(
+        #             (
+        #                 da.zeros((1, i_splice, 1), chunks=(1, i_splice, 1), dtype=bool),
+        #                 da.ones(
+        #                     (1, no - i_splice, 1),
+        #                     chunks=(1, no - i_splice, 1),
+        #                     dtype=bool,
+        #                 ),
+        #             ),
+        #             axis=1,
+        #         ).rechunk((1, chunks[1], 1))
+        #     else:
+        #         arr = da.concatenate(
+        #             (
+        #                 da.ones((1, i_splice, 1), chunks=(1, i_splice, 1), dtype=bool),
+        #                 da.zeros(
+        #                     (1, no - i_splice, 1),
+        #                     chunks=(1, no - i_splice, 1),
+        #                     dtype=bool,
+        #                 ),
+        #             ),
+        #             axis=1,
+        #         ).rechunk((1, chunks[1], 1))
+        #     return arr
 
-        check_deprecated_kwargs(kwargs)
+        out = xr.Dataset(coords={"x": self.x, "time": self.time, "trans_att": result["trans_att"]}).copy()
+        out.coords["x"].attrs = dim_attrs["x"]
+        out.coords["trans_att"].attrs = dim_attrs["trans_att"]
+        out.coords["CI"] = conf_ints
 
         if (ci_avg_x_flag1 or ci_avg_x_flag2) and (
             ci_avg_time_flag1 or ci_avg_time_flag2
@@ -2441,12 +2433,8 @@ class DtsAccessor:
         else:
             pass
 
-        out = xr.Dataset()
-
-        mcparams = self.conf_int_double_ended(
-            sections=sections,
-            p_val=p_val,
-            p_cov=p_cov,
+        mcparams = self.monte_carlo_double_ended(
+            result=result,
             st_var=st_var,
             ast_var=ast_var,
             rst_var=rst_var,
@@ -2469,7 +2457,7 @@ class DtsAccessor:
                 )
                 mcparams[label + "_avgsec"] = (
                     ("x", time_dim2),
-                    self[label].sel(**{"time": ci_avg_time_sel}).data,
+                    result[label].sel(**{"time": ci_avg_time_sel}).data,
                 )
                 mcparams[label + "_mc_set"] = (
                     ("mc", "x", time_dim2),
@@ -2485,7 +2473,7 @@ class DtsAccessor:
                 )
                 mcparams[label + "_avgsec"] = (
                     ("x", time_dim2),
-                    self[label].isel(**{"time": ci_avg_time_isel}).data,
+                    result[label].isel(**{"time": ci_avg_time_isel}).data,
                 )
                 mcparams[label + "_mc_set"] = (
                     ("mc", "x", time_dim2),
@@ -2501,7 +2489,7 @@ class DtsAccessor:
                 )
                 mcparams[label + "_avgsec"] = (
                     (x_dim2, "time"),
-                    self[label].sel(x=ci_avg_x_sel).data,
+                    result[label].sel(x=ci_avg_x_sel).data,
                 )
                 mcparams[label + "_mc_set"] = (
                     ("mc", x_dim2, "time"),
@@ -2517,14 +2505,14 @@ class DtsAccessor:
                 )
                 mcparams[label + "_avgsec"] = (
                     (x_dim2, time_dim2),
-                    self[label].isel(x=ci_avg_x_isel).data,
+                    result[label].isel(x=ci_avg_x_isel).data,
                 )
                 mcparams[label + "_mc_set"] = (
                     ("mc", x_dim2, time_dim2),
                     mcparams[label + "_mc_set"].isel(x=ci_avg_x_isel).data,
                 )
             else:
-                mcparams[label + "_avgsec"] = self[label]
+                mcparams[label + "_avgsec"] = result[label]
                 x_dim2 = "x"
                 time_dim2 = "time"
 
@@ -2797,5 +2785,4 @@ class DtsAccessor:
                     print(f"Removed from results: {k}")
                     del out[k]
 
-        self.update(out)
-        pass
+        return out
