@@ -4,13 +4,15 @@ import xarray as xr
 import yaml
 import scipy.stats as sst
 
-from dtscalibration.calibration.section_utils import validate_sections
+from dtscalibration.calibration.section_utils import validate_sections, validate_sections_definition, validate_no_overlapping_sections
+from dtscalibration.calibrate_utils import calibration_double_ended_helper
 from dtscalibration.calibrate_utils import calibration_single_ended_helper
-from dtscalibration.calibrate_utils import match_sections
 from dtscalibration.calibrate_utils import parse_st_var
 from dtscalibration.calibration.section_utils import set_sections
 from dtscalibration.calibration.section_utils import set_matching_sections
+from dtscalibration.datastore_utils import ParameterIndexDoubleEnded
 from dtscalibration.datastore_utils import ParameterIndexSingleEnded
+from dtscalibration.datastore_utils import get_params_from_pval_double_ended
 from dtscalibration.datastore_utils import get_params_from_pval_single_ended
 from dtscalibration.datastore_utils import ufunc_per_section_helper
 from dtscalibration.io_utils import dim_attrs
@@ -228,16 +230,16 @@ class DtsAccessor:
 
         if time_chunks_from_key is not None:
             # obtain optimal chunk sizes in time and x dim
-            if self[time_chunks_from_key].dims == ("x", "time"):
+            if self._obj[time_chunks_from_key].dims == ("x", "time"):
                 x_chunk, t_chunk = da.ones(
-                    self[time_chunks_from_key].shape,
+                    self._obj[time_chunks_from_key].shape,
                     chunks=(-1, "auto"),
                     dtype="float32",
                 ).chunks
 
-            elif self[time_chunks_from_key].dims == ("time", "x"):
+            elif self._obj[time_chunks_from_key].dims == ("time", "x"):
                 x_chunk, t_chunk = da.ones(
-                    self[time_chunks_from_key].shape,
+                    self._obj[time_chunks_from_key].shape,
                     chunks=("auto", -1),
                     dtype="float32",
                 ).chunks
@@ -247,16 +249,16 @@ class DtsAccessor:
             for k, v in encoding.items():
                 # By writing and compressing the data in chunks, some sort of
                 # parallism is possible.
-                if self[k].dims == ("x", "time"):
+                if self._obj[k].dims == ("x", "time"):
                     chunks = (x_chunk[0], t_chunk[0])
 
-                elif self[k].dims == ("time", "x"):
+                elif self._obj[k].dims == ("time", "x"):
                     chunks = (t_chunk[0], x_chunk[0])
 
-                elif self[k].dims == ("x",):
+                elif self._obj[k].dims == ("x",):
                     chunks = (x_chunk[0],)
 
-                elif self[k].dims == ("time",):
+                elif self._obj[k].dims == ("time",):
                     chunks = (t_chunk[0],)
 
                 else:
@@ -276,6 +278,7 @@ class DtsAccessor:
         x_indices=False,
         ref_temp_broadcasted=False,
         calc_per="stretch",
+        suppress_section_validation=False,
         **func_kwargs,
     ):
         """
@@ -394,6 +397,10 @@ class DtsAccessor:
         If `self[label]` or `self[subtract_from_label]` is a Dask array, a Dask
         array is returned else a numpy array is returned
         """
+        if not suppress_section_validation:
+            validate_sections_definition(sections=sections)
+            validate_no_overlapping_sections(sections=sections)
+        
         if label is None:
             dataarray = None
         else:
@@ -404,8 +411,6 @@ class DtsAccessor:
             reference_dataset = None
 
         else:
-            validate_sections(self._obj, sections)
-
             x_coords = None
             reference_dataset = {k: self._obj[k] for k in sections}
 
@@ -570,9 +575,6 @@ class DtsAccessor:
     07Calibrate_single_wls.ipynb>`_
 
         """
-        assert self.st.dims[0] == "x", "Stokes are transposed"
-        assert self.ast.dims[0] == "x", "Stokes are transposed"
-
         # out contains the state
         out = xr.Dataset(coords={"x": self.x, "time": self.time, "trans_att": trans_att}).copy()
         out.coords["x"].attrs = dim_attrs["x"]
@@ -585,15 +587,12 @@ class DtsAccessor:
         set_sections(out, sections)
         set_matching_sections(out, matching_sections)
 
-        # Convert sections and matching_sections to indices
+        assert self.st.dims[0] == "x", "Stokes are transposed"
+        assert self.ast.dims[0] == "x", "Stokes are transposed"
+
         ix_sec = self.ufunc_per_section(
             sections=sections, x_indices=True, calc_per="all"
         )
-        if matching_sections:
-            matching_indices = match_sections(self, matching_sections)
-        else:
-            matching_indices = None
-
         assert not np.any(self.st.isel(x=ix_sec) <= 0.0), (
             "There is uncontrolled noise in the ST signal. Are your sections"
             "correctly defined?"
@@ -612,7 +611,7 @@ class DtsAccessor:
                 fix_alpha,
                 fix_dalpha,
                 fix_gamma,
-                matching_indices,
+                matching_sections,
                 trans_att,
                 solver,
             )
@@ -722,6 +721,509 @@ class DtsAccessor:
 
         return out
     
+
+    def calibration_double_ended(
+        self,
+        sections,
+        st_var,
+        ast_var,
+        rst_var,
+        rast_var,
+        method="wls",
+        solver="sparse",
+        p_val=None,
+        p_var=None,
+        p_cov=None,
+        trans_att=[],
+        fix_gamma=None,
+        fix_alpha=None,
+        matching_sections=None,
+        verbose=False,
+    ):
+        r"""
+        See example notebook 8 for an explanation on how to use this function.
+        Calibrate the Stokes (`ds.st`) and anti-Stokes (`ds.ast`) of the forward
+        channel and from the backward channel (`ds.rst`, `ds.rast`) data to
+        temperature using fiber sections with a known temperature
+        (`ds.sections`) for double-ended setups. The calibrated temperature of
+        the forward channel is stored under `ds.tmpf` and its variance under
+        `ds.tmpf_var`, and that of the backward channel under `ds.tmpb` and
+        `ds.tmpb_var`. The inverse-variance weighted average of the forward and
+        backward channel is stored under `ds.tmpw` and `ds.tmpw_var`.
+        In double-ended setups, Stokes and anti-Stokes intensity is measured in
+        two directions from both ends of the fiber. The forward-channel
+        measurements are denoted with subscript F, and the backward-channel
+        measurements are denoted with subscript B. Both measurement channels
+        start at a different end of the fiber and have opposite directions, and
+        therefore have different spatial coordinates.
+        The first processing step
+        with double-ended measurements is to align the measurements of the two
+        measurement channels so that they have the same spatial coordinates. The
+        spatial coordinate :math:`x` (m) is defined here positive in the forward
+        direction, starting at 0 where the fiber is connected to the forward
+        channel of the DTS system; the length of the fiber is :math:`L`.
+        Consequently, the backward-channel measurements are flipped and shifted
+        to align with the forward-channel measurements. Alignment of the
+        measurements of the two channels is prone to error because it requires
+        the exact fiber length (McDaniel et al., 2018). Depending on the DTS system
+        used, the forward channel and backward channel are measured one after
+        another by making use of an optical switch, so that only a single
+        detector is needed. However, it is assumed in this package that the
+        forward channel and backward channel are measured simultaneously, so
+        that the temperature of both measurements is the same. This assumption
+        holds better for short acquisition times with respect to the timescale
+        of the temperature variation, and when there is no systematic difference
+        in temperature between the two channels. The temperature may be computed
+        from the forward-channel measurements (Equation 10 [1]_) with:
+        .. math::
+            T_\mathrm{F} (x,t)  = \\frac{\gamma}{I_\mathrm{F}(x,t) + \
+    C_\mathrm{F}(t) + \int_0^x{\Delta\\alpha(x')\,\mathrm{d}x'}}
+        and from the backward-channel measurements with:
+        .. math::
+            T_\mathrm{B} (x,t)  = \\frac{\gamma}{I_\mathrm{B}(x,t) + \
+    C_\mathrm{B}(t) + \int_x^L{\Delta\\alpha(x')\,\mathrm{d}x'}}
+        with
+        .. math::
+            I(x,t) = \ln{\left(\\frac{P_+(x,t)}{P_-(x,t)}\\right)}
+        .. math::
+            C(t) = \ln{\left(\\frac{\eta_-(t)K_-/\lambda_-^4}{\eta_+(t)K_+/\lambda_+^4}\\right)}
+        where :math:`C` is the lumped effect of the difference in gain at
+        :param mc_conf_ints:
+        :math:`x=0` between Stokes and anti-Stokes intensity measurements and
+        the dependence of the scattering intensity on the wavelength. The
+        parameters :math:`P_+` and :math:`P_-` are the Stokes and anti-Stokes
+        intensity measurements, respectively.
+        :math:`C_\mathrm{F}(t)` and :math:`C_\mathrm{B}(t)` are the
+        parameter :math:`C(t)` for the forward-channel and backward-channel
+        measurements, respectively. :math:`C_\mathrm{B}(t)` may be different
+        from :math:`C_\mathrm{F}(t)` due to differences in gain, and difference
+        in the attenuation between the detectors and the point the fiber end is
+        connected to the DTS system (:math:`\eta_+` and :math:`\eta_-` in
+        Equation~\\ref{eqn:c}). :math:`T` in the listed
+        equations is in Kelvin, but is converted to Celsius after calibration.
+        The calibration procedure presented in van de
+        Giesen et al. 2012 approximates :math:`C(t)` to be
+        the same for the forward and backward-channel measurements, but this
+        approximation is not made here.
+        Parameter :math:`A(x)` (`ds.alpha`) is introduced to simplify the notation of the
+        double-ended calibration procedure and represents the integrated
+        differential attenuation between locations :math:`x_1` and :math:`x`
+        along the fiber. Location :math:`x_1` is the first reference section
+        location (the smallest x-value of all used reference sections).
+        .. math::
+            A(x) = \int_{x_1}^x{\Delta\\alpha(x')\,\mathrm{d}x'}
+        so that the expressions for temperature may be written as:
+        .. math::
+            T_\mathrm{F} (x,t) = \\frac{\gamma}{I_\mathrm{F}(x,t) + D_\mathrm{F}(t) + A(x)},
+            T_\mathrm{B} (x,t) = \\frac{\gamma}{I_\mathrm{B}(x,t) + D_\mathrm{B}(t) - A(x)}
+        where
+        .. math::
+            D_{\mathrm{F}}(t) = C_{\mathrm{F}}(t) + \int_0^{x_1}{\Delta\\alpha(x')\,\mathrm{d}x'},
+            D_{\mathrm{B}}(t) = C_{\mathrm{B}}(t) + \int_{x_1}^L{\Delta\\alpha(x')\,\mathrm{d}x'}
+        Parameters :math:`D_\mathrm{F}` (`ds.df`) and :math:`D_\mathrm{B}`
+        (`ds.db`) must be estimated for each time and are constant along the fiber, and parameter
+        :math:`A` must be estimated for each location and is constant over time.
+        The calibration procedure is discussed in Section 6.
+        :math:`T_\mathrm{F}` (`ds.tmpf`) and :math:`T_\mathrm{B}` (`ds.tmpb`)
+        are separate
+        approximations of the same temperature at the same time. The estimated
+        :math:`T_\mathrm{F}` is more accurate near :math:`x=0` because that is
+        where the signal is strongest. Similarly, the estimated
+        :math:`T_\mathrm{B}` is more accurate near :math:`x=L`. A single best
+        estimate of the temperature is obtained from the weighted average of
+        :math:`T_\mathrm{F}` and :math:`T_\mathrm{B}` as discussed in
+        Section 7.2 [1]_ .
+
+
+        Parameters
+        ----------
+        p_val : array-like, optional
+            Define `p_val`, `p_var`, `p_cov` if you used an external function
+            for calibration. Has size `1 + 2 * nt + nx + 2 * nt * nta`.
+            First value is :math:`\gamma`, then `nt` times
+            :math:`D_\mathrm{F}`, then `nt` times
+            :math:`D_\mathrm{B}`, then for each location :math:`D_\mathrm{B}`,
+            then for each connector that introduces directional attenuation two
+            parameters per time step.
+        p_var : array-like, optional
+            Define `p_val`, `p_var`, `p_cov` if you used an external function
+            for calibration. Has size `1 + 2 * nt + nx + 2 * nt * nta`.
+            Is the variance of `p_val`.
+        p_cov : array-like, optional
+            The covariances of `p_val`. Square matrix.
+            If set to False, no uncertainty in the parameters is propagated
+            into the confidence intervals. Similar to the spec sheets of the DTS
+            manufacturers. And similar to passing an array filled with zeros.
+        sections : Dict[str, List[slice]], optional
+            If `None` is supplied, `ds.sections` is used. Define calibration
+            sections. Each section requires a reference temperature time series,
+            such as the temperature measured by an external temperature sensor.
+            They should already be part of the DataStore object. `sections`
+            is defined with a dictionary with its keywords of the
+            names of the reference temperature time series. Its values are
+            lists of slice objects, where each slice object is a fiber stretch
+            that has the reference temperature. Afterwards, `sections` is stored
+            under `ds.sections`.
+        st_var, ast_var, rst_var, rast_var : float, callable, array-like, optional
+            The variance of the measurement noise of the Stokes signals in the
+            forward direction. If `float` the variance of the noise from the
+            Stokes detector is described with a single value.
+            If `callable` the variance of the noise from the Stokes detector is
+            a function of the intensity, as defined in the callable function.
+            Or manually define a variance with a DataArray of the shape
+            `ds.st.shape`, where the variance can be a function of time and/or
+            x. Required if method is wls.
+        mc_sample_size : int, optional
+            If set, the variance is also computed using Monte Carlo sampling.
+            The number of Monte Carlo samples drawn used to estimate the
+            variance of the forward and backward channel temperature estimates
+            and estimate the inverse-variance weighted average temperature.
+        conf_ints : iterable object of float
+            A list with the confidence boundaries that are calculated. Valid
+            values are between [0, 1].
+        mc_da_random_state
+            For testing purposes. Similar to random seed. The seed for dask.
+            Makes random not so random. To produce reproducable results for
+            testing environments.
+        mc_remove_set_flag : bool
+            Remove the monte carlo data set, from which the CI and the
+            variance are calculated.
+        variance_suffix : str, optional
+            String appended for storing the variance. Only used when method
+            is wls.
+        method : {'wls', 'external'}
+            Use `'wls'` for weighted least squares.
+        solver : {'sparse', 'stats'}
+            Either use the homemade weighted sparse solver or the weighted
+            dense matrix solver of statsmodels. The sparse solver uses much less
+            memory, is faster, and gives the same result as the statsmodels
+            solver. The statsmodels solver is mostly used to check the sparse
+            solver. `'stats'` is the default.
+        trans_att : iterable, optional
+            Splices can cause jumps in differential attenuation. Normal single
+            ended calibration assumes these are not present. An additional loss
+            term is added in the 'shadow' of the splice. Each location
+            introduces an additional nt parameters to solve for. Requiring
+            either an additional calibration section or matching sections.
+            If multiple locations are defined, the losses are added.
+        fix_gamma : Tuple[float, float], optional
+            A tuple containing two floats. The first float is the value of
+            gamma, and the second item is the variance of the estimate of gamma.
+            Covariances between gamma and other parameters are not accounted
+            for.
+        fix_alpha : Tuple[array-like, array-like], optional
+            A tuple containing two arrays. The first array contains the
+            values of integrated differential att (:math:`A` in paper), and the
+            second array contains the variance of the estimate of alpha.
+            Covariances (in-) between alpha and other parameters are not
+            accounted for.
+        matching_sections : List[Tuple[slice, slice, bool]]
+            Provide a list of tuples. A tuple per matching section. Each tuple
+            has three items. The first two items are the slices of the sections
+            that are matched. The third item is a boolean and is True if the two
+            sections have a reverse direction ("J-configuration").
+        matching_indices : array
+            Provide an array of x-indices of size (npair, 2), where each pair
+            has the same temperature. Used to improve the estimate of the
+            integrated differential attenuation.
+        verbose : bool
+            Show additional calibration information
+        Returns
+        -------
+        References
+        ----------
+        .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
+            of Temperature and Associated Uncertainty from Fiber-Optic Raman-
+            Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
+            https://doi.org/10.3390/s20082235
+        Examples
+        --------
+        - `Example notebook 8: Calibrate double ended <https://github.com/\
+    dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
+    08Calibrate_double_wls.ipynb>`_
+        """
+        # out contains the state
+        out = xr.Dataset(coords={"x": self.x, "time": self.time, "trans_att": trans_att}).copy()
+        out.coords["x"].attrs = dim_attrs["x"]
+        out.coords["trans_att"].attrs = dim_attrs["trans_att"]
+
+        nta = len(trans_att)
+
+        # check and store sections and matching_sections
+        validate_sections(self._obj, sections=sections)
+        set_sections(out, sections)
+        set_matching_sections(out, matching_sections)
+
+        # TODO: confidence intervals using the variance approximated by linear error propagation
+        assert self.st.dims[0] == "x", "Stokes are transposed"
+        assert self.ast.dims[0] == "x", "Stokes are transposed"
+        assert self.rst.dims[0] == "x", "Stokes are transposed"
+        assert self.rast.dims[0] == "x", "Stokes are transposed"
+
+        ix_sec = self.ufunc_per_section(
+            sections=sections, x_indices=True, calc_per="all"
+        )
+        assert not np.any(self.st.isel(x=ix_sec) <= 0.0), (
+            "There is uncontrolled noise in the ST signal. Are your sections"
+            "correctly defined?"
+        )
+        assert not np.any(self.ast.isel(x=ix_sec) <= 0.0), (
+            "There is uncontrolled noise in the AST signal. Are your sections"
+            "correctly defined?"
+        )
+        assert not np.any(self.rst.isel(x=ix_sec) <= 0.0), (
+            "There is uncontrolled noise in the REV-ST signal. Are your "
+            "sections correctly defined?"
+        )
+        assert not np.any(self.rast.isel(x=ix_sec) <= 0.0), (
+            "There is uncontrolled noise in the REV-AST signal. Are your "
+            "sections correctly defined?"
+        )        
+
+        if method == "wls":
+            p_cov, p_val, p_var = calibration_double_ended_helper(
+                self._obj,
+                sections,
+                st_var,
+                ast_var,
+                rst_var,
+                rast_var,
+                fix_alpha,
+                fix_gamma,
+                self.nt,
+                nta,
+                self.nx,
+                ix_sec,
+                matching_sections,
+                trans_att,
+                solver,
+                verbose,
+            )
+
+        elif method == "external":
+            for input_item in [p_val, p_var, p_cov]:
+                assert input_item is not None
+
+        elif method == "external_split":
+            raise ValueError("Not implemented yet")
+
+        else:
+            raise ValueError("Choose a valid method")
+
+        # all below require the following solution sizes
+        ip = ParameterIndexDoubleEnded(self.nt, self.nx, nta)
+
+        # npar = 1 + 2 * nt + nx + 2 * nt * nta
+        assert p_val.size == ip.npar
+        assert p_var.size == ip.npar
+        assert p_cov.shape == (ip.npar, ip.npar)
+
+        params = get_params_from_pval_double_ended(ip, out.coords, p_val=p_val)
+        param_covs = get_params_from_pval_double_ended(
+            ip, out.coords, p_val=p_var, p_cov=p_cov
+        )
+
+        tmpf = params["gamma"] / (
+                    np.log(self.st / self.ast)
+                    + params["df"]
+                    + params["alpha"]
+                    + params["talpha_fw_full"]
+                )
+        tmpb = params["gamma"] / (
+                    np.log(self.rst / self.rast)
+                    + params["db"]
+                    - params["alpha"]
+                    + params["talpha_bw_full"]
+                )
+        out["tmpf"] = tmpf - 273.15
+        out["tmpb"] = tmpb - 273.15
+
+        deriv_dict = dict(
+            T_gamma_fw=tmpf / params["gamma"],
+            T_st_fw=-(tmpf**2) / (params["gamma"] * self.st),
+            T_ast_fw=tmpf**2 / (params["gamma"] * self.ast),
+            T_df_fw=-(tmpf**2) / params["gamma"],
+            T_alpha_fw=-(tmpf**2) / params["gamma"],
+            T_ta_fw=-(tmpf**2) / params["gamma"],
+            T_gamma_bw=tmpb / params["gamma"],
+            T_rst_bw=-(tmpb**2) / (params["gamma"] * self.rst),
+            T_rast_bw=tmpb**2 / (params["gamma"] * self.rast),
+            T_db_bw=-(tmpb**2) / params["gamma"],
+            T_alpha_bw=tmpb**2 / params["gamma"],
+            T_ta_bw=-(tmpb**2) / params["gamma"],
+        )
+        deriv_ds = xr.Dataset(deriv_dict)
+        out["deriv"] = deriv_ds.to_array(dim="com2")
+
+        var_fw_dict = dict(
+            dT_dst=deriv_ds.T_st_fw**2 * parse_st_var(self.st, st_var),
+            dT_dast=deriv_ds.T_ast_fw**2
+            * parse_st_var(self.ast, ast_var),
+            dT_gamma=deriv_ds.T_gamma_fw**2 * param_covs["gamma"],
+            dT_ddf=deriv_ds.T_df_fw**2 * param_covs["df"],
+            dT_dalpha=deriv_ds.T_alpha_fw**2 * param_covs["alpha"],
+            dT_dta=deriv_ds.T_ta_fw**2 * param_covs["talpha_fw_full"],
+            dgamma_ddf=(
+                2 * deriv_ds.T_gamma_fw * deriv_ds.T_df_fw * param_covs["gamma_df"]
+            ),
+            dgamma_dalpha=(
+                2
+                * deriv_ds.T_gamma_fw
+                * deriv_ds.T_alpha_fw
+                * param_covs["gamma_alpha"]
+            ),
+            dalpha_ddf=(
+                2 * deriv_ds.T_alpha_fw * deriv_ds.T_df_fw * param_covs["alpha_df"]
+            ),
+            dta_dgamma=(
+                2 * deriv_ds.T_ta_fw * deriv_ds.T_gamma_fw * param_covs["tafw_gamma"]
+            ),
+            dta_ddf=(2 * deriv_ds.T_ta_fw * deriv_ds.T_df_fw * param_covs["tafw_df"]),
+            dta_dalpha=(
+                2 * deriv_ds.T_ta_fw * deriv_ds.T_alpha_fw * param_covs["tafw_alpha"]
+            ),
+        )
+        var_bw_dict = dict(
+            dT_drst=deriv_ds.T_rst_bw**2
+            * parse_st_var(self.rst, rst_var),
+            dT_drast=deriv_ds.T_rast_bw**2
+            * parse_st_var(self.rast, rast_var),
+            dT_gamma=deriv_ds.T_gamma_bw**2 * param_covs["gamma"],
+            dT_ddb=deriv_ds.T_db_bw**2 * param_covs["db"],
+            dT_dalpha=deriv_ds.T_alpha_bw**2 * param_covs["alpha"],
+            dT_dta=deriv_ds.T_ta_bw**2 * param_covs["talpha_bw_full"],
+            dgamma_ddb=(
+                2 * deriv_ds.T_gamma_bw * deriv_ds.T_db_bw * param_covs["gamma_db"]
+            ),
+            dgamma_dalpha=(
+                2
+                * deriv_ds.T_gamma_bw
+                * deriv_ds.T_alpha_bw
+                * param_covs["gamma_alpha"]
+            ),
+            dalpha_ddb=(
+                2 * deriv_ds.T_alpha_bw * deriv_ds.T_db_bw * param_covs["alpha_db"]
+            ),
+            dta_dgamma=(
+                2 * deriv_ds.T_ta_bw * deriv_ds.T_gamma_bw * param_covs["tabw_gamma"]
+            ),
+            dta_ddb=(2 * deriv_ds.T_ta_bw * deriv_ds.T_db_bw * param_covs["tabw_db"]),
+            dta_dalpha=(
+                2 * deriv_ds.T_ta_bw * deriv_ds.T_alpha_bw * param_covs["tabw_alpha"]
+            ),
+        )
+
+        out["var_fw_da"] = xr.Dataset(var_fw_dict).to_array(dim="comp_fw")
+        out["var_bw_da"] = xr.Dataset(var_bw_dict).to_array(dim="comp_bw")
+
+        out["tmpf_var"] = out["var_fw_da"].sum(dim="comp_fw")
+        out["tmpb_var"] = out["var_bw_da"].sum(dim="comp_bw")
+
+        # First estimate of tmpw_var
+        out["tmpw_var" + "_approx"] = 1 / (1 / out["tmpf_var"] + 1 / out["tmpb_var"])
+        out["tmpw"] = (
+            (tmpf / out["tmpf_var"] + tmpb / out["tmpb_var"])
+            * out["tmpw_var" + "_approx"]
+        ) - 273.15
+
+        weightsf = out["tmpw_var" + "_approx"] / out["tmpf_var"]
+        weightsb = out["tmpw_var" + "_approx"] / out["tmpb_var"]
+
+        deriv_dict2 = dict(
+            T_gamma_w=weightsf * deriv_dict["T_gamma_fw"]
+            + weightsb * deriv_dict["T_gamma_bw"],
+            T_st_w=weightsf * deriv_dict["T_st_fw"],
+            T_ast_w=weightsf * deriv_dict["T_ast_fw"],
+            T_rst_w=weightsb * deriv_dict["T_rst_bw"],
+            T_rast_w=weightsb * deriv_dict["T_rast_bw"],
+            T_df_w=weightsf * deriv_dict["T_df_fw"],
+            T_db_w=weightsb * deriv_dict["T_db_bw"],
+            T_alpha_w=weightsf * deriv_dict["T_alpha_fw"]
+            + weightsb * deriv_dict["T_alpha_bw"],
+            T_taf_w=weightsf * deriv_dict["T_ta_fw"],
+            T_tab_w=weightsb * deriv_dict["T_ta_bw"],
+        )
+        deriv_ds2 = xr.Dataset(deriv_dict2)
+
+        # TODO: sigma2_tafw_tabw
+        var_w_dict = dict(
+            dT_dst=deriv_ds2.T_st_w**2 * parse_st_var(self.st, st_var),
+            dT_dast=deriv_ds2.T_ast_w**2
+            * parse_st_var(self.ast, ast_var),
+            dT_drst=deriv_ds2.T_rst_w**2
+            * parse_st_var(self.rst, rst_var),
+            dT_drast=deriv_ds2.T_rast_w**2
+            * parse_st_var(self.rast, rast_var),
+            dT_gamma=deriv_ds2.T_gamma_w**2 * param_covs["gamma"],
+            dT_ddf=deriv_ds2.T_df_w**2 * param_covs["df"],
+            dT_ddb=deriv_ds2.T_db_w**2 * param_covs["db"],
+            dT_dalpha=deriv_ds2.T_alpha_w**2 * param_covs["alpha"],
+            dT_dtaf=deriv_ds2.T_taf_w**2 * param_covs["talpha_fw_full"],
+            dT_dtab=deriv_ds2.T_tab_w**2 * param_covs["talpha_bw_full"],
+            dgamma_ddf=2
+            * deriv_ds2.T_gamma_w
+            * deriv_ds2.T_df_w
+            * param_covs["gamma_df"],
+            dgamma_ddb=2
+            * deriv_ds2.T_gamma_w
+            * deriv_ds2.T_db_w
+            * param_covs["gamma_db"],
+            dgamma_dalpha=2
+            * deriv_ds2.T_gamma_w
+            * deriv_ds2.T_alpha_w
+            * param_covs["gamma_alpha"],
+            dgamma_dtaf=2
+            * deriv_ds2.T_gamma_w
+            * deriv_ds2.T_taf_w
+            * param_covs["tafw_gamma"],
+            dgamma_dtab=2
+            * deriv_ds2.T_gamma_w
+            * deriv_ds2.T_tab_w
+            * param_covs["tabw_gamma"],
+            ddf_ddb=2 * deriv_ds2.T_df_w * deriv_ds2.T_db_w * param_covs["df_db"],
+            ddf_dalpha=2
+            * deriv_ds2.T_df_w
+            * deriv_ds2.T_alpha_w
+            * param_covs["alpha_df"],
+            ddf_dtaf=2 * deriv_ds2.T_df_w * deriv_ds2.T_taf_w * param_covs["tafw_df"],
+            ddf_dtab=2 * deriv_ds2.T_df_w * deriv_ds2.T_tab_w * param_covs["tabw_df"],
+            ddb_dalpha=2
+            * deriv_ds2.T_db_w
+            * deriv_ds2.T_alpha_w
+            * param_covs["alpha_db"],
+            ddb_dtaf=2 * deriv_ds2.T_db_w * deriv_ds2.T_taf_w * param_covs["tafw_db"],
+            ddb_dtab=2 * deriv_ds2.T_db_w * deriv_ds2.T_tab_w * param_covs["tabw_db"],
+            # dtaf_dtab=2 * deriv_ds2.T_tab_w * deriv_ds2.T_tab_w * param_covs["tafw_tabw"],
+        )
+        out["var_w_da"] = xr.Dataset(var_w_dict).to_array(dim="comp_w")
+        out["tmpw_var"] = out["var_w_da"].sum(dim="comp_w")
+
+        # Compute uncertainty solely due to noise in Stokes signal, neglecting parameter uncenrtainty
+        tmpf_var_excl_par = (
+            out["var_fw_da"].sel(comp_fw=["dT_dst", "dT_dast"]).sum(dim="comp_fw")
+        )
+        tmpb_var_excl_par = (
+            out["var_bw_da"].sel(comp_bw=["dT_drst", "dT_drast"]).sum(dim="comp_bw")
+        )
+        out["tmpw_var" + "_lower"] = 1 / (1 / tmpf_var_excl_par + 1 / tmpb_var_excl_par)
+
+        out["tmpf"].attrs.update(dim_attrs["tmpf"])
+        out["tmpb"].attrs.update(dim_attrs["tmpb"])
+        out["tmpw"].attrs.update(dim_attrs["tmpw"])
+        out["tmpf_var"].attrs.update(dim_attrs["tmpf_var"])
+        out["tmpb_var"].attrs.update(dim_attrs["tmpb_var"])
+        out["tmpw_var"].attrs.update(dim_attrs["tmpw_var"])
+        out["tmpw_var" + "_approx"].attrs.update(dim_attrs["tmpw_var_approx"])
+        out["tmpw_var" + "_lower"].attrs.update(dim_attrs["tmpw_var_lower"])
+
+        out["p_val"] = (("params1",), p_val)
+        out["p_cov"] = (("params1", "params2"), p_cov)
+
+        out.update(params)
+        for key, dataarray in param_covs.data_vars.items():
+            out[key + "_var"] = dataarray
+
+        return out
 
     def monte_carlo_single_ended(
         self,
@@ -1229,20 +1731,20 @@ class DtsAccessor:
                 params["talpha_bw_mc"] = (("mc", "x", "time"), ta_bw_arr)
 
         # Draw from the normal distributions for the Stokes intensities
-        for k, st_labeli, st_vari in zip(
+        for k, sti, st_vari in zip(
             ["r_st", "r_ast", "r_rst", "r_rast"],
-            ["st", "ast", "rst", "rast"],
+            [self.st, self.ast, self.rst, self.rast],
             [st_var, ast_var, rst_var, rast_var],
         ):
             # Load the mean as chunked Dask array, otherwise eats memory
-            if type(self[st_labeli].data) == da.core.Array:
-                loc = da.asarray(self[st_labeli].data, chunks=memchunk[1:])
+            if type(sti.data) == da.core.Array:
+                loc = da.asarray(sti.data, chunks=memchunk[1:])
             else:
-                loc = da.from_array(self[st_labeli].data, chunks=memchunk[1:])
+                loc = da.from_array(sti.data, chunks=memchunk[1:])
 
             # Make sure variance is of size (no, nt)
             if np.size(st_vari) > 1:
-                if st_vari.shape == self[st_labeli].shape:
+                if st_vari.shape == sti.shape:
                     pass
                 else:
                     st_vari = np.broadcast_to(st_vari, (no, nt))
@@ -1253,14 +1755,14 @@ class DtsAccessor:
             if type(st_vari) == da.core.Array:
                 st_vari_da = da.asarray(st_vari, chunks=memchunk[1:])
 
-            elif callable(st_vari) and type(self[st_labeli].data) == da.core.Array:
+            elif callable(st_vari) and type(sti.data) == da.core.Array:
                 st_vari_da = da.asarray(
-                    st_vari(self[st_labeli]).data, chunks=memchunk[1:]
+                    st_vari(sti).data, chunks=memchunk[1:]
                 )
 
-            elif callable(st_vari) and type(self[st_labeli].data) != da.core.Array:
+            elif callable(st_vari) and type(sti.data) != da.core.Array:
                 st_vari_da = da.from_array(
-                    st_vari(self[st_labeli]).data, chunks=memchunk[1:]
+                    st_vari(sti).data, chunks=memchunk[1:]
                 )
 
             else:
@@ -1334,7 +1836,7 @@ class DtsAccessor:
                 params[label + "_mc_set"] = params[label + "_mc_set"].where(x_mask)
 
             # subtract the mean temperature
-            q = params[label + "_mc_set"] - self[label]
+            q = params[label + "_mc_set"] - result[label]
             out[label + "_mc_var"] = q.var(dim="mc", ddof=1)
 
             if conf_ints:
@@ -1362,10 +1864,10 @@ class DtsAccessor:
         params["tmpw" + "_mc_set"] = q  #
 
         out["tmpw"] = (
-            self["tmpf"] / out["tmpf_mc_var"] + self["tmpb"] / out["tmpb_mc_var"]
+            result["tmpf"] / out["tmpf_mc_var"] + result["tmpb"] / out["tmpb_mc_var"]
         ) * tmpw_var
 
-        q = params["tmpw" + "_mc_set"] - self["tmpw"]
+        q = params["tmpw" + "_mc_set"] - result["tmpw"]
         out["tmpw" + "_mc_var"] = q.var(dim="mc", ddof=1)
 
         # Calculate the CI of the weighted MC_set
@@ -1408,5 +1910,892 @@ class DtsAccessor:
         if not mc_remove_set_flag:
             out.update(params)
 
-        self.update(out)
         return out
+    
+    def average_single_ended(
+        self,
+        st_var,
+        ast_var,
+        conf_ints=None,
+        mc_sample_size=100,
+        ci_avg_time_flag1=False,
+        ci_avg_time_flag2=False,
+        ci_avg_time_sel=None,
+        ci_avg_time_isel=None,
+        ci_avg_x_flag1=False,
+        ci_avg_x_flag2=False,
+        ci_avg_x_sel=None,
+        ci_avg_x_isel=None,
+        da_random_state=None,
+        mc_remove_set_flag=True,
+        reduce_memory_usage=False,
+    ):
+        """
+        Average temperatures from single-ended setups.
+
+        Four types of averaging are implemented. Please see Example Notebook 16.
+
+
+        Parameters
+        ----------
+        p_val : array-like, optional
+            Define `p_val`, `p_var`, `p_cov` if you used an external function
+            for calibration. Has size 2 + `nt`. First value is :math:`\gamma`,
+            second is :math:`\Delta \\alpha`, others are :math:`C` for each
+            timestep.
+            If set to False, no uncertainty in the parameters is propagated
+            into the confidence intervals. Similar to the spec sheets of the DTS
+            manufacturers. And similar to passing an array filled with zeros
+        p_cov : array-like, optional
+            The covariances of `p_val`.
+        st_var, ast_var : float, callable, array-like, optional
+            The variance of the measurement noise of the Stokes signals in the
+            forward direction. If `float` the variance of the noise from the
+            Stokes detector is described with a single value.
+            If `callable` the variance of the noise from the Stokes detector is
+            a function of the intensity, as defined in the callable function.
+            Or manually define a variance with a DataArray of the shape
+            `ds.st.shape`, where the variance can be a function of time and/or
+            x. Required if method is wls.
+        conf_ints : iterable object of float
+            A list with the confidence boundaries that are calculated. Valid
+            values are between
+            [0, 1].
+        mc_sample_size : int
+            Size of the monte carlo parameter set used to calculate the
+            confidence interval
+        ci_avg_time_flag1 : bool
+            The confidence intervals differ each time step. Assumes the
+            temperature varies during the measurement period. Computes the
+            arithmic temporal mean. If you would like to know the confidence
+            interfal of:
+            (1) a single additional measurement. So you can state "if another
+            measurement were to be taken, it would have this ci"
+            (2) all measurements. So you can state "The temperature remained
+            during the entire measurement period between these ci bounds".
+            Adds "tmpw" + '_avg1' and "tmpw" + '_mc_avg1_var' to the
+            DataStore. If `conf_ints` are set, also the confidence intervals
+            `_mc_avg1` are added to the DataStore. Works independently of the
+            ci_avg_time_flag2 and ci_avg_x_flag.
+        ci_avg_time_flag2 : bool
+            The confidence intervals differ each time step. Assumes the
+            temperature remains constant during the measurement period.
+            Computes the inverse-variance-weighted-temporal-mean temperature
+            and its uncertainty.
+            If you would like to know the confidence interfal of:
+            (1) I want to estimate a background temperature with confidence
+            intervals. I hereby assume the temperature does not change over
+            time and average all measurements to get a better estimate of the
+            background temperature.
+            Adds "tmpw" + '_avg2' and "tmpw" + '_mc_avg2_var' to the
+            DataStore. If `conf_ints` are set, also the confidence intervals
+            `_mc_avg2` are added to the DataStore. Works independently of the
+            ci_avg_time_flag1 and ci_avg_x_flag.
+        ci_avg_time_sel : slice
+            Compute ci_avg_time_flag1 and ci_avg_time_flag2 using only a
+            selection of the data
+        ci_avg_time_isel : iterable of int
+            Compute ci_avg_time_flag1 and ci_avg_time_flag2 using only a
+            selection of the data
+        ci_avg_x_flag1 : bool
+            The confidence intervals differ at each location. Assumes the
+            temperature varies over `x` and over time. Computes the
+            arithmic spatial mean. If you would like to know the confidence
+            interfal of:
+            (1) a single additional measurement location. So you can state "if
+            another measurement location were to be taken,
+            it would have this ci"
+            (2) all measurement locations. So you can state "The temperature
+            along the fiber remained between these ci bounds".
+            Adds "tmpw" + '_avgx1' and "tmpw" + '_mc_avgx1_var' to the
+            DataStore. If `conf_ints` are set, also the confidence intervals
+            `_mc_avgx1` are added to the DataStore. Works independently of the
+            ci_avg_time_flag1, ci_avg_time_flag2 and ci_avg_x2_flag.
+        ci_avg_x_flag2 : bool
+            The confidence intervals differ at each location. Assumes the
+            temperature is the same at each location but varies over time.
+            Computes the inverse-variance-weighted-spatial-mean temperature
+            and its uncertainty.
+            If you would like to know the confidence interfal of:
+            (1) I have put a lot of fiber in water, and I know that the
+            temperature variation in the water is much smaller than along
+            other parts of the fiber. And I would like to average the
+            measurements from multiple locations to improve the estimated
+            temperature.
+            Adds "tmpw" + '_avg2' and "tmpw" + '_mc_avg2_var' to the
+            DataStore. If `conf_ints` are set, also the confidence intervals
+            `_mc_avg2` are added to the DataStore. Works independently of the
+            ci_avg_time_flag1 and ci_avg_x_flag.
+        ci_avg_x_sel : slice
+            Compute ci_avg_time_flag1 and ci_avg_time_flag2 using only a
+            selection of the data
+        ci_avg_x_isel : iterable of int
+            Compute ci_avg_time_flag1 and ci_avg_time_flag2 using only a
+            selection of the data
+        da_random_state
+            For testing purposes. Similar to random seed. The seed for dask.
+            Makes random not so random. To produce reproducable results for
+            testing environments.
+        mc_remove_set_flag : bool
+            Remove the monte carlo data set, from which the CI and the
+            variance are calculated.
+        reduce_memory_usage : bool
+            Use less memory but at the expense of longer computation time
+
+        Returns
+        -------
+
+        """
+        out = xr.Dataset()
+
+        mcparams = self.conf_int_single_ended(
+            p_val=p_val,
+            p_cov=p_cov,
+            st_var=st_var,
+            ast_var=ast_var,
+            conf_ints=None,
+            mc_sample_size=mc_sample_size,
+            da_random_state=da_random_state,
+            mc_remove_set_flag=False,
+            reduce_memory_usage=reduce_memory_usage,
+        )
+        mcparams["tmpf"] = self["tmpf"]
+
+        if ci_avg_time_sel is not None:
+            time_dim2 = "time" + "_avg"
+            x_dim2 = "x"
+            mcparams.coords[time_dim2] = (
+                (time_dim2,),
+                mcparams["time"].sel(**{"time": ci_avg_time_sel}).data,
+            )
+            mcparams["tmpf_avgsec"] = (
+                ("x", time_dim2),
+                mcparams["tmpf"].sel(**{"time": ci_avg_time_sel}).data,
+            )
+            mcparams["tmpf_mc_set"] = (
+                ("mc", "x", time_dim2),
+                mcparams["tmpf" + "_mc_set"].sel(**{"time": ci_avg_time_sel}).data,
+            )
+
+        elif ci_avg_time_isel is not None:
+            time_dim2 = "time" + "_avg"
+            x_dim2 = "x"
+            mcparams.coords[time_dim2] = (
+                (time_dim2,),
+                mcparams["time"].isel(**{"time": ci_avg_time_isel}).data,
+            )
+            mcparams["tmpf_avgsec"] = (
+                ("x", time_dim2),
+                mcparams["tmpf"].isel(**{"time": ci_avg_time_isel}).data,
+            )
+            mcparams["tmpf_mc_set"] = (
+                ("mc", "x", time_dim2),
+                mcparams["tmpf" + "_mc_set"].isel(**{"time": ci_avg_time_isel}).data,
+            )
+
+        elif ci_avg_x_sel is not None:
+            time_dim2 = "time"
+            x_dim2 = "x_avg"
+            mcparams.coords[x_dim2] = ((x_dim2,), mcparams.x.sel(x=ci_avg_x_sel).data)
+            mcparams["tmpf_avgsec"] = (
+                (x_dim2, "time"),
+                mcparams["tmpf"].sel(x=ci_avg_x_sel).data,
+            )
+            mcparams["tmpf_mc_set"] = (
+                ("mc", x_dim2, "time"),
+                mcparams["tmpf_mc_set"].sel(x=ci_avg_x_sel).data,
+            )
+
+        elif ci_avg_x_isel is not None:
+            time_dim2 = "time"
+            x_dim2 = "x_avg"
+            mcparams.coords[x_dim2] = ((x_dim2,), mcparams.x.isel(x=ci_avg_x_isel).data)
+            mcparams["tmpf_avgsec"] = (
+                (x_dim2, time_dim2),
+                mcparams["tmpf"].isel(x=ci_avg_x_isel).data,
+            )
+            mcparams["tmpf_mc_set"] = (
+                ("mc", x_dim2, time_dim2),
+                mcparams["tmpf_mc_set"].isel(x=ci_avg_x_isel).data,
+            )
+        else:
+            mcparams["tmpf_avgsec"] = mcparams["tmpf"]
+            x_dim2 = "x"
+            time_dim2 = "time"
+
+        # subtract the mean temperature
+        q = mcparams["tmpf_mc_set"] - mcparams["tmpf_avgsec"]
+        out["tmpf_mc" + "_avgsec_var"] = q.var(dim="mc", ddof=1)
+
+        if ci_avg_x_flag1:
+            # unweighted mean
+            out["tmpf_avgx1"] = mcparams["tmpf" + "_avgsec"].mean(dim=x_dim2)
+
+            q = mcparams["tmpf_mc_set"] - mcparams["tmpf_avgsec"]
+            qvar = q.var(dim=["mc", x_dim2], ddof=1)
+            out["tmpf_mc_avgx1_var"] = qvar
+
+            if conf_ints:
+                new_chunks = (len(conf_ints), mcparams["tmpf_mc_set"].chunks[2])
+                avg_axis = mcparams["tmpf_mc_set"].get_axis_num(["mc", x_dim2])
+                q = mcparams["tmpf_mc_set"].data.map_blocks(
+                    lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
+                    chunks=new_chunks,  #
+                    drop_axis=avg_axis,
+                    # avg dimensions are dropped from input arr
+                    new_axis=0,
+                )  # The new CI dim is added as firsaxis
+
+                out["tmpf_mc_avgx1"] = (("CI", time_dim2), q)
+
+        if ci_avg_x_flag2:
+            q = mcparams["tmpf_mc_set"] - mcparams["tmpf_avgsec"]
+
+            qvar = q.var(dim=["mc"], ddof=1)
+
+            # Inverse-variance weighting
+            avg_x_var = 1 / (1 / qvar).sum(dim=x_dim2)
+
+            out["tmpf_mc_avgx2_var"] = avg_x_var
+
+            mcparams["tmpf" + "_mc_avgx2_set"] = (mcparams["tmpf_mc_set"] / qvar).sum(
+                dim=x_dim2
+            ) * avg_x_var
+            out["tmpf" + "_avgx2"] = mcparams["tmpf" + "_mc_avgx2_set"].mean(dim="mc")
+
+            if conf_ints:
+                new_chunks = (len(conf_ints), mcparams["tmpf_mc_set"].chunks[2])
+                avg_axis_avgx = mcparams["tmpf_mc_set"].get_axis_num("mc")
+
+                qq = mcparams["tmpf_mc_avgx2_set"].data.map_blocks(
+                    lambda x: np.percentile(x, q=conf_ints, axis=avg_axis_avgx),
+                    chunks=new_chunks,  #
+                    drop_axis=avg_axis_avgx,
+                    # avg dimensions are dropped from input arr
+                    new_axis=0,
+                    dtype=float,
+                )  # The new CI dimension is added as
+                # firsaxis
+                out["tmpf_mc_avgx2"] = (("CI", time_dim2), qq)
+
+        if ci_avg_time_flag1 is not None:
+            # unweighted mean
+            out["tmpf_avg1"] = mcparams["tmpf_avgsec"].mean(dim=time_dim2)
+
+            q = mcparams["tmpf_mc_set"] - mcparams["tmpf_avgsec"]
+            qvar = q.var(dim=["mc", time_dim2], ddof=1)
+            out["tmpf_mc_avg1_var"] = qvar
+
+            if conf_ints:
+                new_chunks = (len(conf_ints), mcparams["tmpf_mc_set"].chunks[1])
+                avg_axis = mcparams["tmpf_mc_set"].get_axis_num(["mc", time_dim2])
+                q = mcparams["tmpf_mc_set"].data.map_blocks(
+                    lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
+                    chunks=new_chunks,  #
+                    drop_axis=avg_axis,
+                    # avg dimensions are dropped from input arr
+                    new_axis=0,
+                )  # The new CI dim is added as firsaxis
+
+                out["tmpf_mc_avg1"] = (("CI", x_dim2), q)
+
+        if ci_avg_time_flag2:
+            q = mcparams["tmpf_mc_set"] - mcparams["tmpf_avgsec"]
+
+            qvar = q.var(dim=["mc"], ddof=1)
+
+            # Inverse-variance weighting
+            avg_time_var = 1 / (1 / qvar).sum(dim=time_dim2)
+
+            out["tmpf_mc_avg2_var"] = avg_time_var
+
+            mcparams["tmpf" + "_mc_avg2_set"] = (mcparams["tmpf_mc_set"] / qvar).sum(
+                dim=time_dim2
+            ) * avg_time_var
+            out["tmpf_avg2"] = mcparams["tmpf" + "_mc_avg2_set"].mean(dim="mc")
+
+            if conf_ints:
+                new_chunks = (len(conf_ints), mcparams["tmpf_mc_set"].chunks[1])
+                avg_axis_avg2 = mcparams["tmpf_mc_set"].get_axis_num("mc")
+
+                qq = mcparams["tmpf_mc_avg2_set"].data.map_blocks(
+                    lambda x: np.percentile(x, q=conf_ints, axis=avg_axis_avg2),
+                    chunks=new_chunks,  #
+                    drop_axis=avg_axis_avg2,
+                    # avg dimensions are dropped from input arr
+                    new_axis=0,
+                    dtype=float,
+                )  # The new CI dimension is added as
+                # firsaxis
+                out["tmpf_mc_avg2"] = (("CI", x_dim2), qq)
+
+        # Clean up the garbage. All arrays with a Monte Carlo dimension.
+        if mc_remove_set_flag:
+            remove_mc_set = [
+                "r_st",
+                "r_ast",
+                "gamma_mc",
+                "dalpha_mc",
+                "c_mc",
+                "x_avg",
+                "time_avg",
+                "mc",
+                "ta_mc_arr",
+            ]
+            remove_mc_set.append("tmpf_avgsec")
+            remove_mc_set.append("tmpf_mc_set")
+            remove_mc_set.append("tmpf_mc_avg2_set")
+            remove_mc_set.append("tmpf_mc_avgx2_set")
+            remove_mc_set.append("tmpf_mc_avgsec_var")
+
+            for k in remove_mc_set:
+                if k in out:
+                    del out[k]
+
+        self.update(out)
+        pass
+
+    def average_double_ended(
+        self,
+        sections=None,
+        p_val="p_val",
+        p_cov="p_cov",
+        st_var=None,
+        ast_var=None,
+        rst_var=None,
+        rast_var=None,
+        conf_ints=None,
+        mc_sample_size=100,
+        ci_avg_time_flag1=False,
+        ci_avg_time_flag2=False,
+        ci_avg_time_sel=None,
+        ci_avg_time_isel=None,
+        ci_avg_x_flag1=False,
+        ci_avg_x_flag2=False,
+        ci_avg_x_sel=None,
+        ci_avg_x_isel=None,
+        da_random_state=None,
+        mc_remove_set_flag=True,
+        reduce_memory_usage=False,
+        **kwargs,
+    ):
+        """
+        Average temperatures from double-ended setups.
+
+        Four types of averaging are implemented. Please see Example Notebook 16.
+
+        Parameters
+        ----------
+        p_val : array-like, optional
+            Define `p_val`, `p_var`, `p_cov` if you used an external function
+            for calibration. Has size 2 + `nt`. First value is :math:`\\gamma`,
+            second is :math:`\\Delta \\alpha`, others are :math:`C` for each
+            timestep.
+            If set to False, no uncertainty in the parameters is propagated
+            into the confidence intervals. Similar to the spec sheets of the DTS
+            manufacturers. And similar to passing an array filled with zeros
+        p_cov : array-like, optional
+            The covariances of `p_val`.
+        st_var, ast_var, rst_var, rast_var : float, callable, array-like, optional
+            The variance of the measurement noise of the Stokes signals in the
+            forward direction. If `float` the variance of the noise from the
+            Stokes detector is described with a single value.
+            If `callable` the variance of the noise from the Stokes detector is
+            a function of the intensity, as defined in the callable function.
+            Or manually define a variance with a DataArray of the shape
+            `ds.st.shape`, where the variance can be a function of time and/or
+            x. Required if method is wls.
+        conf_ints : iterable object of float
+            A list with the confidence boundaries that are calculated. Valid
+            values are between
+            [0, 1].
+        mc_sample_size : int
+            Size of the monte carlo parameter set used to calculate the
+            confidence interval
+        ci_avg_time_flag1 : bool
+            The confidence intervals differ each time step. Assumes the
+            temperature varies during the measurement period. Computes the
+            arithmic temporal mean. If you would like to know the confidence
+            interfal of:
+            (1) a single additional measurement. So you can state "if another
+            measurement were to be taken, it would have this ci"
+            (2) all measurements. So you can state "The temperature remained
+            during the entire measurement period between these ci bounds".
+            Adds "tmpw" + '_avg1' and "tmpw" + '_mc_avg1_var' to the
+            DataStore. If `conf_ints` are set, also the confidence intervals
+            `_mc_avg1` are added to the DataStore. Works independently of the
+            ci_avg_time_flag2 and ci_avg_x_flag.
+        ci_avg_time_flag2 : bool
+            The confidence intervals differ each time step. Assumes the
+            temperature remains constant during the measurement period.
+            Computes the inverse-variance-weighted-temporal-mean temperature
+            and its uncertainty.
+            If you would like to know the confidence interfal of:
+            (1) I want to estimate a background temperature with confidence
+            intervals. I hereby assume the temperature does not change over
+            time and average all measurements to get a better estimate of the
+            background temperature.
+            Adds "tmpw" + '_avg2' and "tmpw" + '_mc_avg2_var' to the
+            DataStore. If `conf_ints` are set, also the confidence intervals
+            `_mc_avg2` are added to the DataStore. Works independently of the
+            ci_avg_time_flag1 and ci_avg_x_flag.
+        ci_avg_time_sel : slice
+            Compute ci_avg_time_flag1 and ci_avg_time_flag2 using only a
+            selection of the data
+        ci_avg_time_isel : iterable of int
+            Compute ci_avg_time_flag1 and ci_avg_time_flag2 using only a
+            selection of the data
+        ci_avg_x_flag1 : bool
+            The confidence intervals differ at each location. Assumes the
+            temperature varies over `x` and over time. Computes the
+            arithmic spatial mean. If you would like to know the confidence
+            interfal of:
+            (1) a single additional measurement location. So you can state "if
+            another measurement location were to be taken,
+            it would have this ci"
+            (2) all measurement locations. So you can state "The temperature
+            along the fiber remained between these ci bounds".
+            Adds "tmpw" + '_avgx1' and "tmpw" + '_mc_avgx1_var' to the
+            DataStore. If `conf_ints` are set, also the confidence intervals
+            `_mc_avgx1` are added to the DataStore. Works independently of the
+            ci_avg_time_flag1, ci_avg_time_flag2 and ci_avg_x2_flag.
+        ci_avg_x_flag2 : bool
+            The confidence intervals differ at each location. Assumes the
+            temperature is the same at each location but varies over time.
+            Computes the inverse-variance-weighted-spatial-mean temperature
+            and its uncertainty.
+            If you would like to know the confidence interfal of:
+            (1) I have put a lot of fiber in water, and I know that the
+            temperature variation in the water is much smaller than along
+            other parts of the fiber. And I would like to average the
+            measurements from multiple locations to improve the estimated
+            temperature.
+            Adds "tmpw" + '_avg2' and "tmpw" + '_mc_avg2_var' to the
+            DataStore. If `conf_ints` are set, also the confidence intervals
+            `_mc_avg2` are added to the DataStore. Works independently of the
+            ci_avg_time_flag1 and ci_avg_x_flag.
+        ci_avg_x_sel : slice
+            Compute ci_avg_time_flag1 and ci_avg_time_flag2 using only a
+            selection of the data
+        ci_avg_x_isel : iterable of int
+            Compute ci_avg_time_flag1 and ci_avg_time_flag2 using only a
+            selection of the data
+        da_random_state
+            For testing purposes. Similar to random seed. The seed for dask.
+            Makes random not so random. To produce reproducable results for
+            testing environments.
+        mc_remove_set_flag : bool
+            Remove the monte carlo data set, from which the CI and the
+            variance are calculated.
+        reduce_memory_usage : bool
+            Use less memory but at the expense of longer computation time
+
+        Returns
+        -------
+
+        """
+
+        def create_da_ta2(no, i_splice, direction="fw", chunks=None):
+            """create mask array mc, o, nt"""
+
+            if direction == "fw":
+                arr = da.concatenate(
+                    (
+                        da.zeros((1, i_splice, 1), chunks=(1, i_splice, 1), dtype=bool),
+                        da.ones(
+                            (1, no - i_splice, 1),
+                            chunks=(1, no - i_splice, 1),
+                            dtype=bool,
+                        ),
+                    ),
+                    axis=1,
+                ).rechunk((1, chunks[1], 1))
+            else:
+                arr = da.concatenate(
+                    (
+                        da.ones((1, i_splice, 1), chunks=(1, i_splice, 1), dtype=bool),
+                        da.zeros(
+                            (1, no - i_splice, 1),
+                            chunks=(1, no - i_splice, 1),
+                            dtype=bool,
+                        ),
+                    ),
+                    axis=1,
+                ).rechunk((1, chunks[1], 1))
+            return arr
+
+        check_deprecated_kwargs(kwargs)
+
+        if (ci_avg_x_flag1 or ci_avg_x_flag2) and (
+            ci_avg_time_flag1 or ci_avg_time_flag2
+        ):
+            raise NotImplementedError(
+                "Incompatible flags. Can not pick " "the right chunks"
+            )
+
+        elif not (
+            ci_avg_x_flag1 or ci_avg_x_flag2 or ci_avg_time_flag1 or ci_avg_time_flag2
+        ):
+            raise NotImplementedError("Pick one of the averaging options")
+
+        else:
+            pass
+
+        out = xr.Dataset()
+
+        mcparams = self.conf_int_double_ended(
+            sections=sections,
+            p_val=p_val,
+            p_cov=p_cov,
+            st_var=st_var,
+            ast_var=ast_var,
+            rst_var=rst_var,
+            rast_var=rast_var,
+            conf_ints=None,
+            mc_sample_size=mc_sample_size,
+            da_random_state=da_random_state,
+            mc_remove_set_flag=False,
+            reduce_memory_usage=reduce_memory_usage,
+            **kwargs,
+        )
+
+        for label in ["tmpf", "tmpb"]:
+            if ci_avg_time_sel is not None:
+                time_dim2 = "time" + "_avg"
+                x_dim2 = "x"
+                mcparams.coords[time_dim2] = (
+                    (time_dim2,),
+                    mcparams["time"].sel(**{"time": ci_avg_time_sel}).data,
+                )
+                mcparams[label + "_avgsec"] = (
+                    ("x", time_dim2),
+                    self[label].sel(**{"time": ci_avg_time_sel}).data,
+                )
+                mcparams[label + "_mc_set"] = (
+                    ("mc", "x", time_dim2),
+                    mcparams[label + "_mc_set"].sel(**{"time": ci_avg_time_sel}).data,
+                )
+
+            elif ci_avg_time_isel is not None:
+                time_dim2 = "time" + "_avg"
+                x_dim2 = "x"
+                mcparams.coords[time_dim2] = (
+                    (time_dim2,),
+                    mcparams["time"].isel(**{"time": ci_avg_time_isel}).data,
+                )
+                mcparams[label + "_avgsec"] = (
+                    ("x", time_dim2),
+                    self[label].isel(**{"time": ci_avg_time_isel}).data,
+                )
+                mcparams[label + "_mc_set"] = (
+                    ("mc", "x", time_dim2),
+                    mcparams[label + "_mc_set"].isel(**{"time": ci_avg_time_isel}).data,
+                )
+
+            elif ci_avg_x_sel is not None:
+                time_dim2 = "time"
+                x_dim2 = "x_avg"
+                mcparams.coords[x_dim2] = (
+                    (x_dim2,),
+                    mcparams.x.sel(x=ci_avg_x_sel).data,
+                )
+                mcparams[label + "_avgsec"] = (
+                    (x_dim2, "time"),
+                    self[label].sel(x=ci_avg_x_sel).data,
+                )
+                mcparams[label + "_mc_set"] = (
+                    ("mc", x_dim2, "time"),
+                    mcparams[label + "_mc_set"].sel(x=ci_avg_x_sel).data,
+                )
+
+            elif ci_avg_x_isel is not None:
+                time_dim2 = "time"
+                x_dim2 = "x_avg"
+                mcparams.coords[x_dim2] = (
+                    (x_dim2,),
+                    mcparams.x.isel(x=ci_avg_x_isel).data,
+                )
+                mcparams[label + "_avgsec"] = (
+                    (x_dim2, time_dim2),
+                    self[label].isel(x=ci_avg_x_isel).data,
+                )
+                mcparams[label + "_mc_set"] = (
+                    ("mc", x_dim2, time_dim2),
+                    mcparams[label + "_mc_set"].isel(x=ci_avg_x_isel).data,
+                )
+            else:
+                mcparams[label + "_avgsec"] = self[label]
+                x_dim2 = "x"
+                time_dim2 = "time"
+
+            memchunk = mcparams[label + "_mc_set"].chunks
+
+            # subtract the mean temperature
+            q = mcparams[label + "_mc_set"] - mcparams[label + "_avgsec"]
+            out[label + "_mc" + "_avgsec_var"] = q.var(dim="mc", ddof=1)
+
+            if ci_avg_x_flag1:
+                # unweighted mean
+                out[label + "_avgx1"] = mcparams[label + "_avgsec"].mean(dim=x_dim2)
+
+                q = mcparams[label + "_mc_set"] - mcparams[label + "_avgsec"]
+                qvar = q.var(dim=["mc", x_dim2], ddof=1)
+                out[label + "_mc_avgx1_var"] = qvar
+
+                if conf_ints:
+                    new_chunks = (len(conf_ints), mcparams[label + "_mc_set"].chunks[2])
+                    avg_axis = mcparams[label + "_mc_set"].get_axis_num(["mc", x_dim2])
+                    q = mcparams[label + "_mc_set"].data.map_blocks(
+                        lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
+                        chunks=new_chunks,  #
+                        drop_axis=avg_axis,
+                        # avg dimensions are dropped from input arr
+                        new_axis=0,
+                    )  # The new CI dim is added as firsaxis
+
+                    out[label + "_mc_avgx1"] = (("CI", time_dim2), q)
+
+            if ci_avg_x_flag2:
+                q = mcparams[label + "_mc_set"] - mcparams[label + "_avgsec"]
+
+                qvar = q.var(dim=["mc"], ddof=1)
+
+                # Inverse-variance weighting
+                avg_x_var = 1 / (1 / qvar).sum(dim=x_dim2)
+
+                out[label + "_mc_avgx2_var"] = avg_x_var
+
+                mcparams[label + "_mc_avgx2_set"] = (
+                    mcparams[label + "_mc_set"] / qvar
+                ).sum(dim=x_dim2) * avg_x_var
+                out[label + "_avgx2"] = mcparams[label + "_mc_avgx2_set"].mean(dim="mc")
+
+                if conf_ints:
+                    new_chunks = (len(conf_ints), mcparams[label + "_mc_set"].chunks[2])
+                    avg_axis_avgx = mcparams[label + "_mc_set"].get_axis_num("mc")
+
+                    qq = mcparams[label + "_mc_avgx2_set"].data.map_blocks(
+                        lambda x: np.percentile(x, q=conf_ints, axis=avg_axis_avgx),
+                        chunks=new_chunks,  #
+                        drop_axis=avg_axis_avgx,
+                        # avg dimensions are dropped from input arr
+                        new_axis=0,
+                        dtype=float,
+                    )  # The new CI dimension is added as
+                    # firsaxis
+                    out[label + "_mc_avgx2"] = (("CI", time_dim2), qq)
+
+            if ci_avg_time_flag1 is not None:
+                # unweighted mean
+                out[label + "_avg1"] = mcparams[label + "_avgsec"].mean(dim=time_dim2)
+
+                q = mcparams[label + "_mc_set"] - mcparams[label + "_avgsec"]
+                qvar = q.var(dim=["mc", time_dim2], ddof=1)
+                out[label + "_mc_avg1_var"] = qvar
+
+                if conf_ints:
+                    new_chunks = (len(conf_ints), mcparams[label + "_mc_set"].chunks[1])
+                    avg_axis = mcparams[label + "_mc_set"].get_axis_num(
+                        ["mc", time_dim2]
+                    )
+                    q = mcparams[label + "_mc_set"].data.map_blocks(
+                        lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
+                        chunks=new_chunks,  #
+                        drop_axis=avg_axis,
+                        # avg dimensions are dropped from input arr
+                        new_axis=0,
+                    )  # The new CI dim is added as firsaxis
+
+                    out[label + "_mc_avg1"] = (("CI", x_dim2), q)
+
+            if ci_avg_time_flag2:
+                q = mcparams[label + "_mc_set"] - mcparams[label + "_avgsec"]
+
+                qvar = q.var(dim=["mc"], ddof=1)
+
+                # Inverse-variance weighting
+                avg_time_var = 1 / (1 / qvar).sum(dim=time_dim2)
+
+                out[label + "_mc_avg2_var"] = avg_time_var
+
+                mcparams[label + "_mc_avg2_set"] = (
+                    mcparams[label + "_mc_set"] / qvar
+                ).sum(dim=time_dim2) * avg_time_var
+                out[label + "_avg2"] = mcparams[label + "_mc_avg2_set"].mean(dim="mc")
+
+                if conf_ints:
+                    new_chunks = (len(conf_ints), mcparams[label + "_mc_set"].chunks[1])
+                    avg_axis_avg2 = mcparams[label + "_mc_set"].get_axis_num("mc")
+
+                    qq = mcparams[label + "_mc_avg2_set"].data.map_blocks(
+                        lambda x: np.percentile(x, q=conf_ints, axis=avg_axis_avg2),
+                        chunks=new_chunks,  #
+                        drop_axis=avg_axis_avg2,
+                        # avg dimensions are dropped from input arr
+                        new_axis=0,
+                        dtype=float,
+                    )  # The new CI dimension is added as
+                    # firsaxis
+                    out[label + "_mc_avg2"] = (("CI", x_dim2), qq)
+
+        # Weighted mean of the forward and backward
+        tmpw_var = 1 / (
+            1 / out["tmpf_mc" + "_avgsec_var"] + 1 / out["tmpb_mc" + "_avgsec_var"]
+        )
+
+        q = (
+            mcparams["tmpf_mc_set"] / out["tmpf_mc" + "_avgsec_var"]
+            + mcparams["tmpb_mc_set"] / out["tmpb_mc" + "_avgsec_var"]
+        ) * tmpw_var
+
+        mcparams["tmpw" + "_mc_set"] = q  #
+
+        # out["tmpw"] = out["tmpw" + '_mc_set'].mean(dim='mc')
+        out["tmpw" + "_avgsec"] = (
+            mcparams["tmpf_avgsec"] / out["tmpf_mc" + "_avgsec_var"]
+            + mcparams["tmpb_avgsec"] / out["tmpb_mc" + "_avgsec_var"]
+        ) * tmpw_var
+
+        q = mcparams["tmpw" + "_mc_set"] - out["tmpw_avgsec"]
+        out["tmpw" + "_mc" + "_avgsec_var"] = q.var(dim="mc", ddof=1)
+
+        if ci_avg_time_flag1:
+            out["tmpw" + "_avg1"] = out["tmpw" + "_avgsec"].mean(dim=time_dim2)
+
+            out["tmpw" + "_mc_avg1_var"] = mcparams["tmpw" + "_mc_set"].var(
+                dim=["mc", time_dim2]
+            )
+
+            if conf_ints:
+                new_chunks_weighted = ((len(conf_ints),),) + (memchunk[1],)
+                avg_axis = mcparams["tmpw" + "_mc_set"].get_axis_num(["mc", time_dim2])
+                q2 = mcparams["tmpw" + "_mc_set"].data.map_blocks(
+                    lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
+                    chunks=new_chunks_weighted,
+                    # Explicitly define output chunks
+                    drop_axis=avg_axis,  # avg dimensions are dropped
+                    new_axis=0,
+                    dtype=float,
+                )  # The new CI dimension is added as
+                # first axis
+                out["tmpw" + "_mc_avg1"] = (("CI", x_dim2), q2)
+
+        if ci_avg_time_flag2:
+            tmpw_var_avg2 = 1 / (
+                1 / out["tmpf_mc_avg2_var"] + 1 / out["tmpb_mc_avg2_var"]
+            )
+
+            q = (
+                mcparams["tmpf_mc_avg2_set"] / out["tmpf_mc_avg2_var"]
+                + mcparams["tmpb_mc_avg2_set"] / out["tmpb_mc_avg2_var"]
+            ) * tmpw_var_avg2
+
+            mcparams["tmpw" + "_mc_avg2_set"] = q  #
+
+            out["tmpw" + "_avg2"] = (
+                out["tmpf_avg2"] / out["tmpf_mc_avg2_var"]
+                + out["tmpb_avg2"] / out["tmpb_mc_avg2_var"]
+            ) * tmpw_var_avg2
+
+            out["tmpw" + "_mc_avg2_var"] = tmpw_var_avg2
+
+            if conf_ints:
+                # We first need to know the x-dim-chunk-size
+                new_chunks_weighted = ((len(conf_ints),),) + (memchunk[1],)
+                avg_axis_avg2 = mcparams["tmpw" + "_mc_avg2_set"].get_axis_num("mc")
+                q2 = mcparams["tmpw" + "_mc_avg2_set"].data.map_blocks(
+                    lambda x: np.percentile(x, q=conf_ints, axis=avg_axis_avg2),
+                    chunks=new_chunks_weighted,
+                    # Explicitly define output chunks
+                    drop_axis=avg_axis_avg2,  # avg dimensions are dropped
+                    new_axis=0,
+                    dtype=float,
+                )  # The new CI dimension is added as firstax
+                out["tmpw" + "_mc_avg2"] = (("CI", x_dim2), q2)
+
+        if ci_avg_x_flag1:
+            out["tmpw" + "_avgx1"] = out["tmpw" + "_avgsec"].mean(dim=x_dim2)
+
+            out["tmpw" + "_mc_avgx1_var"] = mcparams["tmpw" + "_mc_set"].var(dim=x_dim2)
+
+            if conf_ints:
+                new_chunks_weighted = ((len(conf_ints),),) + (memchunk[2],)
+                avg_axis = mcparams["tmpw" + "_mc_set"].get_axis_num(["mc", x_dim2])
+                q2 = mcparams["tmpw" + "_mc_set"].data.map_blocks(
+                    lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
+                    chunks=new_chunks_weighted,
+                    # Explicitly define output chunks
+                    drop_axis=avg_axis,  # avg dimensions are dropped
+                    new_axis=0,
+                    dtype=float,
+                )  # The new CI dimension is added as
+                # first axis
+                out["tmpw" + "_mc_avgx1"] = (("CI", time_dim2), q2)
+
+        if ci_avg_x_flag2:
+            tmpw_var_avgx2 = 1 / (
+                1 / out["tmpf_mc_avgx2_var"] + 1 / out["tmpb_mc_avgx2_var"]
+            )
+
+            q = (
+                mcparams["tmpf_mc_avgx2_set"] / out["tmpf_mc_avgx2_var"]
+                + mcparams["tmpb_mc_avgx2_set"] / out["tmpb_mc_avgx2_var"]
+            ) * tmpw_var_avgx2
+
+            mcparams["tmpw" + "_mc_avgx2_set"] = q  #
+
+            out["tmpw" + "_avgx2"] = (
+                out["tmpf_avgx2"] / out["tmpf_mc_avgx2_var"]
+                + out["tmpb_avgx2"] / out["tmpb_mc_avgx2_var"]
+            ) * tmpw_var_avgx2
+
+            out["tmpw" + "_mc_avgx2_var"] = tmpw_var_avgx2
+
+            if conf_ints:
+                # We first need to know the x-dim-chunk-size
+                new_chunks_weighted = ((len(conf_ints),),) + (memchunk[2],)
+                avg_axis_avgx2 = mcparams["tmpw" + "_mc_avgx2_set"].get_axis_num("mc")
+                q2 = mcparams["tmpw" + "_mc_avgx2_set"].data.map_blocks(
+                    lambda x: np.percentile(x, q=conf_ints, axis=avg_axis_avgx2),
+                    chunks=new_chunks_weighted,
+                    # Explicitly define output chunks
+                    drop_axis=avg_axis_avgx2,  # avg dimensions are dropped
+                    new_axis=0,
+                    dtype=float,
+                )  # The new CI dimension is added as firstax
+                out["tmpw" + "_mc_avgx2"] = (("CI", time_dim2), q2)
+
+        # Clean up the garbage. All arrays with a Monte Carlo dimension.
+        if mc_remove_set_flag:
+            remove_mc_set = [
+                "r_st",
+                "r_ast",
+                "r_rst",
+                "r_rast",
+                "gamma_mc",
+                "alpha_mc",
+                "df_mc",
+                "db_mc",
+                "x_avg",
+                "time_avg",
+                "mc",
+            ]
+
+            for i in ["tmpf", "tmpb", "tmpw"]:
+                remove_mc_set.append(i + "_avgsec")
+                remove_mc_set.append(i + "_mc_set")
+                remove_mc_set.append(i + "_mc_avg2_set")
+                remove_mc_set.append(i + "_mc_avgx2_set")
+                remove_mc_set.append(i + "_mc_avgsec_var")
+
+            if "trans_att" in mcparams and mcparams.trans_att.size:
+                remove_mc_set.append('talpha"_fw_mc')
+                remove_mc_set.append('talpha"_bw_mc')
+
+            for k in remove_mc_set:
+                if k in out:
+                    print(f"Removed from results: {k}")
+                    del out[k]
+
+        self.update(out)
+        pass
