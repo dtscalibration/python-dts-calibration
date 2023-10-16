@@ -465,7 +465,7 @@ def variance_stokes_linear(
 
     assert st.dims[0] == "x", "Stokes are transposed"
     _, resid = variance_stokes_constant(
-        sections=sections, st=st, reshape_residuals=False
+        sections=sections, st=st, acquisitiontime=acquisitiontime, reshape_residuals=False
     )
     ix_sec = ufunc_per_section_helper(sections=sections, x_coords=st.coords["x"], calc_per="all")
 

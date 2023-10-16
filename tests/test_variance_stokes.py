@@ -695,11 +695,10 @@ def test_single_ended_variance_estimate_synthetic():
         "warm": [slice(0.5 * cable_len, cable_len)],
     }
 
-    st_label = "st"
-    ast_label = "ast"
-
-    mst_var, _ = ds.variance_stokes(st_label=st_label, sections=sections)
-    mast_var, _ = ds.variance_stokes(st_label=ast_label, sections=sections)
+    mst_var, _ = variance_stokes_constant(ds.dts.st, sections, ds.dts.acquisitiontime_fw, reshape_residuals=False)
+    mast_var, _ = variance_stokes_constant(ds.dts.ast, sections, ds.dts.acquisitiontime_fw, reshape_residuals=False)
+    # mrst_var, _ = variance_stokes_constant(ds.dts.rst, sections, ds.dts.acquisitiontime_bw, reshape_residuals=False)
+    # mrast_var, _ = variance_stokes_constant(ds.dts.rast, sections, ds.dts.acquisitiontime_bw, reshape_residuals=False)
     mst_var = float(mst_var)
     mast_var = float(mast_var)
 
@@ -711,6 +710,8 @@ def test_single_ended_variance_estimate_synthetic():
         method="wls",
         solver="sparse",
     )
+    out["cold"] = ds.cold
+    out["warm"] = ds.warm
 
     out2 = ds.dts.monte_carlo_single_ended(
         result=out,
@@ -720,6 +721,8 @@ def test_single_ended_variance_estimate_synthetic():
         mc_sample_size=50,
         da_random_state=state,
     )
+    out2["cold"] = ds.cold
+    out2["warm"] = ds.warm
 
     # Calibrated variance
     stdsf1 = out.dts.ufunc_per_section(
@@ -792,7 +795,7 @@ def test_variance_of_stokes_synthetic():
 
     y += stats.norm.rvs(size=y.size, scale=yvar**0.5).reshape(y.shape)
 
-    ds = xr.Dataset(
+    ds = Dataset(
         {
             "st": (["x", "time"], y),
             "probe1Temperature": (["time"], range(nt)),
@@ -803,7 +806,7 @@ def test_variance_of_stokes_synthetic():
     )
 
     sections = {"probe1Temperature": [slice(0.0, 20.0)]}
-    test_st_var, _ = variance_stokes_constant(st=ds["st"], sections=sections)
+    test_st_var, _ = variance_stokes_constant(ds.dts.st, sections, ds.dts.acquisitiontime_fw, reshape_residuals=False)
 
     assert_almost_equal_verbose(test_st_var, yvar, decimal=1)
     pass
@@ -833,7 +836,7 @@ def test_variance_of_stokes_linear_synthetic():
         # size=y.size,
         scale=(var_slope * c_no_noise) ** 0.5,
     )
-    ds = DataStore(
+    ds = Dataset(
         {
             "st": (["x", "time"], c_no_noise),
             "c_lin_var_through_zero": (["x", "time"], c_lin_var_through_zero),
@@ -845,7 +848,7 @@ def test_variance_of_stokes_linear_synthetic():
     )
 
     sections = {"probe1Temperature": [slice(0.0, 20.0)]}
-    test_st_var, _ = variance_stokes_constant(st=ds["st"], sections=sections)
+    test_st_var, _ = variance_stokes_constant(ds.dts.st, sections, ds.dts.acquisitiontime_fw, reshape_residuals=False)
 
     # If fit is forced through zero. Only Poisson distributed noise
     (
@@ -858,6 +861,7 @@ def test_variance_of_stokes_linear_synthetic():
     ) = variance_stokes_linear(
         st=ds["c_lin_var_through_zero"],
         sections=sections,
+        acquisitiontime=ds.dts.acquisitiontime_fw,
         nbin=10,
         through_zero=True,
         plot_fit=False,
@@ -873,7 +877,7 @@ def test_variance_of_stokes_linear_synthetic():
         resid,
         var_fun,
     ) = variance_stokes_linear(
-        st=ds["c_lin_var_through_zero"], sections=sections, nbin=100, through_zero=False
+        st=ds["c_lin_var_through_zero"], sections=sections, acquisitiontime=ds.dts.acquisitiontime_fw, nbin=100, through_zero=False
     )
     assert_almost_equal_verbose(slope, var_slope, decimal=3)
     assert_almost_equal_verbose(offset, 0.0, decimal=0)
@@ -891,11 +895,11 @@ def test_exponential_variance_of_stokes():
         "probe2Temperature": [slice(24.0, 34.0), slice(85.0, 95.0)],  # warm bath
     }
 
-    I_var, _ = variance_stokes_exponential(st=ds["st"], sections=sections)
+    I_var, _ = variance_stokes_exponential(st=ds["st"], sections=sections, acquisitiontime=ds.dts.acquisitiontime_fw)
     assert_almost_equal_verbose(I_var, correct_var, decimal=5)
 
     ds_dask = ds.chunk(chunks={})
-    I_var, _ = variance_stokes_exponential(st=ds_dask["st"], sections=sections)
+    I_var, _ = variance_stokes_exponential(st=ds_dask["st"], sections=sections, acquisitiontime=ds.dts.acquisitiontime_fw)
     assert_almost_equal_verbose(I_var, correct_var, decimal=5)
 
     pass
@@ -933,7 +937,7 @@ def test_exponential_variance_of_stokes_synthetic():
     )
 
     sections = {"probe1Temperature": [slice(0.0, 20.0)]}
-    test_st_var, _ = variance_stokes_exponential(st=ds["st"], sections=sections)
+    test_st_var, _ = variance_stokes_exponential(st=ds["st"], sections=sections, acquisitiontime=ds.dts.acquisitiontime_fw)
 
     assert_almost_equal_verbose(test_st_var, yvar, decimal=1)
     pass
