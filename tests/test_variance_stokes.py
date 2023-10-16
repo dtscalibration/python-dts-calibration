@@ -3,13 +3,12 @@ import os
 import numpy as np
 import pytest
 from scipy import stats
-import xarray as xr
 from xarray import Dataset
 
 from dtscalibration import read_silixa_files
 from dtscalibration.dts_accessor import DtsAccessor  # noqa: F401
-from dtscalibration.variance_stokes import variance_stokes_exponential
 from dtscalibration.variance_stokes import variance_stokes_constant
+from dtscalibration.variance_stokes import variance_stokes_exponential
 from dtscalibration.variance_stokes import variance_stokes_linear
 
 np.random.seed(0)
@@ -55,6 +54,7 @@ def assert_almost_equal_verbose(actual, desired, verbose=False, **kwargs):
     desired2 = np.broadcast_to(desired, actual.shape)
     np.testing.assert_almost_equal(actual, desired2, err_msg=m, **kwargs)
     pass
+
 
 @pytest.mark.slow  # Execution time ~20 seconds
 def test_variance_input_types_single():
@@ -179,8 +179,12 @@ def test_variance_input_types_single():
         sections=sections, st_var=st_var, ast_var=st_var, method="wls", solver="sparse"
     )
 
-    out2 = ds.dts.monte_carlo_single_ended(result=out,
-        st_var=st_var, ast_var=st_var, mc_sample_size=100, da_random_state=state
+    out2 = ds.dts.monte_carlo_single_ended(
+        result=out,
+        st_var=st_var,
+        ast_var=st_var,
+        mc_sample_size=100,
+        da_random_state=state,
     )
 
     assert_almost_equal_verbose(out2["tmpf_mc_var"].mean(), 0.418098, decimal=2)
@@ -194,8 +198,12 @@ def test_variance_input_types_single():
         sections=sections, st_var=st_var, ast_var=st_var, method="wls", solver="sparse"
     )
 
-    out2 = ds.dts.monte_carlo_single_ended(result=out,
-        st_var=st_var, ast_var=st_var, mc_sample_size=100, da_random_state=state
+    out2 = ds.dts.monte_carlo_single_ended(
+        result=out,
+        st_var=st_var,
+        ast_var=st_var,
+        mc_sample_size=100,
+        da_random_state=state,
     )
 
     assert_almost_equal_verbose(
@@ -212,15 +220,21 @@ def test_variance_input_types_single():
         sections=sections, st_var=st_var, ast_var=st_var, method="wls", solver="sparse"
     )
 
-    out2 = ds.dts.monte_carlo_single_ended(result=out,
-        st_var=st_var, ast_var=st_var, mc_sample_size=100, da_random_state=state
+    out2 = ds.dts.monte_carlo_single_ended(
+        result=out,
+        st_var=st_var,
+        ast_var=st_var,
+        mc_sample_size=100,
+        da_random_state=state,
     )
 
     assert_almost_equal_verbose(
         out2["tmpf_mc_var"].sel(time=slice(0, nt // 2)).mean().values, 1.0908, decimal=2
     )
     assert_almost_equal_verbose(
-        out2["tmpf_mc_var"].sel(time=slice(nt // 2, None)).mean().values, 3.0759, decimal=2
+        out2["tmpf_mc_var"].sel(time=slice(nt // 2, None)).mean().values,
+        3.0759,
+        decimal=2,
     )
 
     pass
@@ -279,10 +293,18 @@ def test_variance_input_types_double():
         / (1 - np.exp(-gamma / temp_real))
     )
 
-    st_m = st + stats.norm.rvs(size=st.shape, scale=stokes_m_var**0.5, random_state=state)
-    ast_m = ast + stats.norm.rvs(size=ast.shape, scale=1.1 * stokes_m_var**0.5, random_state=state)
-    rst_m = rst + stats.norm.rvs(size=rst.shape, scale=0.9 * stokes_m_var**0.5, random_state=state)
-    rast_m = rast + stats.norm.rvs(size=rast.shape, scale=0.8 * stokes_m_var**0.5, random_state=state)
+    st_m = st + stats.norm.rvs(
+        size=st.shape, scale=stokes_m_var**0.5, random_state=state
+    )
+    ast_m = ast + stats.norm.rvs(
+        size=ast.shape, scale=1.1 * stokes_m_var**0.5, random_state=state
+    )
+    rst_m = rst + stats.norm.rvs(
+        size=rst.shape, scale=0.9 * stokes_m_var**0.5, random_state=state
+    )
+    rast_m = rast + stats.norm.rvs(
+        size=rast.shape, scale=0.8 * stokes_m_var**0.5, random_state=state
+    )
 
     print("alphaint", cable_len * (dalpha_p - dalpha_m))
     print("alpha", dalpha_p - dalpha_m)
@@ -461,7 +483,9 @@ def test_variance_input_types_double():
         out2["tmpf_mc_var"].sel(time=slice(0, nt // 2)).mean().values, 1.090, decimal=2
     )
     assert_almost_equal_verbose(
-        out2["tmpf_mc_var"].sel(time=slice(nt // 2, None)).mean().values, 3.06, decimal=2
+        out2["tmpf_mc_var"].sel(time=slice(nt // 2, None)).mean().values,
+        3.06,
+        decimal=2,
     )
 
     pass
@@ -550,10 +574,18 @@ def test_double_ended_variance_estimate_synthetic():
         "warm": [slice(0.5 * cable_len, cable_len)],
     }
 
-    mst_var, _ = variance_stokes_constant(ds.dts.st, sections, ds.dts.acquisitiontime_fw, reshape_residuals=False)
-    mast_var, _ = variance_stokes_constant(ds.dts.ast, sections, ds.dts.acquisitiontime_fw, reshape_residuals=False)
-    mrst_var, _ = variance_stokes_constant(ds.dts.rst, sections, ds.dts.acquisitiontime_bw, reshape_residuals=False)
-    mrast_var, _ = variance_stokes_constant(ds.dts.rast, sections, ds.dts.acquisitiontime_bw, reshape_residuals=False)
+    mst_var, _ = variance_stokes_constant(
+        ds.dts.st, sections, ds.dts.acquisitiontime_fw, reshape_residuals=False
+    )
+    mast_var, _ = variance_stokes_constant(
+        ds.dts.ast, sections, ds.dts.acquisitiontime_fw, reshape_residuals=False
+    )
+    mrst_var, _ = variance_stokes_constant(
+        ds.dts.rst, sections, ds.dts.acquisitiontime_bw, reshape_residuals=False
+    )
+    mrast_var, _ = variance_stokes_constant(
+        ds.dts.rast, sections, ds.dts.acquisitiontime_bw, reshape_residuals=False
+    )
 
     mst_var = float(mst_var)
     mast_var = float(mast_var)
@@ -575,13 +607,23 @@ def test_double_ended_variance_estimate_synthetic():
 
     assert_almost_equal_verbose(out["tmpf"].mean(), 12.0, decimal=2)
     assert_almost_equal_verbose(out["tmpb"].mean(), 12.0, decimal=3)
-    
+
     # Calibrated variance
     stdsf1 = out.dts.ufunc_per_section(
-        sections=sections, label="tmpf", func=np.std, temp_err=True, calc_per="stretch", suppress_section_validation=True,
+        sections=sections,
+        label="tmpf",
+        func=np.std,
+        temp_err=True,
+        calc_per="stretch",
+        suppress_section_validation=True,
     )
     stdsb1 = out.dts.ufunc_per_section(
-        sections=sections, label="tmpb", func=np.std, temp_err=True, calc_per="stretch", suppress_section_validation=True,
+        sections=sections,
+        label="tmpb",
+        func=np.std,
+        temp_err=True,
+        calc_per="stretch",
+        suppress_section_validation=True,
     )
 
     out2 = ds.dts.monte_carlo_double_ended(
@@ -695,8 +737,12 @@ def test_single_ended_variance_estimate_synthetic():
         "warm": [slice(0.5 * cable_len, cable_len)],
     }
 
-    mst_var, _ = variance_stokes_constant(ds.dts.st, sections, ds.dts.acquisitiontime_fw, reshape_residuals=False)
-    mast_var, _ = variance_stokes_constant(ds.dts.ast, sections, ds.dts.acquisitiontime_fw, reshape_residuals=False)
+    mst_var, _ = variance_stokes_constant(
+        ds.dts.st, sections, ds.dts.acquisitiontime_fw, reshape_residuals=False
+    )
+    mast_var, _ = variance_stokes_constant(
+        ds.dts.ast, sections, ds.dts.acquisitiontime_fw, reshape_residuals=False
+    )
     # mrst_var, _ = variance_stokes_constant(ds.dts.rst, sections, ds.dts.acquisitiontime_bw, reshape_residuals=False)
     # mrast_var, _ = variance_stokes_constant(ds.dts.rast, sections, ds.dts.acquisitiontime_bw, reshape_residuals=False)
     mst_var = float(mst_var)
@@ -753,7 +799,6 @@ def test_single_ended_variance_estimate_synthetic():
     pass
 
 
-
 @pytest.mark.skip(reason="Not enough measurements in time. Use exponential instead.")
 def test_variance_of_stokes():
     correct_var = 9.045
@@ -806,7 +851,9 @@ def test_variance_of_stokes_synthetic():
     )
 
     sections = {"probe1Temperature": [slice(0.0, 20.0)]}
-    test_st_var, _ = variance_stokes_constant(ds.dts.st, sections, ds.dts.acquisitiontime_fw, reshape_residuals=False)
+    test_st_var, _ = variance_stokes_constant(
+        ds.dts.st, sections, ds.dts.acquisitiontime_fw, reshape_residuals=False
+    )
 
     assert_almost_equal_verbose(test_st_var, yvar, decimal=1)
     pass
@@ -848,7 +895,9 @@ def test_variance_of_stokes_linear_synthetic():
     )
 
     sections = {"probe1Temperature": [slice(0.0, 20.0)]}
-    test_st_var, _ = variance_stokes_constant(ds.dts.st, sections, ds.dts.acquisitiontime_fw, reshape_residuals=False)
+    test_st_var, _ = variance_stokes_constant(
+        ds.dts.st, sections, ds.dts.acquisitiontime_fw, reshape_residuals=False
+    )
 
     # If fit is forced through zero. Only Poisson distributed noise
     (
@@ -877,7 +926,11 @@ def test_variance_of_stokes_linear_synthetic():
         resid,
         var_fun,
     ) = variance_stokes_linear(
-        st=ds["c_lin_var_through_zero"], sections=sections, acquisitiontime=ds.dts.acquisitiontime_fw, nbin=100, through_zero=False
+        st=ds["c_lin_var_through_zero"],
+        sections=sections,
+        acquisitiontime=ds.dts.acquisitiontime_fw,
+        nbin=100,
+        through_zero=False,
     )
     assert_almost_equal_verbose(slope, var_slope, decimal=3)
     assert_almost_equal_verbose(offset, 0.0, decimal=0)
@@ -895,11 +948,15 @@ def test_exponential_variance_of_stokes():
         "probe2Temperature": [slice(24.0, 34.0), slice(85.0, 95.0)],  # warm bath
     }
 
-    I_var, _ = variance_stokes_exponential(st=ds["st"], sections=sections, acquisitiontime=ds.dts.acquisitiontime_fw)
+    I_var, _ = variance_stokes_exponential(
+        st=ds["st"], sections=sections, acquisitiontime=ds.dts.acquisitiontime_fw
+    )
     assert_almost_equal_verbose(I_var, correct_var, decimal=5)
 
     ds_dask = ds.chunk(chunks={})
-    I_var, _ = variance_stokes_exponential(st=ds_dask["st"], sections=sections, acquisitiontime=ds.dts.acquisitiontime_fw)
+    I_var, _ = variance_stokes_exponential(
+        st=ds_dask["st"], sections=sections, acquisitiontime=ds.dts.acquisitiontime_fw
+    )
     assert_almost_equal_verbose(I_var, correct_var, decimal=5)
 
     pass
@@ -937,7 +994,9 @@ def test_exponential_variance_of_stokes_synthetic():
     )
 
     sections = {"probe1Temperature": [slice(0.0, 20.0)]}
-    test_st_var, _ = variance_stokes_exponential(st=ds["st"], sections=sections, acquisitiontime=ds.dts.acquisitiontime_fw)
+    test_st_var, _ = variance_stokes_exponential(
+        st=ds["st"], sections=sections, acquisitiontime=ds.dts.acquisitiontime_fw
+    )
 
     assert_almost_equal_verbose(test_st_var, yvar, decimal=1)
     pass

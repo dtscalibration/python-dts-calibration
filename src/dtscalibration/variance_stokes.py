@@ -2,13 +2,13 @@ import dask.array as da
 import numpy as np
 import xarray as xr
 
+from dtscalibration.calibration.section_utils import validate_no_overlapping_sections
+from dtscalibration.calibration.section_utils import validate_sections_definition
 from dtscalibration.datastore_utils import ufunc_per_section_helper
+from dtscalibration.variance_helpers import check_allclose_acquisitiontime
 from dtscalibration.variance_helpers import variance_stokes_constant_helper
 from dtscalibration.variance_helpers import variance_stokes_exponential_helper
 from dtscalibration.variance_helpers import variance_stokes_linear_helper
-from dtscalibration.calibration.section_utils import validate_sections_definition
-from dtscalibration.calibration.section_utils import validate_no_overlapping_sections
-from dtscalibration.variance_helpers import check_allclose_acquisitiontime
 
 
 def variance_stokes_constant(st, sections, acquisitiontime, reshape_residuals=True):
@@ -124,11 +124,7 @@ def variance_stokes_constant(st, sections, acquisitiontime, reshape_residuals=Tr
     # should maybe be per section. But then residuals
     # seem to be correlated between stretches. I don't know why.. BdT.
     data_dict = da.compute(
-        ufunc_per_section_helper(
-            sections=sections,
-            dataarray=st,
-            calc_per="stretch"
-        )
+        ufunc_per_section_helper(sections=sections, dataarray=st, calc_per="stretch")
     )[0]
 
     var_I, resid = variance_stokes_constant_helper(data_dict)
@@ -331,12 +327,16 @@ def variance_stokes_exponential(
         # _resid_x = self.ufunc_per_section(
         #     sections=sections, label="x", calc_per="all"
         # )
-        _resid_x = ufunc_per_section_helper(sections=sections, dataarray=st.coords["x"], calc_per="all")
+        _resid_x = ufunc_per_section_helper(
+            sections=sections, dataarray=st.coords["x"], calc_per="all"
+        )
         isort = np.argsort(_resid_x)
         resid_x = _resid_x[isort]  # get indices from ufunc directly
         resid = _resid[isort, :]
 
-        ix_resid = np.array([np.argmin(np.abs(ai - st.coords["x"].data)) for ai in resid_x])
+        ix_resid = np.array(
+            [np.argmin(np.abs(ai - st.coords["x"].data)) for ai in resid_x]
+        )
 
         resid_sorted = np.full(shape=st.shape, fill_value=np.nan)
         resid_sorted[ix_resid, :] = resid
@@ -465,9 +465,14 @@ def variance_stokes_linear(
 
     assert st.dims[0] == "x", "Stokes are transposed"
     _, resid = variance_stokes_constant(
-        sections=sections, st=st, acquisitiontime=acquisitiontime, reshape_residuals=False
+        sections=sections,
+        st=st,
+        acquisitiontime=acquisitiontime,
+        reshape_residuals=False,
     )
-    ix_sec = ufunc_per_section_helper(sections=sections, x_coords=st.coords["x"], calc_per="all")
+    ix_sec = ufunc_per_section_helper(
+        sections=sections, x_coords=st.coords["x"], calc_per="all"
+    )
 
     st = st.isel(x=ix_sec).values.ravel()
     diff_st = resid.ravel()
@@ -483,6 +488,7 @@ def variance_stokes_linear(
 
     if plot_fit:
         import matplotlib.pyplot as plt
+
         plt.figure()
         plt.scatter(st_sort_mean, st_sort_var, marker=".", c="black")
         plt.plot(

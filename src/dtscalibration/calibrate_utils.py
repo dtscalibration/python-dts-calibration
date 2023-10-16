@@ -34,13 +34,13 @@ def parse_st_var(st, st_var):
     else:
         st_var_sec = xr.ones_like(st) * st_var
 
-    assert np.all(np.isfinite(st_var_sec)), (
-        "NaN/inf values detected in computed st_var. Please check input."
-    )
+    assert np.all(
+        np.isfinite(st_var_sec)
+    ), "NaN/inf values detected in computed st_var. Please check input."
 
-    assert np.all(st_var_sec > 0.0), (
-        "Negative values detected in computed st_var. Please check input."
-    )
+    assert np.all(
+        st_var_sec > 0.0
+    ), "Negative values detected in computed st_var. Please check input."
 
     return st_var_sec
 
@@ -76,7 +76,7 @@ def calibration_single_ended_helper(
         calc_cov=calc_cov,
         solver="external_split",
         matching_indices=matching_indices,
-        trans_att=trans_att
+        trans_att=trans_att,
     )
     y = split["y"]
     w = split["w"]
@@ -84,12 +84,12 @@ def calibration_single_ended_helper(
     # Stack all X's
     if fix_alpha:
         assert not fix_dalpha, "Use either `fix_dalpha` or `fix_alpha`"
-        assert fix_alpha[0].size == nx, (
-            "fix_alpha also needs to be defined outside the reference sections"
-        )
-        assert fix_alpha[1].size == nx, (
-            "fix_alpha also needs to be defined outside the reference sections"
-        )
+        assert (
+            fix_alpha[0].size == nx
+        ), "fix_alpha also needs to be defined outside the reference sections"
+        assert (
+            fix_alpha[1].size == nx
+        ), "fix_alpha also needs to be defined outside the reference sections"
         p_val = split["p0_est_alpha"].copy()
 
         if np.any(matching_indices):
@@ -405,24 +405,16 @@ def calibration_single_ended_solver(  # noqa: MC0001
 
         if np.any(matching_indices):
             st_var_ms0 = (
-                parse_st_var(ds.st, st_var)
-                .isel(x=matching_indices[:, 0])
-                .values
+                parse_st_var(ds.st, st_var).isel(x=matching_indices[:, 0]).values
             )
             st_var_ms1 = (
-                parse_st_var(ds.st, st_var)
-                .isel(x=matching_indices[:, 1])
-                .values
+                parse_st_var(ds.st, st_var).isel(x=matching_indices[:, 1]).values
             )
             ast_var_ms0 = (
-                parse_st_var(ds.ast, ast_var)
-                .isel(x=matching_indices[:, 0])
-                .values
+                parse_st_var(ds.ast, ast_var).isel(x=matching_indices[:, 0]).values
             )
             ast_var_ms1 = (
-                parse_st_var(ds.ast, ast_var)
-                .isel(x=matching_indices[:, 1])
-                .values
+                parse_st_var(ds.ast, ast_var).isel(x=matching_indices[:, 1]).values
             )
 
             w_ms = (
@@ -517,7 +509,7 @@ def calibrate_double_ended_helper(
         matching_indices = match_sections(self, matching_sections)
     else:
         matching_indices = None
-    
+
     if fix_alpha or fix_gamma:
         split = calibrate_double_ended_solver(
             self,
@@ -1213,7 +1205,7 @@ def calibrate_double_ended_solver(  # noqa: MC0001
         rst_var=rst_var,
         rast_var=rast_var,
         ix_alpha_is_zero=ix_alpha_is_zero,
-        trans_att=trans_att
+        trans_att=trans_att,
     )
     df_est, db_est = calc_df_db_double_est(ds, sections, ix_alpha_is_zero, 485.0)
 
@@ -1367,18 +1359,10 @@ def calibrate_double_ended_solver(  # noqa: MC0001
         rst_var_tix = parse_st_var(ds.rst, rst_var).isel(x=tix).values
         rast_var_tix = parse_st_var(ds.rast, rast_var).isel(x=tix).values
 
-        st_var_mnc = (
-            parse_st_var(ds.st, st_var).isel(x=ix_match_not_cal).values
-        )
-        ast_var_mnc = (
-            parse_st_var(ds.ast, ast_var).isel(x=ix_match_not_cal).values
-        )
-        rst_var_mnc = (
-            parse_st_var(ds.rst, rst_var).isel(x=ix_match_not_cal).values
-        )
-        rast_var_mnc = (
-            parse_st_var(ds.rast, rast_var).isel(x=ix_match_not_cal).values
-        )
+        st_var_mnc = parse_st_var(ds.st, st_var).isel(x=ix_match_not_cal).values
+        ast_var_mnc = parse_st_var(ds.ast, ast_var).isel(x=ix_match_not_cal).values
+        rst_var_mnc = parse_st_var(ds.rst, rst_var).isel(x=ix_match_not_cal).values
+        rast_var_mnc = parse_st_var(ds.rast, rast_var).isel(x=ix_match_not_cal).values
 
         w_eq1 = 1 / (
             (
@@ -2174,9 +2158,7 @@ def calc_alpha_double(
 
                 ta_arr_fw = np.zeros((ds.x.size, ds["time"].size))
                 ta_arr_fw_var = np.zeros((ds.x.size, ds["time"].size))
-                for tai, taxi, tai_var in zip(
-                    talpha_fw.T, trans_att, talpha_fw_var.T
-                ):
+                for tai, taxi, tai_var in zip(talpha_fw.T, trans_att, talpha_fw_var.T):
                     ta_arr_fw[ds.x.values >= taxi] = (
                         ta_arr_fw[ds.x.values >= taxi] + tai
                     )
@@ -2186,9 +2168,7 @@ def calc_alpha_double(
 
                 ta_arr_bw = np.zeros((ds.x.size, ds["time"].size))
                 ta_arr_bw_var = np.zeros((ds.x.size, ds["time"].size))
-                for tai, taxi, tai_var in zip(
-                    talpha_bw.T, trans_att, talpha_bw_var.T
-                ):
+                for tai, taxi, tai_var in zip(talpha_bw.T, trans_att, talpha_bw_var.T):
                     ta_arr_bw[ds.x.values < taxi] = ta_arr_bw[ds.x.values < taxi] + tai
                     ta_arr_bw_var[ds.x.values < taxi] = (
                         ta_arr_bw_var[ds.x.values < taxi] + tai_var
@@ -2289,13 +2269,19 @@ def match_sections(ds, matching_sections):
         )
 
     hix = ds.dts.ufunc_per_section(
-        sections={0: [i[0] for i in matching_sections]}, x_indices=True, calc_per="all", suppress_section_validation=True
+        sections={0: [i[0] for i in matching_sections]},
+        x_indices=True,
+        calc_per="all",
+        suppress_section_validation=True,
     )
 
     tixl = []
     for _, tslice, reverse_flag in matching_sections:
         ixi = ds.dts.ufunc_per_section(
-            sections={0: [tslice]}, x_indices=True, calc_per="all", suppress_section_validation=True
+            sections={0: [tslice]},
+            x_indices=True,
+            calc_per="all",
+            suppress_section_validation=True,
         )
 
         if reverse_flag:

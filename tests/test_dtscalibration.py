@@ -6,6 +6,7 @@ import pytest
 import scipy.sparse as sp
 from scipy import stats
 from xarray import Dataset
+
 from dtscalibration.calibrate_utils import wls_sparse
 from dtscalibration.calibrate_utils import wls_stats
 from dtscalibration.dts_accessor import DtsAccessor  # noqa: F401
@@ -260,7 +261,9 @@ def test_double_ended_wls_estimate_synthetic_df_and_db_are_different():
     assert_almost_equal_verbose(df, out["df"].values, decimal=14)
     assert_almost_equal_verbose(db, out["db"].values, decimal=13)
     assert_almost_equal_verbose(
-        x * (dalpha_p - dalpha_m), out["alpha"].values - out["alpha"].values[0], decimal=13
+        x * (dalpha_p - dalpha_m),
+        out["alpha"].values - out["alpha"].values[0],
+        decimal=13,
     )
     assert np.all(np.abs(real_ans2 - out["p_val"].values) < 1e-10)
     assert_almost_equal_verbose(temp_real_celsius, out["tmpf"].values, decimal=10)
@@ -1476,7 +1479,7 @@ def test_double_ended_exponential_variance_estimate_synthetic():
     rast_label = "rast"
 
     # MC variance
-    out = ds.dts.calibrate_double_ended(
+    ds.dts.calibrate_double_ended(
         sections=sections,
         st_label=st_label,
         ast_label=ast_label,
@@ -1847,12 +1850,8 @@ def test_single_ended_wls_fix_dalpha_synthetic():
         fix_dalpha=(dalpha_p - dalpha_m, 0.0),
     )
     assert_almost_equal_verbose(out.gamma.values, gamma, decimal=12)
-    assert_almost_equal_verbose(
-        out.dalpha.values, dalpha_p - dalpha_m, decimal=14
-    )
-    assert_almost_equal_verbose(
-        out.alpha.values, x * (dalpha_p - dalpha_m), decimal=14
-    )
+    assert_almost_equal_verbose(out.dalpha.values, dalpha_p - dalpha_m, decimal=14)
+    assert_almost_equal_verbose(out.alpha.values, x * (dalpha_p - dalpha_m), decimal=14)
     assert_almost_equal_verbose(out.tmpf.values, temp_real - 273.15, decimal=10)
 
     # Test fix_alpha
@@ -1867,9 +1866,7 @@ def test_single_ended_wls_fix_dalpha_synthetic():
     )
 
     assert_almost_equal_verbose(out.gamma.values, gamma, decimal=12)
-    assert_almost_equal_verbose(
-        out.alpha.values, x * (dalpha_p - dalpha_m), decimal=14
-    )
+    assert_almost_equal_verbose(out.alpha.values, x * (dalpha_p - dalpha_m), decimal=14)
     assert_almost_equal_verbose(out.tmpf.values, temp_real - 273.15, decimal=10)
 
     pass
@@ -2114,7 +2111,7 @@ def test_single_ended_trans_att_synthetic():
         st_var=1.0,
         ast_var=1.0,
         method="wls",
-        trans_att=[40., 60.],
+        trans_att=[40.0, 60.0],
         solver="sparse",
     )
 
@@ -2136,7 +2133,7 @@ def test_single_ended_trans_att_synthetic():
         ast_var=1.0,
         method="wls",
         fix_gamma=(482.6, 0),
-        trans_att=[40., 60.],
+        trans_att=[40.0, 60.0],
         solver="sparse",
     )
 
@@ -2483,11 +2480,9 @@ def test_single_ended_exponential_variance_estimate_synthetic():
         conf_ints=[2.5, 50.0, 97.5],
         mc_sample_size=50,
         da_random_state=state,
-        mc_remove_set_flag=False
+        mc_remove_set_flag=False,
     )
     ds2.update(out_ci)
-
-
 
     # Use a single timestep to better check if the parameter uncertainties
     # propagate

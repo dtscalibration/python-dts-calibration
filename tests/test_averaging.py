@@ -1,6 +1,7 @@
 import os
 
 import numpy as np
+
 from dtscalibration import read_silixa_files
 from dtscalibration.dts_accessor import DtsAccessor  # noqa: F401
 
@@ -71,10 +72,12 @@ def test_average_measurements_single_ended():
         ci_avg_x_flag1=True,
         ci_avg_x_sel=slice(6.0, 14.0),
     )
+
     def get_section_indices(x_da, sec):
         """Returns the x-indices of the section. `sec` is a slice."""
         xis = x_da.astype(int) * 0 + np.arange(x_da.size, dtype=int)
         return xis.sel(x=sec).values
+
     ix = get_section_indices(ds.x, slice(6, 14))
     ds.dts.average_monte_carlo_single_ended(
         result=out,
@@ -145,10 +148,12 @@ def test_average_measurements_double_ended():
         ci_avg_x_flag1=True,
         ci_avg_x_sel=slice(6, 10),
     )
+
     def get_section_indices(x_da, sec):
         """Returns the x-indices of the section. `sec` is a slice."""
         xis = x_da.astype(int) * 0 + np.arange(x_da.size, dtype=int)
         return xis.sel(x=sec).values
+
     ix = get_section_indices(ds.x, slice(6, 10))
     ds.dts.average_monte_carlo_double_ended(
         result=out,

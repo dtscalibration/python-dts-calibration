@@ -190,7 +190,7 @@ def check_allclose_acquisitiontime(acquisitiontime, eps: float = 0.05) -> None:
     dtmin = acquisitiontime.min()
     dtmax = acquisitiontime.max()
     dtavg = (dtmin + dtmax) / 2
-    assert (dtmax - dtmin) / dtavg < eps, (
-        "Acquisition time is Forward channel not equal for all time steps"
-    )
+    assert (
+        dtmax - dtmin
+    ) / dtavg < eps, "Acquisition time is Forward channel not equal for all time steps"
     pass

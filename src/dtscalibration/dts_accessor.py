@@ -1,15 +1,17 @@
 import dask.array as da
 import numpy as np
+import scipy.stats as sst
 import xarray as xr
 import yaml
-import scipy.stats as sst
 
-from dtscalibration.calibration.section_utils import validate_sections, validate_sections_definition, validate_no_overlapping_sections
 from dtscalibration.calibrate_utils import calibrate_double_ended_helper
 from dtscalibration.calibrate_utils import calibration_single_ended_helper
 from dtscalibration.calibrate_utils import parse_st_var
-from dtscalibration.calibration.section_utils import set_sections
 from dtscalibration.calibration.section_utils import set_matching_sections
+from dtscalibration.calibration.section_utils import set_sections
+from dtscalibration.calibration.section_utils import validate_no_overlapping_sections
+from dtscalibration.calibration.section_utils import validate_sections
+from dtscalibration.calibration.section_utils import validate_sections_definition
 from dtscalibration.datastore_utils import ParameterIndexDoubleEnded
 from dtscalibration.datastore_utils import ParameterIndexSingleEnded
 from dtscalibration.datastore_utils import get_params_from_pval_double_ended
@@ -34,7 +36,7 @@ class DtsAccessor:
         # None if doesn't exist
         self.st = xarray_obj.get("st")
         self.ast = xarray_obj.get("ast")
-        self.rst = xarray_obj.get("rst")    
+        self.rst = xarray_obj.get("rst")
         self.rast = xarray_obj.get("rast")
 
         self.acquisitiontime_fw = xarray_obj.get("userAcquisitionTimeFW")
@@ -129,7 +131,7 @@ class DtsAccessor:
             "ds.dts.calibrate_single_ended() or ds.dts.calibrate_double_ended()."
         )
         raise NotImplementedError(msg)
-    
+
     # noinspection PyIncorrectDocstring
     @property
     def matching_sections(self):
@@ -156,7 +158,9 @@ class DtsAccessor:
         if "_matching_sections" not in self._obj.attrs:
             self._obj.attrs["_matching_sections"] = yaml.dump(None)
 
-        return yaml.load(self._obj.attrs["_matching_sections"], Loader=yaml.UnsafeLoader)
+        return yaml.load(
+            self._obj.attrs["_matching_sections"], Loader=yaml.UnsafeLoader
+        )
 
     @matching_sections.deleter
     def matching_sections(self):
@@ -267,13 +271,13 @@ class DtsAccessor:
                 v["chunksizes"] = chunks
 
         return encoding
-    
+
     def get_timeseries_keys(self):
         """
         Returns a list of the keys of the time series variables.
         """
         return [k for k, v in self._obj.data_vars.items() if v.dims == ("time",)]
-    
+
     def ufunc_per_section(
         self,
         sections=None,
@@ -409,8 +413,10 @@ class DtsAccessor:
 
         if temp_err or ref_temp_broadcasted:
             for k in sections:
-                assert k in self._obj, f"{k} is not in the Dataset but is in `sections` and is required to compute temp_err"
-        
+                assert (
+                    k in self._obj
+                ), f"{k} is not in the Dataset but is in `sections` and is required to compute temp_err"
+
         if label is None:
             dataarray = None
         else:
@@ -586,7 +592,9 @@ class DtsAccessor:
 
         """
         # out contains the state
-        out = xr.Dataset(coords={"x": self.x, "time": self.time, "trans_att": trans_att}).copy()
+        out = xr.Dataset(
+            coords={"x": self.x, "time": self.time, "trans_att": trans_att}
+        ).copy()
         out.coords["x"].attrs = dim_attrs["x"]
         out.coords["trans_att"].attrs = dim_attrs["trans_att"]
 
@@ -677,8 +685,7 @@ class DtsAccessor:
 
         var_fw_dict = dict(
             dT_dst=deriv_ds.T_st_fw**2 * parse_st_var(self.st, st_var),
-            dT_dast=deriv_ds.T_ast_fw**2
-            * parse_st_var(self.ast, ast_var),
+            dT_dast=deriv_ds.T_ast_fw**2 * parse_st_var(self.ast, ast_var),
             dT_gamma=deriv_ds.T_gamma_fw**2 * param_covs["gamma"],
             dT_dc=deriv_ds.T_c_fw**2 * param_covs["c"],
             dT_ddalpha=deriv_ds.T_alpha_fw**2
@@ -730,7 +737,6 @@ class DtsAccessor:
             out[key + "_var"] = dataarray
 
         return out
-    
 
     def calibrate_double_ended(
         self,
@@ -953,7 +959,9 @@ class DtsAccessor:
     08Calibrate_double_wls.ipynb>`_
         """
         # out contains the state
-        out = xr.Dataset(coords={"x": self.x, "time": self.time, "trans_att": trans_att}).copy()
+        out = xr.Dataset(
+            coords={"x": self.x, "time": self.time, "trans_att": trans_att}
+        ).copy()
         out.coords["x"].attrs = dim_attrs["x"]
         out.coords["trans_att"].attrs = dim_attrs["trans_att"]
 
@@ -988,7 +996,7 @@ class DtsAccessor:
         assert not np.any(self.rast.isel(x=ix_sec) <= 0.0), (
             "There is uncontrolled noise in the REV-AST signal. Are your "
             "sections correctly defined?"
-        )        
+        )
 
         if method == "wls":
             p_cov, p_val, p_var = calibrate_double_ended_helper(
@@ -1034,17 +1042,17 @@ class DtsAccessor:
         )
 
         tmpf = params["gamma"] / (
-                    np.log(self.st / self.ast)
-                    + params["df"]
-                    + params["alpha"]
-                    + params["talpha_fw_full"]
-                )
+            np.log(self.st / self.ast)
+            + params["df"]
+            + params["alpha"]
+            + params["talpha_fw_full"]
+        )
         tmpb = params["gamma"] / (
-                    np.log(self.rst / self.rast)
-                    + params["db"]
-                    - params["alpha"]
-                    + params["talpha_bw_full"]
-                )
+            np.log(self.rst / self.rast)
+            + params["db"]
+            - params["alpha"]
+            + params["talpha_bw_full"]
+        )
         out["tmpf"] = tmpf - 273.15
         out["tmpb"] = tmpb - 273.15
 
@@ -1067,8 +1075,7 @@ class DtsAccessor:
 
         var_fw_dict = dict(
             dT_dst=deriv_ds.T_st_fw**2 * parse_st_var(self.st, st_var),
-            dT_dast=deriv_ds.T_ast_fw**2
-            * parse_st_var(self.ast, ast_var),
+            dT_dast=deriv_ds.T_ast_fw**2 * parse_st_var(self.ast, ast_var),
             dT_gamma=deriv_ds.T_gamma_fw**2 * param_covs["gamma"],
             dT_ddf=deriv_ds.T_df_fw**2 * param_covs["df"],
             dT_dalpha=deriv_ds.T_alpha_fw**2 * param_covs["alpha"],
@@ -1094,10 +1101,8 @@ class DtsAccessor:
             ),
         )
         var_bw_dict = dict(
-            dT_drst=deriv_ds.T_rst_bw**2
-            * parse_st_var(self.rst, rst_var),
-            dT_drast=deriv_ds.T_rast_bw**2
-            * parse_st_var(self.rast, rast_var),
+            dT_drst=deriv_ds.T_rst_bw**2 * parse_st_var(self.rst, rst_var),
+            dT_drast=deriv_ds.T_rast_bw**2 * parse_st_var(self.rast, rast_var),
             dT_gamma=deriv_ds.T_gamma_bw**2 * param_covs["gamma"],
             dT_ddb=deriv_ds.T_db_bw**2 * param_covs["db"],
             dT_dalpha=deriv_ds.T_alpha_bw**2 * param_covs["alpha"],
@@ -1158,12 +1163,9 @@ class DtsAccessor:
         # TODO: sigma2_tafw_tabw
         var_w_dict = dict(
             dT_dst=deriv_ds2.T_st_w**2 * parse_st_var(self.st, st_var),
-            dT_dast=deriv_ds2.T_ast_w**2
-            * parse_st_var(self.ast, ast_var),
-            dT_drst=deriv_ds2.T_rst_w**2
-            * parse_st_var(self.rst, rst_var),
-            dT_drast=deriv_ds2.T_rast_w**2
-            * parse_st_var(self.rast, rast_var),
+            dT_dast=deriv_ds2.T_ast_w**2 * parse_st_var(self.ast, ast_var),
+            dT_drst=deriv_ds2.T_rst_w**2 * parse_st_var(self.rst, rst_var),
+            dT_drast=deriv_ds2.T_rast_w**2 * parse_st_var(self.rast, rast_var),
             dT_gamma=deriv_ds2.T_gamma_w**2 * param_covs["gamma"],
             dT_ddf=deriv_ds2.T_df_w**2 * param_covs["df"],
             dT_ddb=deriv_ds2.T_db_w**2 * param_covs["db"],
@@ -1244,9 +1246,10 @@ class DtsAccessor:
         mc_sample_size=100,
         da_random_state=None,
         reduce_memory_usage=False,
-        mc_remove_set_flag=True):
+        mc_remove_set_flag=True,
+    ):
         """The result object is what comes out of the single_ended_calibration routine)
-        
+
         TODO: Use get_params_from_pval_single_ended() to extract parameter sets from mc
         """
         assert self.st.dims[0] == "x", "Stokes are transposed"
@@ -1258,7 +1261,9 @@ class DtsAccessor:
             state = da.random.RandomState()
 
         # out contains the state
-        out = xr.Dataset(coords={"x": self.x, "time": self.time, "trans_att": result["trans_att"]}).copy()
+        out = xr.Dataset(
+            coords={"x": self.x, "time": self.time, "trans_att": result["trans_att"]}
+        ).copy()
         out.coords["x"].attrs = dim_attrs["x"]
         out.coords["trans_att"].attrs = dim_attrs["trans_att"]
         out.coords["CI"] = conf_ints
@@ -1312,10 +1317,10 @@ class DtsAccessor:
                 (mc_sample_size, no, nt), chunks={0: -1, 1: "auto", 2: "auto"}
             ).chunks
 
-
         # Draw from the normal distributions for the Stokes intensities
-        for key_mc, sti, st_vari in zip(["r_st", "r_ast"], [self.st, self.ast], 
-                                        [st_var, ast_var]):
+        for key_mc, sti, st_vari in zip(
+            ["r_st", "r_ast"], [self.st, self.ast], [st_var, ast_var]
+        ):
             # Load the mean as chunked Dask array, otherwise eats memory
             if type(sti.data) == da.core.Array:
                 loc = da.asarray(sti.data, chunks=memchunk[1:])
@@ -1336,14 +1341,10 @@ class DtsAccessor:
                 st_vari_da = da.asarray(st_vari, chunks=memchunk[1:])
 
             elif callable(st_vari) and type(sti.data) == da.core.Array:
-                st_vari_da = da.asarray(
-                    st_vari(sti).data, chunks=memchunk[1:]
-                )
+                st_vari_da = da.asarray(st_vari(sti).data, chunks=memchunk[1:])
 
             elif callable(st_vari) and type(sti.data) != da.core.Array:
-                st_vari_da = da.from_array(
-                    st_vari(sti).data, chunks=memchunk[1:]
-                )
+                st_vari_da = da.from_array(st_vari(sti).data, chunks=memchunk[1:])
 
             else:
                 st_vari_da = da.from_array(st_vari, chunks=memchunk[1:])
@@ -1433,7 +1434,7 @@ class DtsAccessor:
         exclude_parameter_uncertainty=False,
         da_random_state=None,
         mc_remove_set_flag=True,
-        reduce_memory_usage=False
+        reduce_memory_usage=False,
     ):
         r"""
         Estimation of the confidence intervals for the temperatures measured
@@ -1594,7 +1595,9 @@ class DtsAccessor:
         else:
             state = da.random.RandomState()
 
-        out = xr.Dataset(coords={"x": self.x, "time": self.time, "trans_att": result["trans_att"]}).copy()
+        out = xr.Dataset(
+            coords={"x": self.x, "time": self.time, "trans_att": result["trans_att"]}
+        ).copy()
         out.coords["x"].attrs = dim_attrs["x"]
         out.coords["trans_att"].attrs = dim_attrs["trans_att"]
         out.coords["CI"] = conf_ints
@@ -1766,14 +1769,10 @@ class DtsAccessor:
                 st_vari_da = da.asarray(st_vari, chunks=memchunk[1:])
 
             elif callable(st_vari) and type(sti.data) == da.core.Array:
-                st_vari_da = da.asarray(
-                    st_vari(sti).data, chunks=memchunk[1:]
-                )
+                st_vari_da = da.asarray(st_vari(sti).data, chunks=memchunk[1:])
 
             elif callable(st_vari) and type(sti.data) != da.core.Array:
-                st_vari_da = da.from_array(
-                    st_vari(sti).data, chunks=memchunk[1:]
-                )
+                st_vari_da = da.from_array(st_vari(sti).data, chunks=memchunk[1:])
 
             else:
                 st_vari_da = da.from_array(st_vari, chunks=memchunk[1:])
@@ -1839,9 +1838,7 @@ class DtsAccessor:
                 xi = self.ufunc_per_section(
                     sections=sections, x_indices=True, calc_per="all"
                 )
-                x_mask_ = [
-                    True if ix in xi else False for ix in range(params.x.size)
-                ]
+                x_mask_ = [True if ix in xi else False for ix in range(params.x.size)]
                 x_mask = np.reshape(x_mask_, (1, -1, 1))
                 params[label + "_mc_set"] = params[label + "_mc_set"].where(x_mask)
 
@@ -1921,7 +1918,7 @@ class DtsAccessor:
             out.update(params)
 
         return out
-    
+
     def average_monte_carlo_single_ended(
         self,
         result,
@@ -2048,9 +2045,11 @@ class DtsAccessor:
         Returns
         -------
 
-        """    
+        """
         # out contains the state
-        out = xr.Dataset(coords={"x": self.x, "time": self.time, "trans_att": result["trans_att"]}).copy()
+        out = xr.Dataset(
+            coords={"x": self.x, "time": self.time, "trans_att": result["trans_att"]}
+        ).copy()
         out.coords["x"].attrs = dim_attrs["x"]
         out.coords["trans_att"].attrs = dim_attrs["trans_att"]
         out.coords["CI"] = conf_ints
@@ -2419,7 +2418,9 @@ class DtsAccessor:
         #         ).rechunk((1, chunks[1], 1))
         #     return arr
 
-        out = xr.Dataset(coords={"x": self.x, "time": self.time, "trans_att": result["trans_att"]}).copy()
+        out = xr.Dataset(
+            coords={"x": self.x, "time": self.time, "trans_att": result["trans_att"]}
+        ).copy()
         out.coords["x"].attrs = dim_attrs["x"]
         out.coords["trans_att"].attrs = dim_attrs["trans_att"]
         out.coords["CI"] = conf_ints

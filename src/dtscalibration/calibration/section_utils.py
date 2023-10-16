@@ -5,11 +5,13 @@ import yaml
 from dtscalibration.datastore_utils import ufunc_per_section_helper
 
 
-def set_sections(ds: xr.Dataset, sections: dict[str, list[slice]] = None):
+def set_sections(ds: xr.Dataset, sections: dict[str, list[slice]]):
     ds.attrs["_sections"] = yaml.dump(sections)
 
 
-def set_matching_sections(ds: xr.Dataset, matching_sections: dict[str, list[slice]] = None):
+def set_matching_sections(
+    ds: xr.Dataset, matching_sections: dict[str, list[slice]]
+):
     ds.attrs["_matching_sections"] = yaml.dump(matching_sections)
 
 
@@ -42,7 +44,7 @@ def validate_no_overlapping_sections(sections: dict[str, list[slice]]):
     all_start_stop = [[stretch.start, stretch.stop] for stretch in all_stretches]
     isorted_start = np.argsort([i[0] for i in all_start_stop])
     all_start_stop_startsort = [all_start_stop[i] for i in isorted_start]
-    all_start_stop_startsort_flat = sum(all_start_stop_startsort, [])
+    all_start_stop_startsort_flat = sum(all_start_stop_startsort, [])  # type: ignore
     assert all_start_stop_startsort_flat == sorted(
         all_start_stop_startsort_flat
     ), "Sections contains overlapping stretches"
@@ -75,9 +77,7 @@ def validate_sections_definition(sections: dict[str, list[slice]]):
 
     for k, v in sections.items():
         assert isinstance(k, str), (
-            "The keys of the "
-            "sections-dictionary should "
-            "be strings"
+            "The keys of the " "sections-dictionary should " "be strings"
         )
 
         assert isinstance(v, (list, tuple)), (
@@ -115,7 +115,7 @@ def validate_sections(ds: xr.Dataset, sections: dict[str, list[slice]]):
     """
     validate_sections_definition(sections=sections)
     validate_no_overlapping_sections(sections=sections)
-    
+
     for k, v in sections.items():
         assert k in ds.data_vars, (
             "The keys of the "
