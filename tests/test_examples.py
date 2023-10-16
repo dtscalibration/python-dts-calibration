@@ -64,7 +64,7 @@ def _notebook_run(path):
 def test_ipynb():
     file_ext = "*.ipynb"
     wd = os.path.dirname(os.path.abspath(__file__))
-    nb_dir = os.path.join(wd, "..", "examples", "notebooks", file_ext)
+    nb_dir = os.path.join(wd, "..", "docs", "notebooks", file_ext)
     filepathlist = glob.glob(nb_dir)
 
     for fp in filepathlist:
