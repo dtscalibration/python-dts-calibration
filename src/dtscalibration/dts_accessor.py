@@ -15,7 +15,7 @@ from dtscalibration.datastore_utils import ParameterIndexSingleEnded
 from dtscalibration.datastore_utils import get_params_from_pval_double_ended
 from dtscalibration.datastore_utils import get_params_from_pval_single_ended
 from dtscalibration.datastore_utils import ufunc_per_section_helper
-from dtscalibration.io_utils import dim_attrs
+from dtscalibration.io.utils import dim_attrs
 
 
 @xr.register_dataset_accessor("dts")

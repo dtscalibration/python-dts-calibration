@@ -4,8 +4,8 @@ from typing import Any
 from typing import Union
 
 import numpy as np
+import xarray as xr
 
-from dtscalibration import DataStore
 from dtscalibration.io.utils import coords_time
 from dtscalibration.io.utils import dim_attrs
 
@@ -16,7 +16,7 @@ def read_sensortran_files(
     timezone_netcdf: str = "UTC",
     silent: bool = False,
     **kwargs,
-) -> DataStore:
+) -> xr.Dataset:
     """Read a folder with measurement files from a device of the Sensortran
     brand. Each measurement file contains values for a single timestep. Remember
     to check which timezone you are working in.
@@ -77,7 +77,7 @@ def read_sensortran_files(
             "Sensortran binary version " + f"{version} not implemented"
         )
 
-    ds = DataStore(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
+    ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
     return ds
 
 

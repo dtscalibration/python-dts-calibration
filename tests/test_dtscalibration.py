@@ -6,13 +6,10 @@ import pytest
 import scipy.sparse as sp
 from scipy import stats
 from xarray import Dataset
-from dtscalibration import read_silixa_files
 from dtscalibration.calibrate_utils import wls_sparse
 from dtscalibration.calibrate_utils import wls_stats
-from dtscalibration.datastore_accessor import DtsAccessor  # noqa: F401
+from dtscalibration import DtsAccessor  # noqa: F401
 from dtscalibration.variance_stokes import variance_stokes_exponential
-from dtscalibration.variance_stokes import variance_stokes_constant
-from dtscalibration.variance_stokes import variance_stokes_linear
 
 np.random.seed(0)
 
