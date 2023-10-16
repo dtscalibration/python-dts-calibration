@@ -24,12 +24,10 @@ readme = "README.rst"
 license = "BSD-3-Clause"
 requires-python = ">=3.9, <3.12"
 authors = [
-  {name = "Bas des Tombe", email = "bdestombe@gmail.com"},
-  {name = "Bart Schilperoort", email = "b.schilperoort@gmail.com"},
+  {name = "Bas des Tombe, Bart Schilperoort"},
 ]
 maintainers = [
-  {name = "Bas des Tombe", email = "bdestombe@gmail.com"},
-  {name = "Bart Schilperoort", email = "b.schilperoort@gmail.com"},
+  {name = "Bas des Tombe, Bart Schilperoort"},
 ]
 keywords = [
   "DTS",
@@ -56,15 +54,15 @@ dependencies = [
     "dask",
     "pandas",
     "xarray[parallel]",     # numbagg (llvmlite) is a pain to install with pip
-    "bottleneck",           # optional, speed up Xarray
-    "flox",                 # optional, speed up Xarray
+    "bottleneck",           # speeds up Xarray
+    "flox",                 # speeds up Xarray
     "pyyaml>=6.0.1",
     "xmltodict",
     "scipy",
     "statsmodels",
     "matplotlib",
     "netCDF4>=1.6.4",
-    "nc-time-axis>=1.4.1"  # optional plot dependency of xarray
+    "nc-time-axis>=1.4.1"  # plot dependency of xarray
 ]
 dynamic = ["version"]
 

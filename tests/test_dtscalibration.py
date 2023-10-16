@@ -1,4 +1,5 @@
 import os
+import warnings
 
 import numpy as np
 import pytest
@@ -43,7 +44,11 @@ else:
 def assert_almost_equal_verbose(actual, desired, verbose=False, **kwargs):
     """Print the actual precision decimals"""
     err = np.abs(actual - desired).max()
-    dec = -np.ceil(np.log10(err))
+
+    with warnings.catch_warnings():
+        # Supress zero division warnings
+        warnings.filterwarnings("ignore", message="divide by zero encountered in log10")
+        dec = -np.ceil(np.log10(err))
 
     if not (np.isfinite(dec)):
         dec = 18.0
@@ -2547,5 +2552,3 @@ def test_calibrate_wls_solver_procedures():
     np.testing.assert_array_almost_equal(p_cov, psp_cov, decimal=dec)
 
     pass
-
-

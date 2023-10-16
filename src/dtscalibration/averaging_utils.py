@@ -7,12 +7,7 @@ def inverse_variance_weighted_mean(
     tmpw_store="tmpw",
     tmpw_var_store="tmpw_var",
 ):
-    """
-    Average two temperature datasets with the inverse of the variance as
-    weights. The two
-    temperature datasets `tmp1` and `tmp2` with their variances
-    `tmp1_var` and `tmp2_var`,
-    respectively. Are averaged and stored in the DataStore.
+    """Compute inverse variance weighted average, and add result in-place. 
 
     Parameters
     ----------

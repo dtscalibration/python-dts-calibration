@@ -242,7 +242,7 @@ def calibration_single_ended_solver(  # noqa: MC0001
 
     """
     # get ix_sec argsort so the sections are in order of increasing x
-    ix_sec = ds.dts.ufunc_per_section(sections=sections, x_indices=True, calc_per="all")
+    ix_sec = ds.ufunc_per_section(x_indices=True, calc_per="all")
     ds_sec = ds.isel(x=ix_sec)
 
     x_sec = ds_sec["x"].values
@@ -261,8 +261,8 @@ def calibration_single_ended_solver(  # noqa: MC0001
     p0_est_alpha = np.asarray([485.0] + no * [0.0] + nt * [1.4] + nta * nt * [0.0])
 
     # X \gamma  # Eq.34
-    cal_ref = ds.dts.ufunc_per_section(
-        sections=sections, label="st", ref_temp_broadcasted=True, calc_per="all"
+    cal_ref = ds.ufunc_per_section(
+        label="st", ref_temp_broadcasted=True, calc_per="all"
     )
     # cal_ref = cal_ref  # sort by increasing x
     data_gamma = 1 / (cal_ref.T.ravel() + 273.15)  # gamma
@@ -1195,7 +1195,7 @@ def calibration_double_ended_solver(  # noqa: MC0001
     -------
 
     """
-    ix_sec = ds.dts.ufunc_per_section(sections=sections, x_indices=True, calc_per="all")
+    ix_sec = ds.ufunc_per_section(x_indices=True, calc_per="all")
     ds_sec = ds.isel(x=ix_sec)
     ix_alpha_is_zero = ix_sec[0]  # per definition of E
 
@@ -1224,7 +1224,7 @@ def calibration_double_ended_solver(  # noqa: MC0001
         Zero_d,
         Z_TA_fw,
         Z_TA_bw,
-    ) = construct_submatrices(sections, nt, nx_sec, ds, trans_att, x_sec)
+    ) = construct_submatrices(nt, nx_sec, ds, ds.trans_att.values, x_sec)
 
     # y  # Eq.41--45
     y_F = np.log(ds_sec.st / ds_sec.ast).values.ravel()
@@ -1859,9 +1859,7 @@ def construct_submatrices(sections, nt, nx, ds, trans_att, x_sec):
 
     # Z \gamma  # Eq.47
     cal_ref = np.array(
-        ds.dts.ufunc_per_section(
-            sections=sections, label="st", ref_temp_broadcasted=True, calc_per="all"
-        )
+        ds.ufunc_per_section(label="st", ref_temp_broadcasted=True, calc_per="all")
     )
     data_gamma = 1 / (cal_ref.ravel() + 273.15)  # gamma
     coord_gamma_row = np.arange(nt * nx, dtype=int)
@@ -2242,10 +2240,10 @@ def calc_df_db_double_est(ds, sections, ix_alpha_is_zero, gamma_est):
     Ibwx0 = np.log(
         ds.rst.isel(x=ix_alpha_is_zero) / ds.rast.isel(x=ix_alpha_is_zero)
     ).values
-    ref_temps_refs = ds.dts.ufunc_per_section(
-        sections=sections, label="st", ref_temp_broadcasted=True, calc_per="all"
+    ref_temps_refs = ds.ufunc_per_section(
+        label="st", ref_temp_broadcasted=True, calc_per="all"
     )
-    ix_sec = ds.dts.ufunc_per_section(sections=sections, x_indices=True, calc_per="all")
+    ix_sec = ds.ufunc_per_section(x_indices=True, calc_per="all")
     ref_temps_x0 = (
         ref_temps_refs[ix_sec == ix_alpha_is_zero].flatten().compute() + 273.15
     )
