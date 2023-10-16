@@ -1,4 +1,3 @@
-from dtscalibration import DtsAccessor
 from dtscalibration.datastore_utils import check_dims
 from dtscalibration.datastore_utils import get_netcdf_encoding
 from dtscalibration.datastore_utils import merge_double_ended
@@ -16,7 +15,6 @@ from dtscalibration.plot import plot_sigma_report
 
 __version__ = "2.0.0"
 __all__ = [
-    "DTSAccessor",
     "read_apsensing_files",
     "read_sensornet_files",
     "read_sensortran_files",

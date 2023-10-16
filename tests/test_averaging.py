@@ -2,7 +2,7 @@ import os
 
 import numpy as np
 from dtscalibration import read_silixa_files
-from dtscalibration import DtsAccessor  # noqa: F401
+from dtscalibration.dts_accessor import DtsAccessor  # noqa: F401
 
 np.random.seed(0)
 

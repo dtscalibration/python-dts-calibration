@@ -8,7 +8,7 @@ from scipy import stats
 from xarray import Dataset
 from dtscalibration.calibrate_utils import wls_sparse
 from dtscalibration.calibrate_utils import wls_stats
-from dtscalibration import DtsAccessor  # noqa: F401
+from dtscalibration.dts_accessor import DtsAccessor  # noqa: F401
 from dtscalibration.variance_stokes import variance_stokes_exponential
 
 np.random.seed(0)
