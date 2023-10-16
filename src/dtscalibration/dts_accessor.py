@@ -5,7 +5,7 @@ import yaml
 import scipy.stats as sst
 
 from dtscalibration.calibration.section_utils import validate_sections, validate_sections_definition, validate_no_overlapping_sections
-from dtscalibration.calibrate_utils import calibration_double_ended_helper
+from dtscalibration.calibrate_utils import calibrate_double_ended_helper
 from dtscalibration.calibrate_utils import calibration_single_ended_helper
 from dtscalibration.calibrate_utils import parse_st_var
 from dtscalibration.calibration.section_utils import set_sections
@@ -732,7 +732,7 @@ class DtsAccessor:
         return out
     
 
-    def calibration_double_ended(
+    def calibrate_double_ended(
         self,
         sections,
         st_var,
@@ -991,7 +991,7 @@ class DtsAccessor:
         )        
 
         if method == "wls":
-            p_cov, p_val, p_var = calibration_double_ended_helper(
+            p_cov, p_val, p_var = calibrate_double_ended_helper(
                 self._obj,
                 sections,
                 st_var,

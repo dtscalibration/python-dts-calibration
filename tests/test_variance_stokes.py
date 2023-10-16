@@ -279,10 +279,10 @@ def test_variance_input_types_double():
         / (1 - np.exp(-gamma / temp_real))
     )
 
-    st_m = st + stats.norm.rvs(size=st.shape, scale=stokes_m_var**0.5)
-    ast_m = ast + stats.norm.rvs(size=ast.shape, scale=1.1 * stokes_m_var**0.5)
-    rst_m = rst + stats.norm.rvs(size=rst.shape, scale=0.9 * stokes_m_var**0.5)
-    rast_m = rast + stats.norm.rvs(size=rast.shape, scale=0.8 * stokes_m_var**0.5)
+    st_m = st + stats.norm.rvs(size=st.shape, scale=stokes_m_var**0.5, random_state=state)
+    ast_m = ast + stats.norm.rvs(size=ast.shape, scale=1.1 * stokes_m_var**0.5, random_state=state)
+    rst_m = rst + stats.norm.rvs(size=rst.shape, scale=0.9 * stokes_m_var**0.5, random_state=state)
+    rast_m = rast + stats.norm.rvs(size=rast.shape, scale=0.8 * stokes_m_var**0.5, random_state=state)
 
     print("alphaint", cable_len * (dalpha_p - dalpha_m))
     print("alpha", dalpha_p - dalpha_m)
@@ -312,7 +312,7 @@ def test_variance_input_types_double():
     # Test float input
     st_var = 5.0
 
-    out = ds.dts.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=st_var,
         ast_var=st_var,
@@ -346,7 +346,7 @@ def test_variance_input_types_double():
         offset = 0
         return slope * stokes + offset
 
-    out = ds.dts.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=st_var_callable,
         ast_var=st_var_callable,
@@ -377,7 +377,7 @@ def test_variance_input_types_double():
     # Test input with shape of (ntime, nx)
     st_var = ds.st.values * 0 + 20.0
 
-    out = ds.dts.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=st_var,
         ast_var=st_var,
@@ -405,7 +405,7 @@ def test_variance_input_types_double():
         ds.st.mean(dim="time").values * 0 + np.linspace(10, 50, num=ds.st.x.size)
     )
 
-    out = ds.dts.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=st_var,
         ast_var=st_var,
@@ -436,7 +436,7 @@ def test_variance_input_types_double():
     # Test input with shape (ntime)
     st_var = ds.st.mean(dim="x").values * 0 + np.linspace(5, 200, num=nt)
 
-    out = ds.dts.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=st_var,
         ast_var=st_var,
@@ -561,7 +561,7 @@ def test_double_ended_variance_estimate_synthetic():
     mrast_var = float(mrast_var)
 
     # MC variance
-    out = ds.dts.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=mst_var,
         ast_var=mast_var,

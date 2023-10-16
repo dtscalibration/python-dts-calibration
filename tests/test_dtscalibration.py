@@ -132,7 +132,7 @@ def test_double_ended_wls_estimate_synthetic():
     }
 
     # WLS
-    out = ds.dts.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=1e-7,
         ast_var=1e-7,
@@ -246,7 +246,7 @@ def test_double_ended_wls_estimate_synthetic_df_and_db_are_different():
 
     real_ans2 = np.concatenate(([gamma], df, db, E_real[:, 0]))
 
-    out = ds.dts.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=1.5,
         ast_var=1.5,
@@ -349,7 +349,7 @@ def test_fail_if_st_labels_are_passed_to_calibration_function():
         "warm": [slice(0.9 * cable_len, cable_len)],
     }
 
-    ds.dts.calibration_double_ended(
+    ds.dts.calibrate_double_ended(
         sections=sections,
         st_label="ST",
         ast_label="AST",
@@ -456,7 +456,7 @@ def test_double_ended_asymmetrical_attenuation():
         ],
     }
 
-    out = ds.dts.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=1.5,
         ast_var=1.5,
@@ -559,7 +559,7 @@ def test_double_ended_one_matching_section_and_one_asym_att():
         "warm": [slice(x[nx_per_sec], x[2 * nx_per_sec - 1])],
     }
 
-    out = ds.dts.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=1.5,
         ast_var=1.5,
@@ -689,7 +689,7 @@ def test_double_ended_two_matching_sections_and_two_asym_atts():
         ),
     ]
 
-    out = ds.dts.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=0.5,
         ast_var=0.5,
@@ -785,7 +785,7 @@ def test_double_ended_wls_fix_gamma_estimate_synthetic():
     }
 
     # WLS
-    out = ds.dts.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=1e-12,
         ast_var=1e-12,
@@ -878,7 +878,7 @@ def test_double_ended_wls_fix_alpha_estimate_synthetic():
     }
 
     # WLS
-    out = ds.dts.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=1e-7,
         ast_var=1e-7,
@@ -971,7 +971,7 @@ def test_double_ended_wls_fix_alpha_fix_gamma_estimate_synthetic():
     }
 
     # WLS
-    out = ds.dts.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=1e-7,
         ast_var=1e-7,
@@ -1078,7 +1078,7 @@ def test_double_ended_fix_alpha_matching_sections_and_one_asym_att():
         "warm": [slice(x[nx_per_sec], x[2 * nx_per_sec - 1])],
     }
 
-    out = ds.dts.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=1.5,
         ast_var=1.5,
@@ -1105,7 +1105,7 @@ def test_double_ended_fix_alpha_matching_sections_and_one_asym_att():
     alpha_adj = out["alpha"].values.copy()
     alpha_var_adj = out["alpha_var"].values.copy()
 
-    out = ds.dts.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=1.5,
         ast_var=1.5,
@@ -1216,7 +1216,7 @@ def test_double_ended_fix_alpha_gamma_matching_sections_and_one_asym_att():
         "warm": [slice(x[nx_per_sec], x[2 * nx_per_sec - 1])],
     }
 
-    out = ds.dts.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=1.5,
         ast_var=1.5,
@@ -1243,7 +1243,7 @@ def test_double_ended_fix_alpha_gamma_matching_sections_and_one_asym_att():
     alpha_adj = out["alpha"].values.copy()
     alpha_var_adj = out["alpha_var"].values.copy()
 
-    out = ds.dts.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=1.5,
         ast_var=1.5,
@@ -1355,7 +1355,7 @@ def test_double_ended_fix_gamma_matching_sections_and_one_asym_att():
         "warm": [slice(x[nx_per_sec], x[2 * nx_per_sec - 1])],
     }
 
-    out = ds.dts.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=1.5,
         ast_var=1.5,
@@ -1476,7 +1476,7 @@ def test_double_ended_exponential_variance_estimate_synthetic():
     rast_label = "rast"
 
     # MC variance
-    out = ds.dts.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_label=st_label,
         ast_label=ast_label,
@@ -1634,7 +1634,7 @@ def test_estimate_variance_of_temperature_estimate():
         "warm": [slice(0.5 * cable_len, 0.75 * cable_len)],
     }
     # MC variance
-    out = ds.dts.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=mst_var,
         ast_var=mast_var,

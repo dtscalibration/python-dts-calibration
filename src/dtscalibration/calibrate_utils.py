@@ -490,7 +490,7 @@ def calibration_single_ended_solver(  # noqa: MC0001
     return (p_sol, p_var, p_cov) if calc_cov else (p_sol, p_var)
 
 
-def calibration_double_ended_helper(
+def calibrate_double_ended_helper(
     self,
     sections,
     st_var,
@@ -519,7 +519,7 @@ def calibration_double_ended_helper(
         matching_indices = None
     
     if fix_alpha or fix_gamma:
-        split = calibration_double_ended_solver(
+        split = calibrate_double_ended_solver(
             self,
             sections,
             st_var,
@@ -534,7 +534,7 @@ def calibration_double_ended_helper(
             verbose=verbose,
         )
     else:
-        out = calibration_double_ended_solver(
+        out = calibrate_double_ended_solver(
             self,
             sections,
             st_var,
@@ -1125,7 +1125,7 @@ def calibration_double_ended_helper(
     return p_cov, p_val, p_var
 
 
-def calibration_double_ended_solver(  # noqa: MC0001
+def calibrate_double_ended_solver(  # noqa: MC0001
     ds,
     sections=None,
     st_var=None,

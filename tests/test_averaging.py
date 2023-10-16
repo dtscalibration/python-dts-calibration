@@ -125,7 +125,7 @@ def test_average_measurements_double_ended():
 
     st_var, ast_var, rst_var, rast_var = 5.0, 5.0, 5.0, 5.0
 
-    out = ds.dts.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=st_var,
         ast_var=ast_var,
