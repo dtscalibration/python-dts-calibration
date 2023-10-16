@@ -282,7 +282,7 @@ def read_silixa_files(
 
     else:
         raise NotImplementedError(
-            "Silixa xml version " + "{0} not implemented".format(xml_version)
+            "Silixa xml version " + f"{xml_version} not implemented"
         )
 
     ds = DataStore(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
@@ -332,7 +332,7 @@ def read_sensortran_files(
         # Check if corresponding temperature file exists
         if not os.path.isfile(filepathlist_temp[ii]):
             raise FileNotFoundError(
-                "Could not find BinaryTemp " + "file corresponding to {}".format(fname)
+                "Could not find BinaryTemp " + f"file corresponding to {fname}"
             )
 
     version = sensortran_binary_version_check(filepathlist_dts)
@@ -347,7 +347,7 @@ def read_sensortran_files(
         )
     else:
         raise NotImplementedError(
-            "Sensortran binary version " + "{0} not implemented".format(version)
+            "Sensortran binary version " + f"{version} not implemented"
         )
 
     ds = DataStore(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
@@ -423,10 +423,9 @@ def read_apsensing_files(
 
     else:
         warnings.warn(
-            "AP sensing device "
-            '"{0}"'.format(device)
-            + " has not been tested.\nPlease open an issue on github"
-            + " and provide an example file"
+            "AP sensing device {device}"
+            " has not been tested.\nPlease open an issue on github"
+            " and provide an example file"
         )
 
     data_vars, coords, attrs = read_apsensing_files_routine(
@@ -544,10 +543,9 @@ def read_sensornet_files(
     else:
         flip_reverse_measurements = False
         warnings.warn(
-            "Sensornet .dff version "
-            '"{0}"'.format(ddf_version)
-            + " has not been tested.\nPlease open an issue on github"
-            + " and provide an example file"
+            f"Sensornet .dff version {ddf_version}"
+            " has not been tested.\nPlease open an issue on github"
+            " and provide an example file"
         )
 
     data_vars, coords, attrs = read_sensornet_files_routine_v3(

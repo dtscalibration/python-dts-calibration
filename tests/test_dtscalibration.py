@@ -1,4 +1,3 @@
-# coding=utf-8
 import os
 
 import numpy as np
@@ -131,7 +130,11 @@ def test_variance_input_types_single():
     )
 
     ds.conf_int_single_ended(
-        st_var=st_var, ast_var=st_var, mc_sample_size=100, da_random_state=state
+        st_var=st_var,
+        ast_var=st_var,
+        mc_sample_size=100,
+        da_random_state=state,
+        mc_remove_set_flag=False,
     )
 
     assert_almost_equal_verbose(
@@ -321,6 +324,7 @@ def test_variance_input_types_double():
     )
 
     ds.conf_int_double_ended(
+        sections=sections,
         st_var=st_var,
         ast_var=st_var,
         rst_var=st_var,
@@ -353,6 +357,7 @@ def test_variance_input_types_double():
     )
 
     ds.conf_int_double_ended(
+        sections=sections,
         st_var=st_var_callable,
         ast_var=st_var_callable,
         rst_var=st_var_callable,
@@ -382,6 +387,7 @@ def test_variance_input_types_double():
     )
 
     ds.conf_int_double_ended(
+        sections=sections,
         st_var=st_var,
         ast_var=st_var,
         rst_var=st_var,
@@ -408,6 +414,7 @@ def test_variance_input_types_double():
     )
 
     ds.conf_int_double_ended(
+        sections=sections,
         st_var=st_var,
         ast_var=st_var,
         rst_var=st_var,
@@ -437,6 +444,7 @@ def test_variance_input_types_double():
     )
 
     ds.conf_int_double_ended(
+        sections=sections,
         st_var=st_var,
         ast_var=st_var,
         rst_var=st_var,
@@ -565,6 +573,7 @@ def test_double_ended_variance_estimate_synthetic():
     assert_almost_equal_verbose(ds.tmpb.mean(), 12.0, decimal=3)
 
     ds.conf_int_double_ended(
+        sections=sections,
         p_val="p_val",
         p_cov="p_cov",
         st_var=mst_var,
@@ -578,20 +587,28 @@ def test_double_ended_variance_estimate_synthetic():
 
     # Calibrated variance
     stdsf1 = ds.ufunc_per_section(
-        label="tmpf", func=np.std, temp_err=True, calc_per="stretch"
+        sections=sections, label="tmpf", func=np.std, temp_err=True, calc_per="stretch"
     )
     stdsb1 = ds.ufunc_per_section(
-        label="tmpb", func=np.std, temp_err=True, calc_per="stretch"
+        sections=sections, label="tmpb", func=np.std, temp_err=True, calc_per="stretch"
     )
 
     # Use a single timestep to better check if the parameter uncertainties propagate
     ds1 = ds.isel(time=1)
     # Estimated VAR
     stdsf2 = ds1.ufunc_per_section(
-        label="tmpf_mc_var", func=np.mean, temp_err=False, calc_per="stretch"
+        sections=sections,
+        label="tmpf_mc_var",
+        func=np.mean,
+        temp_err=False,
+        calc_per="stretch",
     )
     stdsb2 = ds1.ufunc_per_section(
-        label="tmpb_mc_var", func=np.mean, temp_err=False, calc_per="stretch"
+        sections=sections,
+        label="tmpb_mc_var",
+        func=np.mean,
+        temp_err=False,
+        calc_per="stretch",
     )
 
     for (_, v1), (_, v2) in zip(stdsf1.items(), stdsf2.items()):
@@ -702,14 +719,23 @@ def test_single_ended_variance_estimate_synthetic():
 
     # Calibrated variance
     stdsf1 = ds.ufunc_per_section(
-        label="tmpf", func=np.std, temp_err=True, calc_per="stretch", ddof=1
+        sections=sections,
+        label="tmpf",
+        func=np.std,
+        temp_err=True,
+        calc_per="stretch",
+        ddof=1,
     )
 
     # Use a single timestep to better check if the parameter uncertainties propagate
     ds1 = ds.isel(time=1)
     # Estimated VAR
     stdsf2 = ds1.ufunc_per_section(
-        label="tmpf_mc_var", func=np.mean, temp_err=False, calc_per="stretch"
+        sections=sections,
+        label="tmpf_mc_var",
+        func=np.mean,
+        temp_err=False,
+        calc_per="stretch",
     )
 
     for (_, v1), (_, v2) in zip(stdsf1.items(), stdsf2.items()):
@@ -2513,6 +2539,7 @@ def test_double_ended_exponential_variance_estimate_synthetic():
     )
 
     ds.conf_int_double_ended(
+        sections=sections,
         p_val="p_val",
         p_cov="p_cov",
         st_label=st_label,
@@ -2530,10 +2557,10 @@ def test_double_ended_exponential_variance_estimate_synthetic():
 
     # Calibrated variance
     stdsf1 = ds.ufunc_per_section(
-        label="tmpf", func=np.std, temp_err=True, calc_per="stretch"
+        sections=sections, label="tmpf", func=np.std, temp_err=True, calc_per="stretch"
     )
     stdsb1 = ds.ufunc_per_section(
-        label="tmpb", func=np.std, temp_err=True, calc_per="stretch"
+        sections=sections, label="tmpb", func=np.std, temp_err=True, calc_per="stretch"
     )
 
     # Use a single timestep to better check if the parameter uncertainties propagate
@@ -2541,10 +2568,18 @@ def test_double_ended_exponential_variance_estimate_synthetic():
 
     # Estimated VAR
     stdsf2 = ds1.ufunc_per_section(
-        label="tmpf_mc_var", func=np.mean, temp_err=False, calc_per="stretch"
+        sections=sections,
+        label="tmpf_mc_var",
+        func=np.mean,
+        temp_err=False,
+        calc_per="stretch",
     )
     stdsb2 = ds1.ufunc_per_section(
-        label="tmpb_mc_var", func=np.mean, temp_err=False, calc_per="stretch"
+        sections=sections,
+        label="tmpb_mc_var",
+        func=np.mean,
+        temp_err=False,
+        calc_per="stretch",
     )
 
     for (_, v1), (_, v2) in zip(stdsf1.items(), stdsf2.items()):
@@ -2662,6 +2697,7 @@ def test_estimate_variance_of_temperature_estimate():
     )
 
     ds.conf_int_double_ended(
+        sections=sections,
         p_val="p_val",
         p_cov="p_cov",
         st_var=mst_var,
@@ -3527,7 +3563,12 @@ def test_single_ended_exponential_variance_estimate_synthetic():
 
     # Calibrated variance
     stdsf1 = ds.ufunc_per_section(
-        label="tmpf", func=np.var, temp_err=True, calc_per="stretch", ddof=1
+        sections=sections,
+        label="tmpf",
+        func=np.var,
+        temp_err=True,
+        calc_per="stretch",
+        ddof=1,
     )
 
     # Use a single timestep to better check if the parameter uncertainties
@@ -3535,7 +3576,11 @@ def test_single_ended_exponential_variance_estimate_synthetic():
     ds1 = ds.isel(time=1)
     # Estimated VAR
     stdsf2 = ds1.ufunc_per_section(
-        label="tmpf_mc_var", func=np.mean, temp_err=False, calc_per="stretch"
+        sections=sections,
+        label="tmpf_mc_var",
+        func=np.mean,
+        temp_err=False,
+        calc_per="stretch",
     )
 
     for (_, v1), (_, v2) in zip(stdsf1.items(), stdsf2.items()):
@@ -3675,6 +3720,7 @@ def test_average_measurements_double_ended():
         solver="sparse",
     )
     ds.average_double_ended(
+        sections=sections,
         p_val="p_val",
         p_cov="p_cov",
         st_var=st_var,
@@ -3688,6 +3734,7 @@ def test_average_measurements_double_ended():
     )
     ix = ds.get_section_indices(slice(6, 10))
     ds.average_double_ended(
+        sections=sections,
         p_val="p_val",
         p_cov="p_cov",
         st_var=st_var,
@@ -3704,6 +3751,7 @@ def test_average_measurements_double_ended():
         np.datetime64("2018-03-28T00:41:12.084000000"),
     )
     ds.average_double_ended(
+        sections=sections,
         p_val="p_val",
         p_cov="p_cov",
         st_var=st_var,
@@ -3717,6 +3765,7 @@ def test_average_measurements_double_ended():
         ci_avg_time_sel=sl,
     )
     ds.average_double_ended(
+        sections=sections,
         p_val="p_val",
         p_cov="p_cov",
         st_var=st_var,

@@ -34,5 +34,5 @@ jobs:
         pip install build
     - name: Build package
       run: python -m build
-    - name: Test build
+    - name: Check long description for PyPi
       run: twine check --strict dist/*

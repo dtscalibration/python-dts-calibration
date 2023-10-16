@@ -1,4 +1,3 @@
-# coding=utf-8
 import matplotlib.colors as colors
 import matplotlib.pyplot as plt
 import numpy as np
@@ -509,13 +508,14 @@ def plot_accuracy(
 
 
 def plot_sigma_report(
-    ds, temp_label, temp_var_acc_label, temp_var_prec_label=None, itimes=None
+    ds, sections, temp_label, temp_var_acc_label, temp_var_prec_label=None, itimes=None
 ):
     """Returns two sub-plots. first a temperature with confidence boundaries.
 
     Parameters
     ----------
     ds
+    sections
     temp_label
     temp_var_label
     itimes
@@ -538,7 +538,7 @@ def plot_sigma_report(
     for lbl, clr in zip([2.0, 1.0], colors):
         y1 = temp - lbl * stds
         y2 = temp + lbl * stds
-        label_str = "{0:2.2f}".format(lbl) + r"$\sigma$ confidence interval"
+        label_str = f"{lbl:2.2f}" + r"$\sigma$ confidence interval"
         ax1.fill_between(
             y1.x,
             y1,
@@ -573,11 +573,20 @@ def plot_sigma_report(
         #     temp_err=True,
         #     axis=0)
         sigma_est = ds.ufunc_per_section(
-            label=temp_label, func=np.std, temp_err=True, calc_per="stretch", axis=0
+            sections=sections,
+            label=temp_label,
+            func=np.std,
+            temp_err=True,
+            calc_per="stretch",
+            axis=0,
         )
     else:
         sigma_est = ds.ufunc_per_section(
-            label=temp_label, func=np.std, temp_err=True, calc_per="stretch"
+            sections=sections,
+            label=temp_label,
+            func=np.std,
+            temp_err=True,
+            calc_per="stretch",
         )
 
     for (k, v), (k_se, v_se) in zip(ds.sections.items(), sigma_est.items()):
@@ -597,11 +606,11 @@ def plot_sigma_report(
             tbx, tby = (vi.start + vi.stop) / 2, val
             tbt = (
                 r"$\sigma_{Est}$ = "
-                + "{0:2.3f}".format(sig_dts.data)
+                + f"{sig_dts.data:2.3f}"
                 + r"$^\circ$C"
                 + "\n"
                 + r"$\sigma_{DTS}$ = "
-                + "{0:2.3f}".format(v_sei)
+                + f"{v_sei:2.3f}"
                 + r"$^\circ$C"
             )
             ax1.annotate(
@@ -621,16 +630,19 @@ def plot_sigma_report(
         )
     else:
         ax1.set_title(
-            "Projected uncertainty at t={} compared to standard error "
-            "in baths".format(itimes)
+            f"Projected uncertainty at t={itimes} compared to standard error in baths"
         )
     ax1.legend()
     ax1.set_ylabel(r"Temperature [$^\circ$C]")
 
     err_ref = ds.ufunc_per_section(
-        label=temp_label, func=None, temp_err=True, calc_per="stretch"
+        sections=sections,
+        label=temp_label,
+        func=None,
+        temp_err=True,
+        calc_per="stretch",
     )
-    x_ref = ds.ufunc_per_section(label="x", calc_per="stretch")
+    x_ref = ds.ufunc_per_section(sections=sections, label="x", calc_per="stretch")
 
     for (k, v), (k_se, v_se), (kx, vx) in zip(
         ds.sections.items(), err_ref.items(), x_ref.items()

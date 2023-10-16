@@ -4,12 +4,9 @@ import warnings
 import dask
 import dask.array as da
 import numpy as np
-import scipy.sparse as sp
 import scipy.stats as sst
 import xarray as xr
 import yaml
-from scipy.optimize import minimize
-from scipy.sparse import linalg as ln
 
 from dtscalibration.calibrate_utils import calibration_double_ended_helper
 from dtscalibration.calibrate_utils import calibration_single_ended_helper
@@ -21,8 +18,13 @@ from dtscalibration.datastore_utils import ParameterIndexDoubleEnded
 from dtscalibration.datastore_utils import ParameterIndexSingleEnded
 from dtscalibration.datastore_utils import check_deprecated_kwargs
 from dtscalibration.datastore_utils import check_timestep_allclose
+from dtscalibration.datastore_utils import get_params_from_pval_double_ended
+from dtscalibration.datastore_utils import get_params_from_pval_single_ended
 from dtscalibration.datastore_utils import ufunc_per_section_helper
 from dtscalibration.io_utils import _dim_attrs
+from dtscalibration.variance_helpers import variance_stokes_constant_helper
+from dtscalibration.variance_helpers import variance_stokes_exponential_helper
+from dtscalibration.variance_helpers import variance_stokes_linear_helper
 
 dtsattr_namelist = ["double_ended_flag"]
 dim_attrs = {k: v for kl, v in _dim_attrs.items() for k in kl}
@@ -143,19 +145,16 @@ class DataStore(xr.Dataset):
                 unit = ""
 
             for k, v in self.sections.items():
-                preamble_new += "    {0: <23}".format(k)
+                preamble_new += f"    {k: <23}"
 
                 # Compute statistics reference section timeseries
-                sec_stat = "({0:6.2f}".format(float(self[k].mean()))
-                sec_stat += " +/-{0:5.2f}".format(float(self[k].std()))
+                sec_stat = f"({float(self[k].mean()):6.2f}"
+                sec_stat += f" +/-{float(self[k].std()):5.2f}"
                 sec_stat += "\N{DEGREE SIGN}C)\t"
                 preamble_new += sec_stat
 
                 # print sections
-                vl = [
-                    "{0:.2f}{2} - {1:.2f}{2}".format(vi.start, vi.stop, unit)
-                    for vi in v
-                ]
+                vl = [f"{vi.start:.2f}{unit} - {vi.stop:.2f}{unit}" for vi in v]
                 preamble_new += " and ".join(vl) + "\n"
 
         else:
@@ -212,6 +211,14 @@ class DataStore(xr.Dataset):
     @sections.deleter
     def sections(self):
         self.attrs["_sections"] = yaml.dump(None)
+
+    @sections.setter
+    def sections(self, value):
+        msg = (
+            "Not possible anymore. Instead, pass the sections as an argument to \n"
+            "ds.dts.calibrate_single_ended() or ds.dts.calibrate_double_ended()."
+        )
+        raise DeprecationWarning(msg)
 
     def check_reference_section_values(self):
         """
@@ -416,7 +423,7 @@ class DataStore(xr.Dataset):
             if value is None:
                 self.attrs[attribute] = ""
 
-        return super(DataStore, self).to_netcdf(
+        return super().to_netcdf(
             path,
             mode,
             format=format,
@@ -543,7 +550,7 @@ class DataStore(xr.Dataset):
         paths = [
             os.path.join(
                 folder_path,
-                filename_preamble + "{:04d}".format(ix) + filename_extension,
+                filename_preamble + f"{ix:04d}" + filename_extension,
             )
             for ix in range(len(x))
         ]
@@ -870,23 +877,12 @@ class DataStore(xr.Dataset):
         dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
         04Calculate_variance_Stokes.ipynb>`_
         """
-
-        #         var_I, resid = variance_stokes_constant_util(st_label, sections=None, reshape_residuals=True)
-        # def variance_stokes_constant_util(st_label, sections=None, reshape_residuals=True):
-        def func_fit(p, xs):
-            return p[:xs, None] * p[None, xs:]
-
-        def func_cost(p, data, xs):
-            fit = func_fit(p, xs)
-            return np.sum((fit - data) ** 2)
-
         if sections is None:
             sections = self.sections
         else:
             sections = validate_sections(self, sections)
 
-        assert self[st_label].dims[0] == "x", "Stokes are transposed"
-
+        assert self[st_label].dims[0] == "x", f"{st_label} are transposed"
         check_timestep_allclose(self, eps=0.01)
 
         # should maybe be per section. But then residuals
@@ -897,25 +893,7 @@ class DataStore(xr.Dataset):
             )
         )[0]
 
-        resid_list = []
-
-        for k, v in data_dict.items():
-            for vi in v:
-                nxs, nt = vi.shape
-                npar = nt + nxs
-
-                p1 = np.ones(npar) * vi.mean() ** 0.5
-
-                res = minimize(func_cost, p1, args=(vi, nxs), method="Powell")
-                assert res.success, "Unable to fit. Try variance_stokes_exponential"
-
-                fit = func_fit(res.x, nxs)
-                resid_list.append(fit - vi)
-
-        resid = np.concatenate(resid_list)
-
-        # unbiased estimater ddof=1, originally thought it was npar
-        var_I = resid.var(ddof=1)
+        var_I, resid = variance_stokes_constant_helper(data_dict)
 
         if not reshape_residuals:
             return var_I, resid
@@ -1014,7 +992,12 @@ class DataStore(xr.Dataset):
 
         Parameters
         ----------
-        reshape_residuals
+        suppress_info : bool, optional
+            Suppress print statements.
+        use_statsmodels : bool, optional
+            Use statsmodels to fit the exponential. If `False`, use scipy.
+        reshape_residuals : bool, optional
+            Reshape the residuals to the shape of the Stokes intensity
         st_label : str
             label of the Stokes, anti-Stokes measurement.
             E.g., st, ast, rst, rast
@@ -1084,89 +1067,12 @@ class DataStore(xr.Dataset):
                 x_list.append(da.tile(_x, nt))
                 len_stretch_list.append(_x.size)
 
-        n_sections = len(len_stretch_list)  # number of sections
-        n_locs = sum(len_stretch_list)  # total number of locations along cable used
-        # for reference.
-
         x = np.concatenate(x_list)  # coordinates are already in memory
         y = np.concatenate(y_list)
 
-        data1 = x
-        data2 = np.ones(sum(len_stretch_list) * nt)
-        data = np.concatenate([data1, data2])
-
-        # alpha is NOT the same for all -> one column per section
-        coords1row = np.arange(nt * n_locs)
-        coords1col = np.hstack(
-            [np.ones(in_locs * nt) * i for i, in_locs in enumerate(len_stretch_list)]
-        )  # C for
-
-        # second calibration parameter is different per section and per timestep
-        coords2row = np.arange(nt * n_locs)
-        coords2col = np.hstack(
-            [
-                np.repeat(
-                    np.arange(i * nt + n_sections, (i + 1) * nt + n_sections), in_locs
-                )
-                for i, in_locs in enumerate(len_stretch_list)
-            ]
-        )  # C for
-        coords = (
-            np.concatenate([coords1row, coords2row]),
-            np.concatenate([coords1col, coords2col]),
+        var_I, resid = variance_stokes_exponential_helper(
+            nt, x, y, len_stretch_list, use_statsmodels, suppress_info
         )
-
-        lny = np.log(y)
-        w = y.copy()  # 1/std.
-
-        ddof = n_sections + nt * n_sections  # see numpy documentation on ddof
-
-        if use_statsmodels:
-            # returns the same answer with statsmodel
-            import statsmodels.api as sm
-
-            X = sp.coo_matrix(
-                (data, coords), shape=(nt * n_locs, ddof), dtype=float, copy=False
-            )
-
-            mod_wls = sm.WLS(lny, X.toarray(), weights=w**2)
-            res_wls = mod_wls.fit()
-            # print(res_wls.summary())
-            a = res_wls.params
-
-        else:
-            wdata = data * np.hstack((w, w))
-            wX = sp.coo_matrix(
-                (wdata, coords),
-                shape=(nt * n_locs, n_sections + nt * n_sections),
-                dtype=float,
-                copy=False,
-            )
-
-            wlny = lny * w
-
-            p0_est = np.asarray(n_sections * [0.0] + nt * n_sections * [8])
-            # noinspection PyTypeChecker
-            a = ln.lsqr(wX, wlny, x0=p0_est, show=not suppress_info, calc_var=False)[0]
-
-        beta = a[:n_sections]
-        beta_expand_to_sec = np.hstack(
-            [
-                np.repeat(float(beta[i]), leni * nt)
-                for i, leni in enumerate(len_stretch_list)
-            ]
-        )
-        G = np.asarray(a[n_sections:])
-        G_expand_to_sec = np.hstack(
-            [
-                np.repeat(G[i * nt : (i + 1) * nt], leni)
-                for i, leni in enumerate(len_stretch_list)
-            ]
-        )
-
-        I_est = np.exp(G_expand_to_sec) * np.exp(x * beta_expand_to_sec)
-        resid = I_est - y
-        var_I = resid.var(ddof=1)
 
         if not reshape_residuals:
             return var_I, resid
@@ -1324,60 +1230,25 @@ class DataStore(xr.Dataset):
             sections = validate_sections(self, sections)
 
         assert self[st_label].dims[0] == "x", "Stokes are transposed"
-        _, resid = self.variance_stokes(sections=sections, st_label=st_label)
+        _, resid = self.variance_stokes(
+            sections=sections, st_label=st_label, reshape_residuals=False
+        )
 
         ix_sec = self.ufunc_per_section(
             sections=sections, x_indices=True, calc_per="all"
         )
-        st = self.isel(x=ix_sec)[st_label].values.ravel()
-        diff_st = resid.isel(x=ix_sec).values.ravel()
 
-        # Adjust nbin silently to fit residuals in
-        # rectangular matrix and use numpy for computation
-        nbin_ = nbin
-        while st.size % nbin_:
-            nbin_ -= 1
+        st = self[st_label].isel(x=ix_sec).values.ravel()
+        diff_st = resid.ravel()
 
-        if nbin_ != nbin:
-            print(
-                "Estimation of linear variance of",
-                st_label,
-                "Adjusting nbin to:",
-                nbin_,
-            )
-            nbin = nbin_
-
-        isort = np.argsort(st)
-        st_sort_mean = st[isort].reshape((nbin, -1)).mean(axis=1)
-        st_sort_var = diff_st[isort].reshape((nbin, -1)).var(axis=1)
-
-        if through_zero:
-            # VAR(Stokes) = slope * Stokes
-            offset = 0.0
-            slope = np.linalg.lstsq(st_sort_mean[:, None], st_sort_var, rcond=None)[0]
-
-        else:
-            # VAR(Stokes) = slope * Stokes + offset
-            slope, offset = np.linalg.lstsq(
-                np.hstack((st_sort_mean[:, None], np.ones((nbin, 1)))),
-                st_sort_var,
-                rcond=None,
-            )[0]
-
-            if offset < 0:
-                warnings.warn(
-                    f"Warning! Offset of variance_stokes_linear() "
-                    f"of {st_label} is negative. This is phisically "
-                    f"not possible. Most likely, your {st_label} do "
-                    f"not vary enough to fit a linear curve. Either "
-                    f"use `through_zero` option or use "
-                    f"`ds.variance_stokes_constant()`. Another reason "
-                    f"could be that your sections are defined to be "
-                    f"wider than they actually are."
-                )
-
-        def var_fun(stokes):
-            return slope * stokes + offset
+        (
+            slope,
+            offset,
+            st_sort_mean,
+            st_sort_var,
+            resid,
+            var_fun,
+        ) = variance_stokes_linear_helper(st, diff_st, nbin, through_zero)
 
         if plot_fit:
             plt.figure()
@@ -1457,80 +1328,6 @@ class DataStore(xr.Dataset):
             ast_var = np.asarray(ast_var, dtype=float)
 
         return st**-2 * st_var + ast**-2 * ast_var
-
-    def inverse_variance_weighted_mean(
-        self,
-        tmp1="tmpf",
-        tmp2="tmpb",
-        tmp1_var="tmpf_mc_var",
-        tmp2_var="tmpb_mc_var",
-        tmpw_store="tmpw",
-        tmpw_var_store="tmpw_var",
-    ):
-        """
-        Average two temperature datasets with the inverse of the variance as
-        weights. The two
-        temperature datasets `tmp1` and `tmp2` with their variances
-        `tmp1_var` and `tmp2_var`,
-        respectively. Are averaged and stored in the DataStore.
-
-        Parameters
-        ----------
-        tmp1 : str
-            The label of the first temperature dataset that is averaged
-        tmp2 : str
-            The label of the second temperature dataset that is averaged
-        tmp1_var : str
-            The variance of tmp1
-        tmp2_var : str
-            The variance of tmp2
-        tmpw_store : str
-            The label of the averaged temperature dataset
-        tmpw_var_store : str
-            The label of the variance of the averaged temperature dataset
-
-        Returns
-        -------
-
-        """
-
-        self[tmpw_var_store] = 1 / (1 / self[tmp1_var] + 1 / self[tmp2_var])
-
-        self[tmpw_store] = (
-            self[tmp1] / self[tmp1_var] + self[tmp2] / self[tmp2_var]
-        ) * self[tmpw_var_store]
-
-        pass
-
-    def inverse_variance_weighted_mean_array(
-        self,
-        tmp_label="tmpf",
-        tmp_var_label="tmpf_mc_var",
-        tmpw_store="tmpw",
-        tmpw_var_store="tmpw_var",
-        dim="time",
-    ):
-        """
-        Calculates the weighted average across a dimension.
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-
-        See Also
-        --------
-        - https://en.wikipedia.org/wiki/Inverse-variance_weighting
-
-        """
-        self[tmpw_var_store] = 1 / (1 / self[tmp_var_label]).sum(dim=dim)
-
-        self[tmpw_store] = (self[tmp_label] / self[tmp_var_label]).sum(dim=dim) / (
-            1 / self[tmp_var_label]
-        ).sum(dim=dim)
-
-        pass
 
     def set_trans_att(self, trans_att=None):
         """Gracefully set the locations that introduce directional differential
@@ -1700,6 +1497,9 @@ class DataStore(xr.Dataset):
             variance of the estimate of dalpha.
             Covariances between alpha and other parameters are not accounted
             for.
+        fix_alpha : Tuple[array-like, array-like], optional
+            A tuple containing two array-likes. The first array-like is the integrated
+            differential attenuation of length x, and the second item is its variance.
 
         Returns
         -------
@@ -1740,7 +1540,9 @@ class DataStore(xr.Dataset):
         else:
             matching_indices = None
 
-        ix_sec = self.ufunc_per_section(x_indices=True, calc_per="all")
+        ix_sec = self.ufunc_per_section(
+            sections=sections, x_indices=True, calc_per="all"
+        )
         assert not np.any(self.st.isel(x=ix_sec) <= 0.0), (
             "There is uncontrolled noise in the ST signal. Are your sections"
             "correctly defined?"
@@ -1753,6 +1555,7 @@ class DataStore(xr.Dataset):
         if method == "wls":
             p_cov, p_val, p_var = calibration_single_ended_helper(
                 self,
+                sections,
                 st_var,
                 ast_var,
                 fix_alpha,
@@ -1790,127 +1593,76 @@ class DataStore(xr.Dataset):
         assert p_cov.shape == (ip.npar, ip.npar)
 
         # store calibration parameters in DataStore
-        self["gamma"] = (tuple(), p_val[ip.gamma].item())
-        self["gamma_var"] = (tuple(), p_var[ip.gamma].item())
-
-        if nta > 0:
-            self["talpha_fw"] = (
-                ("trans_att", "time"),
-                ip.get_taf_pars(p_val),
-            )
-            self["talpha_fw_var"] = (
-                ("trans_att", "time"),
-                ip.get_taf_pars(p_var),
-            )
-        else:
-            self["talpha_fw"] = (("trans_att", "time"), np.zeros((0, nt)))
-            self["talpha_fw_var"] = (("trans_att", "time"), np.zeros((0, nt)))
-
-        self["c"] = (("time",), p_val[ip.c])
-        self["c_var"] = (("time",), p_var[ip.c])
-
-        if fix_alpha:
-            self["alpha"] = (("x",), fix_alpha[0])
-            self["alpha_var"] = (("x",), fix_alpha[1])
-
-        else:
-            self["dalpha"] = (tuple(), p_val[ip.dalpha].item())
-            self["dalpha_var"] = (tuple(), p_var[ip.dalpha].item())
-
-            self["alpha"] = self.dalpha * self.x
-            self["alpha_var"] = self["dalpha_var"] * self.x**2
-
-        self["talpha_fw_full"] = (
-            ("x", "time"),
-            ip.get_taf_values(
-                pval=p_val, x=self.x.values, trans_att=self.trans_att.values, axis=""
-            ),
-        )
-        self["talpha_fw_full_var"] = (
-            ("x", "time"),
-            ip.get_taf_values(
-                pval=p_var, x=self.x.values, trans_att=self.trans_att.values, axis=""
-            ),
+        coords = {"x": self["x"], "time": self["time"], "trans_att": self["trans_att"]}
+        params, param_covs = get_params_from_pval_single_ended(
+            ip, coords, p_val=p_val, p_var=p_var, p_cov=p_cov, fix_alpha=fix_alpha
         )
 
-        tmpf = self.gamma / (
-            (np.log(self.st / self.ast) + (self.c + self["talpha_fw_full"]))
-            + self.alpha
+        tmpf = params["gamma"] / (
+            (np.log(self.st / self.ast) + (params["c"] + params["talpha_fw_full"]))
+            + params["alpha"]
         )
-        self["tmpf"] = tmpf - 273.15
+        out = xr.Dataset({"tmpf": tmpf - 273.15})
+        out["tmpf"].attrs.update(_dim_attrs[("tmpf",)])
 
         # tmpf_var
         deriv_dict = dict(
-            T_gamma_fw=tmpf / self.gamma,
-            T_st_fw=-(tmpf**2) / (self.gamma * self.st),
-            T_ast_fw=tmpf**2 / (self.gamma * self.ast),
-            T_c_fw=-(tmpf**2) / self.gamma,
-            T_dalpha_fw=-self.x * (tmpf**2) / self.gamma,
-            T_alpha_fw=-(tmpf**2) / self.gamma,
-            T_ta_fw=-(tmpf**2) / self.gamma,
+            T_gamma_fw=tmpf / params["gamma"],
+            T_st_fw=-(tmpf**2) / (params["gamma"] * self.st),
+            T_ast_fw=tmpf**2 / (params["gamma"] * self.ast),
+            T_c_fw=-(tmpf**2) / params["gamma"],
+            T_dalpha_fw=-self.x * (tmpf**2) / params["gamma"],
+            T_alpha_fw=-(tmpf**2) / params["gamma"],
+            T_ta_fw=-(tmpf**2) / params["gamma"],
         )
         deriv_ds = xr.Dataset(deriv_dict)
-        # self["deriv"] = deriv_ds.to_array(dim="com2")
 
-        sigma2_gamma_c = p_cov[np.ix_(ip.gamma, ip.c)]
-        sigma2_tafw_gamma = ip.get_taf_values(
-            pval=p_cov[ip.gamma],
-            x=self.x.values,
-            trans_att=self.trans_att.values,
-            axis="",
-        )
-        sigma2_tafw_c = ip.get_taf_values(
-            pval=p_cov[ip.c],
-            x=self.x.values,
-            trans_att=self.trans_att.values,
-            axis="time",
-        )
         var_fw_dict = dict(
             dT_dst=deriv_ds.T_st_fw**2 * parse_st_var(self, st_var, st_label="st"),
             dT_dast=deriv_ds.T_ast_fw**2
             * parse_st_var(self, ast_var, st_label="ast"),
-            dT_gamma=deriv_ds.T_gamma_fw**2 * self["gamma_var"],
-            dT_dc=deriv_ds.T_c_fw**2 * self["c_var"],
+            dT_gamma=deriv_ds.T_gamma_fw**2 * param_covs["gamma"],
+            dT_dc=deriv_ds.T_c_fw**2 * param_covs["c"],
             dT_ddalpha=deriv_ds.T_alpha_fw**2
-            * self["alpha_var"],  # same as dT_dalpha
-            dT_dta=deriv_ds.T_ta_fw**2 * self["talpha_fw_full_var"],
-            dgamma_dc=(2 * deriv_ds.T_gamma_fw * deriv_ds.T_c_fw * sigma2_gamma_c),
-            dta_dgamma=(2 * deriv_ds.T_ta_fw * deriv_ds.T_gamma_fw * sigma2_tafw_gamma),
-            dta_dc=(2 * deriv_ds.T_ta_fw * deriv_ds.T_c_fw * sigma2_tafw_c),
+            * param_covs["alpha"],  # same as dT_dalpha
+            dT_dta=deriv_ds.T_ta_fw**2 * param_covs["talpha_fw_full"],
+            dgamma_dc=(
+                2 * deriv_ds.T_gamma_fw * deriv_ds.T_c_fw * param_covs["gamma_c"]
+            ),
+            dta_dgamma=(
+                2 * deriv_ds.T_ta_fw * deriv_ds.T_gamma_fw * param_covs["tafw_gamma"]
+            ),
+            dta_dc=(2 * deriv_ds.T_ta_fw * deriv_ds.T_c_fw * param_covs["tafw_c"]),
         )
 
         if not fix_alpha:
             # These correlations don't exist in case of fix_alpha. Including them reduces tmpf_var.
-            sigma2_gamma_dalpha = p_cov[np.ix_(ip.dalpha, ip.gamma)]
-            sigma2_dalpha_c = p_cov[np.ix_(ip.dalpha, ip.c)]
-            sigma2_tafw_dalpha = ip.get_taf_values(
-                pval=p_cov[ip.dalpha],
-                x=self.x.values,
-                trans_att=self.trans_att.values,
-                axis="",
-            )
             var_fw_dict.update(
                 dict(
                     dgamma_ddalpha=(
                         2
                         * deriv_ds.T_gamma_fw
                         * deriv_ds.T_dalpha_fw
-                        * sigma2_gamma_dalpha
+                        * param_covs["gamma_dalpha"]
                     ),
                     ddalpha_dc=(
-                        2 * deriv_ds.T_dalpha_fw * deriv_ds.T_c_fw * sigma2_dalpha_c
+                        2
+                        * deriv_ds.T_dalpha_fw
+                        * deriv_ds.T_c_fw
+                        * param_covs["dalpha_c"]
                     ),
                     dta_ddalpha=(
-                        2 * deriv_ds.T_ta_fw * deriv_ds.T_dalpha_fw * sigma2_tafw_dalpha
+                        2
+                        * deriv_ds.T_ta_fw
+                        * deriv_ds.T_dalpha_fw
+                        * param_covs["tafw_dalpha"]
                     ),
                 )
             )
 
-        self["var_fw_da"] = xr.Dataset(var_fw_dict).to_array(dim="comp_fw")
-        self["tmpf_var"] = self["var_fw_da"].sum(dim="comp_fw")
-
-        self["tmpf"].attrs.update(_dim_attrs[("tmpf",)])
-        self["tmpf_var"].attrs.update(_dim_attrs[("tmpf_var",)])
+        out["var_fw_da"] = xr.Dataset(var_fw_dict).to_array(dim="comp_fw")
+        out["tmpf_var"] = out["var_fw_da"].sum(dim="comp_fw")
+        out["tmpf_var"].attrs.update(_dim_attrs[("tmpf_var",)])
 
         drop_vars = [
             k for k, v in self.items() if {"params1", "params2"}.intersection(v.dims)
@@ -1919,9 +1671,14 @@ class DataStore(xr.Dataset):
         for k in drop_vars:
             del self[k]
 
-        self["p_val"] = (("params1",), p_val)
-        self["p_cov"] = (("params1", "params2"), p_cov)
+        out["p_val"] = (("params1",), p_val)
+        out["p_cov"] = (("params1", "params2"), p_cov)
 
+        out.update(params)
+        for key, dataarray in param_covs.data_vars.items():
+            out[key + "_var"] = dataarray
+
+        self.update(out)
         pass
 
     def calibration_double_ended(
@@ -2158,7 +1915,9 @@ class DataStore(xr.Dataset):
         nx = self.x.size
         nt = self["time"].size
         nta = self.trans_att.size
-        ix_sec = self.ufunc_per_section(x_indices=True, calc_per="all")
+        ix_sec = self.ufunc_per_section(
+            sections=sections, x_indices=True, calc_per="all"
+        )
         nx_sec = ix_sec.size
 
         assert self.st.dims[0] == "x", "Stokes are transposed"
@@ -2204,6 +1963,7 @@ class DataStore(xr.Dataset):
         if method == "wls":
             p_cov, p_val, p_var = calibration_double_ended_helper(
                 self,
+                sections,
                 st_var,
                 ast_var,
                 rst_var,
@@ -2238,215 +1998,126 @@ class DataStore(xr.Dataset):
         assert p_var.size == ip.npar
         assert p_cov.shape == (ip.npar, ip.npar)
 
-        # save estimates and variances to datastore, skip covariances
-        self["gamma"] = (tuple(), p_val[ip.gamma].item())
-        self["alpha"] = (("x",), p_val[ip.alpha])
-        self["df"] = (("time",), p_val[ip.df])
-        self["db"] = (("time",), p_val[ip.db])
-
-        if nta:
-            self["talpha_fw"] = (
-                ("time", "trans_att"),
-                p_val[ip.taf].reshape((nt, nta), order="C"),
-            )
-            self["talpha_bw"] = (
-                ("time", "trans_att"),
-                p_val[ip.tab].reshape((nt, nta), order="C"),
-            )
-            self["talpha_fw_var"] = (
-                ("time", "trans_att"),
-                p_var[ip.taf].reshape((nt, nta), order="C"),
-            )
-            self["talpha_bw_var"] = (
-                ("time", "trans_att"),
-                p_var[ip.tab].reshape((nt, nta), order="C"),
-            )
-        else:
-            self["talpha_fw"] = (("time", "trans_att"), np.zeros((nt, 0)))
-            self["talpha_bw"] = (("time", "trans_att"), np.zeros((nt, 0)))
-            self["talpha_fw_var"] = (("time", "trans_att"), np.zeros((nt, 0)))
-            self["talpha_bw_var"] = (("time", "trans_att"), np.zeros((nt, 0)))
-
-        self["talpha_fw_full"] = (
-            ("x", "time"),
-            ip.get_taf_values(
-                pval=p_val, x=self.x.values, trans_att=self.trans_att.values, axis=""
-            ),
-        )
-        self["talpha_bw_full"] = (
-            ("x", "time"),
-            ip.get_tab_values(
-                pval=p_val, x=self.x.values, trans_att=self.trans_att.values, axis=""
-            ),
+        coords = {"x": self["x"], "time": self["time"], "trans_att": self["trans_att"]}
+        params = get_params_from_pval_double_ended(ip, coords, p_val=p_val)
+        param_covs = get_params_from_pval_double_ended(
+            ip, coords, p_val=p_var, p_cov=p_cov
         )
 
-        self["tmpf"] = (
-            self.gamma
-            / (
-                np.log(self.st / self.ast)
-                + self["df"]
-                + self.alpha
-                + self["talpha_fw_full"]
-            )
-            - 273.15
+        out = xr.Dataset(
+            {
+                "tmpf": params["gamma"]
+                / (
+                    np.log(self.st / self.ast)
+                    + params["df"]
+                    + params["alpha"]
+                    + params["talpha_fw_full"]
+                )
+                - 273.15,
+                "tmpb": params["gamma"]
+                / (
+                    np.log(self.rst / self.rast)
+                    + params["db"]
+                    - params["alpha"]
+                    + params["talpha_bw_full"]
+                )
+                - 273.15,
+            }
         )
 
-        self["tmpb"] = (
-            self.gamma
-            / (
-                np.log(self.rst / self.rast)
-                + self["db"]
-                - self.alpha
-                + self["talpha_bw_full"]
-            )
-            - 273.15
-        )
-
-        self["gamma_var"] = (tuple(), p_var[ip.gamma].item())
-        self["alpha_var"] = (("x",), p_var[ip.alpha])
-        self["df_var"] = (("time",), p_var[ip.df])
-        self["db_var"] = (("time",), p_var[ip.db])
-        self["talpha_fw_full_var"] = (
-            ("x", "time"),
-            ip.get_taf_values(
-                pval=p_var, x=self.x.values, trans_att=self.trans_att.values, axis=""
-            ),
-        )
-        self["talpha_bw_full_var"] = (
-            ("x", "time"),
-            ip.get_tab_values(
-                pval=p_var, x=self.x.values, trans_att=self.trans_att.values, axis=""
-            ),
-        )
-
-        # extract covariances and ensure broadcastable to (nx, nt)
-        sigma2_gamma_df = p_cov[np.ix_(ip.gamma, ip.df)]
-        sigma2_gamma_db = p_cov[np.ix_(ip.gamma, ip.db)]
-        sigma2_gamma_alpha = p_cov[np.ix_(ip.alpha, ip.gamma)]
-        sigma2_df_db = p_cov[ip.df, ip.db][None]  # Shape is [0, nt] ?
-        sigma2_alpha_df = p_cov[np.ix_(ip.alpha, ip.df)]
-        sigma2_alpha_db = p_cov[np.ix_(ip.alpha, ip.db)]
-        sigma2_tafw_gamma = ip.get_taf_values(
-            pval=p_cov[ip.gamma],
-            x=self.x.values,
-            trans_att=self.trans_att.values,
-            axis="",
-        )
-        sigma2_tabw_gamma = ip.get_tab_values(
-            pval=p_cov[ip.gamma],
-            x=self.x.values,
-            trans_att=self.trans_att.values,
-            axis="",
-        )
-        sigma2_tafw_alpha = ip.get_taf_values(
-            pval=p_cov[ip.alpha],
-            x=self.x.values,
-            trans_att=self.trans_att.values,
-            axis="x",
-        )
-        sigma2_tabw_alpha = ip.get_tab_values(
-            pval=p_cov[ip.alpha],
-            x=self.x.values,
-            trans_att=self.trans_att.values,
-            axis="x",
-        )
-        sigma2_tafw_df = ip.get_taf_values(
-            pval=p_cov[ip.df],
-            x=self.x.values,
-            trans_att=self.trans_att.values,
-            axis="time",
-        )
-        sigma2_tafw_db = ip.get_taf_values(
-            pval=p_cov[ip.db],
-            x=self.x.values,
-            trans_att=self.trans_att.values,
-            axis="time",
-        )
-        sigma2_tabw_db = ip.get_tab_values(
-            pval=p_cov[ip.db],
-            x=self.x.values,
-            trans_att=self.trans_att.values,
-            axis="time",
-        )
-        sigma2_tabw_df = ip.get_tab_values(
-            pval=p_cov[ip.df],
-            x=self.x.values,
-            trans_att=self.trans_att.values,
-            axis="time",
-        )
-        # sigma2_tafw_tabw
-
-        tmpf = self["tmpf"] + 273.15
-        tmpb = self["tmpb"] + 273.15
+        tmpf = out["tmpf"] + 273.15
+        tmpb = out["tmpb"] + 273.15
 
         deriv_dict = dict(
-            T_gamma_fw=tmpf / self.gamma,
-            T_st_fw=-(tmpf**2) / (self.gamma * self.st),
-            T_ast_fw=tmpf**2 / (self.gamma * self.ast),
-            T_df_fw=-(tmpf**2) / self.gamma,
-            T_alpha_fw=-(tmpf**2) / self.gamma,
-            T_ta_fw=-(tmpf**2) / self.gamma,
-            T_gamma_bw=tmpb / self.gamma,
-            T_rst_bw=-(tmpb**2) / (self.gamma * self.rst),
-            T_rast_bw=tmpb**2 / (self.gamma * self.rast),
-            T_db_bw=-(tmpb**2) / self.gamma,
-            T_alpha_bw=tmpb**2 / self.gamma,
-            T_ta_bw=-(tmpb**2) / self.gamma,
+            T_gamma_fw=tmpf / params["gamma"],
+            T_st_fw=-(tmpf**2) / (params["gamma"] * self.st),
+            T_ast_fw=tmpf**2 / (params["gamma"] * self.ast),
+            T_df_fw=-(tmpf**2) / params["gamma"],
+            T_alpha_fw=-(tmpf**2) / params["gamma"],
+            T_ta_fw=-(tmpf**2) / params["gamma"],
+            T_gamma_bw=tmpb / params["gamma"],
+            T_rst_bw=-(tmpb**2) / (params["gamma"] * self.rst),
+            T_rast_bw=tmpb**2 / (params["gamma"] * self.rast),
+            T_db_bw=-(tmpb**2) / params["gamma"],
+            T_alpha_bw=tmpb**2 / params["gamma"],
+            T_ta_bw=-(tmpb**2) / params["gamma"],
         )
         deriv_ds = xr.Dataset(deriv_dict)
-        self["deriv"] = deriv_ds.to_array(dim="com2")
+        out["deriv"] = deriv_ds.to_array(dim="com2")
 
         var_fw_dict = dict(
             dT_dst=deriv_ds.T_st_fw**2 * parse_st_var(self, st_var, st_label="st"),
             dT_dast=deriv_ds.T_ast_fw**2
             * parse_st_var(self, ast_var, st_label="ast"),
-            dT_gamma=deriv_ds.T_gamma_fw**2 * self["gamma_var"],
-            dT_ddf=deriv_ds.T_df_fw**2 * self["df_var"],
-            dT_dalpha=deriv_ds.T_alpha_fw**2 * self["alpha_var"],
-            dT_dta=deriv_ds.T_ta_fw**2 * self["talpha_fw_full_var"],
-            dgamma_ddf=(2 * deriv_ds.T_gamma_fw * deriv_ds.T_df_fw * sigma2_gamma_df),
-            dgamma_dalpha=(
-                2 * deriv_ds.T_gamma_fw * deriv_ds.T_alpha_fw * sigma2_gamma_alpha
+            dT_gamma=deriv_ds.T_gamma_fw**2 * param_covs["gamma"],
+            dT_ddf=deriv_ds.T_df_fw**2 * param_covs["df"],
+            dT_dalpha=deriv_ds.T_alpha_fw**2 * param_covs["alpha"],
+            dT_dta=deriv_ds.T_ta_fw**2 * param_covs["talpha_fw_full"],
+            dgamma_ddf=(
+                2 * deriv_ds.T_gamma_fw * deriv_ds.T_df_fw * param_covs["gamma_df"]
             ),
-            dalpha_ddf=(2 * deriv_ds.T_alpha_fw * deriv_ds.T_df_fw * sigma2_alpha_df),
-            dta_dgamma=(2 * deriv_ds.T_ta_fw * deriv_ds.T_gamma_fw * sigma2_tafw_gamma),
-            dta_ddf=(2 * deriv_ds.T_ta_fw * deriv_ds.T_df_fw * sigma2_tafw_df),
-            dta_dalpha=(2 * deriv_ds.T_ta_fw * deriv_ds.T_alpha_fw * sigma2_tafw_alpha),
+            dgamma_dalpha=(
+                2
+                * deriv_ds.T_gamma_fw
+                * deriv_ds.T_alpha_fw
+                * param_covs["gamma_alpha"]
+            ),
+            dalpha_ddf=(
+                2 * deriv_ds.T_alpha_fw * deriv_ds.T_df_fw * param_covs["alpha_df"]
+            ),
+            dta_dgamma=(
+                2 * deriv_ds.T_ta_fw * deriv_ds.T_gamma_fw * param_covs["tafw_gamma"]
+            ),
+            dta_ddf=(2 * deriv_ds.T_ta_fw * deriv_ds.T_df_fw * param_covs["tafw_df"]),
+            dta_dalpha=(
+                2 * deriv_ds.T_ta_fw * deriv_ds.T_alpha_fw * param_covs["tafw_alpha"]
+            ),
         )
         var_bw_dict = dict(
             dT_drst=deriv_ds.T_rst_bw**2
             * parse_st_var(self, rst_var, st_label="rst"),
             dT_drast=deriv_ds.T_rast_bw**2
             * parse_st_var(self, rast_var, st_label="rast"),
-            dT_gamma=deriv_ds.T_gamma_bw**2 * self["gamma_var"],
-            dT_ddb=deriv_ds.T_db_bw**2 * self["db_var"],
-            dT_dalpha=deriv_ds.T_alpha_bw**2 * self["alpha_var"],
-            dT_dta=deriv_ds.T_ta_bw**2 * self["talpha_bw_full_var"],
-            dgamma_ddb=(2 * deriv_ds.T_gamma_bw * deriv_ds.T_db_bw * sigma2_gamma_db),
-            dgamma_dalpha=(
-                2 * deriv_ds.T_gamma_bw * deriv_ds.T_alpha_bw * sigma2_gamma_alpha
+            dT_gamma=deriv_ds.T_gamma_bw**2 * param_covs["gamma"],
+            dT_ddb=deriv_ds.T_db_bw**2 * param_covs["db"],
+            dT_dalpha=deriv_ds.T_alpha_bw**2 * param_covs["alpha"],
+            dT_dta=deriv_ds.T_ta_bw**2 * param_covs["talpha_bw_full"],
+            dgamma_ddb=(
+                2 * deriv_ds.T_gamma_bw * deriv_ds.T_db_bw * param_covs["gamma_db"]
             ),
-            dalpha_ddb=(2 * deriv_ds.T_alpha_bw * deriv_ds.T_db_bw * sigma2_alpha_db),
-            dta_dgamma=(2 * deriv_ds.T_ta_bw * deriv_ds.T_gamma_bw * sigma2_tabw_gamma),
-            dta_ddb=(2 * deriv_ds.T_ta_bw * deriv_ds.T_db_bw * sigma2_tabw_db),
-            dta_dalpha=(2 * deriv_ds.T_ta_bw * deriv_ds.T_alpha_bw * sigma2_tabw_alpha),
+            dgamma_dalpha=(
+                2
+                * deriv_ds.T_gamma_bw
+                * deriv_ds.T_alpha_bw
+                * param_covs["gamma_alpha"]
+            ),
+            dalpha_ddb=(
+                2 * deriv_ds.T_alpha_bw * deriv_ds.T_db_bw * param_covs["alpha_db"]
+            ),
+            dta_dgamma=(
+                2 * deriv_ds.T_ta_bw * deriv_ds.T_gamma_bw * param_covs["tabw_gamma"]
+            ),
+            dta_ddb=(2 * deriv_ds.T_ta_bw * deriv_ds.T_db_bw * param_covs["tabw_db"]),
+            dta_dalpha=(
+                2 * deriv_ds.T_ta_bw * deriv_ds.T_alpha_bw * param_covs["tabw_alpha"]
+            ),
         )
 
-        self["var_fw_da"] = xr.Dataset(var_fw_dict).to_array(dim="comp_fw")
-        self["var_bw_da"] = xr.Dataset(var_bw_dict).to_array(dim="comp_bw")
+        out["var_fw_da"] = xr.Dataset(var_fw_dict).to_array(dim="comp_fw")
+        out["var_bw_da"] = xr.Dataset(var_bw_dict).to_array(dim="comp_bw")
 
-        self["tmpf_var"] = self["var_fw_da"].sum(dim="comp_fw")
-        self["tmpb_var"] = self["var_bw_da"].sum(dim="comp_bw")
+        out["tmpf_var"] = out["var_fw_da"].sum(dim="comp_fw")
+        out["tmpb_var"] = out["var_bw_da"].sum(dim="comp_bw")
 
         # First estimate of tmpw_var
-        self["tmpw_var" + "_approx"] = 1 / (1 / self["tmpf_var"] + 1 / self["tmpb_var"])
-        self["tmpw"] = (
-            (tmpf / self["tmpf_var"] + tmpb / self["tmpb_var"])
-            * self["tmpw_var" + "_approx"]
+        out["tmpw_var" + "_approx"] = 1 / (1 / out["tmpf_var"] + 1 / out["tmpb_var"])
+        out["tmpw"] = (
+            (tmpf / out["tmpf_var"] + tmpb / out["tmpb_var"])
+            * out["tmpw_var" + "_approx"]
         ) - 273.15
 
-        weightsf = self["tmpw_var" + "_approx"] / self["tmpf_var"]
-        weightsb = self["tmpw_var" + "_approx"] / self["tmpb_var"]
+        weightsf = out["tmpw_var" + "_approx"] / out["tmpf_var"]
+        weightsb = out["tmpw_var" + "_approx"] / out["tmpb_var"]
 
         deriv_dict2 = dict(
             T_gamma_w=weightsf * deriv_dict["T_gamma_fw"]
@@ -2473,61 +2144,84 @@ class DataStore(xr.Dataset):
             * parse_st_var(self, rst_var, st_label="rst"),
             dT_drast=deriv_ds2.T_rast_w**2
             * parse_st_var(self, rast_var, st_label="rast"),
-            dT_gamma=deriv_ds2.T_gamma_w**2 * self["gamma_var"],
-            dT_ddf=deriv_ds2.T_df_w**2 * self["df_var"],
-            dT_ddb=deriv_ds2.T_db_w**2 * self["db_var"],
-            dT_dalpha=deriv_ds2.T_alpha_w**2 * self["alpha_var"],
-            dT_dtaf=deriv_ds2.T_taf_w**2 * self["talpha_fw_full_var"],
-            dT_dtab=deriv_ds2.T_tab_w**2 * self["talpha_bw_full_var"],
-            dgamma_ddf=2 * deriv_ds2.T_gamma_w * deriv_ds2.T_df_w * sigma2_gamma_df,
-            dgamma_ddb=2 * deriv_ds2.T_gamma_w * deriv_ds2.T_db_w * sigma2_gamma_db,
+            dT_gamma=deriv_ds2.T_gamma_w**2 * param_covs["gamma"],
+            dT_ddf=deriv_ds2.T_df_w**2 * param_covs["df"],
+            dT_ddb=deriv_ds2.T_db_w**2 * param_covs["db"],
+            dT_dalpha=deriv_ds2.T_alpha_w**2 * param_covs["alpha"],
+            dT_dtaf=deriv_ds2.T_taf_w**2 * param_covs["talpha_fw_full"],
+            dT_dtab=deriv_ds2.T_tab_w**2 * param_covs["talpha_bw_full"],
+            dgamma_ddf=2
+            * deriv_ds2.T_gamma_w
+            * deriv_ds2.T_df_w
+            * param_covs["gamma_df"],
+            dgamma_ddb=2
+            * deriv_ds2.T_gamma_w
+            * deriv_ds2.T_db_w
+            * param_covs["gamma_db"],
             dgamma_dalpha=2
             * deriv_ds2.T_gamma_w
             * deriv_ds2.T_alpha_w
-            * sigma2_gamma_alpha,
-            dgamma_dtaf=2 * deriv_ds2.T_gamma_w * deriv_ds2.T_taf_w * sigma2_tafw_gamma,
-            dgamma_dtab=2 * deriv_ds2.T_gamma_w * deriv_ds2.T_tab_w * sigma2_tabw_gamma,
-            ddf_ddb=2 * deriv_ds2.T_df_w * deriv_ds2.T_db_w * sigma2_df_db,
-            ddf_dalpha=2 * deriv_ds2.T_df_w * deriv_ds2.T_alpha_w * sigma2_alpha_df,
-            ddf_dtaf=2 * deriv_ds2.T_df_w * deriv_ds2.T_taf_w * sigma2_tafw_df,
-            ddf_dtab=2 * deriv_ds2.T_df_w * deriv_ds2.T_tab_w * sigma2_tabw_df,
-            ddb_dalpha=2 * deriv_ds2.T_db_w * deriv_ds2.T_alpha_w * sigma2_alpha_db,
-            ddb_dtaf=2 * deriv_ds2.T_db_w * deriv_ds2.T_taf_w * sigma2_tafw_db,
-            ddb_dtab=2 * deriv_ds2.T_db_w * deriv_ds2.T_tab_w * sigma2_tabw_db,
-            # dtaf_dtab=2 * deriv_ds2.T_tab_w * deriv_ds2.T_tab_w * sigma2_tafw_tabw,
+            * param_covs["gamma_alpha"],
+            dgamma_dtaf=2
+            * deriv_ds2.T_gamma_w
+            * deriv_ds2.T_taf_w
+            * param_covs["tafw_gamma"],
+            dgamma_dtab=2
+            * deriv_ds2.T_gamma_w
+            * deriv_ds2.T_tab_w
+            * param_covs["tabw_gamma"],
+            ddf_ddb=2 * deriv_ds2.T_df_w * deriv_ds2.T_db_w * param_covs["df_db"],
+            ddf_dalpha=2
+            * deriv_ds2.T_df_w
+            * deriv_ds2.T_alpha_w
+            * param_covs["alpha_df"],
+            ddf_dtaf=2 * deriv_ds2.T_df_w * deriv_ds2.T_taf_w * param_covs["tafw_df"],
+            ddf_dtab=2 * deriv_ds2.T_df_w * deriv_ds2.T_tab_w * param_covs["tabw_df"],
+            ddb_dalpha=2
+            * deriv_ds2.T_db_w
+            * deriv_ds2.T_alpha_w
+            * param_covs["alpha_db"],
+            ddb_dtaf=2 * deriv_ds2.T_db_w * deriv_ds2.T_taf_w * param_covs["tafw_db"],
+            ddb_dtab=2 * deriv_ds2.T_db_w * deriv_ds2.T_tab_w * param_covs["tabw_db"],
+            # dtaf_dtab=2 * deriv_ds2.T_tab_w * deriv_ds2.T_tab_w * param_covs["tafw_tabw"],
         )
-        self["var_w_da"] = xr.Dataset(var_w_dict).to_array(dim="comp_w")
-        self["tmpw_var"] = self["var_w_da"].sum(dim="comp_w")
+        out["var_w_da"] = xr.Dataset(var_w_dict).to_array(dim="comp_w")
+        out["tmpw_var"] = out["var_w_da"].sum(dim="comp_w")
 
+        # Compute uncertainty solely due to noise in Stokes signal, neglecting parameter uncenrtainty
         tmpf_var_excl_par = (
-            self["var_fw_da"].sel(comp_fw=["dT_dst", "dT_dast"]).sum(dim="comp_fw")
+            out["var_fw_da"].sel(comp_fw=["dT_dst", "dT_dast"]).sum(dim="comp_fw")
         )
         tmpb_var_excl_par = (
-            self["var_bw_da"].sel(comp_bw=["dT_drst", "dT_drast"]).sum(dim="comp_bw")
+            out["var_bw_da"].sel(comp_bw=["dT_drst", "dT_drast"]).sum(dim="comp_bw")
         )
-        self["tmpw_var" + "_lower"] = 1 / (
-            1 / tmpf_var_excl_par + 1 / tmpb_var_excl_par
-        )
+        out["tmpw_var" + "_lower"] = 1 / (1 / tmpf_var_excl_par + 1 / tmpb_var_excl_par)
 
-        self["tmpf"].attrs.update(_dim_attrs[("tmpf",)])
-        self["tmpb"].attrs.update(_dim_attrs[("tmpb",)])
-        self["tmpw"].attrs.update(_dim_attrs[("tmpw",)])
-        self["tmpf_var"].attrs.update(_dim_attrs[("tmpf_var",)])
-        self["tmpb_var"].attrs.update(_dim_attrs[("tmpb_var",)])
-        self["tmpw_var"].attrs.update(_dim_attrs[("tmpw_var",)])
-        self["tmpw_var" + "_approx"].attrs.update(_dim_attrs[("tmpw_var_approx",)])
-        self["tmpw_var" + "_lower"].attrs.update(_dim_attrs[("tmpw_var_lower",)])
+        out["tmpf"].attrs.update(_dim_attrs[("tmpf",)])
+        out["tmpb"].attrs.update(_dim_attrs[("tmpb",)])
+        out["tmpw"].attrs.update(_dim_attrs[("tmpw",)])
+        out["tmpf_var"].attrs.update(_dim_attrs[("tmpf_var",)])
+        out["tmpb_var"].attrs.update(_dim_attrs[("tmpb_var",)])
+        out["tmpw_var"].attrs.update(_dim_attrs[("tmpw_var",)])
+        out["tmpw_var" + "_approx"].attrs.update(_dim_attrs[("tmpw_var_approx",)])
+        out["tmpw_var" + "_lower"].attrs.update(_dim_attrs[("tmpw_var_lower",)])
 
         drop_vars = [
             k for k, v in self.items() if {"params1", "params2"}.intersection(v.dims)
         ]
 
         for k in drop_vars:
+            print(f"removing {k}")
             del self[k]
 
-        self["p_val"] = (("params1",), p_val)
-        self["p_cov"] = (("params1", "params2"), p_cov)
+        out["p_val"] = (("params1",), p_val)
+        out["p_cov"] = (("params1", "params2"), p_cov)
 
+        out.update(params)
+        for key, dataarray in param_covs.data_vars.items():
+            out[key + "_var"] = dataarray
+
+        self.update(out)
         pass
 
     def average_single_ended(
@@ -2679,7 +2373,9 @@ class DataStore(xr.Dataset):
         if var_only_sections is not None:
             raise NotImplementedError()
 
-        self.conf_int_single_ended(
+        out = xr.Dataset()
+
+        mcparams = self.conf_int_single_ended(
             p_val=p_val,
             p_cov=p_cov,
             st_var=st_var,
@@ -2691,85 +2387,86 @@ class DataStore(xr.Dataset):
             reduce_memory_usage=reduce_memory_usage,
             **kwargs,
         )
+        mcparams["tmpf"] = self["tmpf"]
 
         if ci_avg_time_sel is not None:
             time_dim2 = "time" + "_avg"
             x_dim2 = "x"
-            self.coords[time_dim2] = (
+            mcparams.coords[time_dim2] = (
                 (time_dim2,),
-                self["time"].sel(**{"time": ci_avg_time_sel}).data,
+                mcparams["time"].sel(**{"time": ci_avg_time_sel}).data,
             )
-            self["tmpf_avgsec"] = (
+            mcparams["tmpf_avgsec"] = (
                 ("x", time_dim2),
-                self["tmpf"].sel(**{"time": ci_avg_time_sel}).data,
+                mcparams["tmpf"].sel(**{"time": ci_avg_time_sel}).data,
             )
-            self["tmpf_mc_set"] = (
+            mcparams["tmpf_mc_set"] = (
                 ("mc", "x", time_dim2),
-                self["tmpf" + "_mc_set"].sel(**{"time": ci_avg_time_sel}).data,
+                mcparams["tmpf" + "_mc_set"].sel(**{"time": ci_avg_time_sel}).data,
             )
 
         elif ci_avg_time_isel is not None:
             time_dim2 = "time" + "_avg"
             x_dim2 = "x"
-            self.coords[time_dim2] = (
+            mcparams.coords[time_dim2] = (
                 (time_dim2,),
-                self["time"].isel(**{"time": ci_avg_time_isel}).data,
+                mcparams["time"].isel(**{"time": ci_avg_time_isel}).data,
             )
-            self["tmpf_avgsec"] = (
+            mcparams["tmpf_avgsec"] = (
                 ("x", time_dim2),
-                self["tmpf"].isel(**{"time": ci_avg_time_isel}).data,
+                mcparams["tmpf"].isel(**{"time": ci_avg_time_isel}).data,
             )
-            self["tmpf_mc_set"] = (
+            mcparams["tmpf_mc_set"] = (
                 ("mc", "x", time_dim2),
-                self["tmpf" + "_mc_set"].isel(**{"time": ci_avg_time_isel}).data,
+                mcparams["tmpf" + "_mc_set"].isel(**{"time": ci_avg_time_isel}).data,
             )
 
         elif ci_avg_x_sel is not None:
             time_dim2 = "time"
             x_dim2 = "x_avg"
-            self.coords[x_dim2] = ((x_dim2,), self.x.sel(x=ci_avg_x_sel).data)
-            self["tmpf_avgsec"] = (
+            mcparams.coords[x_dim2] = ((x_dim2,), mcparams.x.sel(x=ci_avg_x_sel).data)
+            mcparams["tmpf_avgsec"] = (
                 (x_dim2, "time"),
-                self["tmpf"].sel(x=ci_avg_x_sel).data,
+                mcparams["tmpf"].sel(x=ci_avg_x_sel).data,
             )
-            self["tmpf_mc_set"] = (
+            mcparams["tmpf_mc_set"] = (
                 ("mc", x_dim2, "time"),
-                self["tmpf_mc_set"].sel(x=ci_avg_x_sel).data,
+                mcparams["tmpf_mc_set"].sel(x=ci_avg_x_sel).data,
             )
 
         elif ci_avg_x_isel is not None:
             time_dim2 = "time"
             x_dim2 = "x_avg"
-            self.coords[x_dim2] = ((x_dim2,), self.x.isel(x=ci_avg_x_isel).data)
-            self["tmpf_avgsec"] = (
+            mcparams.coords[x_dim2] = ((x_dim2,), mcparams.x.isel(x=ci_avg_x_isel).data)
+            mcparams["tmpf_avgsec"] = (
                 (x_dim2, time_dim2),
-                self["tmpf"].isel(x=ci_avg_x_isel).data,
+                mcparams["tmpf"].isel(x=ci_avg_x_isel).data,
             )
-            self["tmpf_mc_set"] = (
+            mcparams["tmpf_mc_set"] = (
                 ("mc", x_dim2, time_dim2),
-                self["tmpf_mc_set"].isel(x=ci_avg_x_isel).data,
+                mcparams["tmpf_mc_set"].isel(x=ci_avg_x_isel).data,
             )
         else:
-            self["tmpf_avgsec"] = self["tmpf"]
+            mcparams["tmpf_avgsec"] = mcparams["tmpf"]
             x_dim2 = "x"
             time_dim2 = "time"
 
         # subtract the mean temperature
-        q = self["tmpf_mc_set"] - self["tmpf_avgsec"]
-        self["tmpf_mc" + "_avgsec_var"] = q.var(dim="mc", ddof=1)
+        q = mcparams["tmpf_mc_set"] - mcparams["tmpf_avgsec"]
+        out["tmpf_mc" + "_avgsec_var"] = q.var(dim="mc", ddof=1)
 
         if ci_avg_x_flag1:
             # unweighted mean
-            self["tmpf_avgx1"] = self["tmpf" + "_avgsec"].mean(dim=x_dim2)
+            out["tmpf_avgx1"] = mcparams["tmpf" + "_avgsec"].mean(dim=x_dim2)
 
-            q = self["tmpf_mc_set"] - self["tmpf_avgsec"]
+            q = mcparams["tmpf_mc_set"] - mcparams["tmpf_avgsec"]
             qvar = q.var(dim=["mc", x_dim2], ddof=1)
-            self["tmpf_mc_avgx1_var"] = qvar
+            out["tmpf_mc_avgx1_var"] = qvar
 
             if conf_ints:
-                new_chunks = (len(conf_ints), self["tmpf_mc_set"].chunks[2])
-                avg_axis = self["tmpf_mc_set"].get_axis_num(["mc", x_dim2])
-                q = self["tmpf_mc_set"].data.map_blocks(
+                new_chunks = (len(conf_ints), mcparams["tmpf_mc_set"].chunks[2])
+                avg_axis = mcparams["tmpf_mc_set"].get_axis_num(["mc", x_dim2])
+                q = mcparams["tmpf_mc_set"].data.map_blocks(
                     lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
                     chunks=new_chunks,  #
                     drop_axis=avg_axis,
@@ -2777,28 +2474,28 @@ class DataStore(xr.Dataset):
                     new_axis=0,
                 )  # The new CI dim is added as firsaxis
 
-                self["tmpf_mc_avgx1"] = (("CI", time_dim2), q)
+                out["tmpf_mc_avgx1"] = (("CI", time_dim2), q)
 
         if ci_avg_x_flag2:
-            q = self["tmpf_mc_set"] - self["tmpf_avgsec"]
+            q = mcparams["tmpf_mc_set"] - mcparams["tmpf_avgsec"]
 
             qvar = q.var(dim=["mc"], ddof=1)
 
             # Inverse-variance weighting
             avg_x_var = 1 / (1 / qvar).sum(dim=x_dim2)
 
-            self["tmpf_mc_avgx2_var"] = avg_x_var
+            out["tmpf_mc_avgx2_var"] = avg_x_var
 
-            self["tmpf" + "_mc_avgx2_set"] = (self["tmpf_mc_set"] / qvar).sum(
+            mcparams["tmpf" + "_mc_avgx2_set"] = (mcparams["tmpf_mc_set"] / qvar).sum(
                 dim=x_dim2
             ) * avg_x_var
-            self["tmpf" + "_avgx2"] = self["tmpf" + "_mc_avgx2_set"].mean(dim="mc")
+            out["tmpf" + "_avgx2"] = mcparams["tmpf" + "_mc_avgx2_set"].mean(dim="mc")
 
             if conf_ints:
-                new_chunks = (len(conf_ints), self["tmpf_mc_set"].chunks[2])
-                avg_axis_avgx = self["tmpf_mc_set"].get_axis_num("mc")
+                new_chunks = (len(conf_ints), mcparams["tmpf_mc_set"].chunks[2])
+                avg_axis_avgx = mcparams["tmpf_mc_set"].get_axis_num("mc")
 
-                qq = self["tmpf_mc_avgx2_set"].data.map_blocks(
+                qq = mcparams["tmpf_mc_avgx2_set"].data.map_blocks(
                     lambda x: np.percentile(x, q=conf_ints, axis=avg_axis_avgx),
                     chunks=new_chunks,  #
                     drop_axis=avg_axis_avgx,
@@ -2807,20 +2504,20 @@ class DataStore(xr.Dataset):
                     dtype=float,
                 )  # The new CI dimension is added as
                 # firsaxis
-                self["tmpf_mc_avgx2"] = (("CI", time_dim2), qq)
+                out["tmpf_mc_avgx2"] = (("CI", time_dim2), qq)
 
         if ci_avg_time_flag1 is not None:
             # unweighted mean
-            self["tmpf_avg1"] = self["tmpf" + "_avgsec"].mean(dim=time_dim2)
+            out["tmpf_avg1"] = mcparams["tmpf_avgsec"].mean(dim=time_dim2)
 
-            q = self["tmpf_mc_set"] - self["tmpf_avgsec"]
+            q = mcparams["tmpf_mc_set"] - mcparams["tmpf_avgsec"]
             qvar = q.var(dim=["mc", time_dim2], ddof=1)
-            self["tmpf_mc_avg1_var"] = qvar
+            out["tmpf_mc_avg1_var"] = qvar
 
             if conf_ints:
-                new_chunks = (len(conf_ints), self["tmpf_mc_set"].chunks[1])
-                avg_axis = self["tmpf_mc_set"].get_axis_num(["mc", time_dim2])
-                q = self["tmpf_mc_set"].data.map_blocks(
+                new_chunks = (len(conf_ints), mcparams["tmpf_mc_set"].chunks[1])
+                avg_axis = mcparams["tmpf_mc_set"].get_axis_num(["mc", time_dim2])
+                q = mcparams["tmpf_mc_set"].data.map_blocks(
                     lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
                     chunks=new_chunks,  #
                     drop_axis=avg_axis,
@@ -2828,28 +2525,28 @@ class DataStore(xr.Dataset):
                     new_axis=0,
                 )  # The new CI dim is added as firsaxis
 
-                self["tmpf_mc_avg1"] = (("CI", x_dim2), q)
+                out["tmpf_mc_avg1"] = (("CI", x_dim2), q)
 
         if ci_avg_time_flag2:
-            q = self["tmpf_mc_set"] - self["tmpf_avgsec"]
+            q = mcparams["tmpf_mc_set"] - mcparams["tmpf_avgsec"]
 
             qvar = q.var(dim=["mc"], ddof=1)
 
             # Inverse-variance weighting
             avg_time_var = 1 / (1 / qvar).sum(dim=time_dim2)
 
-            self["tmpf_mc_avg2_var"] = avg_time_var
+            out["tmpf_mc_avg2_var"] = avg_time_var
 
-            self["tmpf" + "_mc_avg2_set"] = (self["tmpf_mc_set"] / qvar).sum(
+            mcparams["tmpf" + "_mc_avg2_set"] = (mcparams["tmpf_mc_set"] / qvar).sum(
                 dim=time_dim2
             ) * avg_time_var
-            self["tmpf_avg2"] = self["tmpf" + "_mc_avg2_set"].mean(dim="mc")
+            out["tmpf_avg2"] = mcparams["tmpf" + "_mc_avg2_set"].mean(dim="mc")
 
             if conf_ints:
-                new_chunks = (len(conf_ints), self["tmpf_mc_set"].chunks[1])
-                avg_axis_avg2 = self["tmpf_mc_set"].get_axis_num("mc")
+                new_chunks = (len(conf_ints), mcparams["tmpf_mc_set"].chunks[1])
+                avg_axis_avg2 = mcparams["tmpf_mc_set"].get_axis_num("mc")
 
-                qq = self["tmpf_mc_avg2_set"].data.map_blocks(
+                qq = mcparams["tmpf_mc_avg2_set"].data.map_blocks(
                     lambda x: np.percentile(x, q=conf_ints, axis=avg_axis_avg2),
                     chunks=new_chunks,  #
                     drop_axis=avg_axis_avg2,
@@ -2858,7 +2555,8 @@ class DataStore(xr.Dataset):
                     dtype=float,
                 )  # The new CI dimension is added as
                 # firsaxis
-                self["tmpf_mc_avg2"] = (("CI", x_dim2), qq)
+                out["tmpf_mc_avg2"] = (("CI", x_dim2), qq)
+
         # Clean up the garbage. All arrays with a Monte Carlo dimension.
         if mc_remove_set_flag:
             remove_mc_set = [
@@ -2879,12 +2577,15 @@ class DataStore(xr.Dataset):
             remove_mc_set.append("tmpf_mc_avgsec_var")
 
             for k in remove_mc_set:
-                if k in self:
-                    del self[k]
+                if k in out:
+                    del out[k]
+
+        self.update(out)
         pass
 
     def average_double_ended(
         self,
+        sections=None,
         p_val="p_val",
         p_cov="p_cov",
         st_var=None,
@@ -3028,9 +2729,7 @@ class DataStore(xr.Dataset):
             if direction == "fw":
                 arr = da.concatenate(
                     (
-                        da.zeros(
-                            (1, i_splice, 1), chunks=((1, i_splice, 1)), dtype=bool
-                        ),
+                        da.zeros((1, i_splice, 1), chunks=(1, i_splice, 1), dtype=bool),
                         da.ones(
                             (1, no - i_splice, 1),
                             chunks=(1, no - i_splice, 1),
@@ -3045,7 +2744,7 @@ class DataStore(xr.Dataset):
                         da.ones((1, i_splice, 1), chunks=(1, i_splice, 1), dtype=bool),
                         da.zeros(
                             (1, no - i_splice, 1),
-                            chunks=((1, no - i_splice, 1)),
+                            chunks=(1, no - i_splice, 1),
                             dtype=bool,
                         ),
                     ),
@@ -3070,7 +2769,10 @@ class DataStore(xr.Dataset):
         else:
             pass
 
-        self.conf_int_double_ended(
+        out = xr.Dataset()
+
+        mcparams = self.conf_int_double_ended(
+            sections=sections,
             p_val=p_val,
             p_cov=p_cov,
             st_var=st_var,
@@ -3089,83 +2791,89 @@ class DataStore(xr.Dataset):
             if ci_avg_time_sel is not None:
                 time_dim2 = "time" + "_avg"
                 x_dim2 = "x"
-                self.coords[time_dim2] = (
+                mcparams.coords[time_dim2] = (
                     (time_dim2,),
-                    self["time"].sel(**{"time": ci_avg_time_sel}).data,
+                    mcparams["time"].sel(**{"time": ci_avg_time_sel}).data,
                 )
-                self[label + "_avgsec"] = (
+                mcparams[label + "_avgsec"] = (
                     ("x", time_dim2),
                     self[label].sel(**{"time": ci_avg_time_sel}).data,
                 )
-                self[label + "_mc_set"] = (
+                mcparams[label + "_mc_set"] = (
                     ("mc", "x", time_dim2),
-                    self[label + "_mc_set"].sel(**{"time": ci_avg_time_sel}).data,
+                    mcparams[label + "_mc_set"].sel(**{"time": ci_avg_time_sel}).data,
                 )
 
             elif ci_avg_time_isel is not None:
                 time_dim2 = "time" + "_avg"
                 x_dim2 = "x"
-                self.coords[time_dim2] = (
+                mcparams.coords[time_dim2] = (
                     (time_dim2,),
-                    self["time"].isel(**{"time": ci_avg_time_isel}).data,
+                    mcparams["time"].isel(**{"time": ci_avg_time_isel}).data,
                 )
-                self[label + "_avgsec"] = (
+                mcparams[label + "_avgsec"] = (
                     ("x", time_dim2),
                     self[label].isel(**{"time": ci_avg_time_isel}).data,
                 )
-                self[label + "_mc_set"] = (
+                mcparams[label + "_mc_set"] = (
                     ("mc", "x", time_dim2),
-                    self[label + "_mc_set"].isel(**{"time": ci_avg_time_isel}).data,
+                    mcparams[label + "_mc_set"].isel(**{"time": ci_avg_time_isel}).data,
                 )
 
             elif ci_avg_x_sel is not None:
                 time_dim2 = "time"
                 x_dim2 = "x_avg"
-                self.coords[x_dim2] = ((x_dim2,), self.x.sel(x=ci_avg_x_sel).data)
-                self[label + "_avgsec"] = (
+                mcparams.coords[x_dim2] = (
+                    (x_dim2,),
+                    mcparams.x.sel(x=ci_avg_x_sel).data,
+                )
+                mcparams[label + "_avgsec"] = (
                     (x_dim2, "time"),
                     self[label].sel(x=ci_avg_x_sel).data,
                 )
-                self[label + "_mc_set"] = (
+                mcparams[label + "_mc_set"] = (
                     ("mc", x_dim2, "time"),
-                    self[label + "_mc_set"].sel(x=ci_avg_x_sel).data,
+                    mcparams[label + "_mc_set"].sel(x=ci_avg_x_sel).data,
                 )
 
             elif ci_avg_x_isel is not None:
                 time_dim2 = "time"
                 x_dim2 = "x_avg"
-                self.coords[x_dim2] = ((x_dim2,), self.x.isel(x=ci_avg_x_isel).data)
-                self[label + "_avgsec"] = (
+                mcparams.coords[x_dim2] = (
+                    (x_dim2,),
+                    mcparams.x.isel(x=ci_avg_x_isel).data,
+                )
+                mcparams[label + "_avgsec"] = (
                     (x_dim2, time_dim2),
                     self[label].isel(x=ci_avg_x_isel).data,
                 )
-                self[label + "_mc_set"] = (
+                mcparams[label + "_mc_set"] = (
                     ("mc", x_dim2, time_dim2),
-                    self[label + "_mc_set"].isel(x=ci_avg_x_isel).data,
+                    mcparams[label + "_mc_set"].isel(x=ci_avg_x_isel).data,
                 )
             else:
-                self[label + "_avgsec"] = self[label]
+                mcparams[label + "_avgsec"] = self[label]
                 x_dim2 = "x"
                 time_dim2 = "time"
 
-            memchunk = self[label + "_mc_set"].chunks
+            memchunk = mcparams[label + "_mc_set"].chunks
 
             # subtract the mean temperature
-            q = self[label + "_mc_set"] - self[label + "_avgsec"]
-            self[label + "_mc" + "_avgsec_var"] = q.var(dim="mc", ddof=1)
+            q = mcparams[label + "_mc_set"] - mcparams[label + "_avgsec"]
+            out[label + "_mc" + "_avgsec_var"] = q.var(dim="mc", ddof=1)
 
             if ci_avg_x_flag1:
                 # unweighted mean
-                self[label + "_avgx1"] = self[label + "_avgsec"].mean(dim=x_dim2)
+                out[label + "_avgx1"] = mcparams[label + "_avgsec"].mean(dim=x_dim2)
 
-                q = self[label + "_mc_set"] - self[label + "_avgsec"]
+                q = mcparams[label + "_mc_set"] - mcparams[label + "_avgsec"]
                 qvar = q.var(dim=["mc", x_dim2], ddof=1)
-                self[label + "_mc_avgx1_var"] = qvar
+                out[label + "_mc_avgx1_var"] = qvar
 
                 if conf_ints:
-                    new_chunks = (len(conf_ints), self[label + "_mc_set"].chunks[2])
-                    avg_axis = self[label + "_mc_set"].get_axis_num(["mc", x_dim2])
-                    q = self[label + "_mc_set"].data.map_blocks(
+                    new_chunks = (len(conf_ints), mcparams[label + "_mc_set"].chunks[2])
+                    avg_axis = mcparams[label + "_mc_set"].get_axis_num(["mc", x_dim2])
+                    q = mcparams[label + "_mc_set"].data.map_blocks(
                         lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
                         chunks=new_chunks,  #
                         drop_axis=avg_axis,
@@ -3173,28 +2881,28 @@ class DataStore(xr.Dataset):
                         new_axis=0,
                     )  # The new CI dim is added as firsaxis
 
-                    self[label + "_mc_avgx1"] = (("CI", time_dim2), q)
+                    out[label + "_mc_avgx1"] = (("CI", time_dim2), q)
 
             if ci_avg_x_flag2:
-                q = self[label + "_mc_set"] - self[label + "_avgsec"]
+                q = mcparams[label + "_mc_set"] - mcparams[label + "_avgsec"]
 
                 qvar = q.var(dim=["mc"], ddof=1)
 
                 # Inverse-variance weighting
                 avg_x_var = 1 / (1 / qvar).sum(dim=x_dim2)
 
-                self[label + "_mc_avgx2_var"] = avg_x_var
+                out[label + "_mc_avgx2_var"] = avg_x_var
 
-                self[label + "_mc_avgx2_set"] = (self[label + "_mc_set"] / qvar).sum(
-                    dim=x_dim2
-                ) * avg_x_var
-                self[label + "_avgx2"] = self[label + "_mc_avgx2_set"].mean(dim="mc")
+                mcparams[label + "_mc_avgx2_set"] = (
+                    mcparams[label + "_mc_set"] / qvar
+                ).sum(dim=x_dim2) * avg_x_var
+                out[label + "_avgx2"] = mcparams[label + "_mc_avgx2_set"].mean(dim="mc")
 
                 if conf_ints:
-                    new_chunks = (len(conf_ints), self[label + "_mc_set"].chunks[2])
-                    avg_axis_avgx = self[label + "_mc_set"].get_axis_num("mc")
+                    new_chunks = (len(conf_ints), mcparams[label + "_mc_set"].chunks[2])
+                    avg_axis_avgx = mcparams[label + "_mc_set"].get_axis_num("mc")
 
-                    qq = self[label + "_mc_avgx2_set"].data.map_blocks(
+                    qq = mcparams[label + "_mc_avgx2_set"].data.map_blocks(
                         lambda x: np.percentile(x, q=conf_ints, axis=avg_axis_avgx),
                         chunks=new_chunks,  #
                         drop_axis=avg_axis_avgx,
@@ -3203,20 +2911,22 @@ class DataStore(xr.Dataset):
                         dtype=float,
                     )  # The new CI dimension is added as
                     # firsaxis
-                    self[label + "_mc_avgx2"] = (("CI", time_dim2), qq)
+                    out[label + "_mc_avgx2"] = (("CI", time_dim2), qq)
 
             if ci_avg_time_flag1 is not None:
                 # unweighted mean
-                self[label + "_avg1"] = self[label + "_avgsec"].mean(dim=time_dim2)
+                out[label + "_avg1"] = mcparams[label + "_avgsec"].mean(dim=time_dim2)
 
-                q = self[label + "_mc_set"] - self[label + "_avgsec"]
+                q = mcparams[label + "_mc_set"] - mcparams[label + "_avgsec"]
                 qvar = q.var(dim=["mc", time_dim2], ddof=1)
-                self[label + "_mc_avg1_var"] = qvar
+                out[label + "_mc_avg1_var"] = qvar
 
                 if conf_ints:
-                    new_chunks = (len(conf_ints), self[label + "_mc_set"].chunks[1])
-                    avg_axis = self[label + "_mc_set"].get_axis_num(["mc", time_dim2])
-                    q = self[label + "_mc_set"].data.map_blocks(
+                    new_chunks = (len(conf_ints), mcparams[label + "_mc_set"].chunks[1])
+                    avg_axis = mcparams[label + "_mc_set"].get_axis_num(
+                        ["mc", time_dim2]
+                    )
+                    q = mcparams[label + "_mc_set"].data.map_blocks(
                         lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
                         chunks=new_chunks,  #
                         drop_axis=avg_axis,
@@ -3224,28 +2934,28 @@ class DataStore(xr.Dataset):
                         new_axis=0,
                     )  # The new CI dim is added as firsaxis
 
-                    self[label + "_mc_avg1"] = (("CI", x_dim2), q)
+                    out[label + "_mc_avg1"] = (("CI", x_dim2), q)
 
             if ci_avg_time_flag2:
-                q = self[label + "_mc_set"] - self[label + "_avgsec"]
+                q = mcparams[label + "_mc_set"] - mcparams[label + "_avgsec"]
 
                 qvar = q.var(dim=["mc"], ddof=1)
 
                 # Inverse-variance weighting
                 avg_time_var = 1 / (1 / qvar).sum(dim=time_dim2)
 
-                self[label + "_mc_avg2_var"] = avg_time_var
+                out[label + "_mc_avg2_var"] = avg_time_var
 
-                self[label + "_mc_avg2_set"] = (self[label + "_mc_set"] / qvar).sum(
-                    dim=time_dim2
-                ) * avg_time_var
-                self[label + "_avg2"] = self[label + "_mc_avg2_set"].mean(dim="mc")
+                mcparams[label + "_mc_avg2_set"] = (
+                    mcparams[label + "_mc_set"] / qvar
+                ).sum(dim=time_dim2) * avg_time_var
+                out[label + "_avg2"] = mcparams[label + "_mc_avg2_set"].mean(dim="mc")
 
                 if conf_ints:
-                    new_chunks = (len(conf_ints), self[label + "_mc_set"].chunks[1])
-                    avg_axis_avg2 = self[label + "_mc_set"].get_axis_num("mc")
+                    new_chunks = (len(conf_ints), mcparams[label + "_mc_set"].chunks[1])
+                    avg_axis_avg2 = mcparams[label + "_mc_set"].get_axis_num("mc")
 
-                    qq = self[label + "_mc_avg2_set"].data.map_blocks(
+                    qq = mcparams[label + "_mc_avg2_set"].data.map_blocks(
                         lambda x: np.percentile(x, q=conf_ints, axis=avg_axis_avg2),
                         chunks=new_chunks,  #
                         drop_axis=avg_axis_avg2,
@@ -3254,40 +2964,40 @@ class DataStore(xr.Dataset):
                         dtype=float,
                     )  # The new CI dimension is added as
                     # firsaxis
-                    self[label + "_mc_avg2"] = (("CI", x_dim2), qq)
+                    out[label + "_mc_avg2"] = (("CI", x_dim2), qq)
 
         # Weighted mean of the forward and backward
         tmpw_var = 1 / (
-            1 / self["tmpf_mc" + "_avgsec_var"] + 1 / self["tmpb_mc" + "_avgsec_var"]
+            1 / out["tmpf_mc" + "_avgsec_var"] + 1 / out["tmpb_mc" + "_avgsec_var"]
         )
 
         q = (
-            self["tmpf_mc_set"] / self["tmpf_mc" + "_avgsec_var"]
-            + self["tmpb_mc_set"] / self["tmpb_mc" + "_avgsec_var"]
+            mcparams["tmpf_mc_set"] / out["tmpf_mc" + "_avgsec_var"]
+            + mcparams["tmpb_mc_set"] / out["tmpb_mc" + "_avgsec_var"]
         ) * tmpw_var
 
-        self["tmpw" + "_mc_set"] = q  #
+        mcparams["tmpw" + "_mc_set"] = q  #
 
-        # self["tmpw"] = self["tmpw" + '_mc_set'].mean(dim='mc')
-        self["tmpw" + "_avgsec"] = (
-            self["tmpf_avgsec"] / self["tmpf_mc" + "_avgsec_var"]
-            + self["tmpb_avgsec"] / self["tmpb_mc" + "_avgsec_var"]
+        # out["tmpw"] = out["tmpw" + '_mc_set'].mean(dim='mc')
+        out["tmpw" + "_avgsec"] = (
+            mcparams["tmpf_avgsec"] / out["tmpf_mc" + "_avgsec_var"]
+            + mcparams["tmpb_avgsec"] / out["tmpb_mc" + "_avgsec_var"]
         ) * tmpw_var
 
-        q = self["tmpw" + "_mc_set"] - self["tmpw" + "_avgsec"]
-        self["tmpw" + "_mc" + "_avgsec_var"] = q.var(dim="mc", ddof=1)
+        q = mcparams["tmpw" + "_mc_set"] - out["tmpw_avgsec"]
+        out["tmpw" + "_mc" + "_avgsec_var"] = q.var(dim="mc", ddof=1)
 
         if ci_avg_time_flag1:
-            self["tmpw" + "_avg1"] = self["tmpw" + "_avgsec"].mean(dim=time_dim2)
+            out["tmpw" + "_avg1"] = out["tmpw" + "_avgsec"].mean(dim=time_dim2)
 
-            self["tmpw" + "_mc_avg1_var"] = self["tmpw" + "_mc_set"].var(
+            out["tmpw" + "_mc_avg1_var"] = mcparams["tmpw" + "_mc_set"].var(
                 dim=["mc", time_dim2]
             )
 
             if conf_ints:
                 new_chunks_weighted = ((len(conf_ints),),) + (memchunk[1],)
-                avg_axis = self["tmpw" + "_mc_set"].get_axis_num(["mc", time_dim2])
-                q2 = self["tmpw" + "_mc_set"].data.map_blocks(
+                avg_axis = mcparams["tmpw" + "_mc_set"].get_axis_num(["mc", time_dim2])
+                q2 = mcparams["tmpw" + "_mc_set"].data.map_blocks(
                     lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
                     chunks=new_chunks_weighted,
                     # Explicitly define output chunks
@@ -3296,32 +3006,32 @@ class DataStore(xr.Dataset):
                     dtype=float,
                 )  # The new CI dimension is added as
                 # first axis
-                self["tmpw" + "_mc_avg1"] = (("CI", x_dim2), q2)
+                out["tmpw" + "_mc_avg1"] = (("CI", x_dim2), q2)
 
         if ci_avg_time_flag2:
             tmpw_var_avg2 = 1 / (
-                1 / self["tmpf_mc_avg2_var"] + 1 / self["tmpb_mc_avg2_var"]
+                1 / out["tmpf_mc_avg2_var"] + 1 / out["tmpb_mc_avg2_var"]
             )
 
             q = (
-                self["tmpf_mc_avg2_set"] / self["tmpf_mc_avg2_var"]
-                + self["tmpb_mc_avg2_set"] / self["tmpb_mc_avg2_var"]
+                mcparams["tmpf_mc_avg2_set"] / out["tmpf_mc_avg2_var"]
+                + mcparams["tmpb_mc_avg2_set"] / out["tmpb_mc_avg2_var"]
             ) * tmpw_var_avg2
 
-            self["tmpw" + "_mc_avg2_set"] = q  #
+            mcparams["tmpw" + "_mc_avg2_set"] = q  #
 
-            self["tmpw" + "_avg2"] = (
-                self["tmpf_avg2"] / self["tmpf_mc_avg2_var"]
-                + self["tmpb_avg2"] / self["tmpb_mc_avg2_var"]
+            out["tmpw" + "_avg2"] = (
+                out["tmpf_avg2"] / out["tmpf_mc_avg2_var"]
+                + out["tmpb_avg2"] / out["tmpb_mc_avg2_var"]
             ) * tmpw_var_avg2
 
-            self["tmpw" + "_mc_avg2_var"] = tmpw_var_avg2
+            out["tmpw" + "_mc_avg2_var"] = tmpw_var_avg2
 
             if conf_ints:
                 # We first need to know the x-dim-chunk-size
                 new_chunks_weighted = ((len(conf_ints),),) + (memchunk[1],)
-                avg_axis_avg2 = self["tmpw" + "_mc_avg2_set"].get_axis_num("mc")
-                q2 = self["tmpw" + "_mc_avg2_set"].data.map_blocks(
+                avg_axis_avg2 = mcparams["tmpw" + "_mc_avg2_set"].get_axis_num("mc")
+                q2 = mcparams["tmpw" + "_mc_avg2_set"].data.map_blocks(
                     lambda x: np.percentile(x, q=conf_ints, axis=avg_axis_avg2),
                     chunks=new_chunks_weighted,
                     # Explicitly define output chunks
@@ -3329,17 +3039,17 @@ class DataStore(xr.Dataset):
                     new_axis=0,
                     dtype=float,
                 )  # The new CI dimension is added as firstax
-                self["tmpw" + "_mc_avg2"] = (("CI", x_dim2), q2)
+                out["tmpw" + "_mc_avg2"] = (("CI", x_dim2), q2)
 
         if ci_avg_x_flag1:
-            self["tmpw" + "_avgx1"] = self["tmpw" + "_avgsec"].mean(dim=x_dim2)
+            out["tmpw" + "_avgx1"] = out["tmpw" + "_avgsec"].mean(dim=x_dim2)
 
-            self["tmpw" + "_mc_avgx1_var"] = self["tmpw" + "_mc_set"].var(dim=x_dim2)
+            out["tmpw" + "_mc_avgx1_var"] = mcparams["tmpw" + "_mc_set"].var(dim=x_dim2)
 
             if conf_ints:
                 new_chunks_weighted = ((len(conf_ints),),) + (memchunk[2],)
-                avg_axis = self["tmpw" + "_mc_set"].get_axis_num(["mc", x_dim2])
-                q2 = self["tmpw" + "_mc_set"].data.map_blocks(
+                avg_axis = mcparams["tmpw" + "_mc_set"].get_axis_num(["mc", x_dim2])
+                q2 = mcparams["tmpw" + "_mc_set"].data.map_blocks(
                     lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
                     chunks=new_chunks_weighted,
                     # Explicitly define output chunks
@@ -3348,32 +3058,32 @@ class DataStore(xr.Dataset):
                     dtype=float,
                 )  # The new CI dimension is added as
                 # first axis
-                self["tmpw" + "_mc_avgx1"] = (("CI", time_dim2), q2)
+                out["tmpw" + "_mc_avgx1"] = (("CI", time_dim2), q2)
 
         if ci_avg_x_flag2:
             tmpw_var_avgx2 = 1 / (
-                1 / self["tmpf_mc_avgx2_var"] + 1 / self["tmpb_mc_avgx2_var"]
+                1 / out["tmpf_mc_avgx2_var"] + 1 / out["tmpb_mc_avgx2_var"]
             )
 
             q = (
-                self["tmpf_mc_avgx2_set"] / self["tmpf_mc_avgx2_var"]
-                + self["tmpb_mc_avgx2_set"] / self["tmpb_mc_avgx2_var"]
+                mcparams["tmpf_mc_avgx2_set"] / out["tmpf_mc_avgx2_var"]
+                + mcparams["tmpb_mc_avgx2_set"] / out["tmpb_mc_avgx2_var"]
             ) * tmpw_var_avgx2
 
-            self["tmpw" + "_mc_avgx2_set"] = q  #
+            mcparams["tmpw" + "_mc_avgx2_set"] = q  #
 
-            self["tmpw" + "_avgx2"] = (
-                self["tmpf_avgx2"] / self["tmpf_mc_avgx2_var"]
-                + self["tmpb_avgx2"] / self["tmpb_mc_avgx2_var"]
+            out["tmpw" + "_avgx2"] = (
+                out["tmpf_avgx2"] / out["tmpf_mc_avgx2_var"]
+                + out["tmpb_avgx2"] / out["tmpb_mc_avgx2_var"]
             ) * tmpw_var_avgx2
 
-            self["tmpw" + "_mc_avgx2_var"] = tmpw_var_avgx2
+            out["tmpw" + "_mc_avgx2_var"] = tmpw_var_avgx2
 
             if conf_ints:
                 # We first need to know the x-dim-chunk-size
                 new_chunks_weighted = ((len(conf_ints),),) + (memchunk[2],)
-                avg_axis_avgx2 = self["tmpw" + "_mc_avgx2_set"].get_axis_num("mc")
-                q2 = self["tmpw" + "_mc_avgx2_set"].data.map_blocks(
+                avg_axis_avgx2 = mcparams["tmpw" + "_mc_avgx2_set"].get_axis_num("mc")
+                q2 = mcparams["tmpw" + "_mc_avgx2_set"].data.map_blocks(
                     lambda x: np.percentile(x, q=conf_ints, axis=avg_axis_avgx2),
                     chunks=new_chunks_weighted,
                     # Explicitly define output chunks
@@ -3381,7 +3091,7 @@ class DataStore(xr.Dataset):
                     new_axis=0,
                     dtype=float,
                 )  # The new CI dimension is added as firstax
-                self["tmpw" + "_mc_avgx2"] = (("CI", time_dim2), q2)
+                out["tmpw" + "_mc_avgx2"] = (("CI", time_dim2), q2)
 
         # Clean up the garbage. All arrays with a Monte Carlo dimension.
         if mc_remove_set_flag:
@@ -3406,13 +3116,16 @@ class DataStore(xr.Dataset):
                 remove_mc_set.append(i + "_mc_avgx2_set")
                 remove_mc_set.append(i + "_mc_avgsec_var")
 
-            if self.trans_att.size:
+            if "trans_att" in mcparams and mcparams.trans_att.size:
                 remove_mc_set.append('talpha"_fw_mc')
                 remove_mc_set.append('talpha"_bw_mc')
 
             for k in remove_mc_set:
-                if k in self:
-                    del self[k]
+                if k in out:
+                    print(f"Removed from results: {k}")
+                    del out[k]
+
+        self.update(out)
         pass
 
     def conf_int_single_ended(
@@ -3496,6 +3209,9 @@ class DataStore(xr.Dataset):
         """
         check_deprecated_kwargs(kwargs)
 
+        out = xr.Dataset()
+        params = xr.Dataset()
+
         if da_random_state:
             state = da_random_state
         else:
@@ -3504,6 +3220,7 @@ class DataStore(xr.Dataset):
         no, nt = self.st.data.shape
         if "trans_att" in self.keys():
             nta = self.trans_att.size
+
         else:
             nta = 0
 
@@ -3521,10 +3238,13 @@ class DataStore(xr.Dataset):
         else:
             raise Exception("The size of `p_val` is not what I expected")
 
-        self.coords["mc"] = range(mc_sample_size)
+        params.coords["mc"] = range(mc_sample_size)
+        params.coords["x"] = self.x
+        params.coords["time"] = self.time
 
         if conf_ints:
-            self.coords["CI"] = conf_ints
+            out.coords["CI"] = conf_ints
+            params.coords["CI"] = conf_ints
 
         # WLS
         if isinstance(p_cov, str):
@@ -3534,20 +3254,20 @@ class DataStore(xr.Dataset):
         p_mc = sst.multivariate_normal.rvs(mean=p_val, cov=p_cov, size=mc_sample_size)
 
         if fixed_alpha:
-            self["alpha_mc"] = (("mc", "x"), p_mc[:, 1 : no + 1])
-            self["c_mc"] = (("mc", "time"), p_mc[:, 1 + no : 1 + no + nt])
+            params["alpha_mc"] = (("mc", "x"), p_mc[:, 1 : no + 1])
+            params["c_mc"] = (("mc", "time"), p_mc[:, 1 + no : 1 + no + nt])
         else:
-            self["dalpha_mc"] = (("mc",), p_mc[:, 1])
-            self["c_mc"] = (("mc", "time"), p_mc[:, 2 : nt + 2])
+            params["dalpha_mc"] = (("mc",), p_mc[:, 1])
+            params["c_mc"] = (("mc", "time"), p_mc[:, 2 : nt + 2])
 
-        self["gamma_mc"] = (("mc",), p_mc[:, 0])
+        params["gamma_mc"] = (("mc",), p_mc[:, 0])
         if nta:
-            self["ta_mc"] = (
+            params["ta_mc"] = (
                 ("mc", "trans_att", "time"),
                 np.reshape(p_mc[:, -nt * nta :], (mc_sample_size, nta, nt)),
             )
 
-        rsize = (self.mc.size, self.x.size, self.time.size)
+        rsize = (params.mc.size, params.x.size, params.time.size)
 
         if reduce_memory_usage:
             memchunk = da.ones(
@@ -3594,7 +3314,7 @@ class DataStore(xr.Dataset):
             else:
                 st_vari_da = da.from_array(st_vari, chunks=memchunk[1:])
 
-            self[k] = (
+            params[k] = (
                 ("mc", "x", "time"),
                 state.normal(
                     loc=loc,  # has chunks=memchunk[1:]
@@ -3607,52 +3327,50 @@ class DataStore(xr.Dataset):
         ta_arr = np.zeros((mc_sample_size, no, nt))
 
         if nta:
-            for ii, ta in enumerate(self["ta_mc"]):
+            for ii, ta in enumerate(params["ta_mc"]):
                 for tai, taxi in zip(ta.values, self.trans_att.values):
                     ta_arr[ii, self.x.values >= taxi] = (
                         ta_arr[ii, self.x.values >= taxi] + tai
                     )
-        self["ta_mc_arr"] = (("mc", "x", "time"), ta_arr)
+        params["ta_mc_arr"] = (("mc", "x", "time"), ta_arr)
 
         if fixed_alpha:
-            self["tmpf_mc_set"] = (
-                self["gamma_mc"]
+            params["tmpf_mc_set"] = (
+                params["gamma_mc"]
                 / (
                     (
-                        np.log(self["r_st"])
-                        - np.log(self["r_ast"])
-                        + (self["c_mc"] + self["ta_mc_arr"])
+                        np.log(params["r_st"])
+                        - np.log(params["r_ast"])
+                        + (params["c_mc"] + params["ta_mc_arr"])
                     )
-                    + self["alpha_mc"]
+                    + params["alpha_mc"]
                 )
                 - 273.15
             )
         else:
-            self["tmpf_mc_set"] = (
-                self["gamma_mc"]
+            params["tmpf_mc_set"] = (
+                params["gamma_mc"]
                 / (
                     (
-                        np.log(self["r_st"])
-                        - np.log(self["r_ast"])
-                        + (self["c_mc"] + self["ta_mc_arr"])
+                        np.log(params["r_st"])
+                        - np.log(params["r_ast"])
+                        + (params["c_mc"] + params["ta_mc_arr"])
                     )
-                    + (self["dalpha_mc"] * self.x)
+                    + (params["dalpha_mc"] * params.x)
                 )
                 - 273.15
             )
 
         avg_dims = ["mc"]
-
-        avg_axis = self["tmpf_mc_set"].get_axis_num(avg_dims)
-
-        self["tmpf_mc_var"] = (self["tmpf_mc_set"] - self["tmpf"]).var(
+        avg_axis = params["tmpf_mc_set"].get_axis_num(avg_dims)
+        out["tmpf_mc_var"] = (params["tmpf_mc_set"] - self["tmpf"]).var(
             dim=avg_dims, ddof=1
         )
 
         if conf_ints:
-            new_chunks = ((len(conf_ints),),) + self["tmpf_mc_set"].chunks[1:]
+            new_chunks = ((len(conf_ints),),) + params["tmpf_mc_set"].chunks[1:]
 
-            qq = self["tmpf_mc_set"]
+            qq = params["tmpf_mc_set"]
 
             q = qq.data.map_blocks(
                 lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
@@ -3661,28 +3379,17 @@ class DataStore(xr.Dataset):
                 new_axis=0,
             )  # The new CI dimension is added as first axis
 
-            self["tmpf_mc"] = (("CI", "x", "time"), q)
+            out["tmpf_mc"] = (("CI", "x", "time"), q)
 
-        if mc_remove_set_flag:
-            drop_var = [
-                "gamma_mc",
-                "dalpha_mc",
-                "alpha_mc",
-                "c_mc",
-                "mc",
-                "r_st",
-                "r_ast",
-                "tmpf_mc_set",
-                "ta_mc_arr",
-            ]
-            for k in drop_var:
-                if k in self:
-                    del self[k]
+        if not mc_remove_set_flag:
+            out.update(params)
 
-        pass
+        self.update(out)
+        return out
 
     def conf_int_double_ended(
         self,
+        sections=None,
         p_val="p_val",
         p_cov="p_cov",
         st_var=None,
@@ -3825,9 +3532,7 @@ class DataStore(xr.Dataset):
             if direction == "fw":
                 arr = da.concatenate(
                     (
-                        da.zeros(
-                            (1, i_splice, 1), chunks=((1, i_splice, 1)), dtype=bool
-                        ),
+                        da.zeros((1, i_splice, 1), chunks=(1, i_splice, 1), dtype=bool),
                         da.ones(
                             (1, no - i_splice, 1),
                             chunks=(1, no - i_splice, 1),
@@ -3842,7 +3547,7 @@ class DataStore(xr.Dataset):
                         da.ones((1, i_splice, 1), chunks=(1, i_splice, 1), dtype=bool),
                         da.zeros(
                             (1, no - i_splice, 1),
-                            chunks=((1, no - i_splice, 1)),
+                            chunks=(1, no - i_splice, 1),
                             dtype=bool,
                         ),
                     ),
@@ -3851,6 +3556,9 @@ class DataStore(xr.Dataset):
             return arr
 
         check_deprecated_kwargs(kwargs)
+
+        out = xr.Dataset()
+        params = xr.Dataset()
 
         if da_random_state:
             # In testing environments
@@ -3881,9 +3589,13 @@ class DataStore(xr.Dataset):
                 (mc_sample_size, no, nt), chunks={0: -1, 1: "auto", 2: "auto"}
             ).chunks
 
-        self.coords["mc"] = range(mc_sample_size)
+        params.coords["mc"] = range(mc_sample_size)
+        params.coords["x"] = self.x
+        params.coords["time"] = self.time
+
         if conf_ints:
             self.coords["CI"] = conf_ints
+            params.coords["CI"] = conf_ints
 
         assert isinstance(p_val, (str, np.ndarray, np.generic))
         if isinstance(p_val, str):
@@ -3903,10 +3615,10 @@ class DataStore(xr.Dataset):
             d_bw = p_val[1 + nt : 2 * nt + 1]
             alpha = p_val[2 * nt + 1 : 2 * nt + 1 + no]
 
-            self["gamma_mc"] = (tuple(), gamma)
-            self["alpha_mc"] = (("x",), alpha)
-            self["df_mc"] = (("time",), d_fw)
-            self["db_mc"] = (("time",), d_bw)
+            params["gamma_mc"] = (tuple(), gamma)
+            params["alpha_mc"] = (("x",), alpha)
+            params["df_mc"] = (("time",), d_fw)
+            params["db_mc"] = (("time",), d_bw)
 
             if nta:
                 ta = p_val[2 * nt + 1 + no :].reshape((nt, 2, nta), order="F")
@@ -3914,19 +3626,19 @@ class DataStore(xr.Dataset):
                 ta_bw = ta[:, 1, :]
 
                 ta_fw_arr = np.zeros((no, nt))
-                for tai, taxi in zip(ta_fw.T, self.coords["trans_att"].values):
-                    ta_fw_arr[self.x.values >= taxi] = (
-                        ta_fw_arr[self.x.values >= taxi] + tai
+                for tai, taxi in zip(ta_fw.T, params.coords["trans_att"].values):
+                    ta_fw_arr[params.x.values >= taxi] = (
+                        ta_fw_arr[params.x.values >= taxi] + tai
                     )
 
                 ta_bw_arr = np.zeros((no, nt))
-                for tai, taxi in zip(ta_bw.T, self.coords["trans_att"].values):
-                    ta_bw_arr[self.x.values < taxi] = (
-                        ta_bw_arr[self.x.values < taxi] + tai
+                for tai, taxi in zip(ta_bw.T, params.coords["trans_att"].values):
+                    ta_bw_arr[params.x.values < taxi] = (
+                        ta_bw_arr[params.x.values < taxi] + tai
                     )
 
-                self["talpha_fw_mc"] = (("x", "time"), ta_fw_arr)
-                self["talpha_bw_mc"] = (("x", "time"), ta_bw_arr)
+                params["talpha_fw_mc"] = (("x", "time"), ta_fw_arr)
+                params["talpha_bw_mc"] = (("x", "time"), ta_bw_arr)
 
         elif isinstance(p_cov, bool) and p_cov:
             raise NotImplementedError("Not an implemented option. Check p_cov argument")
@@ -3937,7 +3649,10 @@ class DataStore(xr.Dataset):
                 p_cov = self[p_cov].values
             assert p_cov.shape == (npar, npar)
 
-            ix_sec = self.ufunc_per_section(x_indices=True, calc_per="all")
+            assert sections is not None, "Define sections"
+            ix_sec = self.ufunc_per_section(
+                sections=sections, x_indices=True, calc_per="all"
+            )
             nx_sec = ix_sec.size
             from_i = np.concatenate(
                 (
@@ -3958,9 +3673,9 @@ class DataStore(xr.Dataset):
             d_fw = po_mc[:, 1 : nt + 1]
             d_bw = po_mc[:, 1 + nt : 2 * nt + 1]
 
-            self["gamma_mc"] = (("mc",), gamma)
-            self["df_mc"] = (("mc", "time"), d_fw)
-            self["db_mc"] = (("mc", "time"), d_bw)
+            params["gamma_mc"] = (("mc",), gamma)
+            params["df_mc"] = (("mc", "time"), d_fw)
+            params["db_mc"] = (("mc", "time"), d_bw)
 
             # calculate alpha seperately
             alpha = np.zeros((mc_sample_size, no), dtype=float)
@@ -3980,7 +3695,7 @@ class DataStore(xr.Dataset):
 
                 alpha[:, not_ix_sec] = not_alpha_mc
 
-            self["alpha_mc"] = (("mc", "x"), alpha)
+            params["alpha_mc"] = (("mc", "x"), alpha)
 
             if nta:
                 ta = po_mc[:, 2 * nt + 1 + nx_sec :].reshape(
@@ -3993,10 +3708,10 @@ class DataStore(xr.Dataset):
                     (mc_sample_size, no, nt), chunks=memchunk, dtype=float
                 )
                 for tai, taxi in zip(
-                    ta_fw.swapaxes(0, 2), self.coords["trans_att"].values
+                    ta_fw.swapaxes(0, 2), params.coords["trans_att"].values
                 ):
                     # iterate over the splices
-                    i_splice = sum(self.x.values < taxi)
+                    i_splice = sum(params.x.values < taxi)
                     mask = create_da_ta2(no, i_splice, direction="fw", chunks=memchunk)
 
                     ta_fw_arr += mask * tai.T[:, None, :]
@@ -4005,15 +3720,15 @@ class DataStore(xr.Dataset):
                     (mc_sample_size, no, nt), chunks=memchunk, dtype=float
                 )
                 for tai, taxi in zip(
-                    ta_bw.swapaxes(0, 2), self.coords["trans_att"].values
+                    ta_bw.swapaxes(0, 2), params.coords["trans_att"].values
                 ):
-                    i_splice = sum(self.x.values < taxi)
+                    i_splice = sum(params.x.values < taxi)
                     mask = create_da_ta2(no, i_splice, direction="bw", chunks=memchunk)
 
                     ta_bw_arr += mask * tai.T[:, None, :]
 
-                self["talpha_fw_mc"] = (("mc", "x", "time"), ta_fw_arr)
-                self["talpha_bw_mc"] = (("mc", "x", "time"), ta_bw_arr)
+                params["talpha_fw_mc"] = (("mc", "x", "time"), ta_fw_arr)
+                params["talpha_bw_mc"] = (("mc", "x", "time"), ta_bw_arr)
 
         # Draw from the normal distributions for the Stokes intensities
         for k, st_labeli, st_vari in zip(
@@ -4053,7 +3768,7 @@ class DataStore(xr.Dataset):
             else:
                 st_vari_da = da.from_array(st_vari, chunks=memchunk[1:])
 
-            self[k] = (
+            params[k] = (
                 ("mc", "x", "time"),
                 state.normal(
                     loc=loc,  # has chunks=memchunk[1:]
@@ -4067,65 +3782,69 @@ class DataStore(xr.Dataset):
             if "tmpw" or label:
                 if label == "tmpf":
                     if nta:
-                        self["tmpf_mc_set"] = (
-                            self["gamma_mc"]
+                        params["tmpf_mc_set"] = (
+                            params["gamma_mc"]
                             / (
-                                np.log(self["r_st"] / self["r_ast"])
-                                + self["df_mc"]
-                                + self["alpha_mc"]
-                                + self["talpha_fw_mc"]
+                                np.log(params["r_st"] / params["r_ast"])
+                                + params["df_mc"]
+                                + params["alpha_mc"]
+                                + params["talpha_fw_mc"]
                             )
                             - 273.15
                         )
                     else:
-                        self["tmpf_mc_set"] = (
-                            self["gamma_mc"]
+                        params["tmpf_mc_set"] = (
+                            params["gamma_mc"]
                             / (
-                                np.log(self["r_st"] / self["r_ast"])
-                                + self["df_mc"]
-                                + self["alpha_mc"]
+                                np.log(params["r_st"] / params["r_ast"])
+                                + params["df_mc"]
+                                + params["alpha_mc"]
                             )
                             - 273.15
                         )
                 else:
                     if nta:
-                        self["tmpb_mc_set"] = (
-                            self["gamma_mc"]
+                        params["tmpb_mc_set"] = (
+                            params["gamma_mc"]
                             / (
-                                np.log(self["r_rst"] / self["r_rast"])
-                                + self["db_mc"]
-                                - self["alpha_mc"]
-                                + self["talpha_bw_mc"]
+                                np.log(params["r_rst"] / params["r_rast"])
+                                + params["db_mc"]
+                                - params["alpha_mc"]
+                                + params["talpha_bw_mc"]
                             )
                             - 273.15
                         )
                     else:
-                        self["tmpb_mc_set"] = (
-                            self["gamma_mc"]
+                        params["tmpb_mc_set"] = (
+                            params["gamma_mc"]
                             / (
-                                np.log(self["r_rst"] / self["r_rast"])
-                                + self["db_mc"]
-                                - self["alpha_mc"]
+                                np.log(params["r_rst"] / params["r_rast"])
+                                + params["db_mc"]
+                                - params["alpha_mc"]
                             )
                             - 273.15
                         )
 
                 if var_only_sections:
                     # sets the values outside the reference sections to NaN
-                    xi = self.ufunc_per_section(x_indices=True, calc_per="all")
-                    x_mask_ = [True if ix in xi else False for ix in range(self.x.size)]
+                    xi = self.ufunc_per_section(
+                        sections=sections, x_indices=True, calc_per="all"
+                    )
+                    x_mask_ = [
+                        True if ix in xi else False for ix in range(params.x.size)
+                    ]
                     x_mask = np.reshape(x_mask_, (1, -1, 1))
-                    self[label + "_mc_set"] = self[label + "_mc_set"].where(x_mask)
+                    params[label + "_mc_set"] = params[label + "_mc_set"].where(x_mask)
 
                 # subtract the mean temperature
-                q = self[label + "_mc_set"] - self[label]
-                self[label + "_mc_var"] = q.var(dim="mc", ddof=1)
+                q = params[label + "_mc_set"] - self[label]
+                out[label + "_mc_var"] = q.var(dim="mc", ddof=1)
 
                 if conf_ints:
-                    new_chunks = list(self[label + "_mc_set"].chunks)
+                    new_chunks = list(params[label + "_mc_set"].chunks)
                     new_chunks[0] = (len(conf_ints),)
-                    avg_axis = self[label + "_mc_set"].get_axis_num("mc")
-                    q = self[label + "_mc_set"].data.map_blocks(
+                    avg_axis = params[label + "_mc_set"].get_axis_num("mc")
+                    q = params[label + "_mc_set"].data.map_blocks(
                         lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
                         chunks=new_chunks,  #
                         drop_axis=avg_axis,
@@ -4133,37 +3852,37 @@ class DataStore(xr.Dataset):
                         new_axis=0,
                     )  # The new CI dimension is added as firsaxis
 
-                    self[label + "_mc"] = (("CI", "x", "time"), q)
+                    out[label + "_mc"] = (("CI", "x", "time"), q)
 
         # Weighted mean of the forward and backward
-        tmpw_var = 1 / (1 / self["tmpf_mc_var"] + 1 / self["tmpb_mc_var"])
+        tmpw_var = 1 / (1 / out["tmpf_mc_var"] + 1 / out["tmpb_mc_var"])
 
         q = (
-            self["tmpf_mc_set"] / self["tmpf_mc_var"]
-            + self["tmpb_mc_set"] / self["tmpb_mc_var"]
+            params["tmpf_mc_set"] / out["tmpf_mc_var"]
+            + params["tmpb_mc_set"] / out["tmpb_mc_var"]
         ) * tmpw_var
 
-        self["tmpw" + "_mc_set"] = q  #
+        params["tmpw" + "_mc_set"] = q  #
 
-        self["tmpw"] = (
-            self["tmpf"] / self["tmpf_mc_var"] + self["tmpb"] / self["tmpb_mc_var"]
+        out["tmpw"] = (
+            self["tmpf"] / out["tmpf_mc_var"] + self["tmpb"] / out["tmpb_mc_var"]
         ) * tmpw_var
 
-        q = self["tmpw" + "_mc_set"] - self["tmpw"]
-        self["tmpw" + "_mc_var"] = q.var(dim="mc", ddof=1)
+        q = params["tmpw" + "_mc_set"] - self["tmpw"]
+        out["tmpw" + "_mc_var"] = q.var(dim="mc", ddof=1)
 
         # Calculate the CI of the weighted MC_set
         if conf_ints:
             new_chunks_weighted = ((len(conf_ints),),) + memchunk[1:]
-            avg_axis = self["tmpw" + "_mc_set"].get_axis_num("mc")
-            q2 = self["tmpw" + "_mc_set"].data.map_blocks(
+            avg_axis = params["tmpw" + "_mc_set"].get_axis_num("mc")
+            q2 = params["tmpw" + "_mc_set"].data.map_blocks(
                 lambda x: np.percentile(x, q=conf_ints, axis=avg_axis),
                 chunks=new_chunks_weighted,  # Explicitly define output chunks
                 drop_axis=avg_axis,  # avg dimensions are dropped
                 new_axis=0,
                 dtype=float,
             )  # The new CI dimension is added as first axis
-            self["tmpw" + "_mc"] = (("CI", "x", "time"), q2)
+            out["tmpw" + "_mc"] = (("CI", "x", "time"), q2)
 
         # Clean up the garbage. All arrays with a Monte Carlo dimension.
         if mc_remove_set_flag:
@@ -4186,9 +3905,14 @@ class DataStore(xr.Dataset):
                 remove_mc_set.append('talpha"_bw_mc')
 
             for k in remove_mc_set:
-                if k in self:
-                    del self[k]
-        pass
+                if k in out:
+                    del out[k]
+
+        if not mc_remove_set_flag:
+            out.update(params)
+
+        self.update(out)
+        return out
 
     def in_confidence_interval(self, ci_label, conf_ints=None, sections=None):
         """
@@ -4344,6 +4068,7 @@ class DataStore(xr.Dataset):
         reference sections wrt the temperature of the water baths
 
         >>> tmpf_var = d.ufunc_per_section(
+        >>>     sections=sections, 
         >>>     func='var',
         >>>     calc_per='all',
         >>>     label='tmpf',
@@ -4353,6 +4078,7 @@ class DataStore(xr.Dataset):
         reference section wrt the temperature of the water baths
 
         >>> tmpf_var = d.ufunc_per_section(
+        >>>     sections=sections, 
         >>>     func='var',
         >>>     calc_per='stretch',
         >>>     label='tmpf',
@@ -4362,6 +4088,7 @@ class DataStore(xr.Dataset):
         water bath wrt the temperature of the water baths
 
         >>> tmpf_var = d.ufunc_per_section(
+        >>>     sections=sections, 
         >>>     func='var',
         >>>     calc_per='section',
         >>>     label='tmpf',
@@ -4370,6 +4097,7 @@ class DataStore(xr.Dataset):
         4. Obtain the coordinates of the measurements per section
 
         >>> locs = d.ufunc_per_section(
+        >>>     sections=sections, 
         >>>     func=None,
         >>>     label='x',
         >>>     temp_err=False,
@@ -4379,6 +4107,7 @@ class DataStore(xr.Dataset):
         5. Number of observations per stretch
 
         >>> nlocs = d.ufunc_per_section(
+        >>>     sections=sections, 
         >>>     func=len,
         >>>     label='x',
         >>>     temp_err=False,
@@ -4397,7 +4126,7 @@ class DataStore(xr.Dataset):
 
         7. x-coordinate index
 
-        >>> ix_loc = d.ufunc_per_section(x_indices=True)
+        >>> ix_loc = d.ufunc_per_section(sections=sections, x_indices=True)
 
 
         Note
@@ -4405,9 +4134,8 @@ class DataStore(xr.Dataset):
         If `self[label]` or `self[subtract_from_label]` is a Dask array, a Dask
         array is returned else a numpy array is returned
         """
-        if sections is None:
-            sections = self.sections
-
+        # if sections is None:
+        #     sections = self.sections
         if label is None:
             dataarray = None
         else:
@@ -4416,7 +4144,10 @@ class DataStore(xr.Dataset):
         if x_indices:
             x_coords = self.x
             reference_dataset = None
+
         else:
+            sections = validate_sections(self, sections)
+
             x_coords = None
             reference_dataset = {k: self[k] for k in sections}
 

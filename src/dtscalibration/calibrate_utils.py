@@ -1,4 +1,3 @@
-# coding=utf-8
 import numpy as np
 import scipy.sparse as sp
 import statsmodels.api as sm
@@ -48,6 +47,7 @@ def parse_st_var(ds, st_var, st_label="st"):
 
 def calibration_single_ended_helper(
     self,
+    sections,
     st_var,
     ast_var,
     fix_alpha,
@@ -67,6 +67,7 @@ def calibration_single_ended_helper(
     calc_cov = True
     split = calibration_single_ended_solver(
         self,
+        sections,
         st_var,
         ast_var,
         calc_cov=calc_cov,
@@ -189,6 +190,7 @@ def calibration_single_ended_helper(
 
 def calibration_single_ended_solver(  # noqa: MC0001
     ds,
+    sections=None,
     st_var=None,
     ast_var=None,
     calc_cov=True,
@@ -235,7 +237,7 @@ def calibration_single_ended_solver(  # noqa: MC0001
 
     """
     # get ix_sec argsort so the sections are in order of increasing x
-    ix_sec = ds.ufunc_per_section(x_indices=True, calc_per="all")
+    ix_sec = ds.ufunc_per_section(sections=sections, x_indices=True, calc_per="all")
     ds_sec = ds.isel(x=ix_sec)
 
     x_sec = ds_sec["x"].values
@@ -255,7 +257,7 @@ def calibration_single_ended_solver(  # noqa: MC0001
 
     # X \gamma  # Eq.34
     cal_ref = ds.ufunc_per_section(
-        label="st", ref_temp_broadcasted=True, calc_per="all"
+        sections=sections, label="st", ref_temp_broadcasted=True, calc_per="all"
     )
     # cal_ref = cal_ref  # sort by increasing x
     data_gamma = 1 / (cal_ref.T.ravel() + 273.15)  # gamma
@@ -485,6 +487,7 @@ def calibration_single_ended_solver(  # noqa: MC0001
 
 def calibration_double_ended_helper(
     self,
+    sections,
     st_var,
     ast_var,
     rst_var,
@@ -503,6 +506,7 @@ def calibration_double_ended_helper(
     if fix_alpha or fix_gamma:
         split = calibration_double_ended_solver(
             self,
+            sections,
             st_var,
             ast_var,
             rst_var,
@@ -515,6 +519,7 @@ def calibration_double_ended_helper(
     else:
         out = calibration_double_ended_solver(
             self,
+            sections,
             st_var,
             ast_var,
             rst_var,
@@ -1102,6 +1107,7 @@ def calibration_double_ended_helper(
 
 def calibration_double_ended_solver(  # noqa: MC0001
     ds,
+    sections=None,
     st_var=None,
     ast_var=None,
     rst_var=None,
@@ -1167,7 +1173,7 @@ def calibration_double_ended_solver(  # noqa: MC0001
     -------
 
     """
-    ix_sec = ds.ufunc_per_section(x_indices=True, calc_per="all")
+    ix_sec = ds.ufunc_per_section(sections=sections, x_indices=True, calc_per="all")
     ds_sec = ds.isel(x=ix_sec)
     ix_alpha_is_zero = ix_sec[0]  # per definition of E
 
@@ -1187,7 +1193,7 @@ def calibration_double_ended_solver(  # noqa: MC0001
         rast_var=rast_var,
         ix_alpha_is_zero=ix_alpha_is_zero,
     )
-    df_est, db_est = calc_df_db_double_est(ds, ix_alpha_is_zero, 485.0)
+    df_est, db_est = calc_df_db_double_est(ds, sections, ix_alpha_is_zero, 485.0)
 
     (
         E,
@@ -1196,7 +1202,7 @@ def calibration_double_ended_solver(  # noqa: MC0001
         Zero_d,
         Z_TA_fw,
         Z_TA_bw,
-    ) = construct_submatrices(nt, nx_sec, ds, ds.trans_att.values, x_sec)
+    ) = construct_submatrices(sections, nt, nx_sec, ds, ds.trans_att.values, x_sec)
 
     # y  # Eq.41--45
     y_F = np.log(ds_sec.st / ds_sec.ast).values.ravel()
@@ -1822,7 +1828,7 @@ def construct_submatrices_matching_sections(x, ix_sec, hix, tix, nt, trans_att):
     )
 
 
-def construct_submatrices(nt, nx, ds, trans_att, x_sec):
+def construct_submatrices(sections, nt, nx, ds, trans_att, x_sec):
     """Wrapped in a function to reduce memory usage.
     E is zero at the first index of the reference section (ds_sec)
     Constructing:
@@ -1840,7 +1846,9 @@ def construct_submatrices(nt, nx, ds, trans_att, x_sec):
 
     # Z \gamma  # Eq.47
     cal_ref = np.array(
-        ds.ufunc_per_section(label="st", ref_temp_broadcasted=True, calc_per="all")
+        ds.ufunc_per_section(
+            sections=sections, label="st", ref_temp_broadcasted=True, calc_per="all"
+        )
     )
     data_gamma = 1 / (cal_ref.ravel() + 273.15)  # gamma
     coord_gamma_row = np.arange(nt * nx, dtype=int)
@@ -2213,7 +2221,7 @@ def calc_alpha_double(
     return E, E_var
 
 
-def calc_df_db_double_est(ds, ix_alpha_is_zero, gamma_est):
+def calc_df_db_double_est(ds, sections, ix_alpha_is_zero, gamma_est):
     Ifwx0 = np.log(
         ds.st.isel(x=ix_alpha_is_zero) / ds.ast.isel(x=ix_alpha_is_zero)
     ).values
@@ -2221,9 +2229,9 @@ def calc_df_db_double_est(ds, ix_alpha_is_zero, gamma_est):
         ds.rst.isel(x=ix_alpha_is_zero) / ds.rast.isel(x=ix_alpha_is_zero)
     ).values
     ref_temps_refs = ds.ufunc_per_section(
-        label="st", ref_temp_broadcasted=True, calc_per="all"
+        sections=sections, label="st", ref_temp_broadcasted=True, calc_per="all"
     )
-    ix_sec = ds.ufunc_per_section(x_indices=True, calc_per="all")
+    ix_sec = ds.ufunc_per_section(sections=sections, x_indices=True, calc_per="all")
     ref_temps_x0 = (
         ref_temps_refs[ix_sec == ix_alpha_is_zero].flatten().compute() + 273.15
     )

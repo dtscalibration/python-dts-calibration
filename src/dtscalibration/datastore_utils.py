@@ -1,4 +1,3 @@
-# coding=utf-8
 from typing import TYPE_CHECKING
 from typing import Optional
 from typing import Union
@@ -526,6 +525,264 @@ def get_netcdf_encoding(
     encoding = {var: comp for var in ds.data_vars}
 
     return encoding
+
+
+def get_params_from_pval_double_ended(ip, coords, p_val=None, p_cov=None):
+    if p_val is not None:
+        assert len(p_val) == ip.npar, "Length of p_val is incorrect"
+
+        params = xr.Dataset(coords=coords)
+
+        # save estimates and variances to datastore, skip covariances
+        params["gamma"] = (tuple(), p_val[ip.gamma].item())
+        params["alpha"] = (("x",), p_val[ip.alpha])
+        params["df"] = (("time",), p_val[ip.df])
+        params["db"] = (("time",), p_val[ip.db])
+
+        if ip.nta:
+            params["talpha_fw"] = (
+                ("time", "trans_att"),
+                p_val[ip.taf].reshape((ip.nt, ip.nta), order="C"),
+            )
+            params["talpha_bw"] = (
+                ("time", "trans_att"),
+                p_val[ip.tab].reshape((ip.nt, ip.nta), order="C"),
+            )
+        else:
+            params["talpha_fw"] = (("time", "trans_att"), np.zeros((ip.nt, 0)))
+            params["talpha_bw"] = (("time", "trans_att"), np.zeros((ip.nt, 0)))
+
+        params["talpha_fw_full"] = (
+            ("x", "time"),
+            ip.get_taf_values(
+                pval=p_val,
+                x=params.x.values,
+                trans_att=params.trans_att.values,
+                axis="",
+            ),
+        )
+        params["talpha_bw_full"] = (
+            ("x", "time"),
+            ip.get_tab_values(
+                pval=p_val,
+                x=params.x.values,
+                trans_att=params.trans_att.values,
+                axis="",
+            ),
+        )
+    if p_cov is not None:
+        assert p_cov.shape == (ip.npar, ip.npar), "Shape of p_cov is incorrect"
+
+        # extract covariances and ensure broadcastable to (nx, nt)
+        params["gamma_df"] = (("time",), p_cov[np.ix_(ip.gamma, ip.df)][0])
+        params["gamma_db"] = (("time",), p_cov[np.ix_(ip.gamma, ip.db)][0])
+        params["gamma_alpha"] = (("x",), p_cov[np.ix_(ip.alpha, ip.gamma)][:, 0])
+        params["df_db"] = (
+            ("time",),
+            p_cov[ip.df, ip.db],
+        )
+        params["alpha_df"] = (
+            (
+                "x",
+                "time",
+            ),
+            p_cov[np.ix_(ip.alpha, ip.df)],
+        )
+        params["alpha_db"] = (
+            (
+                "x",
+                "time",
+            ),
+            p_cov[np.ix_(ip.alpha, ip.db)],
+        )
+        params["tafw_gamma"] = (
+            (
+                "x",
+                "time",
+            ),
+            ip.get_taf_values(
+                pval=p_cov[ip.gamma],
+                x=params["x"].values,
+                trans_att=params["trans_att"].values,
+                axis="",
+            ),
+        )
+        params["tabw_gamma"] = (
+            (
+                "x",
+                "time",
+            ),
+            ip.get_tab_values(
+                pval=p_cov[ip.gamma],
+                x=params["x"].values,
+                trans_att=params["trans_att"].values,
+                axis="",
+            ),
+        )
+        params["tafw_alpha"] = (
+            (
+                "x",
+                "time",
+            ),
+            ip.get_taf_values(
+                pval=p_cov[ip.alpha],
+                x=params["x"].values,
+                trans_att=params["trans_att"].values,
+                axis="x",
+            ),
+        )
+        params["tabw_alpha"] = (
+            (
+                "x",
+                "time",
+            ),
+            ip.get_tab_values(
+                pval=p_cov[ip.alpha],
+                x=params["x"].values,
+                trans_att=params["trans_att"].values,
+                axis="x",
+            ),
+        )
+        params["tafw_df"] = (
+            (
+                "x",
+                "time",
+            ),
+            ip.get_taf_values(
+                pval=p_cov[ip.df],
+                x=params["x"].values,
+                trans_att=params["trans_att"].values,
+                axis="time",
+            ),
+        )
+        params["tafw_db"] = (
+            (
+                "x",
+                "time",
+            ),
+            ip.get_taf_values(
+                pval=p_cov[ip.db],
+                x=params["x"].values,
+                trans_att=params["trans_att"].values,
+                axis="time",
+            ),
+        )
+        params["tabw_db"] = (
+            (
+                "x",
+                "time",
+            ),
+            ip.get_tab_values(
+                pval=p_cov[ip.db],
+                x=params["x"].values,
+                trans_att=params["trans_att"].values,
+                axis="time",
+            ),
+        )
+        params["tabw_df"] = (
+            (
+                "x",
+                "time",
+            ),
+            ip.get_tab_values(
+                pval=p_cov[ip.df],
+                x=params["x"].values,
+                trans_att=params["trans_att"].values,
+                axis="time",
+            ),
+        )
+        # sigma2_tafw_tabw
+    return params
+
+
+def get_params_from_pval_single_ended(
+    ip, coords, p_val=None, p_var=None, p_cov=None, fix_alpha=None
+):
+    assert len(p_val) == ip.npar, "Length of p_val is incorrect"
+
+    params = xr.Dataset(coords=coords)
+    param_covs = xr.Dataset(coords=coords)
+
+    params["gamma"] = (tuple(), p_val[ip.gamma].item())
+    param_covs["gamma"] = (tuple(), p_var[ip.gamma].item())
+
+    if ip.nta > 0:
+        params["talpha_fw"] = (
+            ("trans_att", "time"),
+            ip.get_taf_pars(p_val),
+        )
+        param_covs["talpha_fw"] = (
+            ("trans_att", "time"),
+            ip.get_taf_pars(p_var),
+        )
+    else:
+        params["talpha_fw"] = (("trans_att", "time"), np.zeros((0, ip.nt)))
+        param_covs["talpha_fw"] = (("trans_att", "time"), np.zeros((0, ip.nt)))
+
+    params["c"] = (("time",), p_val[ip.c])
+    param_covs["c"] = (("time",), p_var[ip.c])
+
+    if fix_alpha is not None:
+        params["alpha"] = (("x",), fix_alpha[0])
+        param_covs["alpha"] = (("x",), fix_alpha[1])
+
+    else:
+        params["dalpha"] = (tuple(), p_val[ip.dalpha].item())
+        param_covs["dalpha"] = (tuple(), p_var[ip.dalpha].item())
+
+        params["alpha"] = params["dalpha"] * params["x"]
+        param_covs["alpha"] = param_covs["dalpha"] * params["x"] ** 2
+
+        param_covs["gamma_dalpha"] = (tuple(), p_cov[np.ix_(ip.dalpha, ip.gamma)][0, 0])
+        param_covs["dalpha_c"] = (("time",), p_cov[np.ix_(ip.dalpha, ip.c)][0, :])
+        param_covs["tafw_dalpha"] = (
+            ("x", "time"),
+            ip.get_taf_values(
+                pval=p_cov[ip.dalpha],
+                x=params["x"].values,
+                trans_att=params["trans_att"].values,
+                axis="",
+            ),
+        )
+
+    params["talpha_fw_full"] = (
+        ("x", "time"),
+        ip.get_taf_values(
+            pval=p_val,
+            x=params["x"].values,
+            trans_att=params["trans_att"].values,
+            axis="",
+        ),
+    )
+    param_covs["talpha_fw_full"] = (
+        ("x", "time"),
+        ip.get_taf_values(
+            pval=p_var,
+            x=params["x"].values,
+            trans_att=params["trans_att"].values,
+            axis="",
+        ),
+    )
+    param_covs["gamma_c"] = (("time",), p_cov[np.ix_(ip.gamma, ip.c)][0, :])
+    param_covs["tafw_gamma"] = (
+        ("x", "time"),
+        ip.get_taf_values(
+            pval=p_cov[ip.gamma],
+            x=params["x"].values,
+            trans_att=params["trans_att"].values,
+            axis="",
+        ),
+    )
+    param_covs["tafw_c"] = (
+        ("x", "time"),
+        ip.get_taf_values(
+            pval=p_cov[ip.c],
+            x=params["x"].values,
+            trans_att=params["trans_att"].values,
+            axis="time",
+        ),
+    )
+    return params, param_covs
 
 
 def merge_double_ended(
