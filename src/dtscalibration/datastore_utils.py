@@ -459,45 +459,8 @@ def check_deprecated_kwargs(kwargs):
     pass
 
 
-# def check_timestep_allclose(ds: "DataStore", eps: float = 0.05) -> None:
-#     """
-#     Check if all timesteps are of equal size. For now it is not possible to calibrate
-#     over timesteps if the acquisition time of timesteps varies, as the Stokes variance
-#     would change over time.
-
-#     The acquisition time is stored for single ended measurements in userAcquisitionTime,
-#     for double ended measurements in userAcquisitionTimeFW and userAcquisitionTimeBW.
-
-#     Parameters
-#     ----------
-#     ds : DataStore
-#     eps : float
-#         Default accepts 1% of relative variation between min and max acquisition time.
-
-#     Returns
-#     -------
-#     """
-#     dt = ds["userAcquisitionTimeFW"].data
-#     dtmin = dt.min()
-#     dtmax = dt.max()
-#     dtavg = (dtmin + dtmax) / 2
-#     assert (dtmax - dtmin) / dtavg < eps, (
-#         "Acquisition time is Forward channel not equal for all time steps"
-#     )
-
-#     if "userAcquisitionTimeBW" in ds:
-#         dt = ds["userAcquisitionTimeBW"].data
-#         dtmin = dt.min()
-#         dtmax = dt.max()
-#         dtavg = (dtmin + dtmax) / 2
-#         assert (dtmax - dtmin) / dtavg < eps, (
-#             "Acquisition time Backward channel is not equal for all time steps"
-#         )
-#     pass
-
-
 def get_netcdf_encoding(
-    ds: "DataStore", zlib: bool = True, complevel: int = 5, **kwargs
+    ds: xr.Dataset, zlib: bool = True, complevel: int = 5, **kwargs
 ) -> dict:
     """Get default netcdf compression parameters. The same for each data variable.
 
@@ -788,12 +751,12 @@ def get_params_from_pval_single_ended(
 
 
 def merge_double_ended(
-    ds_fw: "DataStore",
-    ds_bw: "DataStore",
+    ds_fw: xr.Dataset,
+    ds_bw: xr.Dataset,
     cable_length: float,
     plot_result: bool = True,
     verbose: bool = True,
-) -> "DataStore":
+) -> xr.Dataset:
     """
     Some measurements are not set up on the DTS-device as double-ended
     meausurements. This means that the two channels have to be merged manually.
@@ -858,11 +821,11 @@ def merge_double_ended(
 
 
 def merge_double_ended_times(
-    ds_fw: "DataStore",
-    ds_bw: "DataStore",
+    ds_fw: xr.Dataset,
+    ds_bw: xr.Dataset,
     verify_timedeltas: bool = True,
     verbose: bool = True,
-) -> tuple["DataStore", "DataStore"]:
+) -> tuple[xr.Dataset, xr.Dataset]:
     """Helper for `merge_double_ended()` to deal with missing measurements. The
     number of measurements of the forward and backward channels might get out
     of sync if the device shuts down before the measurement of the last channel
@@ -997,8 +960,8 @@ def merge_double_ended_times(
 
 
 def shift_double_ended(
-    ds: "DataStore", i_shift: int, verbose: bool = True
-) -> "DataStore":
+    ds: xr.Dataset, i_shift: int, verbose: bool = True
+) -> xr.Dataset:
     """
     The cable length was initially configured during the DTS measurement. For double ended
     measurements it is important to enter the correct length so that the forward channel and the
@@ -1031,8 +994,6 @@ def shift_double_ended(
     ds2 : DataStore object
         With a shifted x-axis
     """
-    from dtscalibration import DataStore
-
     assert isinstance(i_shift, (int, np.integer))
 
     nx = ds.x.size
@@ -1074,11 +1035,11 @@ def shift_double_ended(
     if not_included and verbose:
         print("I dont know what to do with the following data", not_included)
 
-    return DataStore(data_vars=d2_data, coords=d2_coords, attrs=ds.attrs)
+    return xr.Dataset(data_vars=d2_data, coords=d2_coords, attrs=ds.attrs)
 
 
 def suggest_cable_shift_double_ended(
-    ds: "DataStore",
+    ds: xr.Dataset,
     irange: npt.NDArray[np.int_],
     plot_result: bool = True,
     **fig_kwargs,
@@ -1107,8 +1068,7 @@ def suggest_cable_shift_double_ended(
 
     Parameters
     ----------
-    ds : DataSore object
-        DataStore object that needs to be shifted
+    ds : Xarray Dataset
     irange : array-like
         a numpy array with data of type int. Containing all the shift index
         that are tested.

@@ -46,7 +46,7 @@ class DtsAccessor:
         #   'xarray' is prepended. so we remove it and add 'dtscalibration'
         s = xr.core.formatting.dataset_repr(self._obj)
         name_module = type(self._obj).__name__
-        preamble_new = "<dtscalibration.%s>" % name_module
+        preamble_new = f"<dtscalibration.{name_module}>"
 
         # Add sections to new preamble
         preamble_new += "\nSections:"
@@ -267,6 +267,12 @@ class DtsAccessor:
                 v["chunksizes"] = chunks
 
         return encoding
+    
+    def get_timeseries_keys(self):
+        """
+        Returns a list of the keys of the time series variables.
+        """
+        return [k for k, v in self._obj.data_vars.items() if v.dims == ("time",)]
     
     def ufunc_per_section(
         self,
