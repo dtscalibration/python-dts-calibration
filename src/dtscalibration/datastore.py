@@ -218,7 +218,7 @@ class DataStore(xr.Dataset):
             "Not possible anymore. Instead, pass the sections as an argument to \n"
             "ds.dts.calibrate_single_ended() or ds.dts.calibrate_double_ended()."
         )
-        raise NotImplementedError(msg)
+        raise DeprecationWarning(msg)
 
     def check_reference_section_values(self):
         """
