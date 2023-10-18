@@ -60,7 +60,8 @@ def assert_almost_equal_verbose(actual, desired, verbose=False, **kwargs):
 def test_variance_input_types_single():
     import dask.array as da
 
-    state = da.random.RandomState(0)
+    state_da = da.random.RandomState(0)
+    state_np = np.random.RandomState(0)
 
     stokes_m_var = 40.0
     cable_len = 100.0
@@ -96,8 +97,8 @@ def test_variance_input_types_single():
         / (1 - np.exp(-gamma / temp_real))
     )
 
-    st_m = st + stats.norm.rvs(size=st.shape, scale=stokes_m_var**0.5)
-    ast_m = ast + stats.norm.rvs(size=ast.shape, scale=1.1 * stokes_m_var**0.5)
+    st_m = st + stats.norm.rvs(size=st.shape, scale=stokes_m_var**0.5, random_state=state_np)
+    ast_m = ast + stats.norm.rvs(size=ast.shape, scale=1.1 * stokes_m_var**0.5, random_state=state_np)
 
     print("alphaint", cable_len * (dalpha_p - dalpha_m))
     print("alpha", dalpha_p - dalpha_m)
@@ -133,7 +134,7 @@ def test_variance_input_types_single():
         st_var=st_var,
         ast_var=st_var,
         mc_sample_size=100,
-        da_random_state=state,
+        da_random_state=state_da,
         mc_remove_set_flag=False,
     )
 
@@ -163,7 +164,7 @@ def test_variance_input_types_single():
         st_var=callable_st_var,
         ast_var=callable_st_var,
         mc_sample_size=100,
-        da_random_state=state,
+        da_random_state=state_da,
     )
 
     assert_almost_equal_verbose(
