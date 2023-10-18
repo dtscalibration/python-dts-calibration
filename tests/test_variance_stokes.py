@@ -11,7 +11,7 @@ from dtscalibration.variance_stokes import variance_stokes_constant
 from dtscalibration.variance_stokes import variance_stokes_exponential
 from dtscalibration.variance_stokes import variance_stokes_linear
 
-np.random.seed(0)
+state = np.random.seed(0)
 
 fn = [
     "channel 1_20170921112245510.xml",
@@ -242,9 +242,7 @@ def test_variance_input_types_single():
 
 @pytest.mark.slow  # Execution time ~0.5 minute
 def test_variance_input_types_double():
-    import dask.array as da
-
-    state = da.random.RandomState(0)
+    state = np.random.seed(0)
 
     stokes_m_var = 40.0
     cable_len = 100.0
