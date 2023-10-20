@@ -1,4 +1,5 @@
 import glob
+import json
 import os
 import shutil
 import subprocess
@@ -35,7 +36,6 @@ def _notebook_run(path):
             path,
             "--output",
             out_path,
-            "--debug",
             "--to",
             "notebook",
             "--execute",
@@ -44,20 +44,24 @@ def _notebook_run(path):
         subprocess.check_call(args)
 
         assert os.path.exists(nbpath), "nbconvert used different output filename"
+        
+        with open(nbpath) as f:
+            _ = json.load(f)
+            print("Basic JSON validation successful.")
 
-        nb = nbformat.read(nbpath, nbformat.current_nbformat)
+        try:
+            nb = nbformat.read(nbpath, nbformat.current_nbformat)
+        except Exception as e:
+            print(f"Error reading notebook: {e}")
+            assert 0, "nbformat.read failed"
 
-    errors = [
-        output
-        for cell in nb.cells
-        if "outputs" in cell
-        for output in cell["outputs"]
-        if output.output_type == "error"
-    ]
-
-    # Remove the temp file once the test is done
-    if os.path.exists(nbpath):
-        os.remove(nbpath)
+        errors = [
+            output
+            for cell in nb.cells
+            if "outputs" in cell
+            for output in cell["outputs"]
+            if output.output_type == "error"
+        ]
 
     return nb, errors
 
