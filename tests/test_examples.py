@@ -70,4 +70,5 @@ def test_ipynb():
     for fp in filepathlist:
         print(f"Running: {fp}")
         _, errors = _notebook_run(fp)
-        assert errors == []
+        assert errors == [], f"Errors: {errors}"
+        print("No errors found in nb")
