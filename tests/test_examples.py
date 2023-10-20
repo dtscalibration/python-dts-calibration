@@ -35,6 +35,7 @@ def _notebook_run(path):
             path,
             "--output",
             out_path,
+            "--debug",
             "--to",
             "notebook",
             "--execute",
