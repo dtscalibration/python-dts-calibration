@@ -9,9 +9,7 @@ def set_sections(ds: xr.Dataset, sections: dict[str, list[slice]]):
     ds.attrs["_sections"] = yaml.dump(sections)
 
 
-def set_matching_sections(
-    ds: xr.Dataset, matching_sections: dict[str, list[slice]]
-):
+def set_matching_sections(ds: xr.Dataset, matching_sections: dict[str, list[slice]]):
     ds.attrs["_matching_sections"] = yaml.dump(matching_sections)
 
 

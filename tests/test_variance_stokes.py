@@ -97,8 +97,12 @@ def test_variance_input_types_single():
         / (1 - np.exp(-gamma / temp_real))
     )
 
-    st_m = st + stats.norm.rvs(size=st.shape, scale=stokes_m_var**0.5, random_state=state_np)
-    ast_m = ast + stats.norm.rvs(size=ast.shape, scale=1.1 * stokes_m_var**0.5, random_state=state_np)
+    st_m = st + stats.norm.rvs(
+        size=st.shape, scale=stokes_m_var**0.5, random_state=state_np
+    )
+    ast_m = ast + stats.norm.rvs(
+        size=ast.shape, scale=1.1 * stokes_m_var**0.5, random_state=state_np
+    )
 
     print("alphaint", cable_len * (dalpha_p - dalpha_m))
     print("alpha", dalpha_p - dalpha_m)
