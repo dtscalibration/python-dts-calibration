@@ -24,7 +24,7 @@ def test_docs_notebook(src_path):
 @pytest.mark.xfail
 def test_identify_not_working_docs_notebook():
     fp = Path(os.path.join(wd, "data", "docs_notebooks", "01Not_working.ipynb"))
-    error = _test_notebook(fp, "python3")
+    _test_notebook(fp, "python3")
 
 
 def _test_notebook(notebook_file, kernel) -> Optional[NBError]:
