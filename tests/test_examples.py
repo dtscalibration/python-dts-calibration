@@ -18,7 +18,7 @@ src_dir = os.path.join(wd, "..", "docs", "notebooks")
     "src_path", Path(src_dir).glob("*.ipynb"), ids=lambda x: x.name
 )
 def test_docs_notebook(src_path):
-    _test_notebook(src_path, "python3")
+    print(_test_notebook(src_path, "python3"))
 
 
 @pytest.mark.xfail
