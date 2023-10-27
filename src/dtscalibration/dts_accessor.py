@@ -41,7 +41,6 @@ class DtsAccessor:
 
         self.acquisitiontime_fw = xarray_obj.get("userAcquisitionTimeFW")
         self.acquisitiontime_bw = xarray_obj.get("userAcquisitionTimeBW")
-        pass
 
     def __repr__(self):
         # __repr__ from xarray is used and edited.
