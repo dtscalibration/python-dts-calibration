@@ -1443,7 +1443,7 @@ class DtsAccessor:
         confidence intervals for the temperature. First, the variances of the
         Stokes and anti-Stokes intensity measurements of the forward and
         backward channels are estimated following the steps in
-        Section 4 [1]_. See `ds.variance_stokes_constant()`.
+        Section 4 [1]_. See `variance_stokes_constant()`.
         A Normal distribution is assigned to each
         intensity measurement that is centered at the measurement and using the
         estimated variance. Second, a multi-variate Normal distribution is

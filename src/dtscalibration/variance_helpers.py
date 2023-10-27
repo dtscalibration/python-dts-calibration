@@ -158,7 +158,7 @@ def variance_stokes_linear_helper(st_sec, resid_sec, nbin, through_zero):
                 "not possible. Most likely, your Stokes intensities do "
                 "not vary enough to fit a linear curve. Either "
                 "use `through_zero` option or use "
-                "`ds.variance_stokes_constant()`. Another reason "
+                "`variance_stokes_constant()`. Another reason "
                 "could be that your sections are defined to be "
                 "wider than they actually are."
             )

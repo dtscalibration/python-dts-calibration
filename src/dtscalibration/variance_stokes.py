@@ -16,16 +16,16 @@ def variance_stokes_constant(st, sections, acquisitiontime, reshape_residuals=Tr
     Approximate the variance of the noise in Stokes intensity measurements
     with one value, suitable for small setups.
 
-    * `ds.variance_stokes_constant()` for small setups with small variations in\
+    * `variance_stokes_constant()` for small setups with small variations in\
     intensity. Variance of the Stokes measurements is assumed to be the same\
     along the entire fiber.
 
-    * `ds.variance_stokes_exponential()` for small setups with very few time\
+    * `variance_stokes_exponential()` for small setups with very few time\
     steps. Too many degrees of freedom results in an under estimation of the\
     noise variance. Almost never the case, but use when calibrating pre time\
     step.
 
-    * `ds.variance_stokes_linear()` for larger setups with more time steps.\
+    * `variance_stokes_linear()` for larger setups with more time steps.\
         Assumes Poisson distributed noise with the following model::
 
             st_var = a * ds.st + b
@@ -157,16 +157,16 @@ def variance_stokes_exponential(
     with one value, suitable for small setups with measurements from only
     a few times.
 
-    * `ds.variance_stokes_constant()` for small setups with small variations in\
+    * `variance_stokes_constant()` for small setups with small variations in\
     intensity. Variance of the Stokes measurements is assumed to be the same\
     along the entire fiber.
 
-    * `ds.variance_stokes_exponential()` for small setups with very few time\
+    * `variance_stokes_exponential()` for small setups with very few time\
     steps. Too many degrees of freedom results in an under estimation of the\
     noise variance. Almost never the case, but use when calibrating pre time\
     step.
 
-    * `ds.variance_stokes_linear()` for larger setups with more time steps.\
+    * `variance_stokes_linear()` for larger setups with more time steps.\
         Assumes Poisson distributed noise with the following model::
 
             st_var = a * ds.st + b
@@ -352,16 +352,16 @@ def variance_stokes_linear(
     Approximate the variance of the noise in Stokes intensity measurements
     with a linear function of the intensity, suitable for large setups.
 
-    * `ds.variance_stokes_constant()` for small setups with small variations in\
+    * `variance_stokes_constant()` for small setups with small variations in\
     intensity. Variance of the Stokes measurements is assumed to be the same\
     along the entire fiber.
 
-    * `ds.variance_stokes_exponential()` for small setups with very few time\
+    * `variance_stokes_exponential()` for small setups with very few time\
     steps. Too many degrees of freedom results in an under estimation of the\
     noise variance. Almost never the case, but use when calibrating pre time\
     step.
 
-    * `ds.variance_stokes_linear()` for larger setups with more time steps.\
+    * `variance_stokes_linear()` for larger setups with more time steps.\
         Assumes Poisson distributed noise with the following model::
 
             st_var = a * ds.st + b

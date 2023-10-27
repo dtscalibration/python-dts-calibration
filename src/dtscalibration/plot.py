@@ -26,7 +26,7 @@ def plot_residuals_reference_sections(
     plot_avg_std
     resid : DataArray
         The residuals of the fit to estimate the noise in the measured
-        Stokes signal. is returned by `ds.variance_stokes`
+        Stokes signal. is returned by `variance_stokes_*()`
     sections : Dict[str, List[slice]]
         The sections obj is normally used to set DataStore.sections, now is
         used toobtain the
@@ -254,7 +254,7 @@ def plot_residuals_reference_sections_single(
     plot_avg_std
     resid : DataArray
         The residuals of the fit to estimate the noise in the measured
-        Stokes signal. is returned by `ds.variance_stokes`
+        Stokes signal. is returned by `variance_stokes_*()`
     fig : Figurehandle, optional
     title : str, optional
         Adds a title to the plot
@@ -389,7 +389,7 @@ def plot_accuracy(
     plot_avg_std
     resid : DataArray
         The residuals of the fit to estimate the noise in the measured
-        Stokes signal. is returned by `ds.variance_stokes`
+        Stokes signal. is returned by `variance_stokes_*()`
     fig : Figurehandle, optional
     title : str, optional
         Adds a title to the plot
