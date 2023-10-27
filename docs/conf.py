@@ -2,6 +2,9 @@
 from datetime import date
 import os
 
+from dtscalibration.dts_accessor import DtsAccessor  # noqa: E402
+import sphinx_autosummary_accessors
+
 
 extensions = [
     "sphinx_rtd_theme",
@@ -15,6 +18,7 @@ extensions = [
     "sphinx.ext.todo",
     "sphinx.ext.viewcode",
     "sphinx.ext.autosectionlabel",
+    "sphinx_autosummary_accessors",
     "nbsphinx",
     "sphinx.ext.mathjax",
     "sphinx.ext.intersphinx",
@@ -45,7 +49,7 @@ copyright = "{0}, {1}".format(year, author)
 version = release = "2.0.0"
 
 pygments_style = "trac"
-templates_path = ["."]
+templates_path = [".", sphinx_autosummary_accessors.templates_path]
 extlinks = {
     "issue": (
         "https://github.com/dtscalibration/python-dts-calibration/issues" "/%s",
