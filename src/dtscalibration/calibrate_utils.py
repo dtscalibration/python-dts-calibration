@@ -5,14 +5,16 @@ import xarray as xr
 from scipy.sparse import linalg as ln
 
 
-def parse_st_var(ds, st_var, st_label="st"):
+def parse_st_var(st, st_var):
     """
     Utility function to check the st_var input and to return in DataArray
     format.
 
     Parameters
     ----------
-    ds : DataStore
+    st : DataArray
+        Stokes/anti-stokes data variable for which the variance is being parsed.
+
     st_var : float, callable, array-like
         If `float` the variance of the noise from the Stokes detector is
         described with a single value.
@@ -21,26 +23,24 @@ def parse_st_var(ds, st_var, st_label="st"):
         Or when the variance is a function of the intensity (Poisson
         distributed) define a DataArray of the shape as ds.st, where the
         variance can be a function of time and/or x.
-    st_label : string
-        Name of the (reverse) stokes/anti-stokes data variable which is being
-        parsed.
 
     Returns
     -------
-    Parsed st_var
+    st_var_sec : DataArray
+        The variance of the noise from the Stokes detector.
     """
     if callable(st_var):
-        st_var_sec = st_var(ds[st_label])
+        st_var_sec = st_var(st)
     else:
-        st_var_sec = xr.ones_like(ds[st_label]) * st_var
+        st_var_sec = xr.ones_like(st) * st_var
 
-    assert np.all(np.isfinite(st_var_sec)), (
-        "NaN/inf values detected in " + st_label + "_var. Please check input."
-    )
+    assert np.all(
+        np.isfinite(st_var_sec)
+    ), "NaN/inf values detected in computed st_var. Please check input."
 
-    assert np.all(st_var_sec > 0.0), (
-        "Negative values detected in " + st_label + "_var. Please check input."
-    )
+    assert np.all(
+        st_var_sec > 0.0
+    ), "Negative values detected in computed st_var. Please check input."
 
     return st_var_sec
 
@@ -53,17 +53,20 @@ def calibration_single_ended_helper(
     fix_alpha,
     fix_dalpha,
     fix_gamma,
-    matching_indices,
-    nt,
-    nta,
-    nx,
+    matching_sections,
+    trans_att,
     solver,
 ):
     """Only used in `calibration_single_ended()`"""
-    for input_item in [st_var, ast_var]:
-        assert input_item is not None, (
-            "For wls define all " "variances (`st_var`, " "`ast_var`) "
-        )
+    nt = self.dts.nt
+    nx = self.dts.nx
+    nta = len(trans_att)
+
+    if matching_sections:
+        matching_indices = match_sections(self, matching_sections)
+    else:
+        matching_indices = None
+
     calc_cov = True
     split = calibration_single_ended_solver(
         self,
@@ -73,6 +76,7 @@ def calibration_single_ended_helper(
         calc_cov=calc_cov,
         solver="external_split",
         matching_indices=matching_indices,
+        trans_att=trans_att,
     )
     y = split["y"]
     w = split["w"]
@@ -80,12 +84,12 @@ def calibration_single_ended_helper(
     # Stack all X's
     if fix_alpha:
         assert not fix_dalpha, "Use either `fix_dalpha` or `fix_alpha`"
-        assert fix_alpha[0].size == self.x.size, (
-            "fix_alpha also needs to be defined outside the reference " "sections"
-        )
-        assert fix_alpha[1].size == self.x.size, (
-            "fix_alpha also needs to be defined outside the reference " "sections"
-        )
+        assert (
+            fix_alpha[0].size == nx
+        ), "fix_alpha also needs to be defined outside the reference sections"
+        assert (
+            fix_alpha[1].size == nx
+        ), "fix_alpha also needs to be defined outside the reference sections"
         p_val = split["p0_est_alpha"].copy()
 
         if np.any(matching_indices):
@@ -196,6 +200,7 @@ def calibration_single_ended_solver(  # noqa: MC0001
     calc_cov=True,
     solver="sparse",
     matching_indices=None,
+    trans_att=[],
     verbose=False,
 ):
     """
@@ -237,7 +242,7 @@ def calibration_single_ended_solver(  # noqa: MC0001
 
     """
     # get ix_sec argsort so the sections are in order of increasing x
-    ix_sec = ds.ufunc_per_section(sections=sections, x_indices=True, calc_per="all")
+    ix_sec = ds.dts.ufunc_per_section(sections=sections, x_indices=True, calc_per="all")
     ds_sec = ds.isel(x=ix_sec)
 
     x_sec = ds_sec["x"].values
@@ -245,7 +250,7 @@ def calibration_single_ended_solver(  # noqa: MC0001
     nx = x_sec.size
     nt = ds.time.size
     no = ds.x.size
-    nta = ds.trans_att.size
+    nta = len(trans_att)
     nm = matching_indices.shape[0] if np.any(matching_indices) else 0
 
     if np.any(matching_indices):
@@ -256,7 +261,7 @@ def calibration_single_ended_solver(  # noqa: MC0001
     p0_est_alpha = np.asarray([485.0] + no * [0.0] + nt * [1.4] + nta * nt * [0.0])
 
     # X \gamma  # Eq.34
-    cal_ref = ds.ufunc_per_section(
+    cal_ref = ds.dts.ufunc_per_section(
         sections=sections, label="st", ref_temp_broadcasted=True, calc_per="all"
     )
     # cal_ref = cal_ref  # sort by increasing x
@@ -287,10 +292,10 @@ def calibration_single_ended_solver(  # noqa: MC0001
     )
 
     # X ta #not documented
-    if ds.trans_att.size > 0:
+    if nta > 0:
         TA_list = []
 
-        for transient_att_xi in ds.trans_att.values:
+        for transient_att_xi in trans_att:
             # first index on the right hand side a the difficult splice
             # Deal with connector outside of fiber
             if transient_att_xi >= x_sec[-1]:
@@ -339,10 +344,10 @@ def calibration_single_ended_solver(  # noqa: MC0001
         )
 
         # make TA matrix
-        if ds.trans_att.size > 0:
+        if nta > 0:
             transient_m_data = np.zeros((nm, nta))
             for ii, row in enumerate(matching_indices):
-                for jj, transient_att_xi in enumerate(ds.trans_att.values):
+                for jj, transient_att_xi in enumerate(trans_att):
                     transient_m_data[ii, jj] = np.logical_and(
                         transient_att_xi > x_all[row[0]],
                         transient_att_xi < x_all[row[1]],
@@ -388,8 +393,8 @@ def calibration_single_ended_solver(  # noqa: MC0001
 
     # w
     if st_var is not None:
-        st_var_sec = parse_st_var(ds, st_var, st_label="st").isel(x=ix_sec).values
-        ast_var_sec = parse_st_var(ds, ast_var, st_label="ast").isel(x=ix_sec).values
+        st_var_sec = parse_st_var(ds.st, st_var).isel(x=ix_sec).values
+        ast_var_sec = parse_st_var(ds.ast, ast_var).isel(x=ix_sec).values
 
         w = (
             1
@@ -400,24 +405,16 @@ def calibration_single_ended_solver(  # noqa: MC0001
 
         if np.any(matching_indices):
             st_var_ms0 = (
-                parse_st_var(ds, st_var, st_label="st")
-                .isel(x=matching_indices[:, 0])
-                .values
+                parse_st_var(ds.st, st_var).isel(x=matching_indices[:, 0]).values
             )
             st_var_ms1 = (
-                parse_st_var(ds, st_var, st_label="st")
-                .isel(x=matching_indices[:, 1])
-                .values
+                parse_st_var(ds.st, st_var).isel(x=matching_indices[:, 1]).values
             )
             ast_var_ms0 = (
-                parse_st_var(ds, ast_var, st_label="ast")
-                .isel(x=matching_indices[:, 0])
-                .values
+                parse_st_var(ds.ast, ast_var).isel(x=matching_indices[:, 0]).values
             )
             ast_var_ms1 = (
-                parse_st_var(ds, ast_var, st_label="ast")
-                .isel(x=matching_indices[:, 1])
-                .values
+                parse_st_var(ds.ast, ast_var).isel(x=matching_indices[:, 1]).values
             )
 
             w_ms = (
@@ -485,7 +482,7 @@ def calibration_single_ended_solver(  # noqa: MC0001
     return (p_sol, p_var, p_cov) if calc_cov else (p_sol, p_var)
 
 
-def calibration_double_ended_helper(
+def calibrate_double_ended_helper(
     self,
     sections,
     st_var,
@@ -497,14 +494,24 @@ def calibration_double_ended_helper(
     nt,
     nta,
     nx,
-    nx_sec,
     ix_sec,
-    matching_indices,
+    matching_sections,
+    trans_att,
     solver,
     verbose,
 ):
+    nt = self.dts.nt
+    nx = self.dts.nx
+
+    nx_sec = ix_sec.size
+
+    if matching_sections:
+        matching_indices = match_sections(self, matching_sections)
+    else:
+        matching_indices = None
+
     if fix_alpha or fix_gamma:
-        split = calibration_double_ended_solver(
+        split = calibrate_double_ended_solver(
             self,
             sections,
             st_var,
@@ -514,10 +521,12 @@ def calibration_double_ended_helper(
             calc_cov=True,
             solver="external_split",
             matching_indices=matching_indices,
+            trans_att=trans_att,
+            nta=nta,
             verbose=verbose,
         )
     else:
-        out = calibration_double_ended_solver(
+        out = calibrate_double_ended_solver(
             self,
             sections,
             st_var,
@@ -527,6 +536,8 @@ def calibration_double_ended_helper(
             calc_cov=True,
             solver=solver,
             matching_indices=matching_indices,
+            trans_att=trans_att,
+            nta=nta,
             verbose=verbose,
         )
 
@@ -820,7 +831,7 @@ def calibration_double_ended_helper(
         # put E outside of reference section in solution
         # concatenating makes a copy of the data instead of using a
         # pointer
-        ds_sub = self[["st", "ast", "rst", "rast", "trans_att"]]
+        ds_sub = self[["st", "ast", "rst", "rast"]]
         ds_sub["df"] = (("time",), out[0][:nt])
         ds_sub["df_var"] = (("time",), out[1][:nt])
         ds_sub["db"] = (("time",), out[0][nt : 2 * nt])
@@ -854,6 +865,7 @@ def calibration_double_ended_helper(
             rst_var=rst_var,
             rast_var=rast_var,
             ix_alpha_is_zero=ix_sec[0],
+            trans_att=trans_att,
             talpha_fw=talpha_fw,
             talpha_bw=talpha_bw,
             talpha_fw_var=talpha_fw_var,
@@ -1105,7 +1117,7 @@ def calibration_double_ended_helper(
     return p_cov, p_val, p_var
 
 
-def calibration_double_ended_solver(  # noqa: MC0001
+def calibrate_double_ended_solver(  # noqa: MC0001
     ds,
     sections=None,
     st_var=None,
@@ -1115,6 +1127,8 @@ def calibration_double_ended_solver(  # noqa: MC0001
     calc_cov=True,
     solver="sparse",
     matching_indices=None,
+    trans_att=None,
+    nta=None,
     verbose=False,
 ):
     """
@@ -1173,14 +1187,13 @@ def calibration_double_ended_solver(  # noqa: MC0001
     -------
 
     """
-    ix_sec = ds.ufunc_per_section(sections=sections, x_indices=True, calc_per="all")
+    ix_sec = ds.dts.ufunc_per_section(sections=sections, x_indices=True, calc_per="all")
     ds_sec = ds.isel(x=ix_sec)
     ix_alpha_is_zero = ix_sec[0]  # per definition of E
 
     x_sec = ds_sec["x"].values
     nx_sec = x_sec.size
     nt = ds.time.size
-    nta = ds.trans_att.size
 
     # Calculate E as initial estimate for the E calibration.
     # Does not require ta to be passed on
@@ -1192,6 +1205,7 @@ def calibration_double_ended_solver(  # noqa: MC0001
         rst_var=rst_var,
         rast_var=rast_var,
         ix_alpha_is_zero=ix_alpha_is_zero,
+        trans_att=trans_att,
     )
     df_est, db_est = calc_df_db_double_est(ds, sections, ix_alpha_is_zero, 485.0)
 
@@ -1202,17 +1216,17 @@ def calibration_double_ended_solver(  # noqa: MC0001
         Zero_d,
         Z_TA_fw,
         Z_TA_bw,
-    ) = construct_submatrices(sections, nt, nx_sec, ds, ds.trans_att.values, x_sec)
+    ) = construct_submatrices(sections, nt, nx_sec, ds, trans_att, x_sec)
 
     # y  # Eq.41--45
     y_F = np.log(ds_sec.st / ds_sec.ast).values.ravel()
     y_B = np.log(ds_sec.rst / ds_sec.rast).values.ravel()
 
     # w
-    st_var_sec = parse_st_var(ds, st_var, st_label="st").isel(x=ix_sec).values
-    ast_var_sec = parse_st_var(ds, ast_var, st_label="ast").isel(x=ix_sec).values
-    rst_var_sec = parse_st_var(ds, rst_var, st_label="rst").isel(x=ix_sec).values
-    rast_var_sec = parse_st_var(ds, rast_var, st_label="rast").isel(x=ix_sec).values
+    st_var_sec = parse_st_var(ds.st, st_var).isel(x=ix_sec).values
+    ast_var_sec = parse_st_var(ds.ast, ast_var).isel(x=ix_sec).values
+    rst_var_sec = parse_st_var(ds.rst, rst_var).isel(x=ix_sec).values
+    rast_var_sec = parse_st_var(ds.rast, rast_var).isel(x=ix_sec).values
 
     w_F = (
         1
@@ -1261,7 +1275,7 @@ def calibration_double_ended_solver(  # noqa: MC0001
             matching_indices[:, 0],
             matching_indices[:, 1],
             nt,
-            ds.trans_att.values,
+            trans_att,
         )
 
         p0_est = np.concatenate(
@@ -1335,28 +1349,20 @@ def calibration_double_ended_solver(  # noqa: MC0001
 
         y = np.concatenate((y_F, y_B, y_eq1, y_eq2, y_eq3))
 
-        st_var_hix = parse_st_var(ds, st_var, st_label="st").isel(x=hix).values
-        ast_var_hix = parse_st_var(ds, ast_var, st_label="ast").isel(x=hix).values
-        rst_var_hix = parse_st_var(ds, rst_var, st_label="rst").isel(x=hix).values
-        rast_var_hix = parse_st_var(ds, rast_var, st_label="rast").isel(x=hix).values
+        st_var_hix = parse_st_var(ds.st, st_var).isel(x=hix).values
+        ast_var_hix = parse_st_var(ds.ast, ast_var).isel(x=hix).values
+        rst_var_hix = parse_st_var(ds.rst, rst_var).isel(x=hix).values
+        rast_var_hix = parse_st_var(ds.rast, rast_var).isel(x=hix).values
 
-        st_var_tix = parse_st_var(ds, st_var, st_label="st").isel(x=tix).values
-        ast_var_tix = parse_st_var(ds, ast_var, st_label="ast").isel(x=tix).values
-        rst_var_tix = parse_st_var(ds, rst_var, st_label="rst").isel(x=tix).values
-        rast_var_tix = parse_st_var(ds, rast_var, st_label="rast").isel(x=tix).values
+        st_var_tix = parse_st_var(ds.st, st_var).isel(x=tix).values
+        ast_var_tix = parse_st_var(ds.ast, ast_var).isel(x=tix).values
+        rst_var_tix = parse_st_var(ds.rst, rst_var).isel(x=tix).values
+        rast_var_tix = parse_st_var(ds.rast, rast_var).isel(x=tix).values
 
-        st_var_mnc = (
-            parse_st_var(ds, st_var, st_label="st").isel(x=ix_match_not_cal).values
-        )
-        ast_var_mnc = (
-            parse_st_var(ds, ast_var, st_label="ast").isel(x=ix_match_not_cal).values
-        )
-        rst_var_mnc = (
-            parse_st_var(ds, rst_var, st_label="rst").isel(x=ix_match_not_cal).values
-        )
-        rast_var_mnc = (
-            parse_st_var(ds, rast_var, st_label="rast").isel(x=ix_match_not_cal).values
-        )
+        st_var_mnc = parse_st_var(ds.st, st_var).isel(x=ix_match_not_cal).values
+        ast_var_mnc = parse_st_var(ds.ast, ast_var).isel(x=ix_match_not_cal).values
+        rst_var_mnc = parse_st_var(ds.rst, rst_var).isel(x=ix_match_not_cal).values
+        rast_var_mnc = parse_st_var(ds.rast, rast_var).isel(x=ix_match_not_cal).values
 
         w_eq1 = 1 / (
             (
@@ -1445,18 +1451,8 @@ def calibration_double_ended_solver(  # noqa: MC0001
     elif not calc_cov and not verbose:
         p_sol, p_var = out
 
-    # if verbose:
-    #     from dtscalibration.plot import plot_location_residuals_double_ended
-    #
-    #     dv = plot_location_residuals_double_ended(ds, werr, hix, tix, ix_sec,
-    #                                               ix_match_not_cal, nt)
-
-    # p_sol contains the int diff att of all the locations within the
-    # reference sections. po_sol is its expanded version that contains also
-    # the int diff att for outside the reference sections.
-
     # calculate talpha_fw and bw for attenuation
-    if ds.trans_att.size > 0:
+    if nta > 0:
         if np.any(matching_indices):
             ta = p_sol[1 + 2 * nt + ix_from_cal_match_to_glob.size :].reshape(
                 (nt, 2, nta), order="F"
@@ -1481,7 +1477,7 @@ def calibration_double_ended_solver(  # noqa: MC0001
 
     # put E outside of reference section in solution
     # concatenating makes a copy of the data instead of using a pointer
-    ds_sub = ds[["st", "ast", "rst", "rast", "trans_att"]]
+    ds_sub = ds[["st", "ast", "rst", "rast"]]
     ds_sub["df"] = (("time",), p_sol[1 : 1 + nt])
     ds_sub["df_var"] = (("time",), p_var[1 : 1 + nt])
     ds_sub["db"] = (("time",), p_sol[1 + nt : 1 + 2 * nt])
@@ -1494,6 +1490,7 @@ def calibration_double_ended_solver(  # noqa: MC0001
         rst_var=rst_var,
         rast_var=rast_var,
         ix_alpha_is_zero=ix_alpha_is_zero,
+        trans_att=trans_att,
         talpha_fw=talpha_fw,
         talpha_bw=talpha_bw,
         talpha_fw_var=talpha_fw_var,
@@ -1725,7 +1722,7 @@ def construct_submatrices_matching_sections(x, ix_sec, hix, tix, nt, trans_att):
     Zero_eq3_gamma = sp.coo_matrix(([], ([], [])), shape=(nt * nx_nm, 1))
 
     # TA
-    if trans_att.size > 0:
+    if len(trans_att) > 0:
         # unpublished BdT
 
         TA_eq1_list = []
@@ -1846,7 +1843,7 @@ def construct_submatrices(sections, nt, nx, ds, trans_att, x_sec):
 
     # Z \gamma  # Eq.47
     cal_ref = np.array(
-        ds.ufunc_per_section(
+        ds.dts.ufunc_per_section(
             sections=sections, label="st", ref_temp_broadcasted=True, calc_per="all"
         )
     )
@@ -1875,7 +1872,7 @@ def construct_submatrices(sections, nt, nx, ds, trans_att, x_sec):
     # Zero  # Eq.45
     Zero_d = sp.coo_matrix(([], ([], [])), shape=(nt * nx, nt))
     # Zero_E = sp.coo_matrix(([], ([], [])), shape=(nt * nx, (nx - 1)))
-    if trans_att.size > 0:
+    if len(trans_att) > 0:
         # unpublished BdT
 
         TA_fw_list = []
@@ -2110,6 +2107,7 @@ def calc_alpha_double(
     rst_var=None,
     rast_var=None,
     ix_alpha_is_zero=-1,
+    trans_att=None,
     talpha_fw=None,
     talpha_bw=None,
     talpha_fw_var=None,
@@ -2138,8 +2136,8 @@ def calc_alpha_double(
         else:
             rast_var_val = np.asarray(rast_var)
 
-        i_var_fw = ds.i_var(st_var_val, ast_var_val, st_label="st", ast_label="ast")
-        i_var_bw = ds.i_var(rst_var_val, rast_var_val, st_label="rst", ast_label="rast")
+        i_var_fw = ds.st**-2 * st_var_val + ds.ast**-2 * ast_var_val
+        i_var_bw = ds.rst**-2 * rst_var_val + ds.rast**-2 * rast_var_val
 
         i_fw = np.log(ds.st / ds.ast)
         i_bw = np.log(ds.rst / ds.rast)
@@ -2154,15 +2152,13 @@ def calc_alpha_double(
             D_F_var = ds["df_var"]
             D_B_var = ds["db_var"]
 
-            if ds.trans_att.size > 0:
+            if len(trans_att) > 0:
                 # Can be improved by including covariances. That reduces the
                 # uncert.
 
                 ta_arr_fw = np.zeros((ds.x.size, ds["time"].size))
                 ta_arr_fw_var = np.zeros((ds.x.size, ds["time"].size))
-                for tai, taxi, tai_var in zip(
-                    talpha_fw.T, ds.trans_att.values, talpha_fw_var.T
-                ):
+                for tai, taxi, tai_var in zip(talpha_fw.T, trans_att, talpha_fw_var.T):
                     ta_arr_fw[ds.x.values >= taxi] = (
                         ta_arr_fw[ds.x.values >= taxi] + tai
                     )
@@ -2172,9 +2168,7 @@ def calc_alpha_double(
 
                 ta_arr_bw = np.zeros((ds.x.size, ds["time"].size))
                 ta_arr_bw_var = np.zeros((ds.x.size, ds["time"].size))
-                for tai, taxi, tai_var in zip(
-                    talpha_bw.T, ds.trans_att.values, talpha_bw_var.T
-                ):
+                for tai, taxi, tai_var in zip(talpha_bw.T, trans_att, talpha_bw_var.T):
                     ta_arr_bw[ds.x.values < taxi] = ta_arr_bw[ds.x.values < taxi] + tai
                     ta_arr_bw_var[ds.x.values < taxi] = (
                         ta_arr_bw_var[ds.x.values < taxi] + tai_var
@@ -2228,10 +2222,10 @@ def calc_df_db_double_est(ds, sections, ix_alpha_is_zero, gamma_est):
     Ibwx0 = np.log(
         ds.rst.isel(x=ix_alpha_is_zero) / ds.rast.isel(x=ix_alpha_is_zero)
     ).values
-    ref_temps_refs = ds.ufunc_per_section(
+    ref_temps_refs = ds.dts.ufunc_per_section(
         sections=sections, label="st", ref_temp_broadcasted=True, calc_per="all"
     )
-    ix_sec = ds.ufunc_per_section(sections=sections, x_indices=True, calc_per="all")
+    ix_sec = ds.dts.ufunc_per_section(sections=sections, x_indices=True, calc_per="all")
     ref_temps_x0 = (
         ref_temps_refs[ix_sec == ix_alpha_is_zero].flatten().compute() + 273.15
     )
@@ -2274,14 +2268,20 @@ def match_sections(ds, matching_sections):
             txs
         )
 
-    hix = ds.ufunc_per_section(
-        sections={0: [i[0] for i in matching_sections]}, x_indices=True, calc_per="all"
+    hix = ds.dts.ufunc_per_section(
+        sections={0: [i[0] for i in matching_sections]},
+        x_indices=True,
+        calc_per="all",
+        suppress_section_validation=True,
     )
 
     tixl = []
     for _, tslice, reverse_flag in matching_sections:
-        ixi = ds.ufunc_per_section(
-            sections={0: [tslice]}, x_indices=True, calc_per="all"
+        ixi = ds.dts.ufunc_per_section(
+            sections={0: [tslice]},
+            x_indices=True,
+            calc_per="all",
+            suppress_section_validation=True,
         )
 
         if reverse_flag:

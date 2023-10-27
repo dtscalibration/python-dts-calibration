@@ -1,5 +1,4 @@
 import warnings
-from typing import TYPE_CHECKING
 from typing import Optional
 from typing import Union
 
@@ -9,12 +8,9 @@ import numpy as np
 import numpy.typing as npt
 import xarray as xr
 
-if TYPE_CHECKING:
-    from dtscalibration import DataStore
-
 
 def check_dims(
-    ds: "DataStore",
+    ds: xr.Dataset,
     labels: Union[list[str], tuple[str]],
     correct_dims: Optional[tuple[str]] = None,
 ) -> None:
@@ -397,113 +393,8 @@ class ParameterIndexSingleEnded:
         return arr_out
 
 
-def check_deprecated_kwargs(kwargs):
-    """
-    Internal function that parses the `kwargs` for depreciated keyword
-    arguments.
-
-    Depreciated keywords raise an error, pending to be depreciated do not.
-    But this requires that the code currently deals with those arguments.
-
-    Parameters
-    ----------
-    kwargs : Dict
-        A dictionary with keyword arguments.
-
-    Returns
-    -------
-
-    """
-    msg = """Previously, it was possible to manually set the label from
-    which the Stokes and anti-Stokes were read within the DataStore
-    object. To reduce the clutter in the code base and be able to
-    maintain it, this option was removed.
-    See: https://github.com/dtscalibration/python-dts-calibration/issues/81
-
-    The new **fixed** names are: st, ast, rst, rast.
-
-    It is still possible to use the previous defaults, for example when
-    reading stored measurements from netCDF, by renaming the labels. The
-    old default labels were ST, AST, REV-ST, REV-AST.
-
-    ```
-    ds = open_datastore(path_to_old_file)
-    ds = ds.rename_labels()
-    ds.calibration_double_ended(
-        st_var=1.5,
-        ast_var=1.5,
-        rst_var=1.,
-        rast_var=1.,
-        method='wls')
-    ```
-
-    ds.tmpw.plot()
-    """
-    list_of_depr = [
-        "st_label",
-        "ast_label",
-        "rst_label",
-        "rast_label",
-        "transient_asym_att_x",
-        "transient_att_x",
-    ]
-    list_of_pending_depr = []
-
-    kwargs = {k: v for k, v in kwargs.items() if k not in list_of_pending_depr}
-
-    for k in kwargs:
-        if k in list_of_depr:
-            raise NotImplementedError(msg)
-
-    if len(kwargs) != 0:
-        raise NotImplementedError(
-            "The following keywords are not " + "supported: " + ", ".join(kwargs.keys())
-        )
-
-    pass
-
-
-def check_timestep_allclose(ds: "DataStore", eps: float = 0.01) -> None:
-    """
-    Check if all timesteps are of equal size. For now it is not possible to calibrate
-    over timesteps if the acquisition time of timesteps varies, as the Stokes variance
-    would change over time.
-
-    The acquisition time is stored for single ended measurements in userAcquisitionTime,
-    for double ended measurements in userAcquisitionTimeFW and userAcquisitionTimeBW.
-
-    Parameters
-    ----------
-    ds : DataStore
-    eps : float
-        Default accepts 1% of relative variation between min and max acquisition time.
-
-    Returns
-    -------
-
-    """
-    dim = ds.channel_configuration["chfw"]["acquisitiontime_label"]
-    dt = ds[dim].data
-    dtmin = dt.min()
-    dtmax = dt.max()
-    dtavg = (dtmin + dtmax) / 2
-    assert (dtmax - dtmin) / dtavg < eps, (
-        "Acquisition time is Forward channel not equal for all " "time steps"
-    )
-
-    if ds.is_double_ended:
-        dim = ds.channel_configuration["chbw"]["acquisitiontime_label"]
-        dt = ds[dim].data
-        dtmin = dt.min()
-        dtmax = dt.max()
-        dtavg = (dtmin + dtmax) / 2
-        assert (dtmax - dtmin) / dtavg < eps, (
-            "Acquisition time Backward channel is not equal " "for all time steps"
-        )
-
-
 def get_netcdf_encoding(
-    ds: "DataStore", zlib: bool = True, complevel: int = 5, **kwargs
+    ds: xr.Dataset, zlib: bool = True, complevel: int = 5, **kwargs
 ) -> dict:
     """Get default netcdf compression parameters. The same for each data variable.
 
@@ -699,7 +590,14 @@ def get_params_from_pval_double_ended(ip, coords, p_val=None, p_cov=None):
 def get_params_from_pval_single_ended(
     ip, coords, p_val=None, p_var=None, p_cov=None, fix_alpha=None
 ):
-    assert len(p_val) == ip.npar, "Length of p_val is incorrect"
+    if p_val is not None:
+        assert len(p_val) == ip.npar, "Length of p_val is incorrect"
+
+    if p_var is not None:
+        assert len(p_var) == ip.npar, "Length of p_var is incorrect"
+
+    if p_cov is not None:
+        assert p_cov.shape == (ip.npar, ip.npar), "Shape of p_cov is incorrect"
 
     params = xr.Dataset(coords=coords)
     param_covs = xr.Dataset(coords=coords)
@@ -787,12 +685,12 @@ def get_params_from_pval_single_ended(
 
 
 def merge_double_ended(
-    ds_fw: "DataStore",
-    ds_bw: "DataStore",
+    ds_fw: xr.Dataset,
+    ds_bw: xr.Dataset,
     cable_length: float,
     plot_result: bool = True,
     verbose: bool = True,
-) -> "DataStore":
+) -> xr.Dataset:
     """
     Some measurements are not set up on the DTS-device as double-ended
     meausurements. This means that the two channels have to be merged manually.
@@ -857,11 +755,11 @@ def merge_double_ended(
 
 
 def merge_double_ended_times(
-    ds_fw: "DataStore",
-    ds_bw: "DataStore",
+    ds_fw: xr.Dataset,
+    ds_bw: xr.Dataset,
     verify_timedeltas: bool = True,
     verbose: bool = True,
-) -> tuple["DataStore", "DataStore"]:
+) -> tuple[xr.Dataset, xr.Dataset]:
     """Helper for `merge_double_ended()` to deal with missing measurements. The
     number of measurements of the forward and backward channels might get out
     of sync if the device shuts down before the measurement of the last channel
@@ -996,8 +894,8 @@ def merge_double_ended_times(
 
 
 def shift_double_ended(
-    ds: "DataStore", i_shift: int, verbose: bool = True
-) -> "DataStore":
+    ds: xr.Dataset, i_shift: int, verbose: bool = True
+) -> xr.Dataset:
     """
     The cable length was initially configured during the DTS measurement. For double ended
     measurements it is important to enter the correct length so that the forward channel and the
@@ -1030,8 +928,6 @@ def shift_double_ended(
     ds2 : DataStore object
         With a shifted x-axis
     """
-    from dtscalibration import DataStore
-
     assert isinstance(i_shift, (int, np.integer))
 
     nx = ds.x.size
@@ -1073,11 +969,11 @@ def shift_double_ended(
     if not_included and verbose:
         print("I dont know what to do with the following data", not_included)
 
-    return DataStore(data_vars=d2_data, coords=d2_coords, attrs=ds.attrs)
+    return xr.Dataset(data_vars=d2_data, coords=d2_coords, attrs=ds.attrs)
 
 
 def suggest_cable_shift_double_ended(
-    ds: "DataStore",
+    ds: xr.Dataset,
     irange: npt.NDArray[np.int_],
     plot_result: bool = True,
     **fig_kwargs,
@@ -1106,8 +1002,7 @@ def suggest_cable_shift_double_ended(
 
     Parameters
     ----------
-    ds : DataSore object
-        DataStore object that needs to be shifted
+    ds : Xarray Dataset
     irange : array-like
         a numpy array with data of type int. Containing all the shift index
         that are tested.
@@ -1334,7 +1229,7 @@ def ufunc_per_section_helper(
 
     7. x-coordinate index
 
-    >>> ix_loc = ufunc_per_section_helperx_coords=d.x)
+    >>> ix_loc = ufunc_per_section_helper(x_coords=d.x)
 
 
     Note
@@ -1376,6 +1271,7 @@ def ufunc_per_section_helper(
         assert callable(func)
 
     assert calc_per in ["all", "section", "stretch"]
+    assert "x_indices" not in func_kwargs, "pass x_coords arg instead"
 
     if x_coords is None and (
         (dataarray is not None and hasattr(dataarray.data, "chunks"))
@@ -1395,6 +1291,8 @@ def ufunc_per_section_helper(
                 assert subtract_from_dataarray is None
                 assert not subtract_reference_from_dataarray
                 assert not ref_temp_broadcasted
+                assert not func_kwargs, "Unsupported kwargs"
+
                 # so it is slicable with x-indices
                 _x_indices = x_coords.astype(int) * 0 + np.arange(x_coords.size)
                 arg1 = _x_indices.sel(x=stretch).data

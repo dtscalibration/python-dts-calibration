@@ -5,11 +5,12 @@ import numpy as np
 import pytest
 import scipy.sparse as sp
 from scipy import stats
+from xarray import Dataset
 
-from dtscalibration import DataStore
-from dtscalibration import read_silixa_files
 from dtscalibration.calibrate_utils import wls_sparse
 from dtscalibration.calibrate_utils import wls_stats
+from dtscalibration.dts_accessor import DtsAccessor  # noqa: F401
+from dtscalibration.variance_stokes import variance_stokes_exponential
 
 np.random.seed(0)
 
@@ -60,897 +61,12 @@ def assert_almost_equal_verbose(actual, desired, verbose=False, **kwargs):
     pass
 
 
-@pytest.mark.slow  # Execution time ~20 seconds
-def test_variance_input_types_single():
-    import dask.array as da
-
-    from src.dtscalibration import DataStore
-
-    state = da.random.RandomState(0)
-
-    stokes_m_var = 40.0
-    cable_len = 100.0
-    nt = 500
-    time = np.arange(nt)
-    x = np.linspace(0.0, cable_len, 100)
-    ts_cold = np.ones(nt) * 4.0
-    ts_warm = np.ones(nt) * 20.0
-
-    C_p = 15246
-    C_m = 2400.0
-    dalpha_r = 0.005284
-    dalpha_m = 0.004961
-    dalpha_p = 0.005607
-    gamma = 482.6
-    cold_mask = x < 0.5 * cable_len
-    warm_mask = np.invert(cold_mask)  # == False
-    temp_real = np.ones((len(x), nt))
-    temp_real[cold_mask] *= ts_cold + 273.15
-    temp_real[warm_mask] *= ts_warm + 273.15
-
-    st = (
-        C_p
-        * np.exp(-dalpha_r * x[:, None])
-        * np.exp(-dalpha_p * x[:, None])
-        * np.exp(-gamma / temp_real)
-        / (1 - np.exp(-gamma / temp_real))
-    )
-    ast = (
-        C_m
-        * np.exp(-dalpha_r * x[:, None])
-        * np.exp(-dalpha_m * x[:, None])
-        / (1 - np.exp(-gamma / temp_real))
-    )
-
-    st_m = st + stats.norm.rvs(size=st.shape, scale=stokes_m_var**0.5)
-    ast_m = ast + stats.norm.rvs(size=ast.shape, scale=1.1 * stokes_m_var**0.5)
-
-    print("alphaint", cable_len * (dalpha_p - dalpha_m))
-    print("alpha", dalpha_p - dalpha_m)
-    print("C", np.log(C_p / C_m))
-    print("x0", x.max())
-
-    ds = DataStore(
-        {
-            "st": (["x", "time"], st_m),
-            "ast": (["x", "time"], ast_m),
-            "userAcquisitionTimeFW": (["time"], np.ones(nt)),
-            "cold": (["time"], ts_cold),
-            "warm": (["time"], ts_warm),
-        },
-        coords={"x": x, "time": time},
-        attrs={"isDoubleEnded": "0"},
-    )
-
-    sections = {
-        "cold": [slice(0.0, 0.4 * cable_len)],
-        "warm": [slice(0.6 * cable_len, cable_len)],
-    }
-
-    # Test float input
-    st_var = 5.0
-
-    ds.calibration_single_ended(
-        sections=sections, st_var=st_var, ast_var=st_var, method="wls", solver="sparse"
-    )
-
-    ds.conf_int_single_ended(
-        st_var=st_var,
-        ast_var=st_var,
-        mc_sample_size=100,
-        da_random_state=state,
-        mc_remove_set_flag=False,
-    )
-
-    assert_almost_equal_verbose(
-        ds.tmpf_mc_var.sel(x=slice(0, 10)).mean(), 0.044361, decimal=2
-    )
-    assert_almost_equal_verbose(
-        ds.tmpf_mc_var.sel(x=slice(90, 100)).mean(), 0.242028, decimal=2
-    )
-
-    # Test callable input
-    def callable_st_var(stokes):
-        slope = 0.01
-        offset = 0
-        return slope * stokes + offset
-
-    ds.calibration_single_ended(
-        sections=sections,
-        st_var=callable_st_var,
-        ast_var=callable_st_var,
-        method="wls",
-        solver="sparse",
-    )
-
-    ds.conf_int_single_ended(
-        st_var=callable_st_var,
-        ast_var=callable_st_var,
-        mc_sample_size=100,
-        da_random_state=state,
-    )
-
-    assert_almost_equal_verbose(
-        ds.tmpf_mc_var.sel(x=slice(0, 10)).mean(), 0.184753, decimal=2
-    )
-    assert_almost_equal_verbose(
-        ds.tmpf_mc_var.sel(x=slice(90, 100)).mean(), 0.545186, decimal=2
-    )
-
-    # Test input with shape of (ntime, nx)
-    st_var = ds.st.values * 0 + 20.0
-    ds.calibration_single_ended(
-        sections=sections, st_var=st_var, ast_var=st_var, method="wls", solver="sparse"
-    )
-
-    ds.conf_int_single_ended(
-        st_var=st_var, ast_var=st_var, mc_sample_size=100, da_random_state=state
-    )
-
-    assert_almost_equal_verbose(ds.tmpf_mc_var.mean(), 0.418098, decimal=2)
-
-    # Test input with shape (nx, 1)
-    st_var = np.vstack(
-        ds.st.mean(dim="time").values * 0 + np.linspace(10, 50, num=ds.st.x.size)
-    )
-
-    ds.calibration_single_ended(
-        sections=sections, st_var=st_var, ast_var=st_var, method="wls", solver="sparse"
-    )
-
-    ds.conf_int_single_ended(
-        st_var=st_var, ast_var=st_var, mc_sample_size=100, da_random_state=state
-    )
-
-    assert_almost_equal_verbose(
-        ds.tmpf_mc_var.sel(x=slice(0, 50)).mean().values, 0.2377, decimal=2
-    )
-    assert_almost_equal_verbose(
-        ds.tmpf_mc_var.sel(x=slice(50, 100)).mean().values, 1.3203, decimal=2
-    )
-
-    # Test input with shape (ntime)
-    st_var = ds.st.mean(dim="x").values * 0 + np.linspace(5, 200, num=nt)
-
-    ds.calibration_single_ended(
-        sections=sections, st_var=st_var, ast_var=st_var, method="wls", solver="sparse"
-    )
-
-    ds.conf_int_single_ended(
-        st_var=st_var, ast_var=st_var, mc_sample_size=100, da_random_state=state
-    )
-
-    assert_almost_equal_verbose(
-        ds.tmpf_mc_var.sel(time=slice(0, nt // 2)).mean().values, 1.0908, decimal=2
-    )
-    assert_almost_equal_verbose(
-        ds.tmpf_mc_var.sel(time=slice(nt // 2, None)).mean().values, 3.0759, decimal=2
-    )
-
-    pass
-
-
-@pytest.mark.slow  # Execution time ~0.5 minute
-def test_variance_input_types_double():
-    import dask.array as da
-
-    from src.dtscalibration import DataStore
-
-    state = da.random.RandomState(0)
-
-    stokes_m_var = 40.0
-    cable_len = 100.0
-    nt = 500
-    time = np.arange(nt)
-    x = np.linspace(0.0, cable_len, 100)
-    ts_cold = np.ones(nt) * 4.0
-    ts_warm = np.ones(nt) * 20.0
-
-    C_p = 15246
-    C_m = 2400.0
-    dalpha_r = 0.005284
-    dalpha_m = 0.004961
-    dalpha_p = 0.005607
-    gamma = 482.6
-    cold_mask = x < 0.5 * cable_len
-    warm_mask = np.invert(cold_mask)  # == False
-    temp_real = np.ones((len(x), nt))
-    temp_real[cold_mask] *= ts_cold + 273.15
-    temp_real[warm_mask] *= ts_warm + 273.15
-
-    st = (
-        C_p
-        * np.exp(-dalpha_r * x[:, None])
-        * np.exp(-dalpha_p * x[:, None])
-        * np.exp(-gamma / temp_real)
-        / (1 - np.exp(-gamma / temp_real))
-    )
-    ast = (
-        C_m
-        * np.exp(-dalpha_r * x[:, None])
-        * np.exp(-dalpha_m * x[:, None])
-        / (1 - np.exp(-gamma / temp_real))
-    )
-    rst = (
-        C_p
-        * np.exp(-dalpha_r * (-x[:, None] + 100))
-        * np.exp(-dalpha_p * (-x[:, None] + 100))
-        * np.exp(-gamma / temp_real)
-        / (1 - np.exp(-gamma / temp_real))
-    )
-    rast = (
-        C_m
-        * np.exp(-dalpha_r * (-x[:, None] + 100))
-        * np.exp(-dalpha_m * (-x[:, None] + 100))
-        / (1 - np.exp(-gamma / temp_real))
-    )
-
-    st_m = st + stats.norm.rvs(size=st.shape, scale=stokes_m_var**0.5)
-    ast_m = ast + stats.norm.rvs(size=ast.shape, scale=1.1 * stokes_m_var**0.5)
-    rst_m = rst + stats.norm.rvs(size=rst.shape, scale=0.9 * stokes_m_var**0.5)
-    rast_m = rast + stats.norm.rvs(size=rast.shape, scale=0.8 * stokes_m_var**0.5)
-
-    print("alphaint", cable_len * (dalpha_p - dalpha_m))
-    print("alpha", dalpha_p - dalpha_m)
-    print("C", np.log(C_p / C_m))
-    print("x0", x.max())
-
-    ds = DataStore(
-        {
-            "st": (["x", "time"], st_m),
-            "ast": (["x", "time"], ast_m),
-            "rst": (["x", "time"], rst_m),
-            "rast": (["x", "time"], rast_m),
-            "userAcquisitionTimeFW": (["time"], np.ones(nt)),
-            "userAcquisitionTimeBW": (["time"], np.ones(nt)),
-            "cold": (["time"], ts_cold),
-            "warm": (["time"], ts_warm),
-        },
-        coords={"x": x, "time": time},
-        attrs={"isDoubleEnded": "1"},
-    )
-
-    sections = {
-        "cold": [slice(0.0, 0.4 * cable_len)],
-        "warm": [slice(0.6 * cable_len, cable_len)],
-    }
-
-    # Test float input
-    st_var = 5.0
-
-    ds.calibration_double_ended(
-        sections=sections,
-        st_var=st_var,
-        ast_var=st_var,
-        rst_var=st_var,
-        rast_var=st_var,
-        method="wls",
-        solver="sparse",
-    )
-
-    ds.conf_int_double_ended(
-        sections=sections,
-        st_var=st_var,
-        ast_var=st_var,
-        rst_var=st_var,
-        rast_var=st_var,
-        mc_sample_size=100,
-        da_random_state=state,
-    )
-
-    assert_almost_equal_verbose(
-        ds.tmpf_mc_var.sel(x=slice(0, 10)).mean(), 0.03584935, decimal=2
-    )
-    assert_almost_equal_verbose(
-        ds.tmpf_mc_var.sel(x=slice(90, 100)).mean(), 0.22982146, decimal=2
-    )
-
-    # Test callable input
-    def st_var_callable(stokes):
-        slope = 0.01
-        offset = 0
-        return slope * stokes + offset
-
-    ds.calibration_double_ended(
-        sections=sections,
-        st_var=st_var_callable,
-        ast_var=st_var_callable,
-        rst_var=st_var_callable,
-        rast_var=st_var_callable,
-        method="wls",
-        solver="sparse",
-    )
-
-    ds.conf_int_double_ended(
-        sections=sections,
-        st_var=st_var_callable,
-        ast_var=st_var_callable,
-        rst_var=st_var_callable,
-        rast_var=st_var_callable,
-        mc_sample_size=100,
-        da_random_state=state,
-    )
-
-    assert_almost_equal_verbose(
-        ds.tmpf_mc_var.sel(x=slice(0, 10)).mean(), 0.18058514, decimal=2
-    )
-    assert_almost_equal_verbose(
-        ds.tmpf_mc_var.sel(x=slice(90, 100)).mean(), 0.53862813, decimal=2
-    )
-
-    # Test input with shape of (ntime, nx)
-    st_var = ds.st.values * 0 + 20.0
-
-    ds.calibration_double_ended(
-        sections=sections,
-        st_var=st_var,
-        ast_var=st_var,
-        rst_var=st_var,
-        rast_var=st_var,
-        method="wls",
-        solver="sparse",
-    )
-
-    ds.conf_int_double_ended(
-        sections=sections,
-        st_var=st_var,
-        ast_var=st_var,
-        rst_var=st_var,
-        rast_var=st_var,
-        mc_sample_size=100,
-        da_random_state=state,
-    )
-
-    assert_almost_equal_verbose(ds.tmpf_mc_var.mean(), 0.40725674, decimal=2)
-
-    # Test input with shape (nx, 1)
-    st_var = np.vstack(
-        ds.st.mean(dim="time").values * 0 + np.linspace(10, 50, num=ds.st.x.size)
-    )
-
-    ds.calibration_double_ended(
-        sections=sections,
-        st_var=st_var,
-        ast_var=st_var,
-        rst_var=st_var,
-        rast_var=st_var,
-        method="wls",
-        solver="sparse",
-    )
-
-    ds.conf_int_double_ended(
-        sections=sections,
-        st_var=st_var,
-        ast_var=st_var,
-        rst_var=st_var,
-        rast_var=st_var,
-        mc_sample_size=100,
-        da_random_state=state,
-    )
-
-    assert_almost_equal_verbose(
-        ds.tmpf_mc_var.sel(x=slice(0, 50)).mean().values, 0.21163704, decimal=2
-    )
-    assert_almost_equal_verbose(
-        ds.tmpf_mc_var.sel(x=slice(50, 100)).mean().values, 1.28247762, decimal=2
-    )
-
-    # Test input with shape (ntime)
-    st_var = ds.st.mean(dim="x").values * 0 + np.linspace(5, 200, num=nt)
-
-    ds.calibration_double_ended(
-        sections=sections,
-        st_var=st_var,
-        ast_var=st_var,
-        rst_var=st_var,
-        rast_var=st_var,
-        method="wls",
-        solver="sparse",
-    )
-
-    ds.conf_int_double_ended(
-        sections=sections,
-        st_var=st_var,
-        ast_var=st_var,
-        rst_var=st_var,
-        rast_var=st_var,
-        mc_sample_size=100,
-        da_random_state=state,
-    )
-
-    assert_almost_equal_verbose(
-        ds.tmpf_mc_var.sel(time=slice(0, nt // 2)).mean().values, 1.090, decimal=2
-    )
-    assert_almost_equal_verbose(
-        ds.tmpf_mc_var.sel(time=slice(nt // 2, None)).mean().values, 3.06, decimal=2
-    )
-
-    pass
-
-
-@pytest.mark.slow  # Execution time ~0.5 minute
-def test_double_ended_variance_estimate_synthetic():
-    import dask.array as da
-
-    from src.dtscalibration import DataStore
-
-    state = da.random.RandomState(0)
-
-    stokes_m_var = 40.0
-    cable_len = 100.0
-    nt = 500
-    time = np.arange(nt)
-    x = np.linspace(0.0, cable_len, 100)
-    ts_cold = np.ones(nt) * 4.0
-    ts_warm = np.ones(nt) * 20.0
-
-    C_p = 15246
-    C_m = 2400.0
-    dalpha_r = 0.0005284
-    dalpha_m = 0.0004961
-    dalpha_p = 0.0005607
-    gamma = 482.6
-    cold_mask = x < 0.5 * cable_len
-    warm_mask = np.invert(cold_mask)  # == False
-    temp_real = np.ones((len(x), nt))
-    temp_real[cold_mask] *= ts_cold + 273.15
-    temp_real[warm_mask] *= ts_warm + 273.15
-
-    st = (
-        C_p
-        * np.exp(-dalpha_r * x[:, None])
-        * np.exp(-dalpha_p * x[:, None])
-        * np.exp(-gamma / temp_real)
-        / (1 - np.exp(-gamma / temp_real))
-    )
-    ast = (
-        C_m
-        * np.exp(-dalpha_r * x[:, None])
-        * np.exp(-dalpha_m * x[:, None])
-        / (1 - np.exp(-gamma / temp_real))
-    )
-    rst = (
-        C_p
-        * np.exp(-dalpha_r * (-x[:, None] + 100))
-        * np.exp(-dalpha_p * (-x[:, None] + 100))
-        * np.exp(-gamma / temp_real)
-        / (1 - np.exp(-gamma / temp_real))
-    )
-    rast = (
-        C_m
-        * np.exp(-dalpha_r * (-x[:, None] + 100))
-        * np.exp(-dalpha_m * (-x[:, None] + 100))
-        / (1 - np.exp(-gamma / temp_real))
-    )
-
-    st_m = st + stats.norm.rvs(size=st.shape, scale=stokes_m_var**0.5)
-    ast_m = ast + stats.norm.rvs(size=ast.shape, scale=1.1 * stokes_m_var**0.5)
-    rst_m = rst + stats.norm.rvs(size=rst.shape, scale=0.9 * stokes_m_var**0.5)
-    rast_m = rast + stats.norm.rvs(size=rast.shape, scale=0.8 * stokes_m_var**0.5)
-
-    print("alphaint", cable_len * (dalpha_p - dalpha_m))
-    print("alpha", dalpha_p - dalpha_m)
-    print("C", np.log(C_p / C_m))
-    print("x0", x.max())
-
-    ds = DataStore(
-        {
-            "st": (["x", "time"], st_m),
-            "ast": (["x", "time"], ast_m),
-            "rst": (["x", "time"], rst_m),
-            "rast": (["x", "time"], rast_m),
-            "userAcquisitionTimeFW": (["time"], np.ones(nt)),
-            "userAcquisitionTimeBW": (["time"], np.ones(nt)),
-            "cold": (["time"], ts_cold),
-            "warm": (["time"], ts_warm),
-        },
-        coords={"x": x, "time": time},
-        attrs={"isDoubleEnded": "1"},
-    )
-
-    sections = {
-        "cold": [slice(0.0, 0.5 * cable_len)],
-        "warm": [slice(0.5 * cable_len, cable_len)],
-    }
-
-    mst_var, _ = ds.variance_stokes(st_label="st", sections=sections)
-    mast_var, _ = ds.variance_stokes(st_label="ast", sections=sections)
-    mrst_var, _ = ds.variance_stokes(st_label="rst", sections=sections)
-    mrast_var, _ = ds.variance_stokes(st_label="rast", sections=sections)
-
-    mst_var = float(mst_var)
-    mast_var = float(mast_var)
-    mrst_var = float(mrst_var)
-    mrast_var = float(mrast_var)
-
-    # MC variance
-    ds.calibration_double_ended(
-        sections=sections,
-        st_var=mst_var,
-        ast_var=mast_var,
-        rst_var=mrst_var,
-        rast_var=mrast_var,
-        method="wls",
-        solver="sparse",
-    )
-
-    assert_almost_equal_verbose(ds.tmpf.mean(), 12.0, decimal=2)
-    assert_almost_equal_verbose(ds.tmpb.mean(), 12.0, decimal=3)
-
-    ds.conf_int_double_ended(
-        sections=sections,
-        p_val="p_val",
-        p_cov="p_cov",
-        st_var=mst_var,
-        ast_var=mast_var,
-        rst_var=mrst_var,
-        rast_var=mrast_var,
-        conf_ints=[2.5, 50.0, 97.5],
-        mc_sample_size=100,
-        da_random_state=state,
-    )
-
-    # Calibrated variance
-    stdsf1 = ds.ufunc_per_section(
-        sections=sections, label="tmpf", func=np.std, temp_err=True, calc_per="stretch"
-    )
-    stdsb1 = ds.ufunc_per_section(
-        sections=sections, label="tmpb", func=np.std, temp_err=True, calc_per="stretch"
-    )
-
-    # Use a single timestep to better check if the parameter uncertainties propagate
-    ds1 = ds.isel(time=1)
-    # Estimated VAR
-    stdsf2 = ds1.ufunc_per_section(
-        sections=sections,
-        label="tmpf_mc_var",
-        func=np.mean,
-        temp_err=False,
-        calc_per="stretch",
-    )
-    stdsb2 = ds1.ufunc_per_section(
-        sections=sections,
-        label="tmpb_mc_var",
-        func=np.mean,
-        temp_err=False,
-        calc_per="stretch",
-    )
-
-    for (_, v1), (_, v2) in zip(stdsf1.items(), stdsf2.items()):
-        for v1i, v2i in zip(v1, v2):
-            print("Real VAR: ", v1i**2, "Estimated VAR: ", float(v2i))
-            assert_almost_equal_verbose(v1i**2, v2i, decimal=2)
-
-    for (_, v1), (_, v2) in zip(stdsb1.items(), stdsb2.items()):
-        for v1i, v2i in zip(v1, v2):
-            print("Real VAR: ", v1i**2, "Estimated VAR: ", float(v2i))
-            assert_almost_equal_verbose(v1i**2, v2i, decimal=2)
-
-    pass
-
-
-def test_single_ended_variance_estimate_synthetic():
-    import dask.array as da
-
-    from src.dtscalibration import DataStore
-
-    state = da.random.RandomState(0)
-
-    stokes_m_var = 40.0
-    astokes_m_var = 60.0
-    cable_len = 100.0
-    nt = 50
-    time = np.arange(nt)
-    x = np.linspace(0.0, cable_len, 500)
-    ts_cold = np.ones(nt) * 4.0
-    ts_warm = np.ones(nt) * 20.0
-
-    C_p = 15246
-    C_m = 2400.0
-    dalpha_r = 0.0005284
-    dalpha_m = 0.0004961
-    dalpha_p = 0.0005607
-    gamma = 482.6
-    cold_mask = x < 0.5 * cable_len
-    warm_mask = np.invert(cold_mask)  # == False
-    temp_real = np.ones((len(x), nt))
-    temp_real[cold_mask] *= ts_cold + 273.15
-    temp_real[warm_mask] *= ts_warm + 273.15
-
-    st = (
-        C_p
-        * np.exp(-dalpha_r * x[:, None])
-        * np.exp(-dalpha_p * x[:, None])
-        * np.exp(-gamma / temp_real)
-        / (1 - np.exp(-gamma / temp_real))
-    )
-    ast = (
-        C_m
-        * np.exp(-dalpha_r * x[:, None])
-        * np.exp(-dalpha_m * x[:, None])
-        / (1 - np.exp(-gamma / temp_real))
-    )
-    st_m = st + stats.norm.rvs(size=st.shape, scale=stokes_m_var**0.5)
-    ast_m = ast + stats.norm.rvs(size=ast.shape, scale=astokes_m_var**0.5)
-
-    print("alphaint", cable_len * (dalpha_p - dalpha_m))
-    print("alpha", dalpha_p - dalpha_m)
-    print("C", np.log(C_p / C_m))
-    print("x0", x.max())
-
-    ds = DataStore(
-        {
-            "st": (["x", "time"], st_m),
-            "ast": (["x", "time"], ast_m),
-            "userAcquisitionTimeFW": (["time"], np.ones(nt)),
-            "cold": (["time"], ts_cold),
-            "warm": (["time"], ts_warm),
-        },
-        coords={"x": x, "time": time},
-        attrs={"isDoubleEnded": "0"},
-    )
-
-    sections = {
-        "cold": [slice(0.0, 0.5 * cable_len)],
-        "warm": [slice(0.5 * cable_len, cable_len)],
-    }
-
-    st_label = "st"
-    ast_label = "ast"
-
-    mst_var, _ = ds.variance_stokes(st_label=st_label, sections=sections)
-    mast_var, _ = ds.variance_stokes(st_label=ast_label, sections=sections)
-    mst_var = float(mst_var)
-    mast_var = float(mast_var)
-
-    # MC variqnce
-    ds.calibration_single_ended(
-        sections=sections,
-        st_var=mst_var,
-        ast_var=mast_var,
-        method="wls",
-        solver="sparse",
-    )
-
-    ds.conf_int_single_ended(
-        p_val="p_val",
-        p_cov="p_cov",
-        st_var=mst_var,
-        ast_var=mast_var,
-        conf_ints=[2.5, 50.0, 97.5],
-        mc_sample_size=50,
-        da_random_state=state,
-    )
-
-    # Calibrated variance
-    stdsf1 = ds.ufunc_per_section(
-        sections=sections,
-        label="tmpf",
-        func=np.std,
-        temp_err=True,
-        calc_per="stretch",
-        ddof=1,
-    )
-
-    # Use a single timestep to better check if the parameter uncertainties propagate
-    ds1 = ds.isel(time=1)
-    # Estimated VAR
-    stdsf2 = ds1.ufunc_per_section(
-        sections=sections,
-        label="tmpf_mc_var",
-        func=np.mean,
-        temp_err=False,
-        calc_per="stretch",
-    )
-
-    for (_, v1), (_, v2) in zip(stdsf1.items(), stdsf2.items()):
-        for v1i, v2i in zip(v1, v2):
-            print("Real VAR: ", v1i**2, "Estimated VAR: ", float(v2i))
-            assert_almost_equal_verbose(v1i**2, v2i, decimal=2)
-
-    pass
-
-
-@pytest.mark.skip(reason="Not enough measurements in time. Use exponential " "instead.")
-def test_variance_of_stokes():
-    correct_var = 9.045
-    filepath = data_dir_double_ended2
-    ds = read_silixa_files(directory=filepath, timezone_netcdf="UTC", file_ext="*.xml")
-    sections = {
-        "probe1Temperature": [slice(7.5, 17.0), slice(70.0, 80.0)],  # cold bath
-        "probe2Temperature": [slice(24.0, 34.0), slice(85.0, 95.0)],  # warm bath
-    }
-
-    I_var, _ = ds.variance_stokes(st_label="st", sections=sections)
-    assert_almost_equal_verbose(I_var, correct_var, decimal=1)
-
-    ds_dask = ds.chunk(chunks={})
-    I_var, _ = ds_dask.variance_stokes(st_label="st", sections=sections)
-    assert_almost_equal_verbose(I_var, correct_var, decimal=1)
-
-    pass
-
-
-def test_variance_of_stokes_synthetic():
-    """
-    Produces a synthetic Stokes measurement with a known noise distribution. Check if same
-    variance is obtained.
-
-    Returns
-    -------
-
-    """
-    yvar = 5.0
-
-    nx = 500
-    x = np.linspace(0.0, 20.0, nx)
-
-    nt = 200
-    G = np.linspace(3000, 4000, nt)[None]
-
-    y = G * np.exp(-0.001 * x[:, None])
-
-    y += stats.norm.rvs(size=y.size, scale=yvar**0.5).reshape(y.shape)
-
-    ds = DataStore(
-        {
-            "st": (["x", "time"], y),
-            "probe1Temperature": (["time"], range(nt)),
-            "userAcquisitionTimeFW": (["time"], np.ones(nt)),
-        },
-        coords={"x": x, "time": range(nt)},
-        attrs={"isDoubleEnded": "0"},
-    )
-
-    sections = {"probe1Temperature": [slice(0.0, 20.0)]}
-    test_st_var, _ = ds.variance_stokes(st_label="st", sections=sections)
-
-    assert_almost_equal_verbose(test_st_var, yvar, decimal=1)
-
-    test_st_var, _ = ds.variance_stokes(st_label="st", sections=sections)
-
-    assert_almost_equal_verbose(test_st_var, yvar, decimal=1)
-    pass
-
-
-@pytest.mark.slow  # Execution time ~20 seconds
-def test_variance_of_stokes_linear_synthetic():
-    """
-    Produces a synthetic Stokes measurement with a known noise distribution.
-    Check if same variance is obtained.
-
-    Returns
-    -------
-
-    """
-    var_slope = 0.01
-
-    nx = 500
-    x = np.linspace(0.0, 20.0, nx)
-
-    nt = 200
-    G = np.linspace(500, 4000, nt)[None]
-    c_no_noise = G * np.exp(-0.001 * x[:, None])
-
-    c_lin_var_through_zero = stats.norm.rvs(
-        loc=c_no_noise,
-        # size=y.size,
-        scale=(var_slope * c_no_noise) ** 0.5,
-    )
-    ds = DataStore(
-        {
-            "st": (["x", "time"], c_no_noise),
-            "c_lin_var_through_zero": (["x", "time"], c_lin_var_through_zero),
-            "probe1Temperature": (["time"], range(nt)),
-            "userAcquisitionTimeFW": (["time"], np.ones(nt)),
-        },
-        coords={"x": x, "time": range(nt)},
-        attrs={"isDoubleEnded": "0"},
-    )
-
-    sections = {"probe1Temperature": [slice(0.0, 20.0)]}
-    test_st_var, _ = ds.variance_stokes(st_label="st", sections=sections)
-
-    # If fit is forced through zero. Only Poisson distributed noise
-    (
-        slope,
-        offset,
-        st_sort_mean,
-        st_sort_var,
-        resid,
-        var_fun,
-    ) = ds.variance_stokes_linear(
-        "c_lin_var_through_zero",
-        sections=sections,
-        nbin=10,
-        through_zero=True,
-        plot_fit=False,
-    )
-    assert_almost_equal_verbose(slope, var_slope, decimal=3)
-
-    # Fit accounts for Poisson noise plus white noise
-    (
-        slope,
-        offset,
-        st_sort_mean,
-        st_sort_var,
-        resid,
-        var_fun,
-    ) = ds.variance_stokes_linear(
-        "c_lin_var_through_zero", sections=sections, nbin=100, through_zero=False
-    )
-    assert_almost_equal_verbose(slope, var_slope, decimal=3)
-    assert_almost_equal_verbose(offset, 0.0, decimal=0)
-
-    pass
-
-
-@pytest.mark.slow  # Execution time ~20 seconds
-def test_exponential_variance_of_stokes():
-    correct_var = 11.86535
-    filepath = data_dir_double_ended2
-    ds = read_silixa_files(directory=filepath, timezone_netcdf="UTC", file_ext="*.xml")
-    sections = {
-        "probe1Temperature": [slice(7.5, 17.0), slice(70.0, 80.0)],  # cold bath
-        "probe2Temperature": [slice(24.0, 34.0), slice(85.0, 95.0)],  # warm bath
-    }
-
-    I_var, _ = ds.variance_stokes_exponential(st_label="st", sections=sections)
-    assert_almost_equal_verbose(I_var, correct_var, decimal=5)
-
-    ds_dask = ds.chunk(chunks={})
-    I_var, _ = ds_dask.variance_stokes_exponential(st_label="st", sections=sections)
-    assert_almost_equal_verbose(I_var, correct_var, decimal=5)
-
-    pass
-
-
-def test_exponential_variance_of_stokes_synthetic():
-    """
-    Produces a synthetic Stokes measurement with a known noise distribution. Check if same
-    variance is obtained.
-
-    Returns
-    -------
-
-    """
-    yvar = 5.0
-
-    nx = 500
-    x = np.linspace(0.0, 20.0, nx)
-
-    nt = 200
-    beta = np.linspace(3000, 4000, nt)[None]
-
-    y = beta * np.exp(-0.001 * x[:, None])
-
-    y += stats.norm.rvs(size=y.size, scale=yvar**0.5).reshape(y.shape)
-
-    ds = DataStore(
-        {
-            "st": (["x", "time"], y),
-            "probe1Temperature": (["time"], range(nt)),
-            "userAcquisitionTimeFW": (["time"], np.ones(nt)),
-        },
-        coords={"x": x, "time": range(nt)},
-        attrs={"isDoubleEnded": "0"},
-    )
-
-    sections = {"probe1Temperature": [slice(0.0, 20.0)]}
-    test_st_var, _ = ds.variance_stokes_exponential(st_label="st", sections=sections)
-
-    assert_almost_equal_verbose(test_st_var, yvar, decimal=1)
-    pass
-
-
 def test_double_ended_wls_estimate_synthetic():
     """Checks whether the coefficients are correctly defined by creating a
     synthetic measurement set, and derive the parameters from this set.
     Without variance.
     They should be the same as the parameters used to create the synthetic
     measurment set"""
-    from dtscalibration import DataStore
-
     cable_len = 100.0
     nt = 50
     time = np.arange(nt)
@@ -996,7 +112,7 @@ def test_double_ended_wls_estimate_synthetic():
     alpha = np.mean(np.log(rst / rast) - np.log(st / ast), axis=1) / 2
     alpha -= alpha[0]  # the first x-index is where to start counting
 
-    ds = DataStore(
+    ds = Dataset(
         {
             "st": (["x", "time"], st),
             "ast": (["x", "time"], ast),
@@ -1017,7 +133,7 @@ def test_double_ended_wls_estimate_synthetic():
     }
 
     # WLS
-    ds.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=1e-7,
         ast_var=1e-7,
@@ -1027,11 +143,11 @@ def test_double_ended_wls_estimate_synthetic():
         solver="sparse",
     )
 
-    assert_almost_equal_verbose(ds.gamma.values, gamma, decimal=10)
-    assert_almost_equal_verbose(ds.alpha.values, alpha, decimal=8)
-    assert_almost_equal_verbose(ds.tmpf.values, temp_real - 273.15, decimal=6)
-    assert_almost_equal_verbose(ds.tmpb.values, temp_real - 273.15, decimal=6)
-    assert_almost_equal_verbose(ds.tmpw.values, temp_real - 273.15, decimal=6)
+    assert_almost_equal_verbose(out["gamma"].values, gamma, decimal=10)
+    assert_almost_equal_verbose(out["alpha"].values, alpha, decimal=8)
+    assert_almost_equal_verbose(out["tmpf"].values, temp_real - 273.15, decimal=6)
+    assert_almost_equal_verbose(out["tmpb"].values, temp_real - 273.15, decimal=6)
+    assert_almost_equal_verbose(out["tmpw"].values, temp_real - 273.15, decimal=6)
 
 
 def test_double_ended_wls_estimate_synthetic_df_and_db_are_different():
@@ -1041,7 +157,6 @@ def test_double_ended_wls_estimate_synthetic_df_and_db_are_different():
     They should be the same as the parameters used to create the synthetic
     measurment set. This one has a different D for the forward channel than
     for the backward channel."""
-    from dtscalibration import DataStore
 
     cable_len = 100.0
     nt = 3
@@ -1110,7 +225,7 @@ def test_double_ended_wls_estimate_synthetic_df_and_db_are_different():
 
     E_real = (i_bw - i_fw) / 2 + (db - df) / 2
 
-    ds = DataStore(
+    ds = Dataset(
         {
             "st": (["x", "time"], st),
             "ast": (["x", "time"], ast),
@@ -1132,7 +247,7 @@ def test_double_ended_wls_estimate_synthetic_df_and_db_are_different():
 
     real_ans2 = np.concatenate(([gamma], df, db, E_real[:, 0]))
 
-    ds.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=1.5,
         ast_var=1.5,
@@ -1143,134 +258,17 @@ def test_double_ended_wls_estimate_synthetic_df_and_db_are_different():
         fix_gamma=(gamma, 0.0),
     )
 
-    assert_almost_equal_verbose(df, ds.df.values, decimal=14)
-    assert_almost_equal_verbose(db, ds.db.values, decimal=13)
+    assert_almost_equal_verbose(df, out["df"].values, decimal=14)
+    assert_almost_equal_verbose(db, out["db"].values, decimal=13)
     assert_almost_equal_verbose(
-        x * (dalpha_p - dalpha_m), ds.alpha.values - ds.alpha.values[0], decimal=13
+        x * (dalpha_p - dalpha_m),
+        out["alpha"].values - out["alpha"].values[0],
+        decimal=13,
     )
-    assert np.all(np.abs(real_ans2 - ds.p_val.values) < 1e-10)
-    assert_almost_equal_verbose(temp_real_celsius, ds.tmpf.values, decimal=10)
-    assert_almost_equal_verbose(temp_real_celsius, ds.tmpb.values, decimal=10)
-    assert_almost_equal_verbose(temp_real_celsius, ds.tmpw.values, decimal=10)
-    pass
-
-
-def test_reneaming_old_default_labels_to_new_fixed_labels():
-    """Same as
-    `test_double_ended_wls_estimate_synthetic_df_and_db_are_different`
-    Which runs fast, but using the renaming function."""
-    from dtscalibration import DataStore
-
-    cable_len = 100.0
-    nt = 3
-    time = np.arange(nt)
-    x = np.linspace(0.0, cable_len, 8)
-    ts_cold = np.ones(nt) * 4.0 + np.cos(time) * 4
-    ts_warm = np.ones(nt) * 20.0 + -np.sin(time) * 4
-
-    C_p = 1324  # 1/2 * E0 * v * K_+/lam_+^4
-    eta_pf = np.cos(time) / 10 + 1  # eta_+ (gain factor forward channel)
-    eta_pb = np.sin(time) / 10 + 1  # eta_- (gain factor backward channel)
-    C_m = 5000.0
-    eta_mf = np.cos(time + np.pi / 8) / 10 + 1
-    eta_mb = np.sin(time + np.pi / 8) / 10 + 1
-    dalpha_r = 0.005284
-    dalpha_m = 0.004961
-    dalpha_p = 0.005607
-    gamma = 482.6
-
-    temp_real_kelvin = np.zeros((len(x), nt)) + 273.15
-    temp_real_kelvin[x < 0.2 * cable_len] += ts_cold[None]
-    temp_real_kelvin[x > 0.85 * cable_len] += ts_warm[None]
-    temp_real_celsius = temp_real_kelvin - 273.15
-
-    st = (
-        eta_pf[None]
-        * C_p
-        * np.exp(-dalpha_r * x[:, None])
-        * np.exp(-dalpha_p * x[:, None])
-        * np.exp(gamma / temp_real_kelvin)
-        / (np.exp(gamma / temp_real_kelvin) - 1)
-    )
-    ast = (
-        eta_mf[None]
-        * C_m
-        * np.exp(-dalpha_r * x[:, None])
-        * np.exp(-dalpha_m * x[:, None])
-        / (np.exp(gamma / temp_real_kelvin) - 1)
-    )
-    rst = (
-        eta_pb[None]
-        * C_p
-        * np.exp(-dalpha_r * (-x[:, None] + cable_len))
-        * np.exp(-dalpha_p * (-x[:, None] + cable_len))
-        * np.exp(gamma / temp_real_kelvin)
-        / (np.exp(gamma / temp_real_kelvin) - 1)
-    )
-    rast = (
-        eta_mb[None]
-        * C_m
-        * np.exp(-dalpha_r * (-x[:, None] + cable_len))
-        * np.exp(-dalpha_m * (-x[:, None] + cable_len))
-        / (np.exp(gamma / temp_real_kelvin) - 1)
-    )
-
-    c_f = np.log(eta_mf * C_m / (eta_pf * C_p))
-    c_b = np.log(eta_mb * C_m / (eta_pb * C_p))
-
-    dalpha = dalpha_p - dalpha_m  # \Delta\alpha
-    alpha_int = cable_len * dalpha
-
-    df = c_f  # reference section starts at first x-index
-    db = c_b + alpha_int
-    i_fw = np.log(st / ast)
-    i_bw = np.log(rst / rast)
-
-    E_real = (i_bw - i_fw) / 2 + (db - df) / 2
-
-    ds = DataStore(
-        {
-            "ST": (["x", "time"], st),
-            "AST": (["x", "time"], ast),
-            "REV-ST": (["x", "time"], rst),
-            "REV-AST": (["x", "time"], rast),
-            "userAcquisitionTimeFW": (["time"], np.ones(nt)),
-            "userAcquisitionTimeBW": (["time"], np.ones(nt)),
-            "cold": (["time"], ts_cold),
-            "warm": (["time"], ts_warm),
-        },
-        coords={"x": x, "time": time},
-        attrs={"isDoubleEnded": "1"},
-    )
-    ds = ds.rename_labels()
-
-    sections = {
-        "cold": [slice(0.0, 0.09 * cable_len)],
-        "warm": [slice(0.9 * cable_len, cable_len)],
-    }
-
-    real_ans2 = np.concatenate(([gamma], df, db, E_real[:, 0]))
-
-    ds.calibration_double_ended(
-        sections=sections,
-        st_var=1.5,
-        ast_var=1.5,
-        rst_var=1.0,
-        rast_var=1.0,
-        method="wls",
-        solver="sparse",
-        fix_gamma=(gamma, 0.0),
-    )
-
-    assert_almost_equal_verbose(df, ds.df.values, decimal=14)
-    assert_almost_equal_verbose(db, ds.db.values, decimal=13)
-    assert_almost_equal_verbose(
-        x * (dalpha_p - dalpha_m), ds.alpha.values - ds.alpha.values[0], decimal=13
-    )
-    assert np.all(np.abs(real_ans2 - ds.p_val.values) < 1e-10)
-    assert_almost_equal_verbose(temp_real_celsius, ds.tmpf.values, decimal=10)
-    assert_almost_equal_verbose(temp_real_celsius, ds.tmpb.values, decimal=10)
-    assert_almost_equal_verbose(temp_real_celsius, ds.tmpw.values, decimal=10)
+    assert np.all(np.abs(real_ans2 - out["p_val"].values) < 1e-10)
+    assert_almost_equal_verbose(temp_real_celsius, out["tmpf"].values, decimal=10)
+    assert_almost_equal_verbose(temp_real_celsius, out["tmpb"].values, decimal=10)
+    assert_almost_equal_verbose(temp_real_celsius, out["tmpw"].values, decimal=10)
     pass
 
 
@@ -1279,7 +277,6 @@ def test_fail_if_st_labels_are_passed_to_calibration_function():
     """Same as
     `test_double_ended_wls_estimate_synthetic_df_and_db_are_different`
     Which runs fast."""
-    from dtscalibration import DataStore
 
     cable_len = 100.0
     nt = 3
@@ -1334,7 +331,7 @@ def test_fail_if_st_labels_are_passed_to_calibration_function():
         / (np.exp(gamma / temp_real_kelvin) - 1)
     )
 
-    ds = DataStore(
+    ds = Dataset(
         {
             "ST": (["x", "time"], st),
             "AST": (["x", "time"], ast),
@@ -1355,7 +352,7 @@ def test_fail_if_st_labels_are_passed_to_calibration_function():
         "warm": [slice(0.9 * cable_len, cable_len)],
     }
 
-    ds.calibration_double_ended(
+    ds.dts.calibrate_double_ended(
         sections=sections,
         st_label="ST",
         ast_label="AST",
@@ -1375,8 +372,6 @@ def test_fail_if_st_labels_are_passed_to_calibration_function():
 
 
 def test_double_ended_asymmetrical_attenuation():
-    from dtscalibration import DataStore
-
     cable_len = 100.0
     nt = 3
     time = np.arange(nt)
@@ -1441,7 +436,7 @@ def test_double_ended_asymmetrical_attenuation():
         / (np.exp(gamma / temp_real_kelvin) - 1)
     )
 
-    ds = DataStore(
+    ds = Dataset(
         {
             "TMPR": (["x", "time"], temp_real_celsius),
             "st": (["x", "time"], st),
@@ -1454,7 +449,6 @@ def test_double_ended_asymmetrical_attenuation():
             "warm": (["time"], ts_warm),
         },
         coords={"x": x, "time": time},
-        attrs={"isDoubleEnded": "1"},
     )
 
     sections = {
@@ -1465,7 +459,7 @@ def test_double_ended_asymmetrical_attenuation():
         ],
     }
 
-    ds.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=1.5,
         ast_var=1.5,
@@ -1476,45 +470,13 @@ def test_double_ended_asymmetrical_attenuation():
         trans_att=[50.0],
     )
 
-    assert_almost_equal_verbose(temp_real_celsius, ds.tmpf.values, decimal=7)
-    assert_almost_equal_verbose(temp_real_celsius, ds.tmpb.values, decimal=7)
-    assert_almost_equal_verbose(temp_real_celsius, ds.tmpw.values, decimal=7)
-
-    # test `trans_att` related functions
-
-    # Clear out old results
-    ds.set_trans_att([])
-
-    assert ds.trans_att.size == 0, "clear out trans_att config"
-
-    del_keys = []
-    for k, v in ds.data_vars.items():
-        if "trans_att" in v.dims:
-            del_keys.append(k)
-
-    assert len(del_keys) == 0, "clear out trans_att config"
-
-    # About to be depreciated
-    ds.calibration_double_ended(
-        sections=sections,
-        st_var=1.5,
-        ast_var=1.5,
-        rst_var=1.0,
-        rast_var=1.0,
-        method="wls",
-        solver="sparse",
-        trans_att=[50.0],
-    )
-
-    assert_almost_equal_verbose(temp_real_celsius, ds.tmpf.values, decimal=7)
-    assert_almost_equal_verbose(temp_real_celsius, ds.tmpb.values, decimal=7)
-    assert_almost_equal_verbose(temp_real_celsius, ds.tmpw.values, decimal=7)
+    assert_almost_equal_verbose(temp_real_celsius, out.tmpf.values, decimal=7)
+    assert_almost_equal_verbose(temp_real_celsius, out.tmpb.values, decimal=7)
+    assert_almost_equal_verbose(temp_real_celsius, out.tmpw.values, decimal=7)
     pass
 
 
 def test_double_ended_one_matching_section_and_one_asym_att():
-    from dtscalibration import DataStore
-
     cable_len = 100.0
     nt = 3
     time = np.arange(nt)
@@ -1579,7 +541,7 @@ def test_double_ended_one_matching_section_and_one_asym_att():
         / (np.exp(gamma / temp_real_kelvin) - 1)
     )
 
-    ds = DataStore(
+    ds = Dataset(
         {
             "TMPR": (["x", "time"], temp_real_celsius),
             "st": (["x", "time"], st),
@@ -1600,7 +562,7 @@ def test_double_ended_one_matching_section_and_one_asym_att():
         "warm": [slice(x[nx_per_sec], x[2 * nx_per_sec - 1])],
     }
 
-    ds.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=1.5,
         ast_var=1.5,
@@ -1618,15 +580,14 @@ def test_double_ended_one_matching_section_and_one_asym_att():
         ],
     )
 
-    assert_almost_equal_verbose(temp_real_celsius, ds.tmpf.values, decimal=7)
-    assert_almost_equal_verbose(temp_real_celsius, ds.tmpb.values, decimal=7)
-    assert_almost_equal_verbose(temp_real_celsius, ds.tmpw.values, decimal=7)
+    assert_almost_equal_verbose(temp_real_celsius, out["tmpf"].values, decimal=7)
+    assert_almost_equal_verbose(temp_real_celsius, out["tmpb"].values, decimal=7)
+    assert_almost_equal_verbose(temp_real_celsius, out["tmpw"].values, decimal=7)
 
 
 def test_double_ended_two_matching_sections_and_two_asym_atts():
     """Setup contains two matching sections and two connectors that introduce
     asymmetrical attenuation. Solves beautifully."""
-    from dtscalibration import DataStore
 
     cable_len = 100.0
     nt = 5
@@ -1698,7 +659,7 @@ def test_double_ended_two_matching_sections_and_two_asym_atts():
         / (np.exp(gamma / temp_real_kelvin) - 1)
     )
 
-    ds = DataStore(
+    ds = Dataset(
         {
             "TMPR": (["x", "time"], temp_real_celsius),
             "st": (["x", "time"], st),
@@ -1731,7 +692,7 @@ def test_double_ended_two_matching_sections_and_two_asym_atts():
         ),
     ]
 
-    ds.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=0.5,
         ast_var=0.5,
@@ -1743,9 +704,9 @@ def test_double_ended_two_matching_sections_and_two_asym_atts():
         matching_sections=ms,
     )
 
-    assert_almost_equal_verbose(temp_real_celsius, ds.tmpf.values, decimal=7)
-    assert_almost_equal_verbose(temp_real_celsius, ds.tmpb.values, decimal=7)
-    assert_almost_equal_verbose(temp_real_celsius, ds.tmpw.values, decimal=7)
+    assert_almost_equal_verbose(temp_real_celsius, out["tmpf"].values, decimal=7)
+    assert_almost_equal_verbose(temp_real_celsius, out["tmpb"].values, decimal=7)
+    assert_almost_equal_verbose(temp_real_celsius, out["tmpw"].values, decimal=7)
     pass
 
 
@@ -1755,7 +716,6 @@ def test_double_ended_wls_fix_gamma_estimate_synthetic():
     Without variance.
     They should be the same as the parameters used to create the synthetic
     measurment set"""
-    from dtscalibration import DataStore
 
     cable_len = 100.0
     nt = 500
@@ -1807,7 +767,7 @@ def test_double_ended_wls_fix_gamma_estimate_synthetic():
     # to ensure the st, rst, ast, rast were correctly defined.
     np.testing.assert_allclose(alpha2, alpha, atol=1e-15, rtol=0)
 
-    ds = DataStore(
+    ds = Dataset(
         {
             "st": (["x", "time"], st),
             "ast": (["x", "time"], ast),
@@ -1828,7 +788,7 @@ def test_double_ended_wls_fix_gamma_estimate_synthetic():
     }
 
     # WLS
-    ds.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=1e-12,
         ast_var=1e-12,
@@ -1839,11 +799,11 @@ def test_double_ended_wls_fix_gamma_estimate_synthetic():
         fix_gamma=(gamma, 0.0),
     )
 
-    assert_almost_equal_verbose(ds.gamma.values, gamma, decimal=18)
-    assert_almost_equal_verbose(ds.alpha.values, alpha, decimal=9)
-    assert_almost_equal_verbose(ds.tmpf.values, temp_real - 273.15, decimal=6)
-    assert_almost_equal_verbose(ds.tmpb.values, temp_real - 273.15, decimal=6)
-    assert_almost_equal_verbose(ds.tmpw.values, temp_real - 273.15, decimal=6)
+    assert_almost_equal_verbose(out["gamma"].values, gamma, decimal=18)
+    assert_almost_equal_verbose(out["alpha"].values, alpha, decimal=9)
+    assert_almost_equal_verbose(out["tmpf"].values, temp_real - 273.15, decimal=6)
+    assert_almost_equal_verbose(out["tmpb"].values, temp_real - 273.15, decimal=6)
+    assert_almost_equal_verbose(out["tmpw"].values, temp_real - 273.15, decimal=6)
 
     pass
 
@@ -1854,7 +814,6 @@ def test_double_ended_wls_fix_alpha_estimate_synthetic():
     Without variance.
     They should be the same as the parameters used to create the synthetic
     measurment set"""
-    from dtscalibration import DataStore
 
     cable_len = 100.0
     nt = 500
@@ -1901,7 +860,7 @@ def test_double_ended_wls_fix_alpha_estimate_synthetic():
     alpha = np.mean(np.log(rst / rast) - np.log(st / ast), axis=1) / 2
     alpha -= alpha[0]  # the first x-index is where to start counting
 
-    ds = DataStore(
+    ds = Dataset(
         {
             "st": (["x", "time"], st),
             "ast": (["x", "time"], ast),
@@ -1922,7 +881,7 @@ def test_double_ended_wls_fix_alpha_estimate_synthetic():
     }
 
     # WLS
-    ds.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=1e-7,
         ast_var=1e-7,
@@ -1933,11 +892,11 @@ def test_double_ended_wls_fix_alpha_estimate_synthetic():
         fix_alpha=(alpha, np.zeros_like(alpha)),
     )
 
-    assert_almost_equal_verbose(ds.gamma.values, gamma, decimal=8)
-    assert_almost_equal_verbose(ds.alpha.values, alpha, decimal=18)
-    assert_almost_equal_verbose(ds.tmpf.values, temp_real - 273.15, decimal=7)
-    assert_almost_equal_verbose(ds.tmpb.values, temp_real - 273.15, decimal=7)
-    assert_almost_equal_verbose(ds.tmpw.values, temp_real - 273.15, decimal=7)
+    assert_almost_equal_verbose(out["gamma"].values, gamma, decimal=8)
+    assert_almost_equal_verbose(out["alpha"].values, alpha, decimal=18)
+    assert_almost_equal_verbose(out["tmpf"].values, temp_real - 273.15, decimal=7)
+    assert_almost_equal_verbose(out["tmpb"].values, temp_real - 273.15, decimal=7)
+    assert_almost_equal_verbose(out["tmpw"].values, temp_real - 273.15, decimal=7)
 
     pass
 
@@ -1948,7 +907,6 @@ def test_double_ended_wls_fix_alpha_fix_gamma_estimate_synthetic():
     Without variance.
     They should be the same as the parameters used to create the synthetic
     measurment set"""
-    from dtscalibration import DataStore
 
     cable_len = 100.0
     nt = 500
@@ -1995,7 +953,7 @@ def test_double_ended_wls_fix_alpha_fix_gamma_estimate_synthetic():
     alpha = np.mean(np.log(rst / rast) - np.log(st / ast), axis=1) / 2
     alpha -= alpha[0]  # the first x-index is where to start counting
 
-    ds = DataStore(
+    ds = Dataset(
         {
             "st": (["x", "time"], st),
             "ast": (["x", "time"], ast),
@@ -2016,7 +974,7 @@ def test_double_ended_wls_fix_alpha_fix_gamma_estimate_synthetic():
     }
 
     # WLS
-    ds.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=1e-7,
         ast_var=1e-7,
@@ -2028,18 +986,16 @@ def test_double_ended_wls_fix_alpha_fix_gamma_estimate_synthetic():
         fix_alpha=(alpha, np.zeros_like(alpha)),
     )
 
-    assert_almost_equal_verbose(ds.gamma.values, gamma, decimal=18)
-    assert_almost_equal_verbose(ds.alpha.values, alpha, decimal=18)
-    assert_almost_equal_verbose(ds.tmpf.values, temp_real - 273.15, decimal=11)
-    assert_almost_equal_verbose(ds.tmpb.values, temp_real - 273.15, decimal=11)
-    assert_almost_equal_verbose(ds.tmpw.values, temp_real - 273.15, decimal=11)
+    assert_almost_equal_verbose(out["gamma"].values, gamma, decimal=18)
+    assert_almost_equal_verbose(out["alpha"].values, alpha, decimal=18)
+    assert_almost_equal_verbose(out["tmpf"].values, temp_real - 273.15, decimal=11)
+    assert_almost_equal_verbose(out["tmpb"].values, temp_real - 273.15, decimal=11)
+    assert_almost_equal_verbose(out["tmpw"].values, temp_real - 273.15, decimal=11)
 
     pass
 
 
 def test_double_ended_fix_alpha_matching_sections_and_one_asym_att():
-    from dtscalibration import DataStore
-
     cable_len = 100.0
     nt = 3
     time = np.arange(nt)
@@ -2104,7 +1060,7 @@ def test_double_ended_fix_alpha_matching_sections_and_one_asym_att():
         / (np.exp(gamma / temp_real_kelvin) - 1)
     )
 
-    ds = DataStore(
+    ds = Dataset(
         {
             "TMPR": (["x", "time"], temp_real_celsius),
             "st": (["x", "time"], st),
@@ -2125,7 +1081,7 @@ def test_double_ended_fix_alpha_matching_sections_and_one_asym_att():
         "warm": [slice(x[nx_per_sec], x[2 * nx_per_sec - 1])],
     }
 
-    ds.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=1.5,
         ast_var=1.5,
@@ -2147,12 +1103,12 @@ def test_double_ended_fix_alpha_matching_sections_and_one_asym_att():
     k = ["talpha_fw", "talpha_bw", "trans_att"]
 
     for ki in k:
-        del ds[ki]
+        del out[ki]
 
-    alpha_adj = ds.alpha.values.copy()
-    alpha_var_adj = ds.alpha_var.values.copy()
+    alpha_adj = out["alpha"].values.copy()
+    alpha_var_adj = out["alpha_var"].values.copy()
 
-    ds.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=1.5,
         ast_var=1.5,
@@ -2171,15 +1127,13 @@ def test_double_ended_fix_alpha_matching_sections_and_one_asym_att():
         ],
     )
 
-    assert_almost_equal_verbose(temp_real_celsius, ds.tmpf.values, decimal=7)
-    assert_almost_equal_verbose(temp_real_celsius, ds.tmpb.values, decimal=7)
-    assert_almost_equal_verbose(temp_real_celsius, ds.tmpw.values, decimal=7)
+    assert_almost_equal_verbose(temp_real_celsius, out["tmpf"].values, decimal=7)
+    assert_almost_equal_verbose(temp_real_celsius, out["tmpb"].values, decimal=7)
+    assert_almost_equal_verbose(temp_real_celsius, out["tmpw"].values, decimal=7)
     pass
 
 
 def test_double_ended_fix_alpha_gamma_matching_sections_and_one_asym_att():
-    from dtscalibration import DataStore
-
     cable_len = 100.0
     nt = 3
     time = np.arange(nt)
@@ -2244,7 +1198,7 @@ def test_double_ended_fix_alpha_gamma_matching_sections_and_one_asym_att():
         / (np.exp(gamma / temp_real_kelvin) - 1)
     )
 
-    ds = DataStore(
+    ds = Dataset(
         {
             "TMPR": (["x", "time"], temp_real_celsius),
             "st": (["x", "time"], st),
@@ -2265,7 +1219,7 @@ def test_double_ended_fix_alpha_gamma_matching_sections_and_one_asym_att():
         "warm": [slice(x[nx_per_sec], x[2 * nx_per_sec - 1])],
     }
 
-    ds.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=1.5,
         ast_var=1.5,
@@ -2287,12 +1241,12 @@ def test_double_ended_fix_alpha_gamma_matching_sections_and_one_asym_att():
     k = ["talpha_fw", "talpha_bw", "trans_att"]
 
     for ki in k:
-        del ds[ki]
+        del out[ki]
 
-    alpha_adj = ds.alpha.values.copy()
-    alpha_var_adj = ds.alpha_var.values.copy()
+    alpha_adj = out["alpha"].values.copy()
+    alpha_var_adj = out["alpha_var"].values.copy()
 
-    ds.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=1.5,
         ast_var=1.5,
@@ -2312,15 +1266,13 @@ def test_double_ended_fix_alpha_gamma_matching_sections_and_one_asym_att():
         ],
     )
 
-    assert_almost_equal_verbose(temp_real_celsius, ds.tmpf.values, decimal=7)
-    assert_almost_equal_verbose(temp_real_celsius, ds.tmpb.values, decimal=7)
-    assert_almost_equal_verbose(temp_real_celsius, ds.tmpw.values, decimal=7)
+    assert_almost_equal_verbose(temp_real_celsius, out["tmpf"].values, decimal=7)
+    assert_almost_equal_verbose(temp_real_celsius, out["tmpb"].values, decimal=7)
+    assert_almost_equal_verbose(temp_real_celsius, out["tmpw"].values, decimal=7)
     pass
 
 
 def test_double_ended_fix_gamma_matching_sections_and_one_asym_att():
-    from dtscalibration import DataStore
-
     cable_len = 100.0
     nt = 3
     time = np.arange(nt)
@@ -2385,7 +1337,7 @@ def test_double_ended_fix_gamma_matching_sections_and_one_asym_att():
         / (np.exp(gamma / temp_real_kelvin) - 1)
     )
 
-    ds = DataStore(
+    ds = Dataset(
         {
             "TMPR": (["x", "time"], temp_real_celsius),
             "st": (["x", "time"], st),
@@ -2406,7 +1358,7 @@ def test_double_ended_fix_gamma_matching_sections_and_one_asym_att():
         "warm": [slice(x[nx_per_sec], x[2 * nx_per_sec - 1])],
     }
 
-    ds.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=1.5,
         ast_var=1.5,
@@ -2425,9 +1377,9 @@ def test_double_ended_fix_gamma_matching_sections_and_one_asym_att():
         ],
     )
 
-    assert_almost_equal_verbose(temp_real_celsius, ds.tmpf.values, decimal=7)
-    assert_almost_equal_verbose(temp_real_celsius, ds.tmpb.values, decimal=7)
-    assert_almost_equal_verbose(temp_real_celsius, ds.tmpw.values, decimal=7)
+    assert_almost_equal_verbose(temp_real_celsius, out["tmpf"].values, decimal=7)
+    assert_almost_equal_verbose(temp_real_celsius, out["tmpb"].values, decimal=7)
+    assert_almost_equal_verbose(temp_real_celsius, out["tmpw"].values, decimal=7)
     pass
 
 
@@ -2436,8 +1388,6 @@ def test_double_ended_fix_gamma_matching_sections_and_one_asym_att():
 )
 def test_double_ended_exponential_variance_estimate_synthetic():
     import dask.array as da
-
-    from dtscalibration import DataStore
 
     state = da.random.RandomState(0)
 
@@ -2499,7 +1449,7 @@ def test_double_ended_exponential_variance_estimate_synthetic():
     print("C", np.log(C_p / C_m))
     print("x0", x.max())
 
-    ds = DataStore(
+    ds = Dataset(
         {
             # 'st':    (['x', 'time'], st),
             # 'ast':   (['x', 'time'], ast),
@@ -2529,7 +1479,7 @@ def test_double_ended_exponential_variance_estimate_synthetic():
     rast_label = "rast"
 
     # MC variance
-    ds.calibration_double_ended(
+    ds.dts.calibrate_double_ended(
         sections=sections,
         st_label=st_label,
         ast_label=ast_label,
@@ -2604,8 +1554,6 @@ def test_double_ended_exponential_variance_estimate_synthetic():
 def test_estimate_variance_of_temperature_estimate():
     import dask.array as da
 
-    from dtscalibration import DataStore
-
     state = da.random.RandomState(0)
 
     stokes_m_var = 0.1
@@ -2669,7 +1617,7 @@ def test_estimate_variance_of_temperature_estimate():
     print("C", np.log(C_p / C_m))
     print("x0", x.max())
 
-    ds = DataStore(
+    ds = Dataset(
         {
             "st": (["x", "time"], st_m),
             "ast": (["x", "time"], ast_m),
@@ -2689,7 +1637,7 @@ def test_estimate_variance_of_temperature_estimate():
         "warm": [slice(0.5 * cable_len, 0.75 * cable_len)],
     }
     # MC variance
-    ds.calibration_double_ended(
+    out = ds.dts.calibrate_double_ended(
         sections=sections,
         st_var=mst_var,
         ast_var=mast_var,
@@ -2701,15 +1649,13 @@ def test_estimate_variance_of_temperature_estimate():
         solver="stats",
     )
 
-    ds.conf_int_double_ended(
-        sections=sections,
-        p_val="p_val",
-        p_cov="p_cov",
+    out2 = ds.dts.monte_carlo_double_ended(
+        result=out,
         st_var=mst_var,
         ast_var=mast_var,
         rst_var=mrst_var,
         rast_var=mrast_var,
-        # conf_ints=[20., 80.],
+        conf_ints=[],
         mc_sample_size=nmc,
         da_random_state=state,
         mc_remove_set_flag=False,
@@ -2717,41 +1663,41 @@ def test_estimate_variance_of_temperature_estimate():
     )
 
     assert_almost_equal_verbose(
-        (ds.r_st - ds.st).var(dim=["mc", "time"]), mst_var, decimal=2
+        (out2["r_st"] - ds["st"]).var(dim=["mc", "time"]), mst_var, decimal=2
     )
     assert_almost_equal_verbose(
-        (ds.r_ast - ds.ast).var(dim=["mc", "time"]), mast_var, decimal=2
+        (out2["r_ast"] - ds["ast"]).var(dim=["mc", "time"]), mast_var, decimal=2
     )
     assert_almost_equal_verbose(
-        (ds.r_rst - ds.rst).var(dim=["mc", "time"]), mrst_var, decimal=2
+        (out2["r_rst"] - ds["rst"]).var(dim=["mc", "time"]), mrst_var, decimal=2
     )
     assert_almost_equal_verbose(
-        (ds.r_rast - ds.rast).var(dim=["mc", "time"]), mrast_var, decimal=3
+        (out2["r_rast"] - ds["rast"]).var(dim=["mc", "time"]), mrast_var, decimal=3
     )
 
-    assert_almost_equal_verbose(ds.gamma_mc.var(dim="mc"), 0.0, decimal=2)
-    assert_almost_equal_verbose(ds.alpha_mc.var(dim="mc"), 0.0, decimal=8)
-    assert_almost_equal_verbose(ds.df_mc.var(dim="mc"), ds.df_var, decimal=8)
-    assert_almost_equal_verbose(ds.db_mc.var(dim="mc"), ds.db_var, decimal=8)
+    assert_almost_equal_verbose(out2["gamma_mc"].var(dim="mc"), 0.0, decimal=2)
+    assert_almost_equal_verbose(out2["alpha_mc"].var(dim="mc"), 0.0, decimal=8)
+    assert_almost_equal_verbose(out2["df_mc"].var(dim="mc"), out["df_var"], decimal=8)
+    assert_almost_equal_verbose(out2["db_mc"].var(dim="mc"), out["db_var"], decimal=8)
 
     # tmpf
     temp_real2 = temp_real[:, 0] - 273.15
-    actual = (ds.tmpf - temp_real2[:, None]).var(dim="time")
-    desire2 = ds.tmpf_var.mean(dim="time")
+    actual = (out["tmpf"] - temp_real2[:, None]).var(dim="time")
+    desire2 = out["tmpf_var"].mean(dim="time")
 
     # Validate on sections that were not used for calibration.
     assert_almost_equal_verbose(actual[16:32], desire2[16:32], decimal=2)
 
     # tmpb
-    actual = (ds.tmpb - temp_real2[:, None]).var(dim="time")
-    desire2 = ds.tmpb_var.mean(dim="time")
+    actual = (out["tmpb"] - temp_real2[:, None]).var(dim="time")
+    desire2 = out["tmpb_var"].mean(dim="time")
 
     # Validate on sections that were not used for calibration.
     assert_almost_equal_verbose(actual[16:32], desire2[16:32], decimal=2)
 
     # tmpw
-    actual = (ds.tmpw - temp_real2[:, None]).var(dim="time")
-    desire2 = ds.tmpw_var.mean(dim="time")
+    actual = (out["tmpw"] - temp_real2[:, None]).var(dim="time")
+    desire2 = out["tmpw_var"].mean(dim="time")
     assert_almost_equal_verbose(actual[16:32], desire2[16:32], decimal=3)
 
     pass
@@ -2763,8 +1709,6 @@ def test_single_ended_wls_estimate_synthetic():
     Without variance.
     They should be the same as the parameters used to create the synthetic
     measurment set"""
-
-    from dtscalibration import DataStore
 
     cable_len = 100.0
     nt = 50
@@ -2804,7 +1748,7 @@ def test_single_ended_wls_estimate_synthetic():
     print("C", np.log(C_p / C_m))
     print("x0", x.max())
 
-    ds = DataStore(
+    ds = Dataset(
         {
             "st": (["x", "time"], st),
             "ast": (["x", "time"], ast),
@@ -2822,13 +1766,13 @@ def test_single_ended_wls_estimate_synthetic():
     }
 
     # WLS
-    ds.calibration_single_ended(
+    out = ds.dts.calibrate_single_ended(
         sections=sections, st_var=1.0, ast_var=1.0, method="wls", solver="sparse"
     )
 
-    assert_almost_equal_verbose(ds.gamma.values, gamma, decimal=6)
-    assert_almost_equal_verbose(ds.dalpha.values, dalpha_p - dalpha_m, decimal=8)
-    assert_almost_equal_verbose(ds.tmpf.values, temp_real - 273.15, decimal=4)
+    assert_almost_equal_verbose(out["gamma"].values, gamma, decimal=6)
+    assert_almost_equal_verbose(out["dalpha"].values, dalpha_p - dalpha_m, decimal=8)
+    assert_almost_equal_verbose(out["tmpf"].values, temp_real - 273.15, decimal=4)
 
     pass
 
@@ -2839,8 +1783,6 @@ def test_single_ended_wls_fix_dalpha_synthetic():
     Without variance.
     They should be the same as the parameters used to create the synthetic
     measurment set"""
-
-    from dtscalibration import DataStore
 
     cable_len = 100.0
     nt = 50
@@ -2880,7 +1822,7 @@ def test_single_ended_wls_fix_dalpha_synthetic():
     print("C", np.log(C_p / C_m))
     print("x0", x.max())
 
-    ds_ori = DataStore(
+    ds_ori = Dataset(
         {
             "st": (["x", "time"], st),
             "ast": (["x", "time"], ast),
@@ -2899,7 +1841,7 @@ def test_single_ended_wls_fix_dalpha_synthetic():
 
     # Test fix_dalpha
     ds_dalpha = ds_ori.copy()
-    ds_dalpha.calibration_single_ended(
+    out = ds_dalpha.dts.calibrate_single_ended(
         sections=sections,
         st_var=1.0,
         ast_var=1.0,
@@ -2907,19 +1849,14 @@ def test_single_ended_wls_fix_dalpha_synthetic():
         solver="sparse",
         fix_dalpha=(dalpha_p - dalpha_m, 0.0),
     )
-
-    assert_almost_equal_verbose(ds_dalpha.gamma.values, gamma, decimal=12)
-    assert_almost_equal_verbose(
-        ds_dalpha.dalpha.values, dalpha_p - dalpha_m, decimal=14
-    )
-    assert_almost_equal_verbose(
-        ds_dalpha.alpha.values, x * (dalpha_p - dalpha_m), decimal=14
-    )
-    assert_almost_equal_verbose(ds_dalpha.tmpf.values, temp_real - 273.15, decimal=10)
+    assert_almost_equal_verbose(out.gamma.values, gamma, decimal=12)
+    assert_almost_equal_verbose(out.dalpha.values, dalpha_p - dalpha_m, decimal=14)
+    assert_almost_equal_verbose(out.alpha.values, x * (dalpha_p - dalpha_m), decimal=14)
+    assert_almost_equal_verbose(out.tmpf.values, temp_real - 273.15, decimal=10)
 
     # Test fix_alpha
     ds_alpha = ds_ori.copy()
-    ds_alpha.calibration_single_ended(
+    out = ds_alpha.dts.calibrate_single_ended(
         sections=sections,
         st_var=1.0,
         ast_var=1.0,
@@ -2928,11 +1865,9 @@ def test_single_ended_wls_fix_dalpha_synthetic():
         fix_alpha=(x * (dalpha_p - dalpha_m), 0.0 * x),
     )
 
-    assert_almost_equal_verbose(ds_alpha.gamma.values, gamma, decimal=12)
-    assert_almost_equal_verbose(
-        ds_dalpha.alpha.values, x * (dalpha_p - dalpha_m), decimal=14
-    )
-    assert_almost_equal_verbose(ds_alpha.tmpf.values, temp_real - 273.15, decimal=10)
+    assert_almost_equal_verbose(out.gamma.values, gamma, decimal=12)
+    assert_almost_equal_verbose(out.alpha.values, x * (dalpha_p - dalpha_m), decimal=14)
+    assert_almost_equal_verbose(out.tmpf.values, temp_real - 273.15, decimal=10)
 
     pass
 
@@ -2944,8 +1879,6 @@ def test_single_ended_wls_fix_gamma_synthetic():
     They should be the same as the parameters used to create the synthetic
     measurment set"""
 
-    from dtscalibration import DataStore
-
     cable_len = 100.0
     nt = 50
     time = np.arange(nt)
@@ -2984,7 +1917,7 @@ def test_single_ended_wls_fix_gamma_synthetic():
     print("C", np.log(C_p / C_m))
     print("x0", x.max())
 
-    ds = DataStore(
+    ds = Dataset(
         {
             "st": (["x", "time"], st),
             "ast": (["x", "time"], ast),
@@ -3002,7 +1935,7 @@ def test_single_ended_wls_fix_gamma_synthetic():
     }
 
     # WLS
-    ds.calibration_single_ended(
+    out = ds.dts.calibrate_single_ended(
         sections=sections,
         st_var=1.0,
         ast_var=1.0,
@@ -3011,9 +1944,9 @@ def test_single_ended_wls_fix_gamma_synthetic():
         fix_gamma=(gamma, 0.0),
     )
 
-    assert_almost_equal_verbose(ds.gamma.values, gamma, decimal=18)
-    assert_almost_equal_verbose(ds.dalpha.values, dalpha_p - dalpha_m, decimal=10)
-    assert_almost_equal_verbose(ds.tmpf.values, temp_real - 273.15, decimal=8)
+    assert_almost_equal_verbose(out.gamma.values, gamma, decimal=18)
+    assert_almost_equal_verbose(out.dalpha.values, dalpha_p - dalpha_m, decimal=10)
+    assert_almost_equal_verbose(out.tmpf.values, temp_real - 273.15, decimal=8)
 
     pass
 
@@ -3025,8 +1958,6 @@ def test_single_ended_wls_fix_gamma_fix_dalpha_synthetic():
     They should be the same as the parameters used to create the synthetic
     measurment set"""
 
-    from dtscalibration import DataStore
-
     cable_len = 100.0
     nt = 50
     time = np.arange(nt)
@@ -3065,7 +1996,7 @@ def test_single_ended_wls_fix_gamma_fix_dalpha_synthetic():
     print("C", np.log(C_p / C_m))
     print("x0", x.max())
 
-    ds = DataStore(
+    ds = Dataset(
         {
             "st": (["x", "time"], st),
             "ast": (["x", "time"], ast),
@@ -3083,7 +2014,7 @@ def test_single_ended_wls_fix_gamma_fix_dalpha_synthetic():
     }
 
     # WLS
-    ds.calibration_single_ended(
+    out = ds.dts.calibrate_single_ended(
         sections=sections,
         st_var=1.0,
         ast_var=1.0,
@@ -3093,9 +2024,9 @@ def test_single_ended_wls_fix_gamma_fix_dalpha_synthetic():
         fix_dalpha=(dalpha_p - dalpha_m, 0.0),
     )
 
-    assert_almost_equal_verbose(ds.gamma.values, gamma, decimal=18)
-    assert_almost_equal_verbose(ds.dalpha.values, dalpha_p - dalpha_m, decimal=18)
-    assert_almost_equal_verbose(ds.tmpf.values, temp_real - 273.15, decimal=8)
+    assert_almost_equal_verbose(out.gamma.values, gamma, decimal=18)
+    assert_almost_equal_verbose(out.dalpha.values, dalpha_p - dalpha_m, decimal=18)
+    assert_almost_equal_verbose(out.tmpf.values, temp_real - 273.15, decimal=8)
 
     pass
 
@@ -3103,7 +2034,6 @@ def test_single_ended_wls_fix_gamma_fix_dalpha_synthetic():
 def test_single_ended_trans_att_synthetic():
     """Checks whether the transient attenuation routines perform as intended,
     and calibrate to the correct temperature"""
-    from dtscalibration import DataStore
 
     cable_len = 100.0
     nt = 50
@@ -3151,7 +2081,7 @@ def test_single_ended_trans_att_synthetic():
     tr_att2 = np.random.rand(nt) * 0.2 + 0.8
     st[int(x.size * 0.6) :] *= tr_att2
 
-    ds = DataStore(
+    ds = Dataset(
         {
             "st": (["x", "time"], st),
             "ast": (["x", "time"], ast),
@@ -3176,81 +2106,50 @@ def test_single_ended_trans_att_synthetic():
     ds_test = ds.copy(deep=True)
 
     # WLS
-    ds_test.calibration_single_ended(
+    out = ds_test.dts.calibrate_single_ended(
         sections=sections,
         st_var=1.0,
         ast_var=1.0,
         method="wls",
-        trans_att=[40, 60],
+        trans_att=[40.0, 60.0],
         solver="sparse",
     )
 
-    assert_almost_equal_verbose(ds_test.gamma.values, gamma, decimal=8)
-    assert_almost_equal_verbose(ds_test.tmpf.values, temp_real - 273.15, decimal=8)
+    assert_almost_equal_verbose(out.gamma.values, gamma, decimal=8)
+    assert_almost_equal_verbose(out.tmpf.values, temp_real - 273.15, decimal=8)
     assert_almost_equal_verbose(
-        ds_test.isel(trans_att=0).talpha_fw, -np.log(tr_att), decimal=8
+        out.isel(trans_att=0).talpha_fw, -np.log(tr_att), decimal=8
     )
     assert_almost_equal_verbose(
-        ds_test.isel(trans_att=1).talpha_fw, -np.log(tr_att2), decimal=8
-    )
-
-    # test `trans_att` related functions
-    # Clear out old results
-    ds_test.set_trans_att([])
-
-    assert ds_test.trans_att.size == 0, "clear out trans_att config"
-
-    del_keys = []
-    for k, v in ds_test.data_vars.items():
-        if "trans_att" in v.dims:
-            del_keys.append(k)
-
-    assert len(del_keys) == 0, "clear out trans_att config"
-
-    ds_test.calibration_single_ended(
-        sections=sections,
-        st_var=1.0,
-        ast_var=1.0,
-        method="wls",
-        trans_att=[40, 60],
-        solver="sparse",
-    )
-
-    assert_almost_equal_verbose(ds_test.gamma.values, gamma, decimal=8)
-    assert_almost_equal_verbose(ds_test.tmpf.values, temp_real - 273.15, decimal=8)
-    assert_almost_equal_verbose(
-        ds_test.isel(trans_att=0).talpha_fw, -np.log(tr_att), decimal=8
-    )
-    assert_almost_equal_verbose(
-        ds_test.isel(trans_att=1).talpha_fw, -np.log(tr_att2), decimal=8
+        out.isel(trans_att=1).talpha_fw, -np.log(tr_att2), decimal=8
     )
 
     ds_test = ds.copy(deep=True)
 
     # Test fixing gamma + transient att.
-    ds_test.calibration_single_ended(
+    out = ds_test.dts.calibrate_single_ended(
         sections=sections,
         st_var=1.0,
         ast_var=1.0,
         method="wls",
         fix_gamma=(482.6, 0),
-        trans_att=[40, 60],
+        trans_att=[40.0, 60.0],
         solver="sparse",
     )
 
-    assert_almost_equal_verbose(ds_test.gamma.values, gamma, decimal=10)
-    assert_almost_equal_verbose(ds_test.tmpf.values, temp_real - 273.15, decimal=8)
+    assert_almost_equal_verbose(out.gamma.values, gamma, decimal=10)
+    assert_almost_equal_verbose(out.tmpf.values, temp_real - 273.15, decimal=8)
     assert_almost_equal_verbose(
-        ds_test.isel(trans_att=0).talpha_fw, -np.log(tr_att), decimal=8
+        out.isel(trans_att=0).talpha_fw, -np.log(tr_att), decimal=8
     )
     assert_almost_equal_verbose(
-        ds_test.isel(trans_att=1).talpha_fw, -np.log(tr_att2), decimal=8
+        out.isel(trans_att=1).talpha_fw, -np.log(tr_att2), decimal=8
     )
 
     ds_test = ds.copy(deep=True)
 
     # Test fixing alpha + transient att.
-    ds_test.calibration_single_ended(
+    out = ds_test.dts.calibrate_single_ended(
         sections=sections,
         st_var=1.0,
         ast_var=1.0,
@@ -3260,20 +2159,19 @@ def test_single_ended_trans_att_synthetic():
         solver="sparse",
     )
 
-    assert_almost_equal_verbose(ds_test.gamma.values, gamma, decimal=8)
-    assert_almost_equal_verbose(ds_test.tmpf.values, temp_real - 273.15, decimal=8)
+    assert_almost_equal_verbose(out.gamma.values, gamma, decimal=8)
+    assert_almost_equal_verbose(out.tmpf.values, temp_real - 273.15, decimal=8)
     assert_almost_equal_verbose(
-        ds_test.isel(trans_att=0).talpha_fw, -np.log(tr_att), decimal=8
+        out.isel(trans_att=0).talpha_fw, -np.log(tr_att), decimal=8
     )
     assert_almost_equal_verbose(
-        ds_test.isel(trans_att=1).talpha_fw, -np.log(tr_att2), decimal=8
+        out.isel(trans_att=1).talpha_fw, -np.log(tr_att2), decimal=8
     )
 
 
 def test_single_ended_matching_sections_synthetic():
     """Checks whether the matching sections routines perform as intended,
     and calibrate to the correct temperature"""
-    from dtscalibration import DataStore
 
     cable_len = 100.0
     nt = 50
@@ -3321,7 +2219,7 @@ def test_single_ended_matching_sections_synthetic():
     tr_att2 = np.random.rand(nt) * 0.2 + 0.8
     st[int(x.size * 0.6) :] *= tr_att2
 
-    ds = DataStore(
+    ds = Dataset(
         {
             "st": (["x", "time"], st),
             "ast": (["x", "time"], ast),
@@ -3355,7 +2253,7 @@ def test_single_ended_matching_sections_synthetic():
     ds_test = ds.copy(deep=True)
 
     # WLS
-    ds_test.calibration_single_ended(
+    out = ds_test.dts.calibrate_single_ended(
         sections=sections,
         st_var=1.0,
         ast_var=1.0,
@@ -3365,19 +2263,19 @@ def test_single_ended_matching_sections_synthetic():
         solver="sparse",
     )
 
-    assert_almost_equal_verbose(ds_test.gamma.values, gamma, decimal=8)
-    assert_almost_equal_verbose(ds_test.tmpf.values, temp_real - 273.15, decimal=8)
+    assert_almost_equal_verbose(out.gamma.values, gamma, decimal=8)
+    assert_almost_equal_verbose(out.tmpf.values, temp_real - 273.15, decimal=8)
     assert_almost_equal_verbose(
-        ds_test.isel(trans_att=0).talpha_fw, -np.log(tr_att), decimal=8
+        out.isel(trans_att=0).talpha_fw, -np.log(tr_att), decimal=8
     )
     assert_almost_equal_verbose(
-        ds_test.isel(trans_att=1).talpha_fw, -np.log(tr_att2), decimal=8
+        out.isel(trans_att=1).talpha_fw, -np.log(tr_att2), decimal=8
     )
 
     ds_test = ds.copy(deep=True)
 
     # Test fixing gamma + transient att.
-    ds_test.calibration_single_ended(
+    out = ds_test.dts.calibrate_single_ended(
         sections=sections,
         st_var=1.0,
         ast_var=1.0,
@@ -3388,19 +2286,19 @@ def test_single_ended_matching_sections_synthetic():
         solver="sparse",
     )
 
-    assert_almost_equal_verbose(ds_test.gamma.values, gamma, decimal=10)
-    assert_almost_equal_verbose(ds_test.tmpf.values, temp_real - 273.15, decimal=8)
+    assert_almost_equal_verbose(out.gamma.values, gamma, decimal=10)
+    assert_almost_equal_verbose(out.tmpf.values, temp_real - 273.15, decimal=8)
     assert_almost_equal_verbose(
-        ds_test.isel(trans_att=0).talpha_fw, -np.log(tr_att), decimal=8
+        out.isel(trans_att=0).talpha_fw, -np.log(tr_att), decimal=8
     )
     assert_almost_equal_verbose(
-        ds_test.isel(trans_att=1).talpha_fw, -np.log(tr_att2), decimal=8
+        out.isel(trans_att=1).talpha_fw, -np.log(tr_att2), decimal=8
     )
 
     ds_test = ds.copy(deep=True)
 
     # Test fixing dalpha + transient att.
-    ds_test.calibration_single_ended(
+    out = ds_test.dts.calibrate_single_ended(
         sections=sections,
         st_var=1.0,
         ast_var=1.0,
@@ -3411,19 +2309,19 @@ def test_single_ended_matching_sections_synthetic():
         solver="sparse",
     )
 
-    assert_almost_equal_verbose(ds_test.gamma.values, gamma, decimal=10)
-    assert_almost_equal_verbose(ds_test.tmpf.values, temp_real - 273.15, decimal=8)
+    assert_almost_equal_verbose(out.gamma.values, gamma, decimal=10)
+    assert_almost_equal_verbose(out.tmpf.values, temp_real - 273.15, decimal=8)
     assert_almost_equal_verbose(
-        ds_test.isel(trans_att=0).talpha_fw, -np.log(tr_att), decimal=8
+        out.isel(trans_att=0).talpha_fw, -np.log(tr_att), decimal=8
     )
     assert_almost_equal_verbose(
-        ds_test.isel(trans_att=1).talpha_fw, -np.log(tr_att2), decimal=8
+        out.isel(trans_att=1).talpha_fw, -np.log(tr_att2), decimal=8
     )
 
     ds_test = ds.copy(deep=True)
 
     # Test fixing gamma & dalpha + transient att.
-    ds_test.calibration_single_ended(
+    out = ds_test.dts.calibrate_single_ended(
         sections=sections,
         st_var=1.0,
         ast_var=1.0,
@@ -3435,36 +2333,35 @@ def test_single_ended_matching_sections_synthetic():
         solver="sparse",
     )
 
-    assert_almost_equal_verbose(ds_test.gamma.values, gamma, decimal=10)
-    assert_almost_equal_verbose(ds_test.tmpf.values, temp_real - 273.15, decimal=8)
+    assert_almost_equal_verbose(out.gamma.values, gamma, decimal=10)
+    assert_almost_equal_verbose(out.tmpf.values, temp_real - 273.15, decimal=8)
     assert_almost_equal_verbose(
-        ds_test.isel(trans_att=0).talpha_fw, -np.log(tr_att), decimal=8
+        out.isel(trans_att=0).talpha_fw, -np.log(tr_att), decimal=8
     )
     assert_almost_equal_verbose(
-        ds_test.isel(trans_att=1).talpha_fw, -np.log(tr_att2), decimal=8
+        out.isel(trans_att=1).talpha_fw, -np.log(tr_att2), decimal=8
     )
 
     # Test conf. ints. for the combination of everything
-    ds_test.conf_int_single_ended(
-        p_val="p_val",
-        p_cov="p_cov",
+    out_conf = ds_test.dts.monte_carlo_single_ended(
+        result=out,
         st_var=1.0,
         ast_var=1.0,
         conf_ints=[2.5, 50.0, 97.5],
         mc_sample_size=50,
     )
 
-    ds_test_1 = ds_test.isel(time=-1)
+    out_conf_1 = out_conf.isel(time=-1)
     # ds_test_1.tmpf
     # ds_test_1.tmpf_mc.isel(CI=0).values
     # ds_test_1.tmpf_mc.isel(CI=2).values
 
     assert np.all(
-        np.less(ds_test_1.tmpf_mc.isel(CI=0).values, ds_test_1.tmpf)
+        np.less(out_conf_1.tmpf_mc.isel(CI=0).values, out.isel(time=-1).tmpf)
     ), "Single-ended, trans. att.; 2.5% confidence interval is incorrect"
 
     assert np.all(
-        np.greater(ds_test_1.tmpf_mc.isel(CI=2).values, ds_test_1.tmpf)
+        np.greater(out_conf_1.tmpf_mc.isel(CI=2).values, out.isel(time=-1).tmpf)
     ), "Single-ended, trans. att.; 97.5% confidence interval is incorrect"
 
 
@@ -3475,8 +2372,6 @@ def test_single_ended_exponential_variance_estimate_synthetic():
     They should be the same as the parameters used to create the synthetic
     measurment set"""
     import dask.array as da
-
-    from dtscalibration import DataStore
 
     state = da.random.RandomState(0)
 
@@ -3522,7 +2417,7 @@ def test_single_ended_exponential_variance_estimate_synthetic():
     # print('C', np.log(C_p / C_m))
     # print('x0', x.max())
 
-    ds = DataStore(
+    ds = Dataset(
         {
             # 'st':                    (['x', 'time'], st),
             # 'ast':                   (['x', 'time'], ast),
@@ -3541,33 +2436,36 @@ def test_single_ended_exponential_variance_estimate_synthetic():
         "warm": [slice(0.5 * cable_len, cable_len)],
     }
 
-    st_label = "st"
-    ast_label = "ast"
-
-    mst_var, _ = ds.variance_stokes_exponential(st_label=st_label, sections=sections)
-    mast_var, _ = ds.variance_stokes_exponential(st_label=ast_label, sections=sections)
+    mst_var, _ = variance_stokes_exponential(
+        ds["st"],
+        sections,
+        ds["userAcquisitionTimeFW"],
+        use_statsmodels=False,
+        suppress_info=False,
+        reshape_residuals=True,
+    )
+    mast_var, _ = variance_stokes_exponential(
+        ds["ast"],
+        sections,
+        ds["userAcquisitionTimeFW"],
+        use_statsmodels=False,
+        suppress_info=False,
+        reshape_residuals=True,
+    )
 
     # MC variqnce
-    ds.calibration_single_ended(
+    out = ds.dts.calibrate_single_ended(
         sections=sections,
         st_var=mst_var,
         ast_var=mast_var,
         method="wls",
         solver="sparse",
     )
-
-    ds.conf_int_single_ended(
-        p_val="p_val",
-        p_cov="p_cov",
-        st_var=mst_var,
-        ast_var=mast_var,
-        conf_ints=[2.5, 50.0, 97.5],
-        mc_sample_size=50,
-        da_random_state=state,
-    )
+    ds2 = ds.copy()
+    ds2.update(out)
 
     # Calibrated variance
-    stdsf1 = ds.ufunc_per_section(
+    stdsf1 = ds2.dts.ufunc_per_section(
         sections=sections,
         label="tmpf",
         func=np.var,
@@ -3575,12 +2473,21 @@ def test_single_ended_exponential_variance_estimate_synthetic():
         calc_per="stretch",
         ddof=1,
     )
+    out_ci = ds2.dts.monte_carlo_single_ended(
+        result=out,
+        st_var=mst_var,
+        ast_var=mast_var,
+        conf_ints=[2.5, 50.0, 97.5],
+        mc_sample_size=50,
+        da_random_state=state,
+        mc_remove_set_flag=False,
+    )
+    ds2.update(out_ci)
 
     # Use a single timestep to better check if the parameter uncertainties
     # propagate
-    ds1 = ds.isel(time=1)
     # Estimated VAR
-    stdsf2 = ds1.ufunc_per_section(
+    stdsf2 = ds2.isel(time=1).dts.ufunc_per_section(
         sections=sections,
         label="tmpf_mc_var",
         func=np.mean,
@@ -3598,7 +2505,7 @@ def test_single_ended_exponential_variance_estimate_synthetic():
     print("hoi")
 
 
-def test_calibrate_wls_procedures():
+def test_calibrate_wls_solver_procedures():
     x = np.linspace(0, 10, 25 * 4)
     np.random.shuffle(x)
 
@@ -3636,151 +2543,4 @@ def test_calibrate_wls_procedures():
     np.testing.assert_array_almost_equal(p_var, psp_var, decimal=dec)
     np.testing.assert_array_almost_equal(p_cov, psp_cov, decimal=dec)
 
-    pass
-
-
-def test_average_measurements_single_ended():
-    filepath = data_dir_single_ended
-
-    ds_ = read_silixa_files(directory=filepath, timezone_netcdf="UTC", file_ext="*.xml")
-
-    ds = ds_.sel(x=slice(0, 100))  # only calibrate parts of the fiber
-    sections = {"probe2Temperature": [slice(6.0, 14.0)]}  # warm bath
-
-    st_var, ast_var = 5.0, 5.0
-
-    ds.calibration_single_ended(
-        sections=sections, st_var=st_var, ast_var=ast_var, method="wls", solver="sparse"
-    )
-    ds.average_single_ended(
-        p_val="p_val",
-        p_cov="p_cov",
-        st_var=st_var,
-        ast_var=ast_var,
-        conf_ints=[2.5, 97.5],
-        mc_sample_size=50,  # <- choose a much larger sample size
-        ci_avg_x_flag1=True,
-        ci_avg_x_sel=slice(6.0, 14.0),
-    )
-    ix = ds.get_section_indices(slice(6, 14))
-    ds.average_single_ended(
-        p_val="p_val",
-        p_cov="p_cov",
-        st_var=st_var,
-        ast_var=ast_var,
-        conf_ints=[2.5, 97.5],
-        mc_sample_size=50,  # <- choose a much larger sample size
-        ci_avg_x_flag2=True,
-        ci_avg_x_isel=ix,
-    )
-    sl = slice(
-        np.datetime64("2018-05-04T12:22:17.710000000"),
-        np.datetime64("2018-05-04T12:22:47.702000000"),
-    )
-    ds.average_single_ended(
-        p_val="p_val",
-        p_cov="p_cov",
-        st_var=st_var,
-        ast_var=ast_var,
-        conf_ints=[2.5, 97.5],
-        mc_sample_size=50,  # <- choose a much larger sample size
-        ci_avg_time_flag1=True,
-        ci_avg_time_flag2=False,
-        ci_avg_time_sel=sl,
-    )
-    ds.average_single_ended(
-        p_val="p_val",
-        p_cov="p_cov",
-        st_var=st_var,
-        ast_var=ast_var,
-        conf_ints=[2.5, 97.5],
-        mc_sample_size=50,  # <- choose a much larger sample size
-        ci_avg_time_flag1=False,
-        ci_avg_time_flag2=True,
-        ci_avg_time_isel=range(3),
-    )
-    pass
-
-
-def test_average_measurements_double_ended():
-    filepath = data_dir_double_ended2
-
-    ds_ = read_silixa_files(directory=filepath, timezone_netcdf="UTC", file_ext="*.xml")
-
-    ds = ds_.sel(x=slice(0, 100))  # only calibrate parts of the fiber
-    sections = {
-        "probe1Temperature": [slice(7.5, 17.0), slice(70.0, 80.0)],  # cold bath
-        "probe2Temperature": [slice(24.0, 34.0), slice(85.0, 95.0)],  # warm bath
-    }
-
-    st_var, ast_var, rst_var, rast_var = 5.0, 5.0, 5.0, 5.0
-
-    ds.calibration_double_ended(
-        sections=sections,
-        st_var=st_var,
-        ast_var=ast_var,
-        rst_var=rst_var,
-        rast_var=rast_var,
-        method="wls",
-        solver="sparse",
-    )
-    ds.average_double_ended(
-        sections=sections,
-        p_val="p_val",
-        p_cov="p_cov",
-        st_var=st_var,
-        ast_var=ast_var,
-        rst_var=rst_var,
-        rast_var=rast_var,
-        conf_ints=[2.5, 97.5],
-        mc_sample_size=50,  # <- choose a much larger sample size
-        ci_avg_x_flag1=True,
-        ci_avg_x_sel=slice(6, 10),
-    )
-    ix = ds.get_section_indices(slice(6, 10))
-    ds.average_double_ended(
-        sections=sections,
-        p_val="p_val",
-        p_cov="p_cov",
-        st_var=st_var,
-        ast_var=ast_var,
-        rst_var=rst_var,
-        rast_var=rast_var,
-        conf_ints=[2.5, 97.5],
-        mc_sample_size=50,  # <- choose a much larger sample size
-        ci_avg_x_flag2=True,
-        ci_avg_x_isel=ix,
-    )
-    sl = slice(
-        np.datetime64("2018-03-28T00:40:54.097000000"),
-        np.datetime64("2018-03-28T00:41:12.084000000"),
-    )
-    ds.average_double_ended(
-        sections=sections,
-        p_val="p_val",
-        p_cov="p_cov",
-        st_var=st_var,
-        ast_var=ast_var,
-        rst_var=rst_var,
-        rast_var=rast_var,
-        conf_ints=[2.5, 97.5],
-        mc_sample_size=50,  # <- choose a much larger sample size
-        ci_avg_time_flag1=True,
-        ci_avg_time_flag2=False,
-        ci_avg_time_sel=sl,
-    )
-    ds.average_double_ended(
-        sections=sections,
-        p_val="p_val",
-        p_cov="p_cov",
-        st_var=st_var,
-        ast_var=ast_var,
-        rst_var=rst_var,
-        rast_var=rast_var,
-        conf_ints=[2.5, 97.5],
-        mc_sample_size=50,  # <- choose a much larger sample size
-        ci_avg_time_flag1=False,
-        ci_avg_time_flag2=True,
-        ci_avg_time_isel=range(3),
-    )
     pass

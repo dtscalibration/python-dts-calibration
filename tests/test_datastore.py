@@ -1,17 +1,15 @@
 import hashlib
 import os
 import tempfile
-import time
 import warnings
 from zipfile import ZipFile
 
 import dask.array as da
 import numpy as np
 import pytest
+import xarray as xr
+from xarray import Dataset
 
-from dtscalibration import DataStore
-from dtscalibration import open_datastore
-from dtscalibration import open_mf_datastore
 from dtscalibration import read_apsensing_files
 from dtscalibration import read_sensornet_files
 from dtscalibration import read_sensortran_files
@@ -20,6 +18,7 @@ from dtscalibration.calibration.section_utils import set_sections
 from dtscalibration.datastore_utils import merge_double_ended
 from dtscalibration.datastore_utils import shift_double_ended
 from dtscalibration.datastore_utils import suggest_cable_shift_double_ended
+from dtscalibration.dts_accessor import DtsAccessor  # noqa: F401
 
 np.random.seed(0)
 
@@ -121,24 +120,23 @@ def test_read_data_from_single_file_single_ended():
     assert actual_hash == desired_hash, "The data is not read correctly"
 
 
-def test_empty_construction():
-    ds = DataStore()  # noqa: F841
-
-
 def test_repr():
-    ds = DataStore()
-    assert "dtscalibration" in str(ds)
-    assert "Sections" in str(ds)
+    ds = Dataset(
+        {
+            "st": (["x", "time"], np.ones((100, 5))),
+            "ast": (["x", "time"], np.ones((100, 5))),
+            "probe1Temperature": (["time"], range(5)),
+            "probe2Temperature": (["time"], range(5)),
+        },
+        coords={"x": range(100), "time": range(5)},
+    )
 
-
-def test_has_sectionattr_upon_creation():
-    ds = DataStore()
-    assert hasattr(ds, "_sections")
-    assert isinstance(ds._sections, str)
+    assert "dtscalibration" in str(ds.dts)
+    assert "Sections" in str(ds.dts)
 
 
 def test_sections_property():
-    ds = DataStore(
+    ds = Dataset(
         {
             "st": (["x", "time"], np.ones((100, 5))),
             "ast": (["x", "time"], np.ones((100, 5))),
@@ -156,15 +154,15 @@ def test_sections_property():
         "probe1Temperature": [slice(0.0, 17.0), slice(70.0, 80.0)],  # cold bath
         "probe2Temperature": [slice(24.0, 34.0), slice(85.0, 95.0)],  # warm bath
     }
-    ds = set_sections(ds, sections1)
+    set_sections(ds, sections1)
 
     assert isinstance(ds.attrs["_sections"], str)
 
-    assert ds.sections == sections1
-    assert ds.sections != sections2
+    assert ds.dts.sections == sections1
+    assert ds.dts.sections != sections2
 
     # test if accepts singleton numpy arrays
-    ds = set_sections(
+    set_sections(
         ds,
         {
             "probe1Temperature": [
@@ -176,7 +174,7 @@ def test_sections_property():
 
 
 def test_io_sections_property():
-    ds = DataStore(
+    ds = Dataset(
         {
             "st": (["x", "time"], np.ones((100, 5))),
             "ast": (["x", "time"], np.ones((100, 5))),
@@ -192,7 +190,7 @@ def test_io_sections_property():
     }
     ds["x"].attrs["units"] = "m"
 
-    ds = set_sections(ds, sections)
+    set_sections(ds, sections)
 
     # Create a temporary file to write data to.
     # 'with' method is used so the file is closed by tempfile
@@ -204,14 +202,14 @@ def test_io_sections_property():
     ds.to_netcdf(path=temppath)
 
     try:
-        ds2 = open_datastore(temppath)
+        ds2 = xr.open_dataset(temppath)
     except ValueError as e:
         if str(e) != "cannot guess the engine, try passing one explicitly":
             raise
         warnings.warn("Could not guess engine, defaulted to netcdf4")
-        ds2 = open_datastore(temppath, engine="netcdf4")
+        ds2 = xr.open_datastore(temppath, engine="netcdf4")
 
-    assert ds.sections == ds2.sections
+    assert ds.dts.sections == ds2.dts.sections
 
     # Close the datastore so the temp file can be removed
     ds2.close()
@@ -494,41 +492,6 @@ def test_read_sensortran_files():
     )
 
 
-def test_to_mf_netcdf_open_mf_datastore():
-    filepath = data_dir_single_ended
-    ds = read_silixa_files(directory=filepath, file_ext="*.xml")
-
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        print("created temporary directory", tmpdirname)
-
-        # work around the effects of deafault encoding.
-        path = os.path.join(tmpdirname, "ds_merged.nc")
-
-        with read_silixa_files(directory=filepath, file_ext="*.xml") as ds:
-            ds.to_netcdf(path)
-
-        time.sleep(5)  # to ensure all is written on Windows and file released
-
-        with open_datastore(path, load_in_memory=True) as ds1:
-            # Test saving
-            ds1 = ds1.chunk({"time": 1})
-            ds1.to_mf_netcdf(
-                folder_path=tmpdirname,
-                filename_preamble="file_",
-                filename_extension=".nc",
-            )
-            correct_val = float(ds1.st.sum())
-
-        time.sleep(2)  # to ensure all is written on Windows and file released
-
-        # Test loading
-        path = os.path.join(tmpdirname, "file_*.nc")
-
-        with open_mf_datastore(path=path, load_in_memory=True) as ds2:
-            test_val = float(ds2.st.sum())
-            np.testing.assert_equal(correct_val, test_val)
-
-
 def read_data_from_fp_numpy(fp):
     """
     Read the data from a single Silixa xml file. Using a simple approach
@@ -566,7 +529,7 @@ def test_resample_datastore():
     ds = read_silixa_files(directory=filepath, timezone_netcdf="UTC", file_ext="*.xml")
     assert ds.time.size == 3
 
-    ds_resampled = DataStore(ds.resample(time="47S").mean())
+    ds_resampled = Dataset(ds.resample(time="47S").mean())
 
     assert ds_resampled.time.size == 2
     assert ds_resampled.st.dims == ("x", "time"), (
@@ -581,7 +544,7 @@ def test_timeseries_keys():
     filepath = data_dir_single_ended
     ds = read_silixa_files(directory=filepath, timezone_netcdf="UTC", file_ext="*.xml")
 
-    k = ds.timeseries_keys
+    k = ds.dts.get_timeseries_keys()
 
     # no false positive
     for ki in k:

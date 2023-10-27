@@ -7,7 +7,7 @@ def inverse_variance_weighted_mean(
     tmpw_store="tmpw",
     tmpw_var_store="tmpw_var",
 ):
-    """Compute inverse variance weighted average, and add result in-place. 
+    """Compute inverse variance weighted average, and add result in-place.
 
     Parameters
     ----------

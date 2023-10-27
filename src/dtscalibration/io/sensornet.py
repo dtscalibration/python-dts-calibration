@@ -5,8 +5,8 @@ from glob import glob
 
 import numpy as np
 import pandas as pd
+import xarray as xr
 
-from dtscalibration import DataStore
 from dtscalibration.io.utils import coords_time
 from dtscalibration.io.utils import dim_attrs
 from dtscalibration.io.utils import open_file
@@ -130,7 +130,7 @@ def read_sensornet_files(
         flip_reverse_measurements=flip_reverse_measurements,
     )
 
-    ds = DataStore(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
+    ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
     return ds
 
 

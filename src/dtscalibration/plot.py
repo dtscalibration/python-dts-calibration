@@ -26,7 +26,7 @@ def plot_residuals_reference_sections(
     plot_avg_std
     resid : DataArray
         The residuals of the fit to estimate the noise in the measured
-        Stokes signal. is returned by `ds.variance_stokes`
+        Stokes signal. is returned by `variance_stokes_*()`
     sections : Dict[str, List[slice]]
         The sections obj is normally used to set DataStore.sections, now is
         used toobtain the
@@ -254,7 +254,7 @@ def plot_residuals_reference_sections_single(
     plot_avg_std
     resid : DataArray
         The residuals of the fit to estimate the noise in the measured
-        Stokes signal. is returned by `ds.variance_stokes`
+        Stokes signal. is returned by `variance_stokes_*()`
     fig : Figurehandle, optional
     title : str, optional
         Adds a title to the plot
@@ -389,7 +389,7 @@ def plot_accuracy(
     plot_avg_std
     resid : DataArray
         The residuals of the fit to estimate the noise in the measured
-        Stokes signal. is returned by `ds.variance_stokes`
+        Stokes signal. is returned by `variance_stokes_*()`
     fig : Figurehandle, optional
     title : str, optional
         Adds a title to the plot
@@ -572,7 +572,7 @@ def plot_sigma_report(
         #     calc_per='stretch',
         #     temp_err=True,
         #     axis=0)
-        sigma_est = ds.ufunc_per_section(
+        sigma_est = ds.dts.ufunc_per_section(
             sections=sections,
             label=temp_label,
             func=np.std,
@@ -581,7 +581,7 @@ def plot_sigma_report(
             axis=0,
         )
     else:
-        sigma_est = ds.ufunc_per_section(
+        sigma_est = ds.dts.ufunc_per_section(
             sections=sections,
             label=temp_label,
             func=np.std,
@@ -635,14 +635,14 @@ def plot_sigma_report(
     ax1.legend()
     ax1.set_ylabel(r"Temperature [$^\circ$C]")
 
-    err_ref = ds.ufunc_per_section(
+    err_ref = ds.dts.ufunc_per_section(
         sections=sections,
         label=temp_label,
         func=None,
         temp_err=True,
         calc_per="stretch",
     )
-    x_ref = ds.ufunc_per_section(sections=sections, label="x", calc_per="stretch")
+    x_ref = ds.dts.ufunc_per_section(sections=sections, label="x", calc_per="stretch")
 
     for (k, v), (k_se, v_se), (kx, vx) in zip(
         ds.sections.items(), err_ref.items(), x_ref.items()

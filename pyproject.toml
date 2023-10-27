@@ -91,6 +91,7 @@ docs = [  # Required for ReadTheDocs
     "sphinx_rtd_theme",
     "sphinx-autoapi",
     "sphinx-automodapi",
+    "sphinx-autosummary-accessors",
     "coverage[toml]",
     "nbsphinx",
     "ipykernel",
@@ -122,7 +123,7 @@ features = ["docs"]
 
 [tool.hatch.envs.docs.scripts]
 build = [
-    "sphinx-build -c docs -b html docs dist/docs",    #"python docs/nb_examples_to_docs.py",
+    "sphinx-build -E -c docs -b html docs dist/docs",    #"python docs/nb_examples_to_docs.py",
 ]
 
 [tool.hatch.envs.matrix_test]

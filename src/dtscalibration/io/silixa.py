@@ -6,8 +6,8 @@ import dask
 import dask.array as da
 import numpy as np
 import pandas as pd
+import xarray as xr
 
-from dtscalibration import DataStore
 from dtscalibration.io.utils import coords_time
 from dtscalibration.io.utils import dim_attrs
 from dtscalibration.io.utils import get_xml_namespace
@@ -98,7 +98,7 @@ def read_silixa_files(
             "Silixa xml version " + f"{xml_version} not implemented"
         )
 
-    ds = DataStore(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
+    ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
     return ds
 
 

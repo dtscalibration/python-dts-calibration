@@ -5,70 +5,130 @@ import yaml
 from dtscalibration.datastore_utils import ufunc_per_section_helper
 
 
-def set_sections(ds: xr.Dataset, sections: dict[str, list[slice]]) -> xr.Dataset:
-    sections_validated = None
-
-    if sections is not None:
-        sections_validated = validate_sections(ds, sections=sections)
-
-    ds.attrs["_sections"] = yaml.dump(sections_validated)
-    return ds
+def set_sections(ds: xr.Dataset, sections: dict[str, list[slice]]):
+    ds.attrs["_sections"] = yaml.dump(sections)
 
 
-def validate_sections(ds: xr.Dataset, sections: dict[str, list[slice]]):
+def set_matching_sections(ds: xr.Dataset, matching_sections: dict[str, list[slice]]):
+    ds.attrs["_matching_sections"] = yaml.dump(matching_sections)
+
+
+def validate_no_overlapping_sections(sections: dict[str, list[slice]]):
+    """
+    Check if the sections do not overlap.
+
+    Parameters
+    ----------
+    sections : dict[str, list[slice]]
+        The keys of the dictionary are the names of the sections.
+        The values are lists of slice objects.
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    AssertionError
+        If the sections overlap.
+    """
+    all_stretches = list()
+
+    for k, v in sections.items():
+        for vi in v:
+            all_stretches.append(vi)
+
+    # Check for overlapping slices
+    all_start_stop = [[stretch.start, stretch.stop] for stretch in all_stretches]
+    isorted_start = np.argsort([i[0] for i in all_start_stop])
+    all_start_stop_startsort = [all_start_stop[i] for i in isorted_start]
+    all_start_stop_startsort_flat = sum(all_start_stop_startsort, [])  # type: ignore
+    assert all_start_stop_startsort_flat == sorted(
+        all_start_stop_startsort_flat
+    ), "Sections contains overlapping stretches"
+    pass
+
+
+def validate_sections_definition(sections: dict[str, list[slice]]):
+    """
+    Check if the sections are defined correctly. The sections are defined
+    correctly if:
+        - The keys of the sections-dictionary are strings (assertion)
+        - The values of the sections-dictionary are lists (assertion)
+
+    Parameters
+    ----------
+    sections : dict[str, list[slice]]
+        The keys of the dictionary are the names of the sections.
+        The values are lists of slice objects.
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    AssertionError
+        If the sections are not defined correctly.
+    """
     assert isinstance(sections, dict)
 
-    # be less restrictive for capitalized labels
-    # find lower cases label
-    labels = np.reshape([[s.lower(), s] for s in ds.data_vars.keys()], (-1,)).tolist()
-
-    sections_fix = dict()
     for k, v in sections.items():
-        if k.lower() in labels:
-            i_lower_case = labels.index(k.lower())
-            i_normal_case = i_lower_case + 1
-            k_normal_case = labels[i_normal_case]
-            sections_fix[k_normal_case] = v
-        else:
-            assert k in ds.data_vars, (
-                "The keys of the "
-                "sections-dictionary should "
-                "refer to a valid timeserie "
-                "already stored in "
-                "ds.data_vars "
-            )
+        assert isinstance(k, str), (
+            "The keys of the " "sections-dictionary should " "be strings"
+        )
 
-    sections_fix_slice_fixed = dict()
-
-    for k, v in sections_fix.items():
         assert isinstance(v, (list, tuple)), (
             "The values of the sections-dictionary " "should be lists of slice objects."
         )
 
-        for vi in v:
-            assert isinstance(vi, slice), (
-                "The values of the sections-dictionary should "
-                "be lists of slice objects."
-            )
 
+def validate_sections(ds: xr.Dataset, sections: dict[str, list[slice]]):
+    """
+    Check if the sections are valid. The sections are valid if:
+        - The keys of the sections-dictionary refer to a valid timeserie
+            already stored in ds.data_vars (assertion)
+        - The values of the sections-dictionary are lists of slice objects.
+            (assertion)
+        - The slices are within the x-dimension (assertion)
+        - The slices do not overlap (assertion)
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        The dataset that contains the timeseries that are referred to in
+        the sections-dictionary.
+    sections : dict[str, list[slice]]
+        The keys of the dictionary are the names of the sections.
+        The values are lists of slice objects.
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    AssertionError
+        If the sections are not valid.
+    """
+    validate_sections_definition(sections=sections)
+    validate_no_overlapping_sections(sections=sections)
+
+    for k, v in sections.items():
+        assert k in ds.data_vars, (
+            "The keys of the "
+            "sections-dictionary should "
+            "refer to a valid timeserie "
+            "already stored in "
+            "ds.data_vars "
+        )
+
+        for vi in v:
             assert ds.x.sel(x=vi).size > 0, (
                 f"Better define the {k} section. You tried {vi}, "
                 "which is not within the x-dimension"
             )
-
-        # sorted stretches
-        stretch_unsort = [slice(float(vi.start), float(vi.stop)) for vi in v]
-        stretch_start = [i.start for i in stretch_unsort]
-        stretch_i_sorted = np.argsort(stretch_start)
-        sections_fix_slice_fixed[k] = [stretch_unsort[i] for i in stretch_i_sorted]
-
-    # Prevent overlapping slices
-    ix_sec = ufunc_per_section(
-        ds, sections=sections_fix_slice_fixed, x_indices=True, calc_per="all"
-    )
-    assert np.unique(ix_sec).size == ix_sec.size, "The sections are overlapping"
-
-    return sections_fix_slice_fixed
+    pass
 
 
 def ufunc_per_section(
