@@ -1,10 +1,11 @@
-# -*- coding: utf-8 -*-
-from datetime import date
 import os
+from datetime import date
 
-from dtscalibration.dts_accessor import DtsAccessor  # noqa: E402
+from xarray import Dataset  # noqa: E402
 import sphinx_autosummary_accessors
 
+import dtscalibration  # noqa: E402
+from dtscalibration.dts_accessor import DtsAccessor  # noqa: E402
 
 extensions = [
     "sphinx_rtd_theme",
@@ -45,7 +46,7 @@ master_doc = "index"
 project = "dtscalibration"
 year = str(date.today().year)
 author = "Bas des Tombe and Bart Schilperoort"
-copyright = "{0}, {1}".format(year, author)
+copyright = f"{year}, {author}"
 version = release = "2.0.0"
 
 pygments_style = "trac"
@@ -67,7 +68,7 @@ html_split_index = False
 html_sidebars = {
     "**": ["searchbox.html", "globaltoc.html", "sourcelink.html"],
 }
-html_short_title = "%s-%s" % (project, version)
+html_short_title = f"{project}-{version}"
 
 napoleon_use_ivar = True
 napoleon_use_rtype = False

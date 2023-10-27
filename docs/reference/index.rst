@@ -4,19 +4,26 @@ Reference
 Load the data
 -------------
 
+See example notebooks 01, A2, A3, and A4.
+
 .. automodule:: dtscalibration.io
-   :members:
+   :members: dtscalibration.read_apsensing_files
    :nosignatures:
 
 Compute the variance in the Stokes measurements
 -----------------------------------------------
 
+See example notebooks 04 and have a look at the docstring of the dtscalibration.variance_stokes funcitons.
+
 .. automodule:: dtscalibration.variance_stokes
    :members:
    :nosignatures:
 
+
 The DTS Accessor
 ----------------
+
+See example natebooks 07, 08, and 17.
 
 .. currentmodule:: xarray
 .. autosummary::
