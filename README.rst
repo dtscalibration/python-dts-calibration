@@ -93,6 +93,7 @@ Devices currently supported
 Documentation
 =============
 
+* A full calibration procedure for single-ended setups is presented in notebook `07Calibrate_single_ended.ipynb <https://github.com/dtscalibration/python-dts-calibration/blob/main/docs/notebooks/07Calibrate_single_ended.ipynb>`_ and for double-ended setups in `08Calibrate_double_ended.ipynb <https://github.com/dtscalibration/python-dts-calibration/blob/main/docs/notebooks/08Calibrate_double_ended.ipynb>`_.
 * Documentation at https://python-dts-calibration.readthedocs.io/ .
 * Example notebooks that work within the browser can be viewed `here <https://python-dts-calibration.readthedocs.io/en/latest/learn_by_examples.html>`_.
 
