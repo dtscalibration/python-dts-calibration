@@ -28,7 +28,7 @@ See example notebooks 04. Import from `dtscalibration.variance_stokes`.
 
     variance_stokes_constant
     variance_stokes_linear
-    ariance_stokes_exponential
+    variance_stokes_exponential
 
 
 The DTS Accessor
