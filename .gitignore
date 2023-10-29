@@ -57,7 +57,7 @@ output/*/index.html
 
 # Sphinx
 docs/_build
-**/generated/**/*
+**/generated
 
 .DS_Store
 *~

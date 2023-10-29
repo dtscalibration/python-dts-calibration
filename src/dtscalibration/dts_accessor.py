@@ -301,6 +301,7 @@ class DtsAccessor:
 
         Parameters
         ----------
+
         sections : Dict[str, List[slice]], optional
             If `None` is supplied, `ds.sections` is used. Define calibration
             sections. Each section requires a reference temperature time series,
@@ -472,31 +473,31 @@ class DtsAccessor:
 
         .. math::
 
-            \int_0^x{\Delta\\alpha(x')\,\mathrm{d}x'} \\approx \Delta\\alpha x
+            \int_0^x{\Delta\alpha(x')\,\mathrm{d}x'} \approx \Delta \alpha x
 
         The temperature can now be written from Equation 10 [1]_ as:
 
         .. math::
 
-            T(x,t)  \\approx \\frac{\gamma}{I(x,t) + C(t) + \Delta\\alpha x}
+            T(x,t)  \approx \frac{\gamma}{I(x,t) + C(t) + \Delta\alpha x}
 
         where
 
         .. math::
 
-            I(x,t) = \ln{\left(\\frac{P_+(x,t)}{P_-(x,t)}\\right)}
+            I(x,t) = \ln{\left(\frac{P_+(x,t)}{P_-(x,t)}\right)}
 
 
         .. math::
 
-            C(t) = \ln{\left(\\frac{\eta_-(t)K_-/\lambda_-^4}{\eta_+(t)K_+/\lambda_+^4}\\right)}
+            C(t) = \ln{\left(\frac{\eta_-(t)K_-/\lambda_-^4}{\eta_+(t)K_+/\lambda_+^4}\right)}
 
         where :math:`C` is the lumped effect of the difference in gain at
         :math:`x=0` between Stokes and anti-Stokes intensity measurements and
         the dependence of the scattering intensity on the wavelength. The
         parameters :math:`P_+` and :math:`P_-` are the Stokes and anti-Stokes
         intensity measurements, respectively.
-        The parameters :math:`\gamma`, :math:`C(t)`, and :math:`\Delta\\alpha`
+        The parameters :math:`\gamma`, :math:`C(t)`, and :math:`\Delta\alpha`
         must be estimated from calibration to reference sections, as discussed
         in Section 5 [1]_. The parameter :math:`C` must be estimated
         for each time and is constant along the fiber. :math:`T` in the listed
@@ -504,15 +505,16 @@ class DtsAccessor:
 
         Parameters
         ----------
+
         p_val : array-like, optional
             Define `p_val`, `p_var`, `p_cov` if you used an external function
             for calibration. Has size 2 + `nt`. First value is :math:`\gamma`,
-            second is :math:`\Delta \\alpha`, others are :math:`C` for each
+            second is :math:`\Delta \alpha`, others are :math:`C` for each
             timestep.
         p_var : array-like, optional
             Define `p_val`, `p_var`, `p_cov` if you used an external function
             for calibration. Has size 2 + `nt`. First value is :math:`\gamma`,
-            second is :math:`\Delta \\alpha`, others are :math:`C` for each
+            second is :math:`\Delta \alpha`, others are :math:`C` for each
             timestep.
         p_cov : array-like, optional
             The covariances of `p_val`.
@@ -565,7 +567,7 @@ class DtsAccessor:
             for.
         fix_dalpha : Tuple[float, float], optional
             A tuple containing two floats. The first float is the value of
-            dalpha (:math:`\Delta \\alpha` in [1]_), and the second item is the
+            dalpha (:math:`\Delta \alpha` in [1]_), and the second item is the
             variance of the estimate of dalpha.
             Covariances between alpha and other parameters are not accounted
             for.
@@ -578,6 +580,7 @@ class DtsAccessor:
 
         References
         ----------
+
         .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
             of Temperature and Associated Uncertainty from Fiber-Optic Raman-
             Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
@@ -585,6 +588,7 @@ class DtsAccessor:
 
         Examples
         --------
+
         - `Example notebook 7: Calibrate single ended <https://github.com/\
     dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
     07Calibrate_single_wls.ipynb>`_
@@ -790,18 +794,25 @@ class DtsAccessor:
         of the temperature variation, and when there is no systematic difference
         in temperature between the two channels. The temperature may be computed
         from the forward-channel measurements (Equation 10 [1]_) with:
+
         .. math::
-            T_\mathrm{F} (x,t)  = \\frac{\gamma}{I_\mathrm{F}(x,t) + \
-    C_\mathrm{F}(t) + \int_0^x{\Delta\\alpha(x')\,\mathrm{d}x'}}
+            T_\mathrm{F} (x,t)  = \frac{\gamma}{I_\mathrm{F}(x,t) + \
+    C_\mathrm{F}(t) + \int_0^x{\Delta\alpha(x')\,\mathrm{d}x'}}
+
         and from the backward-channel measurements with:
+
         .. math::
-            T_\mathrm{B} (x,t)  = \\frac{\gamma}{I_\mathrm{B}(x,t) + \
-    C_\mathrm{B}(t) + \int_x^L{\Delta\\alpha(x')\,\mathrm{d}x'}}
+            T_\mathrm{B} (x,t)  = \frac{\gamma}{I_\mathrm{B}(x,t) + \
+            
+    C_\mathrm{B}(t) + \int_x^L{\Delta\alpha(x')\,\mathrm{d}x'}}
         with
+
         .. math::
-            I(x,t) = \ln{\left(\\frac{P_+(x,t)}{P_-(x,t)}\\right)}
+            I(x,t) = \ln{\left(\frac{P_+(x,t)}{P_-(x,t)}\right)}
+
         .. math::
-            C(t) = \ln{\left(\\frac{\eta_-(t)K_-/\lambda_-^4}{\eta_+(t)K_+/\lambda_+^4}\\right)}
+            C(t) = \ln{\left(\frac{\eta_-(t)K_-/\lambda_-^4}{\eta_+(t)K_+/\lambda_+^4}\right)}
+
         where :math:`C` is the lumped effect of the difference in gain at
         :param mc_conf_ints:
         :math:`x=0` between Stokes and anti-Stokes intensity measurements and
@@ -814,7 +825,7 @@ class DtsAccessor:
         from :math:`C_\mathrm{F}(t)` due to differences in gain, and difference
         in the attenuation between the detectors and the point the fiber end is
         connected to the DTS system (:math:`\eta_+` and :math:`\eta_-` in
-        Equation~\\ref{eqn:c}). :math:`T` in the listed
+        Equation~\ref{eqn:c}). :math:`T` in the listed
         equations is in Kelvin, but is converted to Celsius after calibration.
         The calibration procedure presented in van de
         Giesen et al. 2012 approximates :math:`C(t)` to be
@@ -825,16 +836,24 @@ class DtsAccessor:
         differential attenuation between locations :math:`x_1` and :math:`x`
         along the fiber. Location :math:`x_1` is the first reference section
         location (the smallest x-value of all used reference sections).
+
         .. math::
-            A(x) = \int_{x_1}^x{\Delta\\alpha(x')\,\mathrm{d}x'}
+
+            A(x) = \int_{x_1}^x{\Delta\alpha(x')\,\mathrm{d}x'}
+        
         so that the expressions for temperature may be written as:
+        
         .. math::
-            T_\mathrm{F} (x,t) = \\frac{\gamma}{I_\mathrm{F}(x,t) + D_\mathrm{F}(t) + A(x)},
-            T_\mathrm{B} (x,t) = \\frac{\gamma}{I_\mathrm{B}(x,t) + D_\mathrm{B}(t) - A(x)}
+        
+            T_\mathrm{F} (x,t) = \frac{\gamma}{I_\mathrm{F}(x,t) + D_\mathrm{F}(t) + A(x)},
+            T_\mathrm{B} (x,t) = \frac{\gamma}{I_\mathrm{B}(x,t) + D_\mathrm{B}(t) - A(x)}
+        
         where
+        
         .. math::
-            D_{\mathrm{F}}(t) = C_{\mathrm{F}}(t) + \int_0^{x_1}{\Delta\\alpha(x')\,\mathrm{d}x'},
-            D_{\mathrm{B}}(t) = C_{\mathrm{B}}(t) + \int_{x_1}^L{\Delta\\alpha(x')\,\mathrm{d}x'}
+            D_{\mathrm{F}}(t) = C_{\mathrm{F}}(t) + \int_0^{x_1}{\Delta\alpha(x')\,\mathrm{d}x'},
+            D_{\mathrm{B}}(t) = C_{\mathrm{B}}(t) + \int_{x_1}^L{\Delta\alpha(x')\,\mathrm{d}x'}
+        
         Parameters :math:`D_\mathrm{F}` (`ds.df`) and :math:`D_\mathrm{B}`
         (`ds.db`) must be estimated for each time and are constant along the fiber, and parameter
         :math:`A` must be estimated for each location and is constant over time.
@@ -943,19 +962,24 @@ class DtsAccessor:
             integrated differential attenuation.
         verbose : bool
             Show additional calibration information
+
         Returns
         -------
+
         References
         ----------
+
         .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
             of Temperature and Associated Uncertainty from Fiber-Optic Raman-
             Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
             https://doi.org/10.3390/s20082235
+
         Examples
         --------
-        - `Example notebook 8: Calibrate double ended <https://github.com/\
-    dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
-    08Calibrate_double_wls.ipynb>`_
+
+        - `Example notebook 8: Calibrate double ended <https://github.com/
+    dtscalibration/python-dts-calibration/blob/master/examples/notebooks/
+    08Calibrate_double_wls.ipynb>`
         """
         # out contains the state
         out = xr.Dataset(
@@ -1451,7 +1475,7 @@ class DtsAccessor:
         Normal distributions are assigned for :math:`A` (`ds.alpha`)
         for each location
         outside of the reference sections. These distributions are centered
-        around :math:`A_p` and have variance :math:`\sigma^2\left[A_p\\right]`
+        around :math:`A_p` and have variance :math:`\sigma^2\left[A_p\right]`
         given by Equations 44 and 45. Fourth, the distributions are sampled
         and :math:`T_{\mathrm{F},m,n}` and :math:`T_{\mathrm{B},m,n}` are
         computed with Equations 16 and 17, respectively. Fifth, step four is repeated to
@@ -1459,8 +1483,8 @@ class DtsAccessor:
         :math:`T_{\mathrm{B},m,n}` to approximate their probability density
         functions. Sixth, the standard uncertainties of
         :math:`T_{\mathrm{F},m,n}` and :math:`T_{\mathrm{B},m,n}`
-        (:math:`\sigma\left[T_{\mathrm{F},m,n}\\right]` and
-        :math:`\sigma\left[T_{\mathrm{B},m,n}\\right]`) are estimated with the
+        (:math:`\sigma\left[T_{\mathrm{F},m,n}\right]` and
+        :math:`\sigma\left[T_{\mathrm{B},m,n}\right]`) are estimated with the
         standard deviation of their realizations. Seventh, for each realization
         :math:`i` the temperature :math:`T_{m,n,i}` is computed as the weighted
         average of :math:`T_{\mathrm{F},m,n,i}` and
@@ -1469,18 +1493,18 @@ class DtsAccessor:
         .. math::
 
             T_{m,n,i} =\
-            \sigma^2\left[T_{m,n}\\right]\left({\\frac{T_{\mathrm{F},m,n,i}}{\
-            \sigma^2\left[T_{\mathrm{F},m,n}\\right]} +\
-            \\frac{T_{\mathrm{B},m,n,i}}{\
-            \sigma^2\left[T_{\mathrm{B},m,n}\\right]}}\\right)
+            \sigma^2\left[T_{m,n}\right]\left({\frac{T_{\mathrm{F},m,n,i}}{\
+            \sigma^2\left[T_{\mathrm{F},m,n}\right]} +\
+            \frac{T_{\mathrm{B},m,n,i}}{\
+            \sigma^2\left[T_{\mathrm{B},m,n}\right]}}\right)
 
         where
 
         .. math::
 
-            \sigma^2\left[T_{m,n}\\right] = \\frac{1}{1 /\
-            \sigma^2\left[T_{\mathrm{F},m,n}\\right] + 1 /\
-            \sigma^2\left[T_{\mathrm{B},m,n}\\right]}
+            \sigma^2\left[T_{m,n}\right] = \frac{1}{1 /\
+            \sigma^2\left[T_{\mathrm{F},m,n}\right] + 1 /\
+            \sigma^2\left[T_{\mathrm{B},m,n}\right]}
 
         The best estimate of the temperature :math:`T_{m,n}` is computed
         directly from the best estimates of :math:`T_{\mathrm{F},m,n}` and
@@ -1488,9 +1512,9 @@ class DtsAccessor:
 
         .. math::
             T_{m,n} =\
-            \sigma^2\left[T_{m,n}\\right]\left({\\frac{T_{\mathrm{F},m,n}}{\
-            \sigma^2\left[T_{\mathrm{F},m,n}\\right]} + \\frac{T_{\mathrm{B},m,n}}{\
-            \sigma^2\left[T_{\mathrm{B},m,n}\\right]}}\\right)
+            \sigma^2\left[T_{m,n}\right]\left({\frac{T_{\mathrm{F},m,n}}{\
+            \sigma^2\left[T_{\mathrm{F},m,n}\right]} + \frac{T_{\mathrm{B},m,n}}{\
+            \sigma^2\left[T_{\mathrm{B},m,n}\right]}}\right)
 
         Alternatively, the best estimate of :math:`T_{m,n}` can be approximated
         with the mean of the :math:`T_{m,n,i}` values. Finally, the 95\%
