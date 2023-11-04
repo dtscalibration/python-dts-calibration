@@ -16,8 +16,7 @@ def plot_residuals_reference_sections(
     method="split",
     cmap="RdBu_r",
 ):
-    """
-    Analyze the residuals of the reference sections, between the Stokes
+    """Analyze the residuals of the reference sections, between the Stokes
     signal and a best-fit
     decaying exponential.
 
@@ -45,7 +44,7 @@ def plot_residuals_reference_sections(
         Matplotlib colormap to use for the residual plot. By default it will
         use a diverging colormap.
 
-    Returns
+    Returns:
     -------
     fig : Figurehandle
 
@@ -244,8 +243,7 @@ def plot_residuals_reference_sections_single(
     units="",
     fig_kwargs=None,
 ):
-    """
-    Analyze the residuals of the reference sections, between the Stokes
+    """Analyze the residuals of the reference sections, between the Stokes
     signal and a best-fit
     decaying exponential.
 
@@ -269,7 +267,7 @@ def plot_residuals_reference_sections_single(
     "x" : str
         Name of the spatial dimension
 
-    Returns
+    Returns:
     -------
     fig : Figurehandle
 
@@ -379,8 +377,7 @@ def plot_accuracy(
     plot_names=True,
     sections=None,
 ):
-    """
-    Analyze the residuals of the reference sections, between the Stokes
+    """Analyze the residuals of the reference sections, between the Stokes
     signal and a best-fit
     decaying exponential.
 
@@ -402,7 +399,7 @@ def plot_accuracy(
     "x" : str
         Name of the spatial dimension
 
-    Returns
+    Returns:
     -------
     fig : Figurehandle
 

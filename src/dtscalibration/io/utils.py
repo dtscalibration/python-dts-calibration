@@ -128,13 +128,11 @@ def open_file(path, **kwargs):
 
 
 def get_xml_namespace(element):
-    """
-
-    Parameters
+    """Parameters
     ----------
     element
 
-    Returns
+    Returns:
     -------
 
     """
@@ -152,9 +150,8 @@ def coords_time(
     dtBW=None,
     double_ended_flag=False,
 ):
-    """
-    Prepares the time coordinates for the construction of DataStore
-    instances with metadata
+    """Prepares the time coordinates for the construction of DataStore
+    instances with metadata.
 
     Parameters
     ----------
@@ -175,7 +172,7 @@ def coords_time(
     double_ended_flag : bool
         A flag whether the measurement is double ended
 
-    Returns
+    Returns:
     -------
 
     """

@@ -93,8 +93,7 @@ class DtsAccessor:
     # noinspection PyIncorrectDocstring
     @property
     def sections(self):
-        """
-        Define calibration sections. Each section requires a reference
+        """Define calibration sections. Each section requires a reference
         temperature time series, such as the temperature measured by an
         external temperature sensor. They should already be part of the
         DataStore object.
@@ -110,7 +109,8 @@ class DtsAccessor:
             temperature time series. Its values are lists of slice objects,
             where each slice object
             is a stretch.
-        Returns
+
+        Returns:
         -------
 
         """
@@ -134,8 +134,7 @@ class DtsAccessor:
     # noinspection PyIncorrectDocstring
     @property
     def matching_sections(self):
-        """
-        Define calibration sections. Each matching_section requires a reference
+        """Define calibration sections. Each matching_section requires a reference
         temperature time series, such as the temperature measured by an
         external temperature sensor. They should already be part of the
         DataStore object.
@@ -150,7 +149,8 @@ class DtsAccessor:
             has three items. The first two items are the slices of the sections
             that are matched. The third item is a boolean and is True if the two
             sections have a reverse direction ("J-configuration").
-        Returns
+
+        Returns:
         -------
 
         """
@@ -174,11 +174,10 @@ class DtsAccessor:
         raise NotImplementedError(msg)
 
     def get_default_encoding(self, time_chunks_from_key=None):
-        """
-        Returns a dictionary with sensible compression setting for writing
+        """Returns a dictionary with sensible compression setting for writing
         netCDF files.
 
-        Returns
+        Returns:
         -------
 
         """
@@ -272,9 +271,7 @@ class DtsAccessor:
         return encoding
 
     def get_timeseries_keys(self):
-        """
-        Returns a list of the keys of the time series variables.
-        """
+        """Returns a list of the keys of the time series variables."""
         return [k for k, v in self._obj.data_vars.items() if v.dims == ("time",)]
 
     def ufunc_per_section(
@@ -290,8 +287,7 @@ class DtsAccessor:
         suppress_section_validation=False,
         **func_kwargs,
     ):
-        """
-        User function applied to parts of the cable. Super useful,
+        """User function applied to parts of the cable. Super useful,
         many options and slightly
         complicated.
 
@@ -331,12 +327,11 @@ class DtsAccessor:
         to a list and concatenating after.
 
 
-        Returns
+        Returns:
         -------
 
-        Examples
+        Examples:
         --------
-
         1. Calculate the variance of the residuals in the along ALL the\
         reference sections wrt the temperature of the water baths
 
@@ -402,7 +397,7 @@ class DtsAccessor:
         >>> ix_loc = d.ufunc_per_section(sections=sections, x_indices=True)
 
 
-        Note
+        Note:
         ----
         If `self[label]` or `self[subtract_from_label]` is a Dask array, a Dask
         array is returned else a numpy array is returned
@@ -460,8 +455,7 @@ class DtsAccessor:
         fix_dalpha=None,
         fix_alpha=None,
     ):
-        r"""
-        Calibrate the Stokes (`ds.st`) and anti-Stokes (`ds.ast`) data to
+        r"""Calibrate the Stokes (`ds.st`) and anti-Stokes (`ds.ast`) data to
         temperature using fiber sections with a known temperature
         (`ds.sections`) for single-ended setups. The calibrated temperature is
         stored under `ds.tmpf` and its variance under `ds.tmpf_var`.
@@ -575,20 +569,18 @@ class DtsAccessor:
             A tuple containing two array-likes. The first array-like is the integrated
             differential attenuation of length x, and the second item is its variance.
 
-        Returns
+        Returns:
         -------
 
-        References
+        References:
         ----------
-
         .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
             of Temperature and Associated Uncertainty from Fiber-Optic Raman-
             Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
             https://doi.org/10.3390/s20082235
 
-        Examples
+        Examples:
         --------
-
         - `Example notebook 7: Calibrate single ended <https://github.com/\
     dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
     07Calibrate_single_wls.ipynb>`_
@@ -759,8 +751,7 @@ class DtsAccessor:
         matching_sections=None,
         verbose=False,
     ):
-        r"""
-        See example notebook 8 for an explanation on how to use this function.
+        r"""See example notebook 8 for an explanation on how to use this function.
         Calibrate the Stokes (`ds.st`) and anti-Stokes (`ds.ast`) of the forward
         channel and from the backward channel (`ds.rst`, `ds.rast`) data to
         temperature using fiber sections with a known temperature
@@ -804,7 +795,7 @@ class DtsAccessor:
         .. math::
             T_\mathrm{B} (x,t)  = \frac{\gamma}{I_\mathrm{B}(x,t) + \
             
-    C_\mathrm{B}(t) + \int_x^L{\Delta\alpha(x')\,\mathrm{d}x'}}
+        C_\mathrm{B}(t) + \int_x^L{\Delta\alpha(x')\,\mathrm{d}x'}}
         with
 
         .. math::
@@ -963,23 +954,21 @@ class DtsAccessor:
         verbose : bool
             Show additional calibration information
 
-        Returns
+        Returns:
         -------
 
-        References
+        References:
         ----------
-
         .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
             of Temperature and Associated Uncertainty from Fiber-Optic Raman-
             Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
             https://doi.org/10.3390/s20082235
 
-        Examples
+        Examples:
         --------
-
         - `Example notebook 8: Calibrate double ended <https://github.com/
-    dtscalibration/python-dts-calibration/blob/master/examples/notebooks/
-    08Calibrate_double_wls.ipynb>`
+        dtscalibration/python-dts-calibration/blob/master/examples/notebooks/
+        08Calibrate_double_wls.ipynb>`
         """
         # out contains the state
         out = xr.Dataset(
@@ -1271,7 +1260,7 @@ class DtsAccessor:
         reduce_memory_usage=False,
         mc_remove_set_flag=True,
     ):
-        """The result object is what comes out of the single_ended_calibration routine)
+        """The result object is what comes out of the single_ended_calibration routine).
 
         TODO: Use get_params_from_pval_single_ended() to extract parameter sets from mc
         """
@@ -1459,8 +1448,7 @@ class DtsAccessor:
         mc_remove_set_flag=True,
         reduce_memory_usage=False,
     ):
-        r"""
-        Estimation of the confidence intervals for the temperatures measured
+        r"""Estimation of the confidence intervals for the temperatures measured
         with a double-ended setup.
         Double-ended setups require four additional steps to estimate the
         confidence intervals for the temperature. First, the variances of the
@@ -1569,10 +1557,10 @@ class DtsAccessor:
         reduce_memory_usage : bool
             Use less memory but at the expense of longer computation time
 
-        Returns
+        Returns:
         -------
 
-        References
+        References:
         ----------
         .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
             of Temperature and Associated Uncertainty from Fiber-Optic Raman-
@@ -1583,8 +1571,7 @@ class DtsAccessor:
         """
 
         def create_da_ta2(no, i_splice, direction="fw", chunks=None):
-            """create mask array mc, o, nt"""
-
+            """Create mask array mc, o, nt."""
             if direction == "fw":
                 arr = da.concatenate(
                     (
@@ -1961,8 +1948,7 @@ class DtsAccessor:
         mc_remove_set_flag=True,
         reduce_memory_usage=False,
     ):
-        """
-        Average temperatures from single-ended setups.
+        """Average temperatures from single-ended setups.
 
         Four types of averaging are implemented. Please see Example Notebook 16.
 
@@ -2065,7 +2051,7 @@ class DtsAccessor:
         reduce_memory_usage : bool
             Use less memory but at the expense of longer computation time
 
-        Returns
+        Returns:
         -------
 
         """
@@ -2304,8 +2290,7 @@ class DtsAccessor:
         reduce_memory_usage=False,
         **kwargs,
     ):
-        """
-        Average temperatures from double-ended setups.
+        """Average temperatures from double-ended setups.
 
         Four types of averaging are implemented. Please see Example Notebook 16.
 
@@ -2407,7 +2392,7 @@ class DtsAccessor:
         reduce_memory_usage : bool
             Use less memory but at the expense of longer computation time
 
-        Returns
+        Returns:
         -------
 
         """

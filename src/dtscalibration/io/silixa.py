@@ -48,12 +48,11 @@ def read_silixa_files(
     kwargs : dict-like, optional
         keyword-arguments are passed to DataStore initialization
 
-    Returns
+    Returns:
     -------
     datastore : DataStore
         The newly created datastore.
     """
-
     assert "timezone_input_files" not in kwargs, (
         "The silixa files are " "already timezone aware"
     )
@@ -109,11 +108,10 @@ def silixa_xml_version_check(filepathlist):
     ----------
     filepathlist
 
-    Returns
+    Returns:
     -------
 
     """
-
     sep = ":"
     attrs = read_silixa_attrs_singlefile(filepathlist[0], sep)
 
@@ -126,22 +124,19 @@ def silixa_xml_version_check(filepathlist):
 
 
 def read_silixa_attrs_singlefile(filename, sep):
-    """
-
-    Parameters
+    """Parameters
     ----------
     filename
     sep
 
-    Returns
+    Returns:
     -------
 
     """
     import xmltodict
 
     def metakey(meta, dict_to_parse, prefix):
-        """
-        Fills the metadata dictionairy with data from dict_to_parse.
+        """Fills the metadata dictionairy with data from dict_to_parse.
         The dict_to_parse is the raw data from a silixa xml-file.
         dict_to_parse is a nested dictionary to represent the
         different levels of hierarchy. For example,
@@ -156,11 +151,10 @@ def read_silixa_attrs_singlefile(filename, sep):
         dict_to_parse : dict
         prefix
 
-        Returns
+        Returns:
         -------
 
         """
-
         for key in dict_to_parse:
             if prefix == "":
                 prefix_parse = key.replace("@", "")
@@ -203,8 +197,7 @@ def read_silixa_files_routine_v6(  # noqa: MC0001
     silent=False,
     load_in_memory="auto",
 ):
-    """
-    Internal routine that reads Silixa files.
+    """Internal routine that reads Silixa files.
     Use dtscalibration.read_silixa_files function instead.
 
     The silixa files are already timezone aware
@@ -216,11 +209,10 @@ def read_silixa_files_routine_v6(  # noqa: MC0001
     timezone_netcdf
     silent
 
-    Returns
+    Returns:
     -------
 
     """
-
     # translate names
     tld = {"ST": "st", "AST": "ast", "REV-ST": "rst", "REV-AST": "rast", "TMP": "tmp"}
 
@@ -333,13 +325,11 @@ def read_silixa_files_routine_v6(  # noqa: MC0001
 
     @dask.delayed
     def grab_data_per_file(file_handle):
-        """
-
-        Parameters
+        """Parameters
         ----------
         file_handle
 
-        Returns
+        Returns:
         -------
 
         """
@@ -401,13 +391,11 @@ def read_silixa_files_routine_v6(  # noqa: MC0001
 
     @dask.delayed
     def grab_timeseries_per_file(file_handle, xml_version):
-        """
-
-        Parameters
+        """Parameters
         ----------
         file_handle
 
-        Returns
+        Returns:
         -------
 
         """
@@ -514,8 +502,7 @@ def read_silixa_files_routine_v6(  # noqa: MC0001
 def read_silixa_files_routine_v4(  # noqa: MC0001
     filepathlist, timezone_netcdf="UTC", silent=False, load_in_memory="auto"
 ):
-    """
-    Internal routine that reads Silixa files.
+    """Internal routine that reads Silixa files.
     Use dtscalibration.read_silixa_files function instead.
 
     The silixa files are already timezone aware
@@ -527,7 +514,7 @@ def read_silixa_files_routine_v4(  # noqa: MC0001
     timezone_netcdf
     silent
 
-    Returns
+    Returns:
     -------
 
     """
@@ -640,13 +627,11 @@ def read_silixa_files_routine_v4(  # noqa: MC0001
 
     @dask.delayed
     def grab_data_per_file(file_handle):
-        """
-
-        Parameters
+        """Parameters
         ----------
         file_handle
 
-        Returns
+        Returns:
         -------
 
         """
@@ -709,13 +694,11 @@ def read_silixa_files_routine_v4(  # noqa: MC0001
 
     @dask.delayed
     def grab_timeseries_per_file(file_handle):
-        """
-
-        Parameters
+        """Parameters
         ----------
         file_handle
 
-        Returns
+        Returns:
         -------
 
         """

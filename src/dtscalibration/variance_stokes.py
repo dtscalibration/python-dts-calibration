@@ -12,8 +12,7 @@ from dtscalibration.variance_helpers import variance_stokes_linear_helper
 
 
 def variance_stokes_constant(st, sections, acquisitiontime, reshape_residuals=True):
-    """
-    Approximate the variance of the noise in Stokes intensity measurements
+    """Approximate the variance of the noise in Stokes intensity measurements
     with one value, suitable for small setups.
 
     * `variance_stokes_constant()` for small setups with small variations in\
@@ -82,16 +81,15 @@ def variance_stokes_constant(st, sections, acquisitiontime, reshape_residuals=Tr
     st : DataArray
     sections : Dict[str, List[slice]]
 
-    Returns
+    Returns:
     -------
     I_var : float
         Variance of the residuals between measured and best fit
     resid : array_like
         Residuals between measured and best fit
 
-    Notes
+    Notes:
     -----
-
     * Because there are a large number of unknowns, spend time on\
     calculating an initial estimate. Can be turned off by setting to False.
 
@@ -99,14 +97,14 @@ def variance_stokes_constant(st, sections, acquisitiontime, reshape_residuals=Tr
     your variance estimate does not change when including measurements\
     additional time steps, you have included enough measurements.
 
-    References
+    References:
     ----------
     .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
         of Temperature and Associated Uncertainty from Fiber-Optic Raman-
         Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
         https://doi.org/10.3390/s20082235
 
-    Examples
+    Examples:
     --------
     - `Example notebook 4: Calculate variance Stokes intensity measurements\
     <https://github.com/\
@@ -152,8 +150,7 @@ def variance_stokes_exponential(
     suppress_info=True,
     reshape_residuals=True,
 ):
-    """
-    Approximate the variance of the noise in Stokes intensity measurements
+    """Approximate the variance of the noise in Stokes intensity measurements
     with one value, suitable for small setups with measurements from only
     a few times.
 
@@ -247,16 +244,15 @@ def variance_stokes_exponential(
         that has the reference temperature. Afterwards, `sections` is stored
         under `ds.sections`.
 
-    Returns
+    Returns:
     -------
     I_var : float
         Variance of the residuals between measured and best fit
     resid : array_like
         Residuals between measured and best fit
 
-    Notes
+    Notes:
     -----
-
     * Because there are a large number of unknowns, spend time on\
     calculating an initial estimate. Can be turned off by setting to False.
 
@@ -264,14 +260,14 @@ def variance_stokes_exponential(
     your variance estimate does not change when including measurements from\
     more time steps, you have included enough measurements.
 
-    References
+    References:
     ----------
     .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
         of Temperature and Associated Uncertainty from Fiber-Optic Raman-
         Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
         https://doi.org/10.3390/s20082235
 
-    Examples
+    Examples:
     --------
     - `Example notebook 4: Calculate variance Stokes intensity measurements\
     <https://github.com/\
@@ -348,8 +344,7 @@ def variance_stokes_exponential(
 def variance_stokes_linear(
     st, sections, acquisitiontime, nbin=50, through_zero=False, plot_fit=False
 ):
-    """
-    Approximate the variance of the noise in Stokes intensity measurements
+    """Approximate the variance of the noise in Stokes intensity measurements
     with a linear function of the intensity, suitable for large setups.
 
     * `variance_stokes_constant()` for small setups with small variations in\
@@ -412,9 +407,8 @@ def variance_stokes_linear(
     variance estimate because all temperature variation is attributed to
     the noise.
 
-    Notes
+    Notes:
     -----
-
     * Because there are a large number of unknowns, spend time on\
     calculating an initial estimate. Can be turned off by setting to False.
 
@@ -422,14 +416,14 @@ def variance_stokes_linear(
     your variance estimate does not change when including measurements \
     from more time steps, you have included enough measurements.
 
-    References
+    References:
     ----------
     .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
         of Temperature and Associated Uncertainty from Fiber-Optic Raman-
         Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
         https://doi.org/10.3390/s20082235
 
-    Examples
+    Examples:
     --------
     - `Example notebook 4: Calculate variance Stokes intensity \
     measurements <https://github.com/\

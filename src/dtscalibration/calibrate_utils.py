@@ -6,8 +6,7 @@ from scipy.sparse import linalg as ln
 
 
 def parse_st_var(st, st_var):
-    """
-    Utility function to check the st_var input and to return in DataArray
+    """Utility function to check the st_var input and to return in DataArray
     format.
 
     Parameters
@@ -24,7 +23,7 @@ def parse_st_var(st, st_var):
         distributed) define a DataArray of the shape as ds.st, where the
         variance can be a function of time and/or x.
 
-    Returns
+    Returns:
     -------
     st_var_sec : DataArray
         The variance of the noise from the Stokes detector.
@@ -57,7 +56,7 @@ def calibration_single_ended_helper(
     trans_att,
     solver,
 ):
-    """Only used in `calibration_single_ended()`"""
+    """Only used in `calibration_single_ended()`."""
     nt = self.dts.nt
     nx = self.dts.nx
     nta = len(trans_att)
@@ -203,8 +202,7 @@ def calibration_single_ended_solver(  # noqa: MC0001
     trans_att=[],
     verbose=False,
 ):
-    """
-    The solver for single-ended setups. Assumes `ds` is pre-configured with
+    """The solver for single-ended setups. Assumes `ds` is pre-configured with
     `sections` and `trans_att`.
 
     Parameters
@@ -237,7 +235,7 @@ def calibration_single_ended_solver(  # noqa: MC0001
 
     verbose : bool
 
-    Returns
+    Returns:
     -------
 
     """
@@ -1131,8 +1129,7 @@ def calibrate_double_ended_solver(  # noqa: MC0001
     nta=None,
     verbose=False,
 ):
-    """
-    The solver for double-ended setups. Assumes `ds` is pre-configured with
+    """The solver for double-ended setups. Assumes `ds` is pre-configured with
     `sections` and `trans_att`.
 
     The construction of X differs a bit from what is presented in the
@@ -1183,7 +1180,7 @@ def calibrate_double_ended_solver(  # noqa: MC0001
         locations. This array is produced by `matching_sections()`.
     verbose : bool
 
-    Returns
+    Returns:
     -------
 
     """
@@ -1592,11 +1589,10 @@ def matching_section_location_indices(ix_sec, hix, tix):
 
 
 def construct_submatrices_matching_sections(x, ix_sec, hix, tix, nt, trans_att):
-    """
-    For all matching indices, where subscript 1 refers to the indices in
+    """For all matching indices, where subscript 1 refers to the indices in
     `hix` and subscript 2 refers to the indices in `tix`.
     F1 - F2 = E2 - E1 + TAF2 - TAF1  # EQ1
-    B1 - B2 = E1 - E2 + TAB2 - TAB1  # EQ2
+    B1 - B2 = E1 - E2 + TAB2 - TAB1  # EQ2.
 
     For matching indices (`hix` and `tix`) that are outside of the reference
     sections an additional equation is needed for `E` per time step.
@@ -1628,7 +1624,7 @@ def construct_submatrices_matching_sections(x, ix_sec, hix, tix, nt, trans_att):
     tix : array-like of int
     nt : int
 
-    Returns
+    Returns:
     -------
 
     """
@@ -1835,12 +1831,11 @@ def construct_submatrices(sections, nt, nx, ds, trans_att, x_sec):
     Zero_gamma (nt * nx, 1)
     zero_d (nt * nx, nt)
     Z_TA_fw (nt * nx, nta * 2 * nt) minus ones
-    Z_TA_bw (nt * nx, nta * 2 * nt) minus ones
+    Z_TA_bw (nt * nx, nta * 2 * nt) minus ones.
 
     I_fw = 1/Tref*gamma - D_fw - E - TA_fw
     I_bw = 1/Tref*gamma - D_bw + E - TA_bw
     """
-
     # Z \gamma  # Eq.47
     cal_ref = np.array(
         ds.dts.ufunc_per_section(
@@ -1937,13 +1932,12 @@ def wls_sparse(
     return_werr=False,
     **solver_kwargs,
 ):
-    """
-    If some initial estimate x0 is known and if damp == 0, one could proceed as follows:
+    """If some initial estimate x0 is known and if damp == 0, one could proceed as follows:
     - Compute a residual vector r0 = b - A*x0.
     - Use LSQR to solve the system A*dx = r0.
     - Add the correction dx to obtain a final solution x = x0 + dx.
     from: https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.
-      linalg.lsqr.html
+      linalg.lsqr.html.
 
     Parameters
     ----------
@@ -1954,7 +1948,7 @@ def wls_sparse(
     verbose
     kwargs
 
-    Returns
+    Returns:
     -------
 
     """
@@ -2051,9 +2045,7 @@ def wls_sparse(
 
 
 def wls_stats(X, y, w=1.0, calc_cov=False, x0=None, return_werr=False, verbose=False):
-    """
-
-    Parameters
+    """Parameters
     ----------
     X
     y
@@ -2061,7 +2053,7 @@ def wls_stats(X, y, w=1.0, calc_cov=False, x0=None, return_werr=False, verbose=F
     calc_cov
     verbose
 
-    Returns
+    Returns:
     -------
 
     """
@@ -2114,8 +2106,8 @@ def calc_alpha_double(
     talpha_bw_var=None,
 ):
     """Eq.50 if weighted least squares. Assumes ds has `trans_att`
-    pre-configured."""
-
+    pre-configured.
+    """
     assert ix_alpha_is_zero >= 0, "Define ix_alpha_is_zero" + str(ix_alpha_is_zero)
 
     if st_var is not None:
@@ -2235,8 +2227,7 @@ def calc_df_db_double_est(ds, sections, ix_alpha_is_zero, gamma_est):
 
 
 def match_sections(ds, matching_sections):
-    """
-    Matches location indices of two sections.
+    """Matches location indices of two sections.
     Parameters
     ----------
     ds
@@ -2246,7 +2237,7 @@ def match_sections(ds, matching_sections):
         that are matched. The third item is a boolean and is True if the two
         sections have a reverse direction ("J-configuration"), most common.
 
-    Returns
+    Returns:
     -------
     matching_indices : array-like
         Is an array of size (np, 2), where np is the number of paired
