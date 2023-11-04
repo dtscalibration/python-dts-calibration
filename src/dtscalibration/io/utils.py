@@ -118,23 +118,19 @@ def open_file(path, **kwargs):
     if isinstance(path, tuple):
         # print('\nabout to open zipfile', path[0], '. from', path[1])
         # assert isinstance(path[1], zip)
-        the_file = path[1].open(path[0], **kwargs)
-
+        with path[1].open(path[0], **kwargs) as the_file:
+            yield the_file
     else:
-        the_file = open(path, **kwargs)
-
-    yield the_file
-    the_file.close()
+        with open(path, **kwargs) as the_file:
+            yield the_file
 
 
 def get_xml_namespace(element):
-    """
-
-    Parameters
+    """Parameters
     ----------
     element
 
-    Returns
+    Returns:
     -------
 
     """
@@ -152,9 +148,8 @@ def coords_time(
     dtBW=None,
     double_ended_flag=False,
 ):
-    """
-    Prepares the time coordinates for the construction of DataStore
-    instances with metadata
+    """Prepares the time coordinates for the construction of DataStore
+    instances with metadata.
 
     Parameters
     ----------
@@ -175,7 +170,7 @@ def coords_time(
     double_ended_flag : bool
         A flag whether the measurement is double ended
 
-    Returns
+    Returns:
     -------
 
     """

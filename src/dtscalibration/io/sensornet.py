@@ -54,13 +54,13 @@ def read_sensornet_files(
     kwargs : dict-like, optional
         keyword-arguments are passed to DataStore initialization
 
-    Notes
+    Notes:
     -----
     Compressed sensornet files can not be directly decoded
     because the files are encoded with encoding='windows-1252' instead of
     UTF-8.
 
-    Returns
+    Returns:
     -------
     datastore : DataStore
         The newly created datastore.
@@ -104,14 +104,11 @@ def read_sensornet_files(
 
     valid = any([fnmatch.fnmatch(ddf_version, v_) for v_ in valid_versions])
 
-    if valid:
-        if fnmatch.fnmatch(ddf_version, "Halo DTS v1*"):
-            flip_reverse_measurements = True
-        elif fnmatch.fnmatch(ddf_version, "Sentinel DTS v5*"):
-            flip_reverse_measurements = True
-        else:
-            flip_reverse_measurements = False
-
+    if valid and (
+        fnmatch.fnmatch(ddf_version, "Halo DTS v1*")
+        or fnmatch.fnmatch(ddf_version, "Sentinel DTS v5*")
+    ):
+        flip_reverse_measurements = True
     else:
         flip_reverse_measurements = False
         warnings.warn(
@@ -135,22 +132,21 @@ def read_sensornet_files(
 
 
 def sensornet_ddf_version_check(filepathlist):
-    """Function which checks and returns the .ddf file version
+    """Function which checks and returns the .ddf file version.
 
     Parameters
     ----------
     filepathlist
 
-    Returns
+    Returns:
     -------
     ddf_version
 
     """
-
     # Obtain metadata fro mthe first file
     _, meta = read_sensornet_single(filepathlist[0])
 
-    if "Software version number" in meta.keys():
+    if "Software version number" in meta:
         version_string = meta["Software version number"]
     else:
         raise ValueError(
@@ -164,13 +160,11 @@ def sensornet_ddf_version_check(filepathlist):
 
 
 def read_sensornet_single(filename):
-    """
-
-    Parameters
+    """Parameters
     ----------
     filename
 
-    Returns
+    Returns:
     -------
 
     """
@@ -252,8 +246,7 @@ def read_sensornet_files_routine_v3(
     fiber_length=None,
     flip_reverse_measurements=False,
 ):
-    """
-    Internal routine that reads Sensor files.
+    """Internal routine that reads Sensor files.
     Use dtscalibration.read_sensornet_files function instead.
 
     Parameters
@@ -270,11 +263,10 @@ def read_sensornet_files_routine_v3(
         It is the fiber length between the two connector entering the DTS
         device.
 
-    Returns
+    Returns:
     -------
 
     """
-
     # Obtain metadata from the first file
     data, meta = read_sensornet_single(filepathlist[0])
 

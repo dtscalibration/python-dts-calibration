@@ -14,8 +14,7 @@ def check_dims(
     labels: Union[list[str], tuple[str]],
     correct_dims: Optional[tuple[str]] = None,
 ) -> None:
-    """
-    Compare the dimensions of different labels. For example: ['st', 'rst'].
+    """Compare the dimensions of different labels. For example: ['st', 'rst'].
     If a calculation is performed and the dimensions do not agree, the answers do not
     make sense and the matrices are broadcasted and the memory usage will explode.
     If no correct dims provided the dimensions of the different are compared.
@@ -29,7 +28,7 @@ def check_dims(
     correct_dims :
         The correct dimensions.
 
-    Returns
+    Returns:
     -------
 
     """
@@ -52,8 +51,7 @@ def check_dims(
 
 
 class ParameterIndexDoubleEnded:
-    """
-    npar = 1 + 2 * nt + nx + 2 * nt * nta
+    """npar = 1 + 2 * nt + nx + 2 * nt * nta
     assert pval.size == npar
     assert p_var.size == npar
     if calc_cov:
@@ -70,7 +68,7 @@ class ParameterIndexDoubleEnded:
     if nta > 0:
         ta = pval[1 + 2 * nt + nx:].reshape((nt, 2, nta), order='F')
         self['talpha_fw'] = (('time', 'trans_att'), ta[:, 0, :])
-        self['talpha_bw'] = (('time', 'trans_att'), ta[:, 1, :])
+        self['talpha_bw'] = (('time', 'trans_att'), ta[:, 1, :]).
     """
 
     def __init__(self, nt, nx, nta, fix_gamma=False, fix_alpha=False):
@@ -144,19 +142,17 @@ class ParameterIndexDoubleEnded:
 
     @property
     def taf(self):
-        """
-        Use `.reshape((nt, nta))` to convert array to (time-dim and transatt-dim). Order is the default C order.
+        """Use `.reshape((nt, nta))` to convert array to (time-dim and transatt-dim). Order is the default C order.
         ta = pval[1 + 2 * nt + nx:].reshape((nt, 2, nta), order='F')
-        self['talpha_fw'] = (('time', 'trans_att'), ta[:, 0, :])
+        self['talpha_fw'] = (('time', 'trans_att'), ta[:, 0, :]).
         """
         return self.ta[:, 0, :].flatten(order="C")
 
     @property
     def tab(self):
-        """
-        Use `.reshape((nt, nta))` to convert array to (time-dim and transatt-dim). Order is the default C order.
+        """Use `.reshape((nt, nta))` to convert array to (time-dim and transatt-dim). Order is the default C order.
         ta = pval[1 + 2 * nt + nx:].reshape((nt, 2, nta), order='F')
-        self['talpha_bw'] = (('time', 'trans_att'), ta[:, 1, :])
+        self['talpha_bw'] = (('time', 'trans_att'), ta[:, 1, :]).
         """
         return self.ta[:, 1, :].flatten(order="C")
 
@@ -174,15 +170,15 @@ class ParameterIndexDoubleEnded:
             return np.zeros(shape=(self.nt, 2, 0))
 
     def get_taf_pars(self, pval):
-        """returns taf parameters of shape (nt, nta) or (nt, nta, a)"""
+        """Returns taf parameters of shape (nt, nta) or (nt, nta, a)."""
         return self.get_ta_pars(pval=pval)[:, 0, :]
 
     def get_tab_pars(self, pval):
-        """returns taf parameters of shape (nt, nta) or (nt, nta, a)"""
+        """Returns taf parameters of shape (nt, nta) or (nt, nta, a)."""
         return self.get_ta_pars(pval=pval)[:, 1, :]
 
     def get_taf_values(self, pval, x, trans_att, axis=""):
-        """returns taf parameters of shape (nx, nt)"""
+        """Returns taf parameters of shape (nx, nt)."""
         pval = np.atleast_2d(pval)
 
         assert pval.ndim == 2 and pval.shape[1] == self.npar
@@ -222,7 +218,7 @@ class ParameterIndexDoubleEnded:
         return arr_out
 
     def get_tab_values(self, pval, x, trans_att, axis=""):
-        """returns tab parameters of shape (nx, nt)"""
+        """Returns tab parameters of shape (nx, nt)."""
         assert pval.shape[-1] == self.npar
 
         arr_out = np.zeros((self.nx, self.nt))
@@ -261,9 +257,8 @@ class ParameterIndexDoubleEnded:
 
 
 class ParameterIndexSingleEnded:
-    """
-    if parameter fixed, they are not in
-    npar = 1 + 1 + nt + nta * nt
+    """if parameter fixed, they are not in
+    npar = 1 + 1 + nt + nta * nt.
     """
 
     def __init__(self, nt, nx, nta, includes_alpha=False, includes_dalpha=True):
@@ -320,7 +315,7 @@ class ParameterIndexSingleEnded:
 
     @property
     def taf(self):
-        """returns taf parameters of shape (nt, nta) or (nt, nta, a)"""
+        """Returns taf parameters of shape (nt, nta) or (nt, nta, a)."""
         # ta = p_val[-nt * nta:].reshape((nt, nta), order='F')
         # self["talpha"] = (('time', 'trans_att'), ta[:, :])
         if self.includes_alpha:
@@ -352,7 +347,7 @@ class ParameterIndexSingleEnded:
             return np.zeros(shape=(self.nt, 0))
 
     def get_taf_values(self, pval, x, trans_att, axis=""):
-        """returns taf parameters of shape (nx, nt)"""
+        """Returns taf parameters of shape (nx, nt)."""
         # assert pval.ndim == 2 and pval.shape[1] == self.npar
 
         arr_out = np.zeros((self.nx, self.nt))
@@ -407,7 +402,7 @@ def get_netcdf_encoding(
     complevel
     ds : DataStore
 
-    Returns
+    Returns:
     -------
     encoding:
         Encoding dictionary.
@@ -691,8 +686,7 @@ def merge_double_ended(
     plot_result: bool = True,
     verbose: bool = True,
 ) -> xr.Dataset:
-    """
-    Some measurements are not set up on the DTS-device as double-ended
+    """Some measurements are not set up on the DTS-device as double-ended
     meausurements. This means that the two channels have to be merged manually.
 
     This function can merge two single-ended DataStore objects into a single
@@ -712,7 +706,7 @@ def merge_double_ended(
         Plot the aligned Stokes of the forward and backward channels
     verbose : bool
 
-    Returns
+    Returns:
     -------
     ds : DataStore object
         With the two channels merged
@@ -798,7 +792,7 @@ def merge_double_ended_times(
     verbose : bool
         Print additional information to screen
 
-    Returns
+    Returns:
     -------
     ds_fw_sel : DataSore object
         DataStore object representing the forward measurement channel with
@@ -896,8 +890,7 @@ def merge_double_ended_times(
 def shift_double_ended(
     ds: xr.Dataset, i_shift: int, verbose: bool = True
 ) -> xr.Dataset:
-    """
-    The cable length was initially configured during the DTS measurement. For double ended
+    """The cable length was initially configured during the DTS measurement. For double ended
     measurements it is important to enter the correct length so that the forward channel and the
     backward channel are aligned.
 
@@ -923,7 +916,7 @@ def shift_double_ended(
         If True, the function will inform the user which variables are
         dropped. If False, the function will silently drop the variables.
 
-    Returns
+    Returns:
     -------
     ds2 : DataStore object
         With a shifted x-axis
@@ -1013,7 +1006,7 @@ def suggest_cable_shift_double_ended(
     plot_result : bool
         Plot the summed error as a function of the shift.
 
-    Returns
+    Returns:
     -------
     ishift1: int
         Suggested shift based on Err1
@@ -1121,8 +1114,7 @@ def ufunc_per_section_helper(
     calc_per="stretch",
     **func_kwargs,
 ):
-    """
-    User function applied to parts of the cable. Super useful,
+    """User function applied to parts of the cable. Super useful,
     many options and slightly
     complicated.
 
@@ -1166,12 +1158,11 @@ def ufunc_per_section_helper(
     func_kwargs : dict
         Dictionary with options that are passed to func
 
-    Returns
+    Returns:
     -------
 
-    Examples
+    Examples:
     --------
-
     1. Calculate the variance of the residuals in the along ALL the\
     reference sections wrt the temperature of the water baths
 
@@ -1232,7 +1223,7 @@ def ufunc_per_section_helper(
     >>> ix_loc = ufunc_per_section_helper(x_coords=d.x)
 
 
-    Note
+    Note:
     ----
     If `dataarray` or `subtract_from_dataarray` is a Dask array, a Dask
     array is returned else a numpy array is returned
@@ -1240,13 +1231,11 @@ def ufunc_per_section_helper(
     if not func:
 
         def func(a):
-            """
-
-            Parameters
+            """Parameters
             ----------
             a
 
-            Returns
+            Returns:
             -------
 
             """
@@ -1255,13 +1244,11 @@ def ufunc_per_section_helper(
     elif isinstance(func, str) and func == "var":
 
         def func(a):
-            """
-
-            Parameters
+            """Parameters
             ----------
             a
 
-            Returns
+            Returns:
             -------
 
             """

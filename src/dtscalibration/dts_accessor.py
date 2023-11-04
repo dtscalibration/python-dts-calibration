@@ -1,3 +1,5 @@
+"""This module provides an xarray accessor for DTS calibration."""
+
 import dask.array as da
 import numpy as np
 import scipy.stats as sst
@@ -22,7 +24,16 @@ from dtscalibration.io.utils import dim_attrs
 
 @xr.register_dataset_accessor("dts")
 class DtsAccessor:
+    """An xarray accessor for DTS calibration."""
+
     def __init__(self, xarray_obj):
+        """Initialize the DtsAccessor with an xarray object.
+
+        Parameters
+        ----------
+        xarray_obj : xarray.Dataset
+            The xarray object to be used for DTS calibration.
+        """
         # cache xarray_obj
         self._obj = xarray_obj
         self.attrs = xarray_obj.attrs
@@ -43,6 +54,7 @@ class DtsAccessor:
         self.acquisitiontime_bw = xarray_obj.get("userAcquisitionTimeBW")
 
     def __repr__(self):
+        """Return a string representation of the DtsAccessor object."""
         # __repr__ from xarray is used and edited.
         #   'xarray' is prepended. so we remove it and add 'dtscalibration'
         s = xr.core.formatting.dataset_repr(self._obj)
@@ -93,26 +105,24 @@ class DtsAccessor:
     # noinspection PyIncorrectDocstring
     @property
     def sections(self):
-        """
-        Define calibration sections. Each section requires a reference
-        temperature time series, such as the temperature measured by an
-        external temperature sensor. They should already be part of the
-        DataStore object.
+        """Define calibration sections.
 
-        Please look at the example notebook on `sections` if you encounter
-        difficulties.
+        Each section requires a reference temperature time series, such as the temperature measured by an
+        external temperature sensor. They should already be part of the DataStore object.
+
+        Please look at the example notebook on `sections` if you encounter difficulties.
 
         Parameters
         ----------
         sections : Dict[str, List[slice]]
-            Sections are defined in a dictionary with its keywords of the
-            names of the reference
-            temperature time series. Its values are lists of slice objects,
-            where each slice object
+            Sections are defined in a dictionary with its keywords of the names of the reference
+            temperature time series. Its values are lists of slice objects, where each slice object
             is a stretch.
-        Returns
-        -------
 
+        Returns:
+        -------
+        dict
+            A dictionary with the names of the reference temperature time series as keys and lists of slice objects as values.
         """
         if "_sections" not in self._obj.attrs:
             self._obj.attrs["_sections"] = yaml.dump(None)
@@ -134,25 +144,24 @@ class DtsAccessor:
     # noinspection PyIncorrectDocstring
     @property
     def matching_sections(self):
-        """
-        Define calibration sections. Each matching_section requires a reference
-        temperature time series, such as the temperature measured by an
-        external temperature sensor. They should already be part of the
-        DataStore object.
+        """Define calibration sections.
 
-        Please look at the example notebook on `matching_sections` if you encounter
-        difficulties.
+        Each matching_section requires a reference temperature time series, such as the temperature measured by an
+        external temperature sensor. They should already be part of the DataStore object.
+
+        Please look at the example notebook on `matching_sections` if you encounter difficulties.
 
         Parameters
         ----------
         matching_sections : List[Tuple[slice, slice, bool]], optional
-            Provide a list of tuples. A tuple per matching section. Each tuple
-            has three items. The first two items are the slices of the sections
-            that are matched. The third item is a boolean and is True if the two
-            sections have a reverse direction ("J-configuration").
-        Returns
-        -------
+            Provide a list of tuples. A tuple per matching section. Each tuple has three items. The first two items are
+            the slices of the sections that are matched. The third item is a boolean and is True if the two sections have
+            a reverse direction ("J-configuration").
 
+        Returns:
+        -------
+        dict
+            A dictionary with the names of the reference temperature time series as keys and lists of slice objects as values.
         """
         if "_matching_sections" not in self._obj.attrs:
             self._obj.attrs["_matching_sections"] = yaml.dump(None)
@@ -174,12 +183,12 @@ class DtsAccessor:
         raise NotImplementedError(msg)
 
     def get_default_encoding(self, time_chunks_from_key=None):
-        """
-        Returns a dictionary with sensible compression setting for writing
-        netCDF files.
+        """Returns a dictionary with sensible compression setting for writing netCDF files.
 
-        Returns
+        Returns:
         -------
+        dict
+            A dictionary with sensible compression setting for writing netCDF files.
 
         """
         # The following variables are stored with a sufficiently large
@@ -272,9 +281,7 @@ class DtsAccessor:
         return encoding
 
     def get_timeseries_keys(self):
-        """
-        Returns a list of the keys of the time series variables.
-        """
+        """Returns a list of the keys of the time series variables."""
         return [k for k, v in self._obj.data_vars.items() if v.dims == ("time",)]
 
     def ufunc_per_section(
@@ -290,17 +297,16 @@ class DtsAccessor:
         suppress_section_validation=False,
         **func_kwargs,
     ):
-        """
-        User function applied to parts of the cable. Super useful,
-        many options and slightly
-        complicated.
+        """Functions applied to parts of the cable.
+        
+        Super useful,many options and slightlycomplicated.
 
         The function `func` is taken over all the timesteps and calculated
-        per `calc_per`. This
-        is returned as a dictionary
+        per `calc_per`. This is returned as a dictionary
 
         Parameters
         ----------
+
         sections : Dict[str, List[slice]], optional
             If `None` is supplied, `ds.sections` is used. Define calibration
             sections. Each section requires a reference temperature time series,
@@ -330,12 +336,14 @@ class DtsAccessor:
         to a list and concatenating after.
 
 
-        Returns
+        Returns:
         -------
+        dict
+            A dictionary with the keys of the sections and the values are the
+            result of the function applied to the data in the section.
 
-        Examples
+        Examples:
         --------
-
         1. Calculate the variance of the residuals in the along ALL the\
         reference sections wrt the temperature of the water baths
 
@@ -401,7 +409,7 @@ class DtsAccessor:
         >>> ix_loc = d.ufunc_per_section(sections=sections, x_indices=True)
 
 
-        Note
+        Notes:
         ----
         If `self[label]` or `self[subtract_from_label]` is a Dask array, a Dask
         array is returned else a numpy array is returned
@@ -416,10 +424,7 @@ class DtsAccessor:
                     k in self._obj
                 ), f"{k} is not in the Dataset but is in `sections` and is required to compute temp_err"
 
-        if label is None:
-            dataarray = None
-        else:
-            dataarray = self._obj[label]
+        dataarray = None if label is None else self._obj[label]
 
         if x_indices:
             x_coords = self.x
@@ -459,10 +464,13 @@ class DtsAccessor:
         fix_dalpha=None,
         fix_alpha=None,
     ):
-        r"""
+        r"""Calibrate the measured data of a single ended setup to temperature.
+        
         Calibrate the Stokes (`ds.st`) and anti-Stokes (`ds.ast`) data to
         temperature using fiber sections with a known temperature
-        (`ds.sections`) for single-ended setups. The calibrated temperature is
+        (`ds.sections`) for single-ended setups. 
+        
+        The calibrated temperature is
         stored under `ds.tmpf` and its variance under `ds.tmpf_var`.
 
         In single-ended setups, Stokes and anti-Stokes intensity is measured
@@ -472,31 +480,31 @@ class DtsAccessor:
 
         .. math::
 
-            \int_0^x{\Delta\\alpha(x')\,\mathrm{d}x'} \\approx \Delta\\alpha x
+            \int_0^x{\Delta\alpha(x')\,\mathrm{d}x'} \approx \Delta \alpha x
 
         The temperature can now be written from Equation 10 [1]_ as:
 
         .. math::
 
-            T(x,t)  \\approx \\frac{\gamma}{I(x,t) + C(t) + \Delta\\alpha x}
+            T(x,t)  \approx \frac{\gamma}{I(x,t) + C(t) + \Delta\alpha x}
 
         where
 
         .. math::
 
-            I(x,t) = \ln{\left(\\frac{P_+(x,t)}{P_-(x,t)}\\right)}
+            I(x,t) = \ln{\left(\frac{P_+(x,t)}{P_-(x,t)}\right)}
 
 
         .. math::
 
-            C(t) = \ln{\left(\\frac{\eta_-(t)K_-/\lambda_-^4}{\eta_+(t)K_+/\lambda_+^4}\\right)}
+            C(t) = \ln{\left(\frac{\eta_-(t)K_-/\lambda_-^4}{\eta_+(t)K_+/\lambda_+^4}\right)}
 
         where :math:`C` is the lumped effect of the difference in gain at
         :math:`x=0` between Stokes and anti-Stokes intensity measurements and
         the dependence of the scattering intensity on the wavelength. The
         parameters :math:`P_+` and :math:`P_-` are the Stokes and anti-Stokes
         intensity measurements, respectively.
-        The parameters :math:`\gamma`, :math:`C(t)`, and :math:`\Delta\\alpha`
+        The parameters :math:`\gamma`, :math:`C(t)`, and :math:`\Delta\alpha`
         must be estimated from calibration to reference sections, as discussed
         in Section 5 [1]_. The parameter :math:`C` must be estimated
         for each time and is constant along the fiber. :math:`T` in the listed
@@ -504,15 +512,16 @@ class DtsAccessor:
 
         Parameters
         ----------
+
         p_val : array-like, optional
             Define `p_val`, `p_var`, `p_cov` if you used an external function
             for calibration. Has size 2 + `nt`. First value is :math:`\gamma`,
-            second is :math:`\Delta \\alpha`, others are :math:`C` for each
+            second is :math:`\Delta \alpha`, others are :math:`C` for each
             timestep.
         p_var : array-like, optional
             Define `p_val`, `p_var`, `p_cov` if you used an external function
             for calibration. Has size 2 + `nt`. First value is :math:`\gamma`,
-            second is :math:`\Delta \\alpha`, others are :math:`C` for each
+            second is :math:`\Delta \alpha`, others are :math:`C` for each
             timestep.
         p_cov : array-like, optional
             The covariances of `p_val`.
@@ -565,7 +574,7 @@ class DtsAccessor:
             for.
         fix_dalpha : Tuple[float, float], optional
             A tuple containing two floats. The first float is the value of
-            dalpha (:math:`\Delta \\alpha` in [1]_), and the second item is the
+            dalpha (:math:`\Delta \alpha` in [1]_), and the second item is the
             variance of the estimate of dalpha.
             Covariances between alpha and other parameters are not accounted
             for.
@@ -573,17 +582,22 @@ class DtsAccessor:
             A tuple containing two array-likes. The first array-like is the integrated
             differential attenuation of length x, and the second item is its variance.
 
-        Returns
+        Returns:
         -------
+        out : xarray.Dataset
+            A Dataset with the calibrated temperature under `tmpf` and its
+            variance under `tmpf_var`. The Dataset also contains the
+            calibration parameters under `gamma`, `dalpha`, and `c`. The
+            covariance matrix of the calibration parameters is stored.
 
-        References
+        References:
         ----------
         .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
             of Temperature and Associated Uncertainty from Fiber-Optic Raman-
             Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
             https://doi.org/10.3390/s20082235
 
-        Examples
+        Examples:
         --------
         - `Example notebook 7: Calibrate single ended <https://github.com/\
     dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
@@ -755,7 +769,8 @@ class DtsAccessor:
         matching_sections=None,
         verbose=False,
     ):
-        r"""
+        r"""Calibrate the measured data of a double ended setup to temperature.
+        
         See example notebook 8 for an explanation on how to use this function.
         Calibrate the Stokes (`ds.st`) and anti-Stokes (`ds.ast`) of the forward
         channel and from the backward channel (`ds.rst`, `ds.rast`) data to
@@ -790,18 +805,25 @@ class DtsAccessor:
         of the temperature variation, and when there is no systematic difference
         in temperature between the two channels. The temperature may be computed
         from the forward-channel measurements (Equation 10 [1]_) with:
+
         .. math::
-            T_\mathrm{F} (x,t)  = \\frac{\gamma}{I_\mathrm{F}(x,t) + \
-    C_\mathrm{F}(t) + \int_0^x{\Delta\\alpha(x')\,\mathrm{d}x'}}
+            T_\mathrm{F} (x,t)  = \frac{\gamma}{I_\mathrm{F}(x,t) + \
+    C_\mathrm{F}(t) + \int_0^x{\Delta\alpha(x')\,\mathrm{d}x'}}
+
         and from the backward-channel measurements with:
+
         .. math::
-            T_\mathrm{B} (x,t)  = \\frac{\gamma}{I_\mathrm{B}(x,t) + \
-    C_\mathrm{B}(t) + \int_x^L{\Delta\\alpha(x')\,\mathrm{d}x'}}
+            T_\mathrm{B} (x,t)  = \frac{\gamma}{I_\mathrm{B}(x,t) + \
+            
+        C_\mathrm{B}(t) + \int_x^L{\Delta\alpha(x')\,\mathrm{d}x'}}
         with
+
         .. math::
-            I(x,t) = \ln{\left(\\frac{P_+(x,t)}{P_-(x,t)}\\right)}
+            I(x,t) = \ln{\left(\frac{P_+(x,t)}{P_-(x,t)}\right)}
+
         .. math::
-            C(t) = \ln{\left(\\frac{\eta_-(t)K_-/\lambda_-^4}{\eta_+(t)K_+/\lambda_+^4}\\right)}
+            C(t) = \ln{\left(\frac{\eta_-(t)K_-/\lambda_-^4}{\eta_+(t)K_+/\lambda_+^4}\right)}
+
         where :math:`C` is the lumped effect of the difference in gain at
         :param mc_conf_ints:
         :math:`x=0` between Stokes and anti-Stokes intensity measurements and
@@ -814,7 +836,7 @@ class DtsAccessor:
         from :math:`C_\mathrm{F}(t)` due to differences in gain, and difference
         in the attenuation between the detectors and the point the fiber end is
         connected to the DTS system (:math:`\eta_+` and :math:`\eta_-` in
-        Equation~\\ref{eqn:c}). :math:`T` in the listed
+        Equation~\ref{eqn:c}). :math:`T` in the listed
         equations is in Kelvin, but is converted to Celsius after calibration.
         The calibration procedure presented in van de
         Giesen et al. 2012 approximates :math:`C(t)` to be
@@ -825,16 +847,24 @@ class DtsAccessor:
         differential attenuation between locations :math:`x_1` and :math:`x`
         along the fiber. Location :math:`x_1` is the first reference section
         location (the smallest x-value of all used reference sections).
+
         .. math::
-            A(x) = \int_{x_1}^x{\Delta\\alpha(x')\,\mathrm{d}x'}
+
+            A(x) = \int_{x_1}^x{\Delta\alpha(x')\,\mathrm{d}x'}
+        
         so that the expressions for temperature may be written as:
+        
         .. math::
-            T_\mathrm{F} (x,t) = \\frac{\gamma}{I_\mathrm{F}(x,t) + D_\mathrm{F}(t) + A(x)},
-            T_\mathrm{B} (x,t) = \\frac{\gamma}{I_\mathrm{B}(x,t) + D_\mathrm{B}(t) - A(x)}
+        
+            T_\mathrm{F} (x,t) = \frac{\gamma}{I_\mathrm{F}(x,t) + D_\mathrm{F}(t) + A(x)},
+            T_\mathrm{B} (x,t) = \frac{\gamma}{I_\mathrm{B}(x,t) + D_\mathrm{B}(t) - A(x)}
+        
         where
+        
         .. math::
-            D_{\mathrm{F}}(t) = C_{\mathrm{F}}(t) + \int_0^{x_1}{\Delta\\alpha(x')\,\mathrm{d}x'},
-            D_{\mathrm{B}}(t) = C_{\mathrm{B}}(t) + \int_{x_1}^L{\Delta\\alpha(x')\,\mathrm{d}x'}
+            D_{\mathrm{F}}(t) = C_{\mathrm{F}}(t) + \int_0^{x_1}{\Delta\alpha(x')\,\mathrm{d}x'},
+            D_{\mathrm{B}}(t) = C_{\mathrm{B}}(t) + \int_{x_1}^L{\Delta\alpha(x')\,\mathrm{d}x'}
+        
         Parameters :math:`D_\mathrm{F}` (`ds.df`) and :math:`D_\mathrm{B}`
         (`ds.db`) must be estimated for each time and are constant along the fiber, and parameter
         :math:`A` must be estimated for each location and is constant over time.
@@ -943,19 +973,31 @@ class DtsAccessor:
             integrated differential attenuation.
         verbose : bool
             Show additional calibration information
-        Returns
+
+        Returns:
         -------
-        References
+        out : xarray.Dataset
+            A Dataset with the calibrated temperature under `tmpf` and its
+            variance under `tmpf_var`. The calibrated temperature of the
+            backward channel is stored under `tmpb` and `tmpb_var`. The
+            inverse-variance weighted average of the forward and backward
+            channel is stored under `tmpw` and `tmpw_var`. The Dataset also
+            contains the calibration parameters under `gamma`, `df`, `db`,
+            `alpha`, and `c`. The covariance matrix of the calibration
+            parameters is stored.
+
+        References:
         ----------
         .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
             of Temperature and Associated Uncertainty from Fiber-Optic Raman-
             Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
             https://doi.org/10.3390/s20082235
-        Examples
+
+        Examples:
         --------
-        - `Example notebook 8: Calibrate double ended <https://github.com/\
-    dtscalibration/python-dts-calibration/blob/master/examples/notebooks/\
-    08Calibrate_double_wls.ipynb>`_
+        - `Example notebook 8: Calibrate double ended <https://github.com/
+        dtscalibration/python-dts-calibration/blob/master/examples/notebooks/
+        08Calibrate_double_wls.ipynb>`
         """
         # out contains the state
         out = xr.Dataset(
@@ -1247,17 +1289,14 @@ class DtsAccessor:
         reduce_memory_usage=False,
         mc_remove_set_flag=True,
     ):
-        """The result object is what comes out of the single_ended_calibration routine)
+        """The result object is what comes out of the single_ended_calibration routine).
 
         TODO: Use get_params_from_pval_single_ended() to extract parameter sets from mc
         """
         assert self.st.dims[0] == "x", "Stokes are transposed"
         assert self.ast.dims[0] == "x", "Stokes are transposed"
 
-        if da_random_state:
-            state = da_random_state
-        else:
-            state = da.random.RandomState()
+        state = da_random_state if da_random_state else da.random.RandomState()
 
         # out contains the state
         out = xr.Dataset(
@@ -1321,7 +1360,7 @@ class DtsAccessor:
             ["r_st", "r_ast"], [self.st, self.ast], [st_var, ast_var]
         ):
             # Load the mean as chunked Dask array, otherwise eats memory
-            if type(sti.data) == da.core.Array:
+            if isinstance(sti.data, da.core.Array):
                 loc = da.asarray(sti.data, chunks=memchunk[1:])
             else:
                 loc = da.from_array(sti.data, chunks=memchunk[1:])
@@ -1329,24 +1368,30 @@ class DtsAccessor:
             # Make sure variance is of size (no, nt)
             if np.size(st_vari) > 1:
                 if st_vari.shape == sti.shape:
-                    pass
+                    st_vari_broadcasted = st_vari
                 else:
-                    st_vari = np.broadcast_to(st_vari, (no, nt))
+                    st_vari_broadcasted = np.broadcast_to(st_vari, (no, nt))
             else:
-                pass
+                st_vari_broadcasted = st_vari
 
             # Load variance as chunked Dask array, otherwise eats memory
-            if type(st_vari) == da.core.Array:
-                st_vari_da = da.asarray(st_vari, chunks=memchunk[1:])
+            if isinstance(st_vari_broadcasted, da.core.Array):
+                st_vari_da = da.asarray(st_vari_broadcasted, chunks=memchunk[1:])
 
-            elif callable(st_vari) and type(sti.data) == da.core.Array:
-                st_vari_da = da.asarray(st_vari(sti).data, chunks=memchunk[1:])
+            elif callable(st_vari_broadcasted) and isinstance(sti.data, da.core.Array):
+                st_vari_da = da.asarray(
+                    st_vari_broadcasted(sti).data, chunks=memchunk[1:]
+                )
 
-            elif callable(st_vari) and type(sti.data) != da.core.Array:
-                st_vari_da = da.from_array(st_vari(sti).data, chunks=memchunk[1:])
+            elif callable(st_vari_broadcasted) and not isinstance(
+                sti.data, da.core.Array
+            ):
+                st_vari_da = da.from_array(
+                    st_vari_broadcasted(sti).data, chunks=memchunk[1:]
+                )
 
             else:
-                st_vari_da = da.from_array(st_vari, chunks=memchunk[1:])
+                st_vari_da = da.from_array(st_vari_broadcasted, chunks=memchunk[1:])
 
             params[key_mc] = (
                 ("mc", "x", "time"),
@@ -1435,9 +1480,8 @@ class DtsAccessor:
         mc_remove_set_flag=True,
         reduce_memory_usage=False,
     ):
-        r"""
-        Estimation of the confidence intervals for the temperatures measured
-        with a double-ended setup.
+        r"""Estimation of the confidence intervals for the temperatures measured with a double-ended setup.
+
         Double-ended setups require four additional steps to estimate the
         confidence intervals for the temperature. First, the variances of the
         Stokes and anti-Stokes intensity measurements of the forward and
@@ -1451,7 +1495,7 @@ class DtsAccessor:
         Normal distributions are assigned for :math:`A` (`ds.alpha`)
         for each location
         outside of the reference sections. These distributions are centered
-        around :math:`A_p` and have variance :math:`\sigma^2\left[A_p\\right]`
+        around :math:`A_p` and have variance :math:`\sigma^2\left[A_p\right]`
         given by Equations 44 and 45. Fourth, the distributions are sampled
         and :math:`T_{\mathrm{F},m,n}` and :math:`T_{\mathrm{B},m,n}` are
         computed with Equations 16 and 17, respectively. Fifth, step four is repeated to
@@ -1459,8 +1503,8 @@ class DtsAccessor:
         :math:`T_{\mathrm{B},m,n}` to approximate their probability density
         functions. Sixth, the standard uncertainties of
         :math:`T_{\mathrm{F},m,n}` and :math:`T_{\mathrm{B},m,n}`
-        (:math:`\sigma\left[T_{\mathrm{F},m,n}\\right]` and
-        :math:`\sigma\left[T_{\mathrm{B},m,n}\\right]`) are estimated with the
+        (:math:`\sigma\left[T_{\mathrm{F},m,n}\right]` and
+        :math:`\sigma\left[T_{\mathrm{B},m,n}\right]`) are estimated with the
         standard deviation of their realizations. Seventh, for each realization
         :math:`i` the temperature :math:`T_{m,n,i}` is computed as the weighted
         average of :math:`T_{\mathrm{F},m,n,i}` and
@@ -1469,18 +1513,18 @@ class DtsAccessor:
         .. math::
 
             T_{m,n,i} =\
-            \sigma^2\left[T_{m,n}\\right]\left({\\frac{T_{\mathrm{F},m,n,i}}{\
-            \sigma^2\left[T_{\mathrm{F},m,n}\\right]} +\
-            \\frac{T_{\mathrm{B},m,n,i}}{\
-            \sigma^2\left[T_{\mathrm{B},m,n}\\right]}}\\right)
+            \sigma^2\left[T_{m,n}\right]\left({\frac{T_{\mathrm{F},m,n,i}}{\
+            \sigma^2\left[T_{\mathrm{F},m,n}\right]} +\
+            \frac{T_{\mathrm{B},m,n,i}}{\
+            \sigma^2\left[T_{\mathrm{B},m,n}\right]}}\right)
 
         where
 
         .. math::
 
-            \sigma^2\left[T_{m,n}\\right] = \\frac{1}{1 /\
-            \sigma^2\left[T_{\mathrm{F},m,n}\\right] + 1 /\
-            \sigma^2\left[T_{\mathrm{B},m,n}\\right]}
+            \sigma^2\left[T_{m,n}\right] = \frac{1}{1 /\
+            \sigma^2\left[T_{\mathrm{F},m,n}\right] + 1 /\
+            \sigma^2\left[T_{\mathrm{B},m,n}\right]}
 
         The best estimate of the temperature :math:`T_{m,n}` is computed
         directly from the best estimates of :math:`T_{\mathrm{F},m,n}` and
@@ -1488,9 +1532,9 @@ class DtsAccessor:
 
         .. math::
             T_{m,n} =\
-            \sigma^2\left[T_{m,n}\\right]\left({\\frac{T_{\mathrm{F},m,n}}{\
-            \sigma^2\left[T_{\mathrm{F},m,n}\\right]} + \\frac{T_{\mathrm{B},m,n}}{\
-            \sigma^2\left[T_{\mathrm{B},m,n}\\right]}}\\right)
+            \sigma^2\left[T_{m,n}\right]\left({\frac{T_{\mathrm{F},m,n}}{\
+            \sigma^2\left[T_{\mathrm{F},m,n}\right]} + \frac{T_{\mathrm{B},m,n}}{\
+            \sigma^2\left[T_{\mathrm{B},m,n}\right]}}\right)
 
         Alternatively, the best estimate of :math:`T_{m,n}` can be approximated
         with the mean of the :math:`T_{m,n,i}` values. Finally, the 95\%
@@ -1545,10 +1589,11 @@ class DtsAccessor:
         reduce_memory_usage : bool
             Use less memory but at the expense of longer computation time
 
-        Returns
+        Returns:
         -------
+        dict
 
-        References
+        References:
         ----------
         .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
             of Temperature and Associated Uncertainty from Fiber-Optic Raman-
@@ -1559,8 +1604,7 @@ class DtsAccessor:
         """
 
         def create_da_ta2(no, i_splice, direction="fw", chunks=None):
-            """create mask array mc, o, nt"""
-
+            """Create mask array mc, o, nt."""
             if direction == "fw":
                 arr = da.concatenate(
                     (
@@ -1749,7 +1793,7 @@ class DtsAccessor:
             [st_var, ast_var, rst_var, rast_var],
         ):
             # Load the mean as chunked Dask array, otherwise eats memory
-            if type(sti.data) == da.core.Array:
+            if isinstance(sti.data, da.core.Array):
                 loc = da.asarray(sti.data, chunks=memchunk[1:])
             else:
                 loc = da.from_array(sti.data, chunks=memchunk[1:])
@@ -1757,24 +1801,30 @@ class DtsAccessor:
             # Make sure variance is of size (no, nt)
             if np.size(st_vari) > 1:
                 if st_vari.shape == sti.shape:
-                    pass
+                    st_vari_broadcasted = st_vari
                 else:
-                    st_vari = np.broadcast_to(st_vari, (no, nt))
+                    st_vari_broadcasted = np.broadcast_to(st_vari, (no, nt))
             else:
-                pass
+                st_vari_broadcasted = st_vari
 
             # Load variance as chunked Dask array, otherwise eats memory
-            if type(st_vari) == da.core.Array:
-                st_vari_da = da.asarray(st_vari, chunks=memchunk[1:])
+            if isinstance(st_vari_broadcasted, da.core.Array):
+                st_vari_da = da.asarray(st_vari_broadcasted, chunks=memchunk[1:])
 
-            elif callable(st_vari) and type(sti.data) == da.core.Array:
-                st_vari_da = da.asarray(st_vari(sti).data, chunks=memchunk[1:])
+            elif callable(st_vari_broadcasted) and isinstance(sti.data, da.core.Array):
+                st_vari_da = da.asarray(
+                    st_vari_broadcasted(sti).data, chunks=memchunk[1:]
+                )
 
-            elif callable(st_vari) and type(sti.data) != da.core.Array:
-                st_vari_da = da.from_array(st_vari(sti).data, chunks=memchunk[1:])
+            elif callable(st_vari_broadcasted) and not isinstance(
+                sti.data, da.core.Array
+            ):
+                st_vari_da = da.from_array(
+                    st_vari_broadcasted(sti).data, chunks=memchunk[1:]
+                )
 
             else:
-                st_vari_da = da.from_array(st_vari, chunks=memchunk[1:])
+                st_vari_da = da.from_array(st_vari_broadcasted, chunks=memchunk[1:])
 
             params[k] = (
                 ("mc", "x", "time"),
@@ -1837,8 +1887,8 @@ class DtsAccessor:
                 xi = self.ufunc_per_section(
                     sections=sections, x_indices=True, calc_per="all"
                 )
-                x_mask_ = [True if ix in xi else False for ix in range(params.x.size)]
-                x_mask = np.reshape(x_mask_, (1, -1, 1))
+                x_mask = [ix in xi for ix in range(params.x.size)]
+                x_mask = np.reshape(x_mask, (1, -1, 1))
                 params[label + "_mc_set"] = params[label + "_mc_set"].where(x_mask)
 
             # subtract the mean temperature
@@ -1937,8 +1987,7 @@ class DtsAccessor:
         mc_remove_set_flag=True,
         reduce_memory_usage=False,
     ):
-        """
-        Average temperatures from single-ended setups.
+        """Average temperatures from single-ended setups.
 
         Four types of averaging are implemented. Please see Example Notebook 16.
 
@@ -2041,8 +2090,9 @@ class DtsAccessor:
         reduce_memory_usage : bool
             Use less memory but at the expense of longer computation time
 
-        Returns
+        Returns:
         -------
+        dict
 
         """
         # out contains the state
@@ -2280,8 +2330,7 @@ class DtsAccessor:
         reduce_memory_usage=False,
         **kwargs,
     ):
-        """
-        Average temperatures from double-ended setups.
+        """Average temperatures from double-ended setups.
 
         Four types of averaging are implemented. Please see Example Notebook 16.
 
@@ -2383,40 +2432,11 @@ class DtsAccessor:
         reduce_memory_usage : bool
             Use less memory but at the expense of longer computation time
 
-        Returns
+        Returns:
         -------
+        dict
 
         """
-
-        # def create_da_ta2(no, i_splice, direction="fw", chunks=None):
-        #     """create mask array mc, o, nt"""
-
-        #     if direction == "fw":
-        #         arr = da.concatenate(
-        #             (
-        #                 da.zeros((1, i_splice, 1), chunks=(1, i_splice, 1), dtype=bool),
-        #                 da.ones(
-        #                     (1, no - i_splice, 1),
-        #                     chunks=(1, no - i_splice, 1),
-        #                     dtype=bool,
-        #                 ),
-        #             ),
-        #             axis=1,
-        #         ).rechunk((1, chunks[1], 1))
-        #     else:
-        #         arr = da.concatenate(
-        #             (
-        #                 da.ones((1, i_splice, 1), chunks=(1, i_splice, 1), dtype=bool),
-        #                 da.zeros(
-        #                     (1, no - i_splice, 1),
-        #                     chunks=(1, no - i_splice, 1),
-        #                     dtype=bool,
-        #                 ),
-        #             ),
-        #             axis=1,
-        #         ).rechunk((1, chunks[1], 1))
-        #     return arr
-
         out = xr.Dataset(
             coords={"x": self.x, "time": self.time, "trans_att": result["trans_att"]}
         ).copy()

@@ -48,12 +48,11 @@ def read_silixa_files(
     kwargs : dict-like, optional
         keyword-arguments are passed to DataStore initialization
 
-    Returns
+    Returns:
     -------
     datastore : DataStore
         The newly created datastore.
     """
-
     assert "timezone_input_files" not in kwargs, (
         "The silixa files are " "already timezone aware"
     )
@@ -109,11 +108,10 @@ def silixa_xml_version_check(filepathlist):
     ----------
     filepathlist
 
-    Returns
+    Returns:
     -------
 
     """
-
     sep = ":"
     attrs = read_silixa_attrs_singlefile(filepathlist[0], sep)
 
@@ -126,22 +124,19 @@ def silixa_xml_version_check(filepathlist):
 
 
 def read_silixa_attrs_singlefile(filename, sep):
-    """
-
-    Parameters
+    """Parameters
     ----------
     filename
     sep
 
-    Returns
+    Returns:
     -------
 
     """
     import xmltodict
 
     def metakey(meta, dict_to_parse, prefix):
-        """
-        Fills the metadata dictionairy with data from dict_to_parse.
+        """Fills the metadata dictionairy with data from dict_to_parse.
         The dict_to_parse is the raw data from a silixa xml-file.
         dict_to_parse is a nested dictionary to represent the
         different levels of hierarchy. For example,
@@ -156,11 +151,10 @@ def read_silixa_attrs_singlefile(filename, sep):
         dict_to_parse : dict
         prefix
 
-        Returns
+        Returns:
         -------
 
         """
-
         for key in dict_to_parse:
             if prefix == "":
                 prefix_parse = key.replace("@", "")
@@ -188,10 +182,7 @@ def read_silixa_attrs_singlefile(filename, sep):
     with open_file(filename) as fh:
         doc_ = xmltodict.parse(fh.read())
 
-    if "wellLogs" in doc_.keys():
-        doc = doc_["wellLogs"]["wellLog"]
-    else:
-        doc = doc_["logs"]["log"]
+    doc = doc_["wellLogs"]["wellLog"] if "wellLogs" in doc_ else doc_["logs"]["log"]
 
     return metakey({}, doc, "")
 
@@ -203,8 +194,7 @@ def read_silixa_files_routine_v6(  # noqa: MC0001
     silent=False,
     load_in_memory="auto",
 ):
-    """
-    Internal routine that reads Silixa files.
+    """Internal routine that reads Silixa files.
     Use dtscalibration.read_silixa_files function instead.
 
     The silixa files are already timezone aware
@@ -216,11 +206,10 @@ def read_silixa_files_routine_v6(  # noqa: MC0001
     timezone_netcdf
     silent
 
-    Returns
+    Returns:
     -------
 
     """
-
     # translate names
     tld = {"ST": "st", "AST": "ast", "REV-ST": "rst", "REV-AST": "rast", "TMP": "tmp"}
 
@@ -266,11 +255,9 @@ def read_silixa_files_routine_v6(  # noqa: MC0001
 
     double_ended_flag = bool(int(attrs["isDoubleEnded"]))
     chFW = int(attrs["forwardMeasurementChannel"]) - 1  # zero-based
-    if double_ended_flag:
-        chBW = int(attrs["backwardMeasurementChannel"]) - 1  # zero-based
-    else:
-        # no backward channel is negative value. writes better to netcdf
-        chBW = -1
+    chBW = (
+        int(attrs["backwardMeasurementChannel"]) - 1 if double_ended_flag else -1
+    )  # zero-based or -1 if single ended
 
     # print summary
     if not silent:
@@ -323,23 +310,18 @@ def read_silixa_files_routine_v6(  # noqa: MC0001
 
     # add units to timeseries (unit of measurement)
     for key, item in timeseries.items():
-        if f"customData:{key}:uom" in attrs:
-            item["uom"] = attrs[f"customData:{key}:uom"]
-        else:
-            item["uom"] = ""
+        item["uom"] = attrs.get(f"customData:{key}:uom", "")
 
     # Gather data
     arr_path = "s:" + "/s:".join(["log", "logData", "data"])
 
     @dask.delayed
     def grab_data_per_file(file_handle):
-        """
-
-        Parameters
+        """Parameters
         ----------
         file_handle
 
-        Returns
+        Returns:
         -------
 
         """
@@ -368,11 +350,7 @@ def read_silixa_files_routine_v6(  # noqa: MC0001
 
     # Check whether to compute data_arr (if possible 25% faster)
     data_arr_cnk = data_arr.rechunk({0: -1, 1: -1, 2: "auto"})
-    if load_in_memory == "auto" and data_arr_cnk.npartitions <= 5:
-        if not silent:
-            print("Reading the data from disk")
-        data_arr = data_arr_cnk.compute()
-    elif load_in_memory:
+    if load_in_memory == "auto" and data_arr_cnk.npartitions <= 5 or load_in_memory:
         if not silent:
             print("Reading the data from disk")
         data_arr = data_arr_cnk.compute()
@@ -401,13 +379,11 @@ def read_silixa_files_routine_v6(  # noqa: MC0001
 
     @dask.delayed
     def grab_timeseries_per_file(file_handle, xml_version):
-        """
-
-        Parameters
+        """Parameters
         ----------
         file_handle
 
-        Returns
+        Returns:
         -------
 
         """
@@ -514,8 +490,7 @@ def read_silixa_files_routine_v6(  # noqa: MC0001
 def read_silixa_files_routine_v4(  # noqa: MC0001
     filepathlist, timezone_netcdf="UTC", silent=False, load_in_memory="auto"
 ):
-    """
-    Internal routine that reads Silixa files.
+    """Internal routine that reads Silixa files.
     Use dtscalibration.read_silixa_files function instead.
 
     The silixa files are already timezone aware
@@ -527,7 +502,7 @@ def read_silixa_files_routine_v4(  # noqa: MC0001
     timezone_netcdf
     silent
 
-    Returns
+    Returns:
     -------
 
     """
@@ -563,11 +538,9 @@ def read_silixa_files_routine_v4(  # noqa: MC0001
         attrs["backwardMeasurementChannel"] = "N/A"
 
     chFW = int(attrs["forwardMeasurementChannel"]) - 1  # zero-based
-    if double_ended_flag:
-        chBW = int(attrs["backwardMeasurementChannel"]) - 1  # zero-based
-    else:
-        # no backward channel is negative value. writes better to netcdf
-        chBW = -1
+    chBW = (
+        int(attrs["backwardMeasurementChannel"]) - 1 if double_ended_flag else -1
+    )  # zero-based or -1 if single ended
 
     # obtain basic data info
     if double_ended_flag:
@@ -630,23 +603,18 @@ def read_silixa_files_routine_v4(  # noqa: MC0001
 
     # add units to timeseries (unit of measurement)
     for key, item in timeseries.items():
-        if f"customData:{key}:uom" in attrs:
-            item["uom"] = attrs[f"customData:{key}:uom"]
-        else:
-            item["uom"] = ""
+        item["uom"] = attrs.get(f"customData:{key}:uom", "")
 
     # Gather data
     arr_path = "s:" + "/s:".join(["wellLog", "logData", "data"])
 
     @dask.delayed
     def grab_data_per_file(file_handle):
-        """
-
-        Parameters
+        """Parameters
         ----------
         file_handle
 
-        Returns
+        Returns:
         -------
 
         """
@@ -674,11 +642,7 @@ def read_silixa_files_routine_v4(  # noqa: MC0001
 
     # Check whether to compute data_arr (if possible 25% faster)
     data_arr_cnk = data_arr.rechunk({0: -1, 1: -1, 2: "auto"})
-    if load_in_memory == "auto" and data_arr_cnk.npartitions <= 5:
-        if not silent:
-            print("Reading the data from disk")
-        data_arr = data_arr_cnk.compute()
-    elif load_in_memory:
+    if load_in_memory == "auto" and data_arr_cnk.npartitions <= 5 or load_in_memory:
         if not silent:
             print("Reading the data from disk")
         data_arr = data_arr_cnk.compute()
@@ -709,13 +673,11 @@ def read_silixa_files_routine_v4(  # noqa: MC0001
 
     @dask.delayed
     def grab_timeseries_per_file(file_handle):
-        """
-
-        Parameters
+        """Parameters
         ----------
         file_handle
 
-        Returns
+        Returns:
         -------
 
         """

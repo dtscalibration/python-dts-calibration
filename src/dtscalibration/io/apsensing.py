@@ -56,11 +56,11 @@ def read_apsensing_files(
     kwargs : dict-like, optional
         keyword-arguments are passed to DataStore initialization
 
-    Notes
+    Notes:
     -----
     Only XML files are supported for now
 
-    Returns
+    Returns:
     -------
     datastore : DataStore
         The newly created datastore.
@@ -114,11 +114,10 @@ def apsensing_xml_version_check(filepathlist):
     ----------
     filepathlist
 
-    Returns
+    Returns:
     -------
 
     """
-
     sep = ":"
     attrs, _ = read_apsensing_attrs_singlefile(filepathlist[0], sep)
 
@@ -132,8 +131,7 @@ def read_apsensing_files_routine(
     silent=False,
     load_in_memory="auto",
 ):
-    """
-    Internal routine that reads AP Sensing files.
+    """Internal routine that reads AP Sensing files.
     Use dtscalibration.read_apsensing_files function instead.
 
     The AP sensing files are not timezone aware
@@ -146,7 +144,7 @@ def read_apsensing_files_routine(
     silent
     load_in_memory
 
-    Returns
+    Returns:
     -------
 
     """
@@ -224,17 +222,14 @@ def read_apsensing_files_routine(
 
     @dask.delayed
     def grab_data_per_file(file_handle):
-        """
-
-        Parameters
+        """Parameters
         ----------
         file_handle
 
-        Returns
+        Returns:
         -------
 
         """
-
         with open_file(file_handle, mode="r") as f_h:
             if skip_chars:
                 f_h.read(3)
@@ -262,11 +257,7 @@ def read_apsensing_files_routine(
 
     # Check whether to compute data_arr (if possible 25% faster)
     data_arr_cnk = data_arr.rechunk({0: -1, 1: -1, 2: "auto"})
-    if load_in_memory == "auto" and data_arr_cnk.npartitions <= 5:
-        if not silent:
-            print("Reading the data from disk")
-        data_arr = data_arr_cnk.compute()
-    elif load_in_memory:
+    if load_in_memory == "auto" and data_arr_cnk.npartitions <= 5 or load_in_memory:
         if not silent:
             print("Reading the data from disk")
         data_arr = data_arr_cnk.compute()
@@ -296,13 +287,11 @@ def read_apsensing_files_routine(
 
     @dask.delayed
     def grab_timeseries_per_file(file_handle):
-        """
-
-        Parameters
+        """Parameters
         ----------
         file_handle
 
-        Returns
+        Returns:
         -------
 
         """
@@ -352,14 +341,12 @@ def read_apsensing_files_routine(
 
 
 def read_apsensing_attrs_singlefile(filename, sep):
-    """
-
-    Parameters
+    """Parameters
     ----------
     filename
     sep
 
-    Returns
+    Returns:
     -------
 
     """
@@ -368,8 +355,7 @@ def read_apsensing_attrs_singlefile(filename, sep):
     import xmltodict
 
     def metakey(meta, dict_to_parse, prefix):
-        """
-        Fills the metadata dictionairy with data from dict_to_parse.
+        """Fills the metadata dictionairy with data from dict_to_parse.
         The dict_to_parse is the raw data from a silixa xml-file.
         dict_to_parse is a nested dictionary to represent the
         different levels of hierarchy. For example,
@@ -384,11 +370,10 @@ def read_apsensing_attrs_singlefile(filename, sep):
         dict_to_parse : dict
         prefix
 
-        Returns
+        Returns:
         -------
 
         """
-
         for key in dict_to_parse:
             if prefix == "":
                 prefix_parse = key.replace("@", "")

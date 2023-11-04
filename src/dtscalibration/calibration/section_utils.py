@@ -2,8 +2,6 @@ import numpy as np
 import xarray as xr
 import yaml
 
-from dtscalibration.datastore_utils import ufunc_per_section_helper
-
 
 def set_sections(ds: xr.Dataset, sections: dict[str, list[slice]]):
     ds.attrs["_sections"] = yaml.dump(sections)
@@ -14,8 +12,7 @@ def set_matching_sections(ds: xr.Dataset, matching_sections: dict[str, list[slic
 
 
 def validate_no_overlapping_sections(sections: dict[str, list[slice]]):
-    """
-    Check if the sections do not overlap.
+    """Check if the sections do not overlap.
 
     Parameters
     ----------
@@ -23,11 +20,11 @@ def validate_no_overlapping_sections(sections: dict[str, list[slice]]):
         The keys of the dictionary are the names of the sections.
         The values are lists of slice objects.
 
-    Returns
+    Returns:
     -------
     None
 
-    Raises
+    Raises:
     ------
     AssertionError
         If the sections overlap.
@@ -50,11 +47,10 @@ def validate_no_overlapping_sections(sections: dict[str, list[slice]]):
 
 
 def validate_sections_definition(sections: dict[str, list[slice]]):
-    """
-    Check if the sections are defined correctly. The sections are defined
+    """Check if the sections are defined correctly. The sections are defined
     correctly if:
         - The keys of the sections-dictionary are strings (assertion)
-        - The values of the sections-dictionary are lists (assertion)
+        - The values of the sections-dictionary are lists (assertion).
 
     Parameters
     ----------
@@ -62,11 +58,11 @@ def validate_sections_definition(sections: dict[str, list[slice]]):
         The keys of the dictionary are the names of the sections.
         The values are lists of slice objects.
 
-    Returns
+    Returns:
     -------
     None
 
-    Raises
+    Raises:
     ------
     AssertionError
         If the sections are not defined correctly.
@@ -84,14 +80,13 @@ def validate_sections_definition(sections: dict[str, list[slice]]):
 
 
 def validate_sections(ds: xr.Dataset, sections: dict[str, list[slice]]):
-    """
-    Check if the sections are valid. The sections are valid if:
+    """Check if the sections are valid. The sections are valid if:
         - The keys of the sections-dictionary refer to a valid timeserie
             already stored in ds.data_vars (assertion)
         - The values of the sections-dictionary are lists of slice objects.
             (assertion)
         - The slices are within the x-dimension (assertion)
-        - The slices do not overlap (assertion)
+        - The slices do not overlap (assertion).
 
     Parameters
     ----------
@@ -102,11 +97,11 @@ def validate_sections(ds: xr.Dataset, sections: dict[str, list[slice]]):
         The keys of the dictionary are the names of the sections.
         The values are lists of slice objects.
 
-    Returns
+    Returns:
     -------
     None
 
-    Raises
+    Raises:
     ------
     AssertionError
         If the sections are not valid.
@@ -143,8 +138,7 @@ def ufunc_per_section(
     calc_per="stretch",
     **func_kwargs,
 ):
-    """
-    User function applied to parts of the cable. Super useful,
+    """User function applied to parts of the cable. Super useful,
     many options and slightly
     complicated.
 
@@ -183,12 +177,11 @@ def ufunc_per_section(
     to a list and concatenating after.
 
 
-    Returns
+    Returns:
     -------
 
-    Examples
+    Examples:
     --------
-
     1. Calculate the variance of the residuals in the along ALL the\
     reference sections wrt the temperature of the water baths
 
@@ -249,15 +242,14 @@ def ufunc_per_section(
     >>> ix_loc = d.ufunc_per_section(sections, x_indices=True)
 
 
-    Note
+    Note:
     ----
     If `self[label]` or `self[subtract_from_label]` is a Dask array, a Dask
     array is returned else a numpy array is returned
     """
-    if label is None:
-        dataarray = None
-    else:
-        dataarray = ds[label]
+    from dtscalibration.datastore_utils import ufunc_per_section_helper
+
+    dataarray = None if label is None else ds[label]
 
     if x_indices:
         x_coords = ds.x

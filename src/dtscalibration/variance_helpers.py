@@ -170,8 +170,7 @@ def variance_stokes_linear_helper(st_sec, resid_sec, nbin, through_zero):
 
 
 def check_allclose_acquisitiontime(acquisitiontime, eps: float = 0.05) -> None:
-    """
-    Check if all acquisition times are of equal duration. For now it is not possible to calibrate
+    """Check if all acquisition times are of equal duration. For now it is not possible to calibrate
     over timesteps if the acquisition time of timesteps varies, as the Stokes variance
     would change over time.
 
@@ -184,7 +183,7 @@ def check_allclose_acquisitiontime(acquisitiontime, eps: float = 0.05) -> None:
     eps : float
         Default accepts 1% of relative variation between min and max acquisition time.
 
-    Returns
+    Returns:
     -------
     """
     dtmin = acquisitiontime.min()

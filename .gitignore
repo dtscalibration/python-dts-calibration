@@ -57,7 +57,7 @@ output/*/index.html
 
 # Sphinx
 docs/_build
-**/generated/**/*
+**/generated
 
 .DS_Store
 *~
@@ -74,3 +74,4 @@ docs/_build
 *.bak
 .vscode/settings.json
 *.code-workspace
+xunit-result.xml

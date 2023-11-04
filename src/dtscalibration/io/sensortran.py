@@ -38,12 +38,11 @@ def read_sensortran_files(
     kwargs : dict-like, optional
         keyword-arguments are passed to DataStore initialization
 
-    Returns
+    Returns:
     -------
     DataStore
         The newly created datastore.
     """
-
     filepathlist_dts = sorted(Path(directory).glob("*BinaryRawDTS.dat"))
 
     # Make sure that the list of files contains any files
@@ -88,7 +87,7 @@ def sensortran_binary_version_check(filepathlist: list[Path]):
     ----------
     filepathlist
 
-    Returns
+    Returns:
     -------
 
     """
@@ -108,8 +107,7 @@ def read_sensortran_files_routine(
     timezone_netcdf: str = "UTC",
     silent: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any], dict]:
-    """
-    Internal routine that reads sensortran files.
+    """Internal routine that reads sensortran files.
     Use dtscalibration.read_sensortran_files function instead.
 
     The sensortran files are in UTC time
@@ -121,7 +119,7 @@ def read_sensortran_files_routine(
     timezone_netcdf
     silent
 
-    Returns
+    Returns:
     -------
 
     """
@@ -261,15 +259,14 @@ def read_sensortran_files_routine(
 
 
 def read_sensortran_single(file: Path) -> tuple[dict, dict]:
-    """
-    Internal routine that reads a single sensortran file.
+    """Internal routine that reads a single sensortran file.
     Use dtscalibration.read_sensortran_files function instead.
 
     Parameters
     ----------
     file
 
-    Returns
+    Returns:
     -------
     data, metadata
     """

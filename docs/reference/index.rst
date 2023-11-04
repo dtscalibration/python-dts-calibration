@@ -4,48 +4,70 @@ Reference
 Load the data
 -------------
 
-See example notebooks 01, A2, A3, and A4.
+See example notebooks 01, A2, A3, and A4. Import directly from `dtscalibration`.
 
-.. automodule:: dtscalibration.io
-   :members: dtscalibration.read_apsensing_files
-   :nosignatures:
+.. currentmodule:: dtscalibration
+.. autosummary::
+    :toctree: ./generated
+    :nosignatures:
+
+    read_apsensing_files
+    read_sensornet_files
+    read_sensortran_files
+    read_silixa_files
 
 Compute the variance in the Stokes measurements
 -----------------------------------------------
 
-See example notebooks 04 and have a look at the docstring of the dtscalibration.variance_stokes funcitons.
+See example notebooks 04. Import from `dtscalibration.variance_stokes`.
 
-.. automodule:: dtscalibration.variance_stokes
-   :members:
-   :nosignatures:
+.. currentmodule:: dtscalibration.variance_stokes
+.. autosummary::
+    :toctree: ./generated
+    :nosignatures:
+
+    variance_stokes_constant
+    variance_stokes_linear
+    variance_stokes_exponential
 
 
 The DTS Accessor
 ----------------
 
-See example natebooks 07, 08, and 17.
+These methods are available as an `xarray.Dataset` accessor. Add 
+`from dtscalibration.dts_accessor import DtsAccessor` to your import 
+statements. See example natebooks 07, 08, and 17.
 
-.. currentmodule:: xarray
+.. currentmodule:: xarray.Dataset
 .. autosummary::
     :toctree: generated/
     :template: autosummary/accessor_method.rst
     :nosignatures:
 
-    Dataset.dts.sections
-    Dataset.dts.calibrate_single_ended
-    Dataset.dts.calibrate_double_ended
-    Dataset.dts.monte_carlo_single_ended
-    Dataset.dts.monte_carlo_double_ended
-    Dataset.dts.average_monte_carlo_single_ended
-    Dataset.dts.average_monte_carlo_double_ended
-    Dataset.dts.get_default_encoding
-    Dataset.dts.get_timeseries_keys
-    Dataset.dts.matching_sections
-    Dataset.dts.ufunc_per_section
+    dts.sections
+    dts.calibrate_single_ended
+    dts.calibrate_double_ended
+    dts.monte_carlo_single_ended
+    dts.monte_carlo_double_ended
+    dts.average_monte_carlo_single_ended
+    dts.average_monte_carlo_double_ended
+    dts.get_default_encoding
+    dts.get_timeseries_keys
+    dts.matching_sections
+    dts.ufunc_per_section
 
 Plot the results
 ----------------
 
-.. automodule:: dtscalibration.plot
-   :members:
-   :nosignatures:
+Import from `dtscalibration.plot`.
+
+.. currentmodule:: dtscalibration.plot
+.. autosummary::
+    :toctree: ./generated
+    :nosignatures:
+
+    plot_residuals_reference_sections
+    plot_residuals_reference_sections_single
+    plot_accuracy
+    sigma_report
+    plot_location_residuals_double_ended
