@@ -3,6 +3,7 @@ from dtscalibration.datastore_utils import get_netcdf_encoding
 from dtscalibration.datastore_utils import merge_double_ended
 from dtscalibration.datastore_utils import shift_double_ended
 from dtscalibration.datastore_utils import suggest_cable_shift_double_ended
+from dtscalibration.dts_accessor import DtsAccessor  # noqa: F401
 from dtscalibration.io.apsensing import read_apsensing_files
 from dtscalibration.io.sensornet import read_sensornet_files
 from dtscalibration.io.sensortran import read_sensortran_files
@@ -15,6 +16,7 @@ from dtscalibration.plot import plot_sigma_report
 
 __version__ = "2.0.0"
 __all__ = [
+    "DtsAccessor",
     "read_apsensing_files",
     "read_sensornet_files",
     "read_sensortran_files",
