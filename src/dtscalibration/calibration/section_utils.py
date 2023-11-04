@@ -2,8 +2,6 @@ import numpy as np
 import xarray as xr
 import yaml
 
-from dtscalibration.datastore_utils import ufunc_per_section_helper
-
 
 def set_sections(ds: xr.Dataset, sections: dict[str, list[slice]]):
     ds.attrs["_sections"] = yaml.dump(sections)
@@ -249,10 +247,9 @@ def ufunc_per_section(
     If `self[label]` or `self[subtract_from_label]` is a Dask array, a Dask
     array is returned else a numpy array is returned
     """
-    if label is None:
-        dataarray = None
-    else:
-        dataarray = ds[label]
+    from dtscalibration.datastore_utils import ufunc_per_section_helper
+
+    dataarray = None if label is None else ds[label]
 
     if x_indices:
         x_coords = ds.x

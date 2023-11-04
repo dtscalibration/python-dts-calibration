@@ -1,3 +1,5 @@
+"""This module provides an xarray accessor for DTS calibration."""
+
 import dask.array as da
 import numpy as np
 import scipy.stats as sst
@@ -22,7 +24,16 @@ from dtscalibration.io.utils import dim_attrs
 
 @xr.register_dataset_accessor("dts")
 class DtsAccessor:
+    """An xarray accessor for DTS calibration."""
+
     def __init__(self, xarray_obj):
+        """Initialize the DtsAccessor with an xarray object.
+
+        Parameters
+        ----------
+        xarray_obj : xarray.Dataset
+            The xarray object to be used for DTS calibration.
+        """
         # cache xarray_obj
         self._obj = xarray_obj
         self.attrs = xarray_obj.attrs
@@ -43,6 +54,7 @@ class DtsAccessor:
         self.acquisitiontime_bw = xarray_obj.get("userAcquisitionTimeBW")
 
     def __repr__(self):
+        """Return a string representation of the DtsAccessor object."""
         # __repr__ from xarray is used and edited.
         #   'xarray' is prepended. so we remove it and add 'dtscalibration'
         s = xr.core.formatting.dataset_repr(self._obj)
@@ -93,26 +105,24 @@ class DtsAccessor:
     # noinspection PyIncorrectDocstring
     @property
     def sections(self):
-        """Define calibration sections. Each section requires a reference
-        temperature time series, such as the temperature measured by an
-        external temperature sensor. They should already be part of the
-        DataStore object.
+        """Define calibration sections.
 
-        Please look at the example notebook on `sections` if you encounter
-        difficulties.
+        Each section requires a reference temperature time series, such as the temperature measured by an
+        external temperature sensor. They should already be part of the DataStore object.
+
+        Please look at the example notebook on `sections` if you encounter difficulties.
 
         Parameters
         ----------
         sections : Dict[str, List[slice]]
-            Sections are defined in a dictionary with its keywords of the
-            names of the reference
-            temperature time series. Its values are lists of slice objects,
-            where each slice object
+            Sections are defined in a dictionary with its keywords of the names of the reference
+            temperature time series. Its values are lists of slice objects, where each slice object
             is a stretch.
 
         Returns:
         -------
-
+        dict
+            A dictionary with the names of the reference temperature time series as keys and lists of slice objects as values.
         """
         if "_sections" not in self._obj.attrs:
             self._obj.attrs["_sections"] = yaml.dump(None)
@@ -134,25 +144,24 @@ class DtsAccessor:
     # noinspection PyIncorrectDocstring
     @property
     def matching_sections(self):
-        """Define calibration sections. Each matching_section requires a reference
-        temperature time series, such as the temperature measured by an
-        external temperature sensor. They should already be part of the
-        DataStore object.
+        """Define calibration sections.
 
-        Please look at the example notebook on `matching_sections` if you encounter
-        difficulties.
+        Each matching_section requires a reference temperature time series, such as the temperature measured by an
+        external temperature sensor. They should already be part of the DataStore object.
+
+        Please look at the example notebook on `matching_sections` if you encounter difficulties.
 
         Parameters
         ----------
         matching_sections : List[Tuple[slice, slice, bool]], optional
-            Provide a list of tuples. A tuple per matching section. Each tuple
-            has three items. The first two items are the slices of the sections
-            that are matched. The third item is a boolean and is True if the two
-            sections have a reverse direction ("J-configuration").
+            Provide a list of tuples. A tuple per matching section. Each tuple has three items. The first two items are
+            the slices of the sections that are matched. The third item is a boolean and is True if the two sections have
+            a reverse direction ("J-configuration").
 
         Returns:
         -------
-
+        dict
+            A dictionary with the names of the reference temperature time series as keys and lists of slice objects as values.
         """
         if "_matching_sections" not in self._obj.attrs:
             self._obj.attrs["_matching_sections"] = yaml.dump(None)
@@ -174,11 +183,12 @@ class DtsAccessor:
         raise NotImplementedError(msg)
 
     def get_default_encoding(self, time_chunks_from_key=None):
-        """Returns a dictionary with sensible compression setting for writing
-        netCDF files.
+        """Returns a dictionary with sensible compression setting for writing netCDF files.
 
         Returns:
         -------
+        dict
+            A dictionary with sensible compression setting for writing netCDF files.
 
         """
         # The following variables are stored with a sufficiently large
@@ -287,13 +297,12 @@ class DtsAccessor:
         suppress_section_validation=False,
         **func_kwargs,
     ):
-        """User function applied to parts of the cable. Super useful,
-        many options and slightly
-        complicated.
+        """Functions applied to parts of the cable.
+        
+        Super useful,many options and slightlycomplicated.
 
         The function `func` is taken over all the timesteps and calculated
-        per `calc_per`. This
-        is returned as a dictionary
+        per `calc_per`. This is returned as a dictionary
 
         Parameters
         ----------
@@ -329,6 +338,9 @@ class DtsAccessor:
 
         Returns:
         -------
+        dict
+            A dictionary with the keys of the sections and the values are the
+            result of the function applied to the data in the section.
 
         Examples:
         --------
@@ -397,7 +409,7 @@ class DtsAccessor:
         >>> ix_loc = d.ufunc_per_section(sections=sections, x_indices=True)
 
 
-        Note:
+        Notes:
         ----
         If `self[label]` or `self[subtract_from_label]` is a Dask array, a Dask
         array is returned else a numpy array is returned
@@ -412,10 +424,7 @@ class DtsAccessor:
                     k in self._obj
                 ), f"{k} is not in the Dataset but is in `sections` and is required to compute temp_err"
 
-        if label is None:
-            dataarray = None
-        else:
-            dataarray = self._obj[label]
+        dataarray = None if label is None else self._obj[label]
 
         if x_indices:
             x_coords = self.x
@@ -455,9 +464,13 @@ class DtsAccessor:
         fix_dalpha=None,
         fix_alpha=None,
     ):
-        r"""Calibrate the Stokes (`ds.st`) and anti-Stokes (`ds.ast`) data to
+        r"""Calibrate the measured data of a single ended setup to temperature.
+        
+        Calibrate the Stokes (`ds.st`) and anti-Stokes (`ds.ast`) data to
         temperature using fiber sections with a known temperature
-        (`ds.sections`) for single-ended setups. The calibrated temperature is
+        (`ds.sections`) for single-ended setups. 
+        
+        The calibrated temperature is
         stored under `ds.tmpf` and its variance under `ds.tmpf_var`.
 
         In single-ended setups, Stokes and anti-Stokes intensity is measured
@@ -571,6 +584,11 @@ class DtsAccessor:
 
         Returns:
         -------
+        out : xarray.Dataset
+            A Dataset with the calibrated temperature under `tmpf` and its
+            variance under `tmpf_var`. The Dataset also contains the
+            calibration parameters under `gamma`, `dalpha`, and `c`. The
+            covariance matrix of the calibration parameters is stored.
 
         References:
         ----------
@@ -751,7 +769,9 @@ class DtsAccessor:
         matching_sections=None,
         verbose=False,
     ):
-        r"""See example notebook 8 for an explanation on how to use this function.
+        r"""Calibrate the measured data of a double ended setup to temperature.
+        
+        See example notebook 8 for an explanation on how to use this function.
         Calibrate the Stokes (`ds.st`) and anti-Stokes (`ds.ast`) of the forward
         channel and from the backward channel (`ds.rst`, `ds.rast`) data to
         temperature using fiber sections with a known temperature
@@ -956,6 +976,15 @@ class DtsAccessor:
 
         Returns:
         -------
+        out : xarray.Dataset
+            A Dataset with the calibrated temperature under `tmpf` and its
+            variance under `tmpf_var`. The calibrated temperature of the
+            backward channel is stored under `tmpb` and `tmpb_var`. The
+            inverse-variance weighted average of the forward and backward
+            channel is stored under `tmpw` and `tmpw_var`. The Dataset also
+            contains the calibration parameters under `gamma`, `df`, `db`,
+            `alpha`, and `c`. The covariance matrix of the calibration
+            parameters is stored.
 
         References:
         ----------
@@ -1267,10 +1296,7 @@ class DtsAccessor:
         assert self.st.dims[0] == "x", "Stokes are transposed"
         assert self.ast.dims[0] == "x", "Stokes are transposed"
 
-        if da_random_state:
-            state = da_random_state
-        else:
-            state = da.random.RandomState()
+        state = da_random_state if da_random_state else da.random.RandomState()
 
         # out contains the state
         out = xr.Dataset(
@@ -1342,24 +1368,28 @@ class DtsAccessor:
             # Make sure variance is of size (no, nt)
             if np.size(st_vari) > 1:
                 if st_vari.shape == sti.shape:
-                    pass
+                    st_vari_broadcasted = st_vari
                 else:
-                    st_vari = np.broadcast_to(st_vari, (no, nt))
+                    st_vari_broadcasted = np.broadcast_to(st_vari, (no, nt))
             else:
-                pass
+                st_vari_broadcasted = st_vari
 
             # Load variance as chunked Dask array, otherwise eats memory
-            if type(st_vari) == da.core.Array:
-                st_vari_da = da.asarray(st_vari, chunks=memchunk[1:])
+            if type(st_vari_broadcasted) == da.core.Array:
+                st_vari_da = da.asarray(st_vari_broadcasted, chunks=memchunk[1:])
 
-            elif callable(st_vari) and type(sti.data) == da.core.Array:
-                st_vari_da = da.asarray(st_vari(sti).data, chunks=memchunk[1:])
+            elif callable(st_vari_broadcasted) and type(sti.data) == da.core.Array:
+                st_vari_da = da.asarray(
+                    st_vari_broadcasted(sti).data, chunks=memchunk[1:]
+                )
 
-            elif callable(st_vari) and type(sti.data) != da.core.Array:
-                st_vari_da = da.from_array(st_vari(sti).data, chunks=memchunk[1:])
+            elif callable(st_vari_broadcasted) and type(sti.data) != da.core.Array:
+                st_vari_da = da.from_array(
+                    st_vari_broadcasted(sti).data, chunks=memchunk[1:]
+                )
 
             else:
-                st_vari_da = da.from_array(st_vari, chunks=memchunk[1:])
+                st_vari_da = da.from_array(st_vari_broadcasted, chunks=memchunk[1:])
 
             params[key_mc] = (
                 ("mc", "x", "time"),
@@ -1448,8 +1478,8 @@ class DtsAccessor:
         mc_remove_set_flag=True,
         reduce_memory_usage=False,
     ):
-        r"""Estimation of the confidence intervals for the temperatures measured
-        with a double-ended setup.
+        r"""Estimation of the confidence intervals for the temperatures measured with a double-ended setup.
+
         Double-ended setups require four additional steps to estimate the
         confidence intervals for the temperature. First, the variances of the
         Stokes and anti-Stokes intensity measurements of the forward and
@@ -1559,6 +1589,7 @@ class DtsAccessor:
 
         Returns:
         -------
+        dict
 
         References:
         ----------
@@ -1768,24 +1799,28 @@ class DtsAccessor:
             # Make sure variance is of size (no, nt)
             if np.size(st_vari) > 1:
                 if st_vari.shape == sti.shape:
-                    pass
+                    st_vari_broadcasted = st_vari
                 else:
-                    st_vari = np.broadcast_to(st_vari, (no, nt))
+                    st_vari_broadcasted = np.broadcast_to(st_vari, (no, nt))
             else:
-                pass
+                st_vari_broadcasted = st_vari
 
             # Load variance as chunked Dask array, otherwise eats memory
-            if type(st_vari) == da.core.Array:
-                st_vari_da = da.asarray(st_vari, chunks=memchunk[1:])
+            if type(st_vari_broadcasted) == da.core.Array:
+                st_vari_da = da.asarray(st_vari_broadcasted, chunks=memchunk[1:])
 
-            elif callable(st_vari) and type(sti.data) == da.core.Array:
-                st_vari_da = da.asarray(st_vari(sti).data, chunks=memchunk[1:])
+            elif callable(st_vari_broadcasted) and type(sti.data) == da.core.Array:
+                st_vari_da = da.asarray(
+                    st_vari_broadcasted(sti).data, chunks=memchunk[1:]
+                )
 
-            elif callable(st_vari) and type(sti.data) != da.core.Array:
-                st_vari_da = da.from_array(st_vari(sti).data, chunks=memchunk[1:])
+            elif callable(st_vari_broadcasted) and type(sti.data) != da.core.Array:
+                st_vari_da = da.from_array(
+                    st_vari_broadcasted(sti).data, chunks=memchunk[1:]
+                )
 
             else:
-                st_vari_da = da.from_array(st_vari, chunks=memchunk[1:])
+                st_vari_da = da.from_array(st_vari_broadcasted, chunks=memchunk[1:])
 
             params[k] = (
                 ("mc", "x", "time"),
@@ -1848,8 +1883,8 @@ class DtsAccessor:
                 xi = self.ufunc_per_section(
                     sections=sections, x_indices=True, calc_per="all"
                 )
-                x_mask_ = [True if ix in xi else False for ix in range(params.x.size)]
-                x_mask = np.reshape(x_mask_, (1, -1, 1))
+                x_mask = [ix in xi for ix in range(params.x.size)]
+                x_mask = np.reshape(x_mask, (1, -1, 1))
                 params[label + "_mc_set"] = params[label + "_mc_set"].where(x_mask)
 
             # subtract the mean temperature
@@ -2053,6 +2088,7 @@ class DtsAccessor:
 
         Returns:
         -------
+        dict
 
         """
         # out contains the state
@@ -2394,6 +2430,7 @@ class DtsAccessor:
 
         Returns:
         -------
+        dict
 
         """
         out = xr.Dataset(

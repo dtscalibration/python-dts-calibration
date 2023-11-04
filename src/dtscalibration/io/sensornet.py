@@ -104,14 +104,11 @@ def read_sensornet_files(
 
     valid = any([fnmatch.fnmatch(ddf_version, v_) for v_ in valid_versions])
 
-    if valid:
-        if fnmatch.fnmatch(ddf_version, "Halo DTS v1*"):
-            flip_reverse_measurements = True
-        elif fnmatch.fnmatch(ddf_version, "Sentinel DTS v5*"):
-            flip_reverse_measurements = True
-        else:
-            flip_reverse_measurements = False
-
+    if valid and (
+        fnmatch.fnmatch(ddf_version, "Halo DTS v1*")
+        or fnmatch.fnmatch(ddf_version, "Sentinel DTS v5*")
+    ):
+        flip_reverse_measurements = True
     else:
         flip_reverse_measurements = False
         warnings.warn(
@@ -149,7 +146,7 @@ def sensornet_ddf_version_check(filepathlist):
     # Obtain metadata fro mthe first file
     _, meta = read_sensornet_single(filepathlist[0])
 
-    if "Software version number" in meta.keys():
+    if "Software version number" in meta:
         version_string = meta["Software version number"]
     else:
         raise ValueError(

@@ -182,10 +182,7 @@ def read_silixa_attrs_singlefile(filename, sep):
     with open_file(filename) as fh:
         doc_ = xmltodict.parse(fh.read())
 
-    if "wellLogs" in doc_.keys():
-        doc = doc_["wellLogs"]["wellLog"]
-    else:
-        doc = doc_["logs"]["log"]
+    doc = doc_["wellLogs"]["wellLog"] if "wellLogs" in doc_ else doc_["logs"]["log"]
 
     return metakey({}, doc, "")
 
@@ -258,11 +255,9 @@ def read_silixa_files_routine_v6(  # noqa: MC0001
 
     double_ended_flag = bool(int(attrs["isDoubleEnded"]))
     chFW = int(attrs["forwardMeasurementChannel"]) - 1  # zero-based
-    if double_ended_flag:
-        chBW = int(attrs["backwardMeasurementChannel"]) - 1  # zero-based
-    else:
-        # no backward channel is negative value. writes better to netcdf
-        chBW = -1
+    chBW = (
+        int(attrs["backwardMeasurementChannel"]) - 1 if double_ended_flag else -1
+    )  # zero-based or -1 if single ended
 
     # print summary
     if not silent:
@@ -315,10 +310,7 @@ def read_silixa_files_routine_v6(  # noqa: MC0001
 
     # add units to timeseries (unit of measurement)
     for key, item in timeseries.items():
-        if f"customData:{key}:uom" in attrs:
-            item["uom"] = attrs[f"customData:{key}:uom"]
-        else:
-            item["uom"] = ""
+        item["uom"] = attrs.get(f"customData:{key}:uom", "")
 
     # Gather data
     arr_path = "s:" + "/s:".join(["log", "logData", "data"])
@@ -358,11 +350,7 @@ def read_silixa_files_routine_v6(  # noqa: MC0001
 
     # Check whether to compute data_arr (if possible 25% faster)
     data_arr_cnk = data_arr.rechunk({0: -1, 1: -1, 2: "auto"})
-    if load_in_memory == "auto" and data_arr_cnk.npartitions <= 5:
-        if not silent:
-            print("Reading the data from disk")
-        data_arr = data_arr_cnk.compute()
-    elif load_in_memory:
+    if load_in_memory == "auto" and data_arr_cnk.npartitions <= 5 or load_in_memory:
         if not silent:
             print("Reading the data from disk")
         data_arr = data_arr_cnk.compute()
@@ -550,11 +538,9 @@ def read_silixa_files_routine_v4(  # noqa: MC0001
         attrs["backwardMeasurementChannel"] = "N/A"
 
     chFW = int(attrs["forwardMeasurementChannel"]) - 1  # zero-based
-    if double_ended_flag:
-        chBW = int(attrs["backwardMeasurementChannel"]) - 1  # zero-based
-    else:
-        # no backward channel is negative value. writes better to netcdf
-        chBW = -1
+    chBW = (
+        int(attrs["backwardMeasurementChannel"]) - 1 if double_ended_flag else -1
+    )  # zero-based or -1 if single ended
 
     # obtain basic data info
     if double_ended_flag:
@@ -617,10 +603,7 @@ def read_silixa_files_routine_v4(  # noqa: MC0001
 
     # add units to timeseries (unit of measurement)
     for key, item in timeseries.items():
-        if f"customData:{key}:uom" in attrs:
-            item["uom"] = attrs[f"customData:{key}:uom"]
-        else:
-            item["uom"] = ""
+        item["uom"] = attrs.get(f"customData:{key}:uom", "")
 
     # Gather data
     arr_path = "s:" + "/s:".join(["wellLog", "logData", "data"])
@@ -659,11 +642,7 @@ def read_silixa_files_routine_v4(  # noqa: MC0001
 
     # Check whether to compute data_arr (if possible 25% faster)
     data_arr_cnk = data_arr.rechunk({0: -1, 1: -1, 2: "auto"})
-    if load_in_memory == "auto" and data_arr_cnk.npartitions <= 5:
-        if not silent:
-            print("Reading the data from disk")
-        data_arr = data_arr_cnk.compute()
-    elif load_in_memory:
+    if load_in_memory == "auto" and data_arr_cnk.npartitions <= 5 or load_in_memory:
         if not silent:
             print("Reading the data from disk")
         data_arr = data_arr_cnk.compute()

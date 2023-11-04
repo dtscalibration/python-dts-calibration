@@ -6,32 +6,24 @@ from scipy.sparse import linalg as ln
 
 
 def parse_st_var(st, st_var):
-    """Utility function to check the st_var input and to return in DataArray
-    format.
+    """Utility function to check the st_var input and to return in DataArray format.
 
     Parameters
     ----------
     st : DataArray
         Stokes/anti-stokes data variable for which the variance is being parsed.
-
     st_var : float, callable, array-like
-        If `float` the variance of the noise from the Stokes detector is
-        described with a single value.
-        If `callable` the variance of the noise from the Stokes detector is
-        a function of the intensity, as defined in the callable function.
-        Or when the variance is a function of the intensity (Poisson
-        distributed) define a DataArray of the shape as ds.st, where the
-        variance can be a function of time and/or x.
+        If `float` the variance of the noise from the Stokes detector is described with a single value.
+        If `callable` the variance of the noise from the Stokes detector is a function of the intensity, as defined in the callable function.
+        Or when the variance is a function of the intensity (Poisson distributed) define a DataArray of the shape as ds.st, where the variance can be a function of time and/or x.
 
     Returns:
     -------
     st_var_sec : DataArray
         The variance of the noise from the Stokes detector.
     """
-    if callable(st_var):
-        st_var_sec = st_var(st)
-    else:
-        st_var_sec = xr.ones_like(st) * st_var
+    st_var_sec = st_var(st) if callable(st_var) else xr.ones_like(st) * st_var
+    return st_var_sec
 
     assert np.all(
         np.isfinite(st_var_sec)
@@ -202,8 +194,7 @@ def calibration_single_ended_solver(  # noqa: MC0001
     trans_att=[],
     verbose=False,
 ):
-    """The solver for single-ended setups. Assumes `ds` is pre-configured with
-    `sections` and `trans_att`.
+    """The solver for single-ended setups. Assumes `ds` is pre-configured with `sections` and `trans_att`.
 
     Parameters
     ----------
@@ -232,12 +223,16 @@ def calibration_single_ended_solver(  # noqa: MC0001
     matching_indices : array-like
         Is an array of size (np, 2), where np is the number of paired
         locations. This array is produced by `matching_sections()`.
-
     verbose : bool
 
     Returns:
     -------
-
+    p_cov : np.ndarray
+        The covariance matrix of the estimated parameters.
+    p_val : np.ndarray
+        The estimated parameters.
+    p_var : np.ndarray
+        The variance of the estimated parameters.
     """
     # get ix_sec argsort so the sections are in order of increasing x
     ix_sec = ds.dts.ufunc_per_section(sections=sections, x_indices=True, calc_per="all")
@@ -1129,8 +1124,7 @@ def calibrate_double_ended_solver(  # noqa: MC0001
     nta=None,
     verbose=False,
 ):
-    """The solver for double-ended setups. Assumes `ds` is pre-configured with
-    `sections` and `trans_att`.
+    """The solver for double-ended setups. Assumes `ds` is pre-configured with `sections` and `trans_att`.
 
     The construction of X differs a bit from what is presented in the
     article. The choice to divert from the article is made because
@@ -1142,6 +1136,12 @@ def calibrate_double_ended_solver(  # noqa: MC0001
     Parameters
     ----------
     ds : DataStore
+    sections : Dict[str, List[slice]]
+        Sections are defined in a dictionary with its keywords of the
+        names of the reference
+        temperature time series. Its values are lists of slice objects,
+        where each slice object
+        is a stretch.
     st_var : float, array-like, optional
         If `float` the variance of the noise
         from the Stokes detector is described with a single value. Or when the
@@ -1182,6 +1182,12 @@ def calibrate_double_ended_solver(  # noqa: MC0001
 
     Returns:
     -------
+    p_cov : ndarray
+        Covariance matrix of the estimated parameters.
+    p_val : ndarray
+        Estimated parameters.
+    p_var : ndarray
+        Variance of the estimated parameters.
 
     """
     ix_sec = ds.dts.ufunc_per_section(sections=sections, x_indices=True, calc_per="all")
@@ -1570,6 +1576,32 @@ def calibrate_double_ended_solver(  # noqa: MC0001
 
 
 def matching_section_location_indices(ix_sec, hix, tix):
+    """Returns all indices of the entire fiber that either are used for calibrating to reference temperature or for matching sections.
+
+    The indices are sorted.
+
+    Parameters
+    ----------
+    ix_sec : array_like
+        Indices in the section of interest.
+
+    hix : array_like
+        Indices of the hot sections.
+
+    tix : array_like
+        Indices of the cold sections.
+
+    Returns:
+    -------
+    ix_from_cal_match_to_glob : ndarray
+        Contains the global coordinate indices of the E.
+    """
+    ix_cal_match = np.unique(np.concatenate((ix_sec, hix, tix)))
+    nx_cal_match = ix_cal_match.size
+    ix_sec2 = np.searchsorted(ix_cal_match, ix_sec)
+    ix_E0_mask = np.array([ix for ix in range(nx_cal_match) if ix != ix_sec2[0]])
+    ix_from_cal_match_to_glob = ix_cal_match[ix_E0_mask]
+    return ix_from_cal_match_to_glob
     # contains all indices of the entire fiber that either are used for
     # calibrating to reference temperature or for matching sections. Is sorted.
     ix_cal_match = np.unique(np.concatenate((ix_sec, hix, tix)))
@@ -1589,8 +1621,8 @@ def matching_section_location_indices(ix_sec, hix, tix):
 
 
 def construct_submatrices_matching_sections(x, ix_sec, hix, tix, nt, trans_att):
-    """For all matching indices, where subscript 1 refers to the indices in
-    `hix` and subscript 2 refers to the indices in `tix`.
+    """For all matching indices, where subscript 1 refers to the indices in `hix` and subscript 2 refers to the indices in `tix`.
+
     F1 - F2 = E2 - E1 + TAF2 - TAF1  # EQ1
     B1 - B2 = E1 - E2 + TAB2 - TAB1  # EQ2.
 
@@ -1626,6 +1658,31 @@ def construct_submatrices_matching_sections(x, ix_sec, hix, tix, nt, trans_att):
 
     Returns:
     -------
+    E_match_F : sparse matrix
+        E in EQ1
+    E_match_B : sparse matrix
+        E in EQ2
+    E_match_no_cal : sparse matrix
+        E in EQ3
+    Z_TA_eq1 : sparse matrix
+        TAF in EQ1
+    Z_TA_eq2 : sparse matrix
+        TAB in EQ2
+    Z_TA_eq3 : sparse matrix
+        TAF and TAB in EQ3
+    d_no_cal : sparse matrix
+        df and db in EQ3
+    ix_from_cal_match_to_glob : ndarray
+        Contains the global coordinate indices of the E.
+    ix_match_not_cal : ndarray
+        Indices in the section of interest. Excluding E0
+    Zero_eq12_gamma : sparse matrix
+        Zero in EQ1 and EQ2
+    Zero_eq3_gamma : sparse matrix
+        Zero in EQ3
+    Zero_d_eq12 : sparse matrix
+        Zero in EQ1 and EQ2
+
 
     """
     # contains all indices of the entire fiber that either are using for
@@ -1823,6 +1880,7 @@ def construct_submatrices_matching_sections(x, ix_sec, hix, tix, nt, trans_att):
 
 def construct_submatrices(sections, nt, nx, ds, trans_att, x_sec):
     """Wrapped in a function to reduce memory usage.
+
     E is zero at the first index of the reference section (ds_sec)
     Constructing:
     Z_gamma (nt * nx, 1). Data: positive 1/temp
@@ -1835,6 +1893,12 @@ def construct_submatrices(sections, nt, nx, ds, trans_att, x_sec):
 
     I_fw = 1/Tref*gamma - D_fw - E - TA_fw
     I_bw = 1/Tref*gamma - D_bw + E - TA_bw
+
+    Parameters
+    ----------
+    sections :
+        Sections to use for calibration.
+
     """
     # Z \gamma  # Eq.47
     cal_ref = np.array(
@@ -1932,7 +1996,9 @@ def wls_sparse(
     return_werr=False,
     **solver_kwargs,
 ):
-    """If some initial estimate x0 is known and if damp == 0, one could proceed as follows:
+    """Weighted least squares solver.
+
+    If some initial estimate x0 is known and if damp == 0, one could proceed as follows:
     - Compute a residual vector r0 = b - A*x0.
     - Use LSQR to solve the system A*dx = r0.
     - Add the correction dx to obtain a final solution x = x0 + dx.
@@ -1950,7 +2016,12 @@ def wls_sparse(
 
     Returns:
     -------
-
+    p_sol : ndarray
+        The solution.
+    p_var : ndarray
+        The variance of the solution.
+    p_cov : ndarray
+        The covariance of the solution.
     """
     # The var returned by ln.lsqr is normalized by the variance of the error.
     # To obtain the correct variance, it needs to be scaled by the variance
@@ -1987,10 +2058,7 @@ def wls_sparse(
 
     w_std = np.broadcast_to(np.atleast_2d(np.squeeze(w_std)).T, (X.shape[0], 1))
 
-    if not sp.issparse(X):
-        wX = w_std * X
-    else:
-        wX = X.multiply(w_std)
+    wX = w_std * X if not sp.issparse(X) else X.multiply(w_std)
 
     if x0 is None:
         # noinspection PyTypeChecker
@@ -2045,17 +2113,26 @@ def wls_sparse(
 
 
 def wls_stats(X, y, w=1.0, calc_cov=False, x0=None, return_werr=False, verbose=False):
-    """Parameters
+    """Weighted least squares solver using statsmodels.
+
+    Parameters
     ----------
     X
     y
     w
     calc_cov
+    x0
+    return_werr
     verbose
 
     Returns:
     -------
-
+    p_sol : ndarray
+        The solution.
+    p_var : ndarray
+        The variance of the solution.
+    p_cov : ndarray
+        The covariance of the solution.
     """
     y = np.asarray(y)
     w = np.asarray(w)
@@ -2105,28 +2182,14 @@ def calc_alpha_double(
     talpha_fw_var=None,
     talpha_bw_var=None,
 ):
-    """Eq.50 if weighted least squares. Assumes ds has `trans_att`
-    pre-configured.
-    """
+    """Eq.50 if weighted least squares. Assumes ds has `trans_att` pre-configured."""
     assert ix_alpha_is_zero >= 0, "Define ix_alpha_is_zero" + str(ix_alpha_is_zero)
 
     if st_var is not None:
-        if callable(st_var):
-            st_var_val = st_var(ds.st)
-        else:
-            st_var_val = np.asarray(st_var)
-        if callable(ast_var):
-            ast_var_val = ast_var(ds.ast)
-        else:
-            ast_var_val = np.asarray(ast_var)
-        if callable(rst_var):
-            rst_var_val = rst_var(ds.rst)
-        else:
-            rst_var_val = np.asarray(rst_var)
-        if callable(rast_var):
-            rast_var_val = rast_var(ds.rast)
-        else:
-            rast_var_val = np.asarray(rast_var)
+        st_var_val = st_var(ds.st) if callable(st_var) else np.asarray(st_var)
+        ast_var_val = ast_var(ds.ast) if callable(ast_var) else np.asarray(ast_var)
+        rst_var_val = rst_var(ds.rst) if callable(rst_var) else np.asarray(rst_var)
+        rast_var_val = rast_var(ds.rast) if callable(rast_var) else np.asarray(rast_var)
 
         i_var_fw = ds.st**-2 * st_var_val + ds.ast**-2 * ast_var_val
         i_var_bw = ds.rst**-2 * rst_var_val + ds.rast**-2 * rast_var_val
@@ -2208,6 +2271,40 @@ def calc_alpha_double(
 
 
 def calc_df_db_double_est(ds, sections, ix_alpha_is_zero, gamma_est):
+    """Calculate forward and backward double-ended calibration coefficients.
+
+    Parameters
+    ----------
+    ds : xarray.Dataset
+        The dataset containing the temperature data.
+    sections : List[Tuple[slice, slice, bool]]
+        The sections to use for calibration.
+    ix_alpha_is_zero : int
+        The index of the reference section.
+    gamma_est : float
+        The estimated gamma value.
+
+    Returns:
+    -------
+    Tuple[xarray.DataArray, xarray.DataArray]
+        The forward and backward double-ended calibration coefficients.
+    """
+    Ifwx0 = np.log(
+        ds.st.isel(x=ix_alpha_is_zero) / ds.ast.isel(x=ix_alpha_is_zero)
+    ).values
+    Ibwx0 = np.log(
+        ds.rst.isel(x=ix_alpha_is_zero) / ds.rast.isel(x=ix_alpha_is_zero)
+    ).values
+    ref_temps_refs = ds.dts.ufunc_per_section(
+        sections=sections, label="st", ref_temp_broadcasted=True, calc_per="all"
+    )
+    ix_sec = ds.dts.ufunc_per_section(sections=sections, x_indices=True, calc_per="all")
+    ref_temps_x0 = (
+        ref_temps_refs[ix_sec == ix_alpha_is_zero].flatten().compute() + 273.15
+    )
+    df_est = gamma_est / ref_temps_x0 - Ifwx0
+    db_est = gamma_est / ref_temps_x0 - Ibwx0
+    return df_est, db_est
     Ifwx0 = np.log(
         ds.st.isel(x=ix_alpha_is_zero) / ds.ast.isel(x=ix_alpha_is_zero)
     ).values
@@ -2228,6 +2325,7 @@ def calc_df_db_double_est(ds, sections, ix_alpha_is_zero, gamma_est):
 
 def match_sections(ds, matching_sections):
     """Matches location indices of two sections.
+
     Parameters
     ----------
     ds
@@ -2243,7 +2341,7 @@ def match_sections(ds, matching_sections):
         Is an array of size (np, 2), where np is the number of paired
         locations. The array contains indices to locations along the fiber.
     """
-    for hslice, tslice, reverse_flag in matching_sections:
+    for hslice, tslice, _ in matching_sections:
         hxs = ds.x.sel(x=hslice).size
         txs = ds.x.sel(x=tslice).size
 

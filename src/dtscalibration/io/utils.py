@@ -118,13 +118,11 @@ def open_file(path, **kwargs):
     if isinstance(path, tuple):
         # print('\nabout to open zipfile', path[0], '. from', path[1])
         # assert isinstance(path[1], zip)
-        the_file = path[1].open(path[0], **kwargs)
-
+        with path[1].open(path[0], **kwargs) as the_file:
+            yield the_file
     else:
-        the_file = open(path, **kwargs)
-
-    yield the_file
-    the_file.close()
+        with open(path, **kwargs) as the_file:
+            yield the_file
 
 
 def get_xml_namespace(element):

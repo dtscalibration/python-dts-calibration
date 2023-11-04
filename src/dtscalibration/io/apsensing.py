@@ -257,11 +257,7 @@ def read_apsensing_files_routine(
 
     # Check whether to compute data_arr (if possible 25% faster)
     data_arr_cnk = data_arr.rechunk({0: -1, 1: -1, 2: "auto"})
-    if load_in_memory == "auto" and data_arr_cnk.npartitions <= 5:
-        if not silent:
-            print("Reading the data from disk")
-        data_arr = data_arr_cnk.compute()
-    elif load_in_memory:
+    if load_in_memory == "auto" and data_arr_cnk.npartitions <= 5 or load_in_memory:
         if not silent:
             print("Reading the data from disk")
         data_arr = data_arr_cnk.compute()

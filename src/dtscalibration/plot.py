@@ -556,19 +556,6 @@ def plot_sigma_report(
     temp.plot(ax=ax1, linewidth=0.8, c="black", label="DTS")
 
     if itimes:
-        # std_dts_proj = d.ufunc_per_section(
-        #     func=np.std,
-        #     label='tmpf_mc_set',
-        #     calc_per='stretch',
-        #     temp_err=False,
-        #     subtract_from_label='tmpf',
-        #     axis=[0, 1])
-        # std_dts_meas = d.ufunc_per_section(
-        #     func=np.std,
-        #     label='tmpf',
-        #     calc_per='stretch',
-        #     temp_err=True,
-        #     axis=0)
         sigma_est = ds.dts.ufunc_per_section(
             sections=sections,
             label=temp_label,
@@ -589,12 +576,9 @@ def plot_sigma_report(
     for (k, v), (k_se, v_se) in zip(ds.sections.items(), sigma_est.items()):
         for vi, v_sei in zip(v, v_se):
             if hasattr(v_sei, "compute"):
-                v_sei = v_sei.compute()
+                v_sei.compute()
 
-            if itimes:
-                val = ds[k].mean(dim="time")
-            else:
-                val = ds[k].isel(time=itimes)
+            val = ds[k].mean(dim="time") if not itimes else ds[k].isel(time=itimes)
 
             ax1.plot(
                 [vi.start, vi.stop], [val, val], linewidth=0.8, c="blue", linestyle="--"
