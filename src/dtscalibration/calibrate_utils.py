@@ -15,7 +15,8 @@ def parse_st_var(st, st_var):
     st_var : float, callable, array-like
         If `float` the variance of the noise from the Stokes detector is described with a single value.
         If `callable` the variance of the noise from the Stokes detector is a function of the intensity, as defined in the callable function.
-        Or when the variance is a function of the intensity (Poisson distributed) define a DataArray of the shape as ds.st, where the variance can be a function of time and/or x.
+        Or when the variance is a function of the intensity (Poisson distributed) define a DataArray of the shape as ds.st, 
+        where the variance can be a function of time and/or x.
 
     Returns:
     -------

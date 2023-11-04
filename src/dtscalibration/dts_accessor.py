@@ -1360,7 +1360,7 @@ class DtsAccessor:
             ["r_st", "r_ast"], [self.st, self.ast], [st_var, ast_var]
         ):
             # Load the mean as chunked Dask array, otherwise eats memory
-            if type(sti.data) == da.core.Array:
+            if isinstance(sti.data, da.core.Array):
                 loc = da.asarray(sti.data, chunks=memchunk[1:])
             else:
                 loc = da.from_array(sti.data, chunks=memchunk[1:])
@@ -1375,15 +1375,15 @@ class DtsAccessor:
                 st_vari_broadcasted = st_vari
 
             # Load variance as chunked Dask array, otherwise eats memory
-            if type(st_vari_broadcasted) == da.core.Array:
+            if isinstance(st_vari_broadcasted, da.core.Array):
                 st_vari_da = da.asarray(st_vari_broadcasted, chunks=memchunk[1:])
 
-            elif callable(st_vari_broadcasted) and type(sti.data) == da.core.Array:
+            elif callable(st_vari_broadcasted) and isinstance(sti.data, da.core.Array):
                 st_vari_da = da.asarray(
                     st_vari_broadcasted(sti).data, chunks=memchunk[1:]
                 )
 
-            elif callable(st_vari_broadcasted) and type(sti.data) != da.core.Array:
+            elif callable(st_vari_broadcasted) and not isinstance(sti.data, da.core.Array):
                 st_vari_da = da.from_array(
                     st_vari_broadcasted(sti).data, chunks=memchunk[1:]
                 )
@@ -1791,7 +1791,7 @@ class DtsAccessor:
             [st_var, ast_var, rst_var, rast_var],
         ):
             # Load the mean as chunked Dask array, otherwise eats memory
-            if type(sti.data) == da.core.Array:
+            if isinstance(sti.data, da.core.Array):
                 loc = da.asarray(sti.data, chunks=memchunk[1:])
             else:
                 loc = da.from_array(sti.data, chunks=memchunk[1:])
@@ -1806,15 +1806,15 @@ class DtsAccessor:
                 st_vari_broadcasted = st_vari
 
             # Load variance as chunked Dask array, otherwise eats memory
-            if type(st_vari_broadcasted) == da.core.Array:
+            if isinstance(st_vari_broadcasted, da.core.Array):
                 st_vari_da = da.asarray(st_vari_broadcasted, chunks=memchunk[1:])
 
-            elif callable(st_vari_broadcasted) and type(sti.data) == da.core.Array:
+            elif callable(st_vari_broadcasted) and isinstance(sti.data, da.core.Array):
                 st_vari_da = da.asarray(
                     st_vari_broadcasted(sti).data, chunks=memchunk[1:]
                 )
 
-            elif callable(st_vari_broadcasted) and type(sti.data) != da.core.Array:
+            elif callable(st_vari_broadcasted) and not isinstance(sti.data, da.core.Array):
                 st_vari_da = da.from_array(
                     st_vari_broadcasted(sti).data, chunks=memchunk[1:]
                 )
