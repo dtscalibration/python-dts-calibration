@@ -111,7 +111,7 @@ lint = [
   "isort --check-only --diff src/ tests/ examples/",
   "mypy src/",
 ]
-format = ["isort src/ tests/ examples/", "ruff check src/ tests/ examples/ --fix", "black src/ tests/ examples/", "lint",]
+format = ["isort src/ tests/ examples/", "ruff check src/ tests/ examples/ --fix", "ruff format src/ tests/ examples/", "black src/ tests/ examples/", "lint",]
 test = ["pytest ./src/ ./tests/",]
 fast-test = ["pytest ./tests/ -m \"not slow\"",]
 coverage = [
