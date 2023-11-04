@@ -19,7 +19,7 @@ def parse_st_var(st, st_var):
         where the variance can be a function of time and/or x.
 
     Returns:
-    -------
+    ---------
     st_var_sec : DataArray
         The variance of the noise from the Stokes detector.
     """
@@ -227,7 +227,7 @@ def calibration_single_ended_solver(  # noqa: MC0001
     verbose : bool
 
     Returns:
-    -------
+    --------
     p_cov : np.ndarray
         The covariance matrix of the estimated parameters.
     p_val : np.ndarray
@@ -1180,7 +1180,7 @@ def calibrate_double_ended_solver(  # noqa: MC0001
     verbose : bool
 
     Returns:
-    -------
+    --------
     p_cov : ndarray
         Covariance matrix of the estimated parameters.
     p_val : ndarray
@@ -1582,7 +1582,7 @@ def matching_section_location_indices(ix_sec, hix, tix):
         Indices of the cold sections.
 
     Returns:
-    -------
+    --------
     ix_from_cal_match_to_glob : ndarray
         Contains the global coordinate indices of the E.
     """
@@ -1647,7 +1647,7 @@ def construct_submatrices_matching_sections(x, ix_sec, hix, tix, nt, trans_att):
     nt : int
 
     Returns:
-    -------
+    --------
     E_match_F : sparse matrix
         E in EQ1
     E_match_B : sparse matrix
@@ -2005,7 +2005,7 @@ def wls_sparse(
     kwargs
 
     Returns:
-    -------
+    --------
     p_sol : ndarray
         The solution.
     p_var : ndarray
@@ -2116,7 +2116,7 @@ def wls_stats(X, y, w=1.0, calc_cov=False, x0=None, return_werr=False, verbose=F
     verbose
 
     Returns:
-    -------
+    --------
     p_sol : ndarray
         The solution.
     p_var : ndarray
@@ -2275,7 +2275,7 @@ def calc_df_db_double_est(ds, sections, ix_alpha_is_zero, gamma_est):
         The estimated gamma value.
 
     Returns:
-    -------
+    --------
     Tuple[xarray.DataArray, xarray.DataArray]
         The forward and backward double-ended calibration coefficients.
     """
@@ -2326,7 +2326,7 @@ def match_sections(ds, matching_sections):
         sections have a reverse direction ("J-configuration"), most common.
 
     Returns:
-    -------
+    --------
     matching_indices : array-like
         Is an array of size (np, 2), where np is the number of paired
         locations. The array contains indices to locations along the fiber.

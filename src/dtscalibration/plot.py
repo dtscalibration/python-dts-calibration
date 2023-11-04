@@ -45,7 +45,7 @@ def plot_residuals_reference_sections(
         use a diverging colormap.
 
     Returns:
-    -------
+    --------
     fig : Figurehandle
 
     """
@@ -268,7 +268,7 @@ def plot_residuals_reference_sections_single(
         Name of the spatial dimension
 
     Returns:
-    -------
+    --------
     fig : Figurehandle
 
     """
@@ -400,7 +400,7 @@ def plot_accuracy(
         Name of the spatial dimension
 
     Returns:
-    -------
+    --------
     fig : Figurehandle
 
     """

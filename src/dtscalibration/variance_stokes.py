@@ -82,14 +82,14 @@ def variance_stokes_constant(st, sections, acquisitiontime, reshape_residuals=Tr
     sections : Dict[str, List[slice]]
 
     Returns:
-    -------
+    --------
     I_var : float
         Variance of the residuals between measured and best fit
     resid : array_like
         Residuals between measured and best fit
 
     Notes:
-    -----
+    ------
     * Because there are a large number of unknowns, spend time on\
     calculating an initial estimate. Can be turned off by setting to False.
 
@@ -98,14 +98,14 @@ def variance_stokes_constant(st, sections, acquisitiontime, reshape_residuals=Tr
     additional time steps, you have included enough measurements.
 
     References:
-    ----------
+    -----------
     .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
         of Temperature and Associated Uncertainty from Fiber-Optic Raman-
         Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
         https://doi.org/10.3390/s20082235
 
     Examples:
-    --------
+    ---------
     - `Example notebook 4: Calculate variance Stokes intensity measurements\
     <https://github.com/\
     dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
@@ -245,14 +245,14 @@ def variance_stokes_exponential(
         under `ds.sections`.
 
     Returns:
-    -------
+    --------
     I_var : float
         Variance of the residuals between measured and best fit
     resid : array_like
         Residuals between measured and best fit
 
     Notes:
-    -----
+    ------
     * Because there are a large number of unknowns, spend time on\
     calculating an initial estimate. Can be turned off by setting to False.
 
@@ -261,14 +261,14 @@ def variance_stokes_exponential(
     more time steps, you have included enough measurements.
 
     References:
-    ----------
+    -----------
     .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
         of Temperature and Associated Uncertainty from Fiber-Optic Raman-
         Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
         https://doi.org/10.3390/s20082235
 
     Examples:
-    --------
+    ---------
     - `Example notebook 4: Calculate variance Stokes intensity measurements\
     <https://github.com/\
     dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
@@ -408,7 +408,7 @@ def variance_stokes_linear(
     the noise.
 
     Notes:
-    -----
+    ------
     * Because there are a large number of unknowns, spend time on\
     calculating an initial estimate. Can be turned off by setting to False.
 
@@ -417,14 +417,14 @@ def variance_stokes_linear(
     from more time steps, you have included enough measurements.
 
     References:
-    ----------
+    -----------
     .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
         of Temperature and Associated Uncertainty from Fiber-Optic Raman-
         Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
         https://doi.org/10.3390/s20082235
 
     Examples:
-    --------
+    ---------
     - `Example notebook 4: Calculate variance Stokes intensity \
     measurements <https://github.com/\
     dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\

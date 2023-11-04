@@ -70,5 +70,5 @@ Import from `dtscalibration.plot`.
     plot_residuals_reference_sections
     plot_residuals_reference_sections_single
     plot_accuracy
-    sigma_report
+    plot_sigma_report
     plot_location_residuals_double_ended

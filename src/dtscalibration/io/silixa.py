@@ -49,7 +49,7 @@ def read_silixa_files(
         keyword-arguments are passed to DataStore initialization
 
     Returns:
-    -------
+    --------
     datastore : DataStore
         The newly created datastore.
     """
@@ -109,7 +109,7 @@ def silixa_xml_version_check(filepathlist):
     filepathlist
 
     Returns:
-    -------
+    --------
 
     """
     sep = ":"
@@ -130,7 +130,7 @@ def read_silixa_attrs_singlefile(filename, sep):
     sep
 
     Returns:
-    -------
+    --------
 
     """
     import xmltodict
@@ -152,7 +152,7 @@ def read_silixa_attrs_singlefile(filename, sep):
         prefix
 
         Returns:
-        -------
+        --------
 
         """
         for key in dict_to_parse:
@@ -207,7 +207,7 @@ def read_silixa_files_routine_v6(  # noqa: MC0001
     silent
 
     Returns:
-    -------
+    --------
 
     """
     # translate names
@@ -322,7 +322,7 @@ def read_silixa_files_routine_v6(  # noqa: MC0001
         file_handle
 
         Returns:
-        -------
+        --------
 
         """
         with open_file(file_handle, mode="r") as f_h:
@@ -384,7 +384,7 @@ def read_silixa_files_routine_v6(  # noqa: MC0001
         file_handle
 
         Returns:
-        -------
+        --------
 
         """
         with open_file(file_handle, mode="r") as f_h:
@@ -503,7 +503,7 @@ def read_silixa_files_routine_v4(  # noqa: MC0001
     silent
 
     Returns:
-    -------
+    --------
 
     """
     # translate names
@@ -615,7 +615,7 @@ def read_silixa_files_routine_v4(  # noqa: MC0001
         file_handle
 
         Returns:
-        -------
+        --------
 
         """
         with open_file(file_handle, mode="r") as f_h:
@@ -678,7 +678,7 @@ def read_silixa_files_routine_v4(  # noqa: MC0001
         file_handle
 
         Returns:
-        -------
+        --------
 
         """
         with open_file(file_handle, mode="r") as f_h:

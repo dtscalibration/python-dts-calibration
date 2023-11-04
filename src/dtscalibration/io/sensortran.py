@@ -39,7 +39,7 @@ def read_sensortran_files(
         keyword-arguments are passed to DataStore initialization
 
     Returns:
-    -------
+    --------
     DataStore
         The newly created datastore.
     """
@@ -89,7 +89,7 @@ def sensortran_binary_version_check(filepathlist: list[Path]):
     filepathlist
 
     Returns:
-    -------
+    --------
 
     """
     fname = filepathlist[0]
@@ -121,7 +121,7 @@ def read_sensortran_files_routine(
     silent
 
     Returns:
-    -------
+    --------
 
     """
     assert timezone_input_files == "UTC", "The sensortran files are always in UTC time."
@@ -268,7 +268,7 @@ def read_sensortran_single(file: Path) -> tuple[dict, dict]:
     file
 
     Returns:
-    -------
+    --------
     data, metadata
     """
     import struct

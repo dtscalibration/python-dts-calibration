@@ -55,13 +55,13 @@ def read_sensornet_files(
         keyword-arguments are passed to DataStore initialization
 
     Notes:
-    -----
+    ------
     Compressed sensornet files can not be directly decoded
     because the files are encoded with encoding='windows-1252' instead of
     UTF-8.
 
     Returns:
-    -------
+    --------
     datastore : DataStore
         The newly created datastore.
     """
@@ -139,7 +139,7 @@ def sensornet_ddf_version_check(filepathlist):
     filepathlist
 
     Returns:
-    -------
+    --------
     ddf_version
 
     """
@@ -165,7 +165,7 @@ def read_sensornet_single(filename):
     filename
 
     Returns:
-    -------
+    --------
 
     """
     headerlength = 26
@@ -264,7 +264,7 @@ def read_sensornet_files_routine_v3(
         device.
 
     Returns:
-    -------
+    --------
 
     """
     # Obtain metadata from the first file

@@ -21,7 +21,7 @@ def validate_no_overlapping_sections(sections: dict[str, list[slice]]):
         The values are lists of slice objects.
 
     Returns:
-    -------
+    --------
     None
 
     Raises:
@@ -59,7 +59,7 @@ def validate_sections_definition(sections: dict[str, list[slice]]):
         The values are lists of slice objects.
 
     Returns:
-    -------
+    --------
     None
 
     Raises:
@@ -98,7 +98,7 @@ def validate_sections(ds: xr.Dataset, sections: dict[str, list[slice]]):
         The values are lists of slice objects.
 
     Returns:
-    -------
+    --------
     None
 
     Raises:
@@ -178,10 +178,10 @@ def ufunc_per_section(
 
 
     Returns:
-    -------
+    --------
 
     Examples:
-    --------
+    ---------
     1. Calculate the variance of the residuals in the along ALL the\
     reference sections wrt the temperature of the water baths
 

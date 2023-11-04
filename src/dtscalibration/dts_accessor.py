@@ -120,7 +120,7 @@ class DtsAccessor:
             is a stretch.
 
         Returns:
-        -------
+        --------
         dict
             A dictionary with the names of the reference temperature time series as keys and lists of slice objects as values.
         """
@@ -159,7 +159,7 @@ class DtsAccessor:
             a reverse direction ("J-configuration").
 
         Returns:
-        -------
+        --------
         dict
             A dictionary with the names of the reference temperature time series as keys and lists of slice objects as values.
         """
@@ -186,7 +186,7 @@ class DtsAccessor:
         """Returns a dictionary with sensible compression setting for writing netCDF files.
 
         Returns:
-        -------
+        --------
         dict
             A dictionary with sensible compression setting for writing netCDF files.
 
@@ -337,13 +337,13 @@ class DtsAccessor:
 
 
         Returns:
-        -------
+        --------
         dict
             A dictionary with the keys of the sections and the values are the
             result of the function applied to the data in the section.
 
         Examples:
-        --------
+        ---------
         1. Calculate the variance of the residuals in the along ALL the\
         reference sections wrt the temperature of the water baths
 
@@ -410,7 +410,7 @@ class DtsAccessor:
 
 
         Notes:
-        ----
+        ------
         If `self[label]` or `self[subtract_from_label]` is a Dask array, a Dask
         array is returned else a numpy array is returned
         """
@@ -583,7 +583,7 @@ class DtsAccessor:
             differential attenuation of length x, and the second item is its variance.
 
         Returns:
-        -------
+        --------
         out : xarray.Dataset
             A Dataset with the calibrated temperature under `tmpf` and its
             variance under `tmpf_var`. The Dataset also contains the
@@ -591,14 +591,14 @@ class DtsAccessor:
             covariance matrix of the calibration parameters is stored.
 
         References:
-        ----------
+        -----------
         .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
             of Temperature and Associated Uncertainty from Fiber-Optic Raman-
             Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
             https://doi.org/10.3390/s20082235
 
         Examples:
-        --------
+        ---------
         - `Example notebook 7: Calibrate single ended <https://github.com/\
     dtscalibration/python-dts-calibration/blob/main/examples/notebooks/\
     07Calibrate_single_wls.ipynb>`_
@@ -975,7 +975,7 @@ class DtsAccessor:
             Show additional calibration information
 
         Returns:
-        -------
+        --------
         out : xarray.Dataset
             A Dataset with the calibrated temperature under `tmpf` and its
             variance under `tmpf_var`. The calibrated temperature of the
@@ -987,14 +987,14 @@ class DtsAccessor:
             parameters is stored.
 
         References:
-        ----------
+        -----------
         .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
             of Temperature and Associated Uncertainty from Fiber-Optic Raman-
             Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
             https://doi.org/10.3390/s20082235
 
         Examples:
-        --------
+        ---------
         - `Example notebook 8: Calibrate double ended <https://github.com/
         dtscalibration/python-dts-calibration/blob/master/examples/notebooks/
         08Calibrate_double_wls.ipynb>`
@@ -1590,11 +1590,11 @@ class DtsAccessor:
             Use less memory but at the expense of longer computation time
 
         Returns:
-        -------
+        --------
         dict
 
         References:
-        ----------
+        -----------
         .. [1] des Tombe, B., Schilperoort, B., & Bakker, M. (2020). Estimation
             of Temperature and Associated Uncertainty from Fiber-Optic Raman-
             Spectrum Distributed Temperature Sensing. Sensors, 20(8), 2235.
@@ -2091,7 +2091,7 @@ class DtsAccessor:
             Use less memory but at the expense of longer computation time
 
         Returns:
-        -------
+        --------
         dict
 
         """
@@ -2433,7 +2433,7 @@ class DtsAccessor:
             Use less memory but at the expense of longer computation time
 
         Returns:
-        -------
+        --------
         dict
 
         """
