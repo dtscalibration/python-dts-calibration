@@ -74,3 +74,4 @@ docs/_build
 *.bak
 .vscode/settings.json
 *.code-workspace
+xunit-result.xml

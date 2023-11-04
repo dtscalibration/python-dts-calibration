@@ -2411,36 +2411,6 @@ class DtsAccessor:
         -------
 
         """
-
-        # def create_da_ta2(no, i_splice, direction="fw", chunks=None):
-        #     """create mask array mc, o, nt"""
-
-        #     if direction == "fw":
-        #         arr = da.concatenate(
-        #             (
-        #                 da.zeros((1, i_splice, 1), chunks=(1, i_splice, 1), dtype=bool),
-        #                 da.ones(
-        #                     (1, no - i_splice, 1),
-        #                     chunks=(1, no - i_splice, 1),
-        #                     dtype=bool,
-        #                 ),
-        #             ),
-        #             axis=1,
-        #         ).rechunk((1, chunks[1], 1))
-        #     else:
-        #         arr = da.concatenate(
-        #             (
-        #                 da.ones((1, i_splice, 1), chunks=(1, i_splice, 1), dtype=bool),
-        #                 da.zeros(
-        #                     (1, no - i_splice, 1),
-        #                     chunks=(1, no - i_splice, 1),
-        #                     dtype=bool,
-        #                 ),
-        #             ),
-        #             axis=1,
-        #         ).rechunk((1, chunks[1], 1))
-        #     return arr
-
         out = xr.Dataset(
             coords={"x": self.x, "time": self.time, "trans_att": result["trans_att"]}
         ).copy()
