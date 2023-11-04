@@ -3,7 +3,7 @@ from dtscalibration.datastore_utils import get_netcdf_encoding
 from dtscalibration.datastore_utils import merge_double_ended
 from dtscalibration.datastore_utils import shift_double_ended
 from dtscalibration.datastore_utils import suggest_cable_shift_double_ended
-from dtscalibration.dts_accessor import DtsAccessor   # noqa: F401
+from dtscalibration.dts_accessor import DtsAccessor  # noqa: F401
 from dtscalibration.io.apsensing import read_apsensing_files
 from dtscalibration.io.sensornet import read_sensornet_files
 from dtscalibration.io.sensortran import read_sensortran_files
