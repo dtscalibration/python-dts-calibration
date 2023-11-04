@@ -6,7 +6,7 @@ from scipy import stats
 from xarray import Dataset
 
 from dtscalibration import read_silixa_files
-from dtscalibration.dts_accessor import DtsAccessor  # noqa: F401
+from dtscalibration import DtsAccessor   # noqa: F401
 from dtscalibration.variance_stokes import variance_stokes_constant
 from dtscalibration.variance_stokes import variance_stokes_exponential
 from dtscalibration.variance_stokes import variance_stokes_linear

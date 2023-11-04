@@ -18,7 +18,7 @@ from dtscalibration.calibration.section_utils import set_sections
 from dtscalibration.datastore_utils import merge_double_ended
 from dtscalibration.datastore_utils import shift_double_ended
 from dtscalibration.datastore_utils import suggest_cable_shift_double_ended
-from dtscalibration.dts_accessor import DtsAccessor  # noqa: F401
+from dtscalibration import DtsAccessor   # noqa: F401
 
 np.random.seed(0)
 

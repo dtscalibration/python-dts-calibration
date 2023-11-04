@@ -1,11 +1,11 @@
 import os
 from datetime import date
 
-from xarray import Dataset  # noqa: E402
+from xarray import Dataset  # noqa: E401
 import sphinx_autosummary_accessors
 
-import dtscalibration  # noqa: E402
-from dtscalibration.dts_accessor import DtsAccessor  # noqa: E402
+import dtscalibration  # noqa: E401
+from dtscalibration import DtsAccessor   # noqa: E401
 
 extensions = [
     "sphinx_rtd_theme",
