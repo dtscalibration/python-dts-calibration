@@ -36,17 +36,15 @@ def check_dims(
         assert len(labels) > 1, "Define the correct dimensions"
 
         for li in labels[1:]:
-            assert (
-                ds[labels[0]].dims == ds[li].dims
-            ), li + " does not have the correct dimensions." " Should be " + str(
-                ds[labels[0]].dims
+            assert ds[labels[0]].dims == ds[li].dims, (
+                li + " does not have the correct dimensions."
+                " Should be " + str(ds[labels[0]].dims)
             )
     else:
         for li in labels:
-            assert (
-                ds[li].dims == correct_dims
-            ), li + " does not have the correct dimensions. " "Should be " + str(
-                correct_dims
+            assert ds[li].dims == correct_dims, (
+                li + " does not have the correct dimensions. "
+                "Should be " + str(correct_dims)
             )
 
 

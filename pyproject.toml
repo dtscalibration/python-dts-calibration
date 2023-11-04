@@ -107,11 +107,11 @@ features = ["dev"]
 [tool.hatch.envs.default.scripts]
 lint = [
   "ruff check src/ tests/ examples/",
-  "black --check src/ tests/ examples/",
+  "black --check docs/notebooks",
   "isort --check-only --diff src/ tests/ examples/",
   "mypy src/",
 ]
-format = ["isort src/ tests/ examples/", "ruff check src/ tests/ examples/ --fix", "ruff format src/ tests/ examples/", "black src/ tests/ examples/", "lint",]
+format = ["isort src/ tests/ examples/", "ruff check src/ tests/ examples/ --fix", "ruff format src/ tests/ examples/", "black docs/notebooks", "lint",]
 test = ["pytest ./src/ ./tests/",]
 fast-test = ["pytest ./tests/ -m \"not slow\"",]
 coverage = [

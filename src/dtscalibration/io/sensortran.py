@@ -46,9 +46,10 @@ def read_sensortran_files(
     filepathlist_dts = sorted(Path(directory).glob("*BinaryRawDTS.dat"))
 
     # Make sure that the list of files contains any files
-    assert (
-        len(filepathlist_dts) >= 1
-    ), "No RawDTS measurement files found " "in provided directory: \n" + str(directory)
+    assert len(filepathlist_dts) >= 1, (
+        "No RawDTS measurement files found "
+        "in provided directory: \n" + str(directory)
+    )
 
     filepathlist_temp = [
         Path(str(f).replace("RawDTS", "Temp")) for f in filepathlist_dts

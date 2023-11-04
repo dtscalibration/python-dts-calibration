@@ -392,9 +392,7 @@ def calibration_single_ended_solver(  # noqa: MC0001
 
         w = (
             1
-            / (
-                ds_sec.st**-2 * st_var_sec + ds_sec.ast**-2 * ast_var_sec
-            ).values.ravel()
+            / (ds_sec.st**-2 * st_var_sec + ds_sec.ast**-2 * ast_var_sec).values.ravel()
         )
 
         if np.any(matching_indices):
@@ -1232,15 +1230,10 @@ def calibrate_double_ended_solver(  # noqa: MC0001
     rst_var_sec = parse_st_var(ds.rst, rst_var).isel(x=ix_sec).values
     rast_var_sec = parse_st_var(ds.rast, rast_var).isel(x=ix_sec).values
 
-    w_F = (
-        1
-        / (ds_sec.st**-2 * st_var_sec + ds_sec.ast**-2 * ast_var_sec).values.ravel()
-    )
+    w_F = 1 / (ds_sec.st**-2 * st_var_sec + ds_sec.ast**-2 * ast_var_sec).values.ravel()
     w_B = (
         1
-        / (
-            ds_sec.rst**-2 * rst_var_sec + ds_sec.rast**-2 * rast_var_sec
-        ).values.ravel()
+        / (ds_sec.rst**-2 * rst_var_sec + ds_sec.rast**-2 * rast_var_sec).values.ravel()
     )
 
     if not np.any(matching_indices):
@@ -1369,12 +1362,8 @@ def calibrate_double_ended_solver(  # noqa: MC0001
         rast_var_mnc = parse_st_var(ds.rast, rast_var).isel(x=ix_match_not_cal).values
 
         w_eq1 = 1 / (
-            (
-                ds_hix.st**-2 * st_var_hix + ds_hix.ast**-2 * ast_var_hix
-            ).values.ravel()
-            + (
-                ds_tix.st**-2 * st_var_tix + ds_tix.ast**-2 * ast_var_tix
-            ).values.ravel()
+            (ds_hix.st**-2 * st_var_hix + ds_hix.ast**-2 * ast_var_hix).values.ravel()
+            + (ds_tix.st**-2 * st_var_tix + ds_tix.ast**-2 * ast_var_tix).values.ravel()
         )
         w_eq2 = 1 / (
             (
@@ -2346,16 +2335,15 @@ def match_sections(ds, matching_sections):
         hxs = ds.x.sel(x=hslice).size
         txs = ds.x.sel(x=tslice).size
 
-        assert (
-            hxs == txs
-        ), "the two sections do not have matching " "number of items: " + str(
-            hslice
-        ) + "size: " + str(
-            hxs
-        ) + str(
-            tslice
-        ) + "size: " + str(
-            txs
+        assert hxs == txs, (
+            "the two sections do not have matching "
+            "number of items: "
+            + str(hslice)
+            + "size: "
+            + str(hxs)
+            + str(tslice)
+            + "size: "
+            + str(txs)
         )
 
     hix = ds.dts.ufunc_per_section(

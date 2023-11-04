@@ -61,9 +61,9 @@ def read_silixa_files(
         filepathlist = sorted(Path(directory).glob(file_ext))
 
         # Make sure that the list of files contains any files
-        assert (
-            len(filepathlist) >= 1
-        ), "No measurement files found in provided " "directory: \n" + str(directory)
+        assert len(filepathlist) >= 1, (
+            "No measurement files found in provided " "directory: \n" + str(directory)
+        )
 
     elif filepathlist is None and zip_handle:
         filepathlist = ziphandle_to_filepathlist(fh=zip_handle, extension=file_ext)

@@ -665,6 +665,6 @@ def test_merge_double_ended_times(inotinfw, inotinbw, inotinout):
         plot_result=False,
         verbose=False,
     )
-    assert ds.time.size == len(iout) and np.all(
-        ds.st.isel(x=0) == iout
+    assert (
+        ds.time.size == len(iout) and np.all(ds.st.isel(x=0) == iout)
     ), f"FW:{ifw} & BW:{ibw} should lead to {iout} but instead leads to {ds.st.isel(x=0).values}"

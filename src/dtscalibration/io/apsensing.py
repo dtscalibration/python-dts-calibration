@@ -72,9 +72,9 @@ def read_apsensing_files(
         filepathlist = sorted(Path(directory).glob(file_ext))
 
         # Make sure that the list of files contains any files
-        assert (
-            len(filepathlist) >= 1
-        ), "No measurement files found in provided " "directory: \n" + str(directory)
+        assert len(filepathlist) >= 1, (
+            "No measurement files found in provided " "directory: \n" + str(directory)
+        )
 
     # Make sure that the list of files contains any files
     assert len(filepathlist) >= 1, (
