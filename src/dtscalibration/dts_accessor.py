@@ -1383,7 +1383,9 @@ class DtsAccessor:
                     st_vari_broadcasted(sti).data, chunks=memchunk[1:]
                 )
 
-            elif callable(st_vari_broadcasted) and not isinstance(sti.data, da.core.Array):
+            elif callable(st_vari_broadcasted) and not isinstance(
+                sti.data, da.core.Array
+            ):
                 st_vari_da = da.from_array(
                     st_vari_broadcasted(sti).data, chunks=memchunk[1:]
                 )
@@ -1814,7 +1816,9 @@ class DtsAccessor:
                     st_vari_broadcasted(sti).data, chunks=memchunk[1:]
                 )
 
-            elif callable(st_vari_broadcasted) and not isinstance(sti.data, da.core.Array):
+            elif callable(st_vari_broadcasted) and not isinstance(
+                sti.data, da.core.Array
+            ):
                 st_vari_da = da.from_array(
                     st_vari_broadcasted(sti).data, chunks=memchunk[1:]
                 )
