@@ -35,7 +35,8 @@ The DTS Accessor
 ----------------
 
 These methods are available as an `xarray.Dataset` accessor. Add 
-`from dtscalibration import DtsAccessor ` to your import 
+`# The following line introduces the .dts accessor for xarray datasets
+import dtscalibration  # noqa: E401 ` to your import 
 statements. See example natebooks 07, 08, and 17.
 
 .. currentmodule:: xarray.Dataset

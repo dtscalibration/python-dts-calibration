@@ -4,7 +4,7 @@ import xarray as xr
 
 from dtscalibration.calibration.section_utils import validate_no_overlapping_sections
 from dtscalibration.calibration.section_utils import validate_sections_definition
-from dtscalibration.datastore_utils import ufunc_per_section_helper
+from dtscalibration.dts_accessor_utils import ufunc_per_section_helper
 from dtscalibration.variance_helpers import check_allclose_acquisitiontime
 from dtscalibration.variance_helpers import variance_stokes_constant_helper
 from dtscalibration.variance_helpers import variance_stokes_exponential_helper

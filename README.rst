@@ -107,7 +107,8 @@ Cite the specific implementation / repository via Zenodo:
 
 1. Check the version of `dtscalibration` that is used in your Python console with:
 
-    >>> import dtscalibration
+    >>> # The following line introduces the .dts accessor for xarray datasets
+import dtscalibration  # noqa: E401
     >>> dtscalibration.__version__
     '2.0.0'
 2. Go to `Zenodo <https://zenodo.org/search?q=conceptrecid:%221410097%22&sort=-version&all_versions=True>`_ and follow the link to the version of interest.
