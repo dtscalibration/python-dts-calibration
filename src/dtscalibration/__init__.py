@@ -14,7 +14,7 @@ from dtscalibration.plot import plot_residuals_reference_sections
 from dtscalibration.plot import plot_residuals_reference_sections_single
 from dtscalibration.plot import plot_sigma_report
 
-__version__ = "2.0.0"
+__version__ = "3.0.0"
 __all__ = [
     "DtsAccessor",
     "read_apsensing_files",

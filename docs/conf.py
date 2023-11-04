@@ -47,7 +47,7 @@ project = "dtscalibration"
 year = str(date.today().year)
 author = "Bas des Tombe and Bart Schilperoort"
 copyright = f"{year}, {author}"
-version = release = "2.0.0"
+version = release = "3.0.0"
 
 pygments_style = "trac"
 templates_path = [".", sphinx_autosummary_accessors.templates_path]
