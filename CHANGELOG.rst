@@ -2,20 +2,26 @@
 Changelog
 =========
 
-dev
+3.0.0 (2023-11-05)
 ---
+
 Added
 
+* Calibration functions are now accessed via the .dts accessor in favor of the DataStore class.
 * Improved the functionality of `merge_double_ended`, by adding a check that handles measurements missing in one channel while present in the other ([#171](https://github.com/dtscalibration/python-dts-calibration/pull/171))
 * Support for Python 3.11
+* `matching_sections` is now similarly implemented as `sections`.
 
 Fixed
 
 * Single-ended measurements with `fix_alpha` failed due to a bug introduced in v2.0.0 ([#173](https://github.com/dtscalibration/python-dts-calibration/pull/173)).
 * Headers in example notebooks and their appearance in the docs are now at correct levels
+* Big clean up of the documentation. The documentation is now more consistent and easier to read.
 
 Changed
 
+* Notebooks now reflect the new API with the .dts accessor.
+* Calibration functions now return only calibration results instead of adding the results to the Dataset inplace. 
 * Standardized parameter names. Reduced the freedom in choosing parameter names and dimension names in favor of simplifying the code.
 * Requiring netcdf4 >= 1.6.4
 * Optional dependencies of xarray that improve performance are now required by default.
@@ -26,12 +32,14 @@ Changed
 
 Removed
 
+* Removed the `DataStore` module in favor of the `dts` accessor.
 * Removed ds.resample_datastore() in favor of using xarray's resample function. See example notebook 2.
 * Removed support for Python 3.8
 
 Developer changes
 
 * Added mypy to dev dependencies and CI.
+* Using ruff for most of the formattting. Black is used for the notebooks. Isort is used for sorting the imports.
 * Changed all import statements to be absolute instead of relative.
 * Cleaned up old 'pylint: disable' comments
 
