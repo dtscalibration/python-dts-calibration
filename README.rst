@@ -71,14 +71,16 @@ Or the development version directly from GitHub
 
 Package features
 ================
+DTS measures temperature by calibrating backscatter measurements to sections with a known temperature. DTS devices provide a simple interface to perform a limited calibration. Re-calibrating your measurements with this Python package gives you better temperature estimates and additional options.
+
 * Advanced calibration routine
-   * Both single- and double-ended setups
-   * Confidence intervals of calibrated temperature
-   * Time integration of calibration parameters
+   * Supports `single <https://github.com/dtscalibration/python-dts-calibration/blob/main/docs/notebooks/07Calibrate_single_ended.ipynb>`_- and `double-ended <https://github.com/dtscalibration/python-dts-calibration/blob/main/docs/notebooks/08Calibrate_double_ended.ipynb>`_ setups
+   * Compute uncertainty of the calibrated temperature
+   * All measurements are used to estimate parameter values that are constant over time.
    * Weighted least-squares calibration
-   * `Fixing parameters to a previously determined value <..//main/examples/notebooks/13Fixed_parameter_calibration.ipynb>`_
-   * `(Asymmetric) step loss correction <../main/examples/notebooks/14Lossy_splices.ipynb>`_
-   * `Matching temperature sections <../main/examples/notebooks/15Matching_sections.ipynb>`_
+   * `Fixing parameters to a previously determined value <../main/examples/notebooks/13Fixed_parameter_calibration.ipynb>`_
+   * `(Asymmetric) step loss correction <../main/examples/notebooks/14Lossy_splices.ipynb>`_ so that fiber connectors can be used instead of welds/splices.
+   * `Matching temperature sections <../main/examples/notebooks/15Matching_sections.ipynb>`_ to support J-configurations
 * Dynamic reference section definition
 * Tools for merging and aligning double-ended setups
 * Data formats of most manufacturers are supported
@@ -94,7 +96,7 @@ Documentation
 =============
 
 * A full calibration procedure for single-ended setups is presented in notebook `07Calibrate_single_ended.ipynb <https://github.com/dtscalibration/python-dts-calibration/blob/main/docs/notebooks/07Calibrate_single_ended.ipynb>`_ and for double-ended setups in `08Calibrate_double_ended.ipynb <https://github.com/dtscalibration/python-dts-calibration/blob/main/docs/notebooks/08Calibrate_double_ended.ipynb>`_.
-* Documentation at https://python-dts-calibration.readthedocs.io/ .
+* Documentation at `readthedocs <https://python-dts-calibration.readthedocs.io/en/latest/>`_.
 * Example notebooks (`./docs/notebooks`) that work within the browser can be viewed `here <https://mybinder.org/v2/gh/dtscalibration/python-dts-calibration/main?labpath=docs%2Fnotebooks>`_.
 
 How to cite
