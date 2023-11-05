@@ -184,7 +184,7 @@ def check_allclose_acquisitiontime(acquisitiontime, eps: float = 0.05) -> None:
         Default accepts 1% of relative variation between min and max acquisition time.
 
     Returns:
-    -------
+    --------
     """
     dtmin = acquisitiontime.min()
     dtmax = acquisitiontime.max()

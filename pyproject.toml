@@ -19,6 +19,7 @@ disable = true  # Requires confirmation when publishing to pypi.
 
 [project]
 name = "dtscalibration"
+version = "3.0.0"
 description = "Load Distributed Temperature Sensing (DTS) files, calibrate the temperature and estimate its uncertainty."
 readme = "README.rst"
 license = "BSD-3-Clause"
@@ -64,7 +65,6 @@ dependencies = [
     "netCDF4>=1.6.4",
     "nc-time-axis>=1.4.1"  # plot dependency of xarray
 ]
-dynamic = ["version"]
 
 [project.optional-dependencies]
 dev = [
@@ -107,11 +107,11 @@ features = ["dev"]
 [tool.hatch.envs.default.scripts]
 lint = [
   "ruff check src/ tests/ examples/",
-  "black --check src/ tests/ examples/",
+  "black --check docs/notebooks",
   "isort --check-only --diff src/ tests/ examples/",
   "mypy src/",
 ]
-format = ["isort src/ tests/ examples/", "ruff check src/ tests/ examples/ --fix", "black src/ tests/ examples/", "lint",]
+format = ["isort src/ tests/ examples/", "ruff check src/ tests/ examples/ --fix", "ruff format src/ tests/ examples/", "black docs/notebooks", "lint",]
 test = ["pytest ./src/ ./tests/",]
 fast-test = ["pytest ./tests/ -m \"not slow\"",]
 coverage = [

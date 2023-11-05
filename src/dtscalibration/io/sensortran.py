@@ -39,16 +39,17 @@ def read_sensortran_files(
         keyword-arguments are passed to DataStore initialization
 
     Returns:
-    -------
+    --------
     DataStore
         The newly created datastore.
     """
     filepathlist_dts = sorted(Path(directory).glob("*BinaryRawDTS.dat"))
 
     # Make sure that the list of files contains any files
-    assert (
-        len(filepathlist_dts) >= 1
-    ), "No RawDTS measurement files found " "in provided directory: \n" + str(directory)
+    assert len(filepathlist_dts) >= 1, (
+        "No RawDTS measurement files found "
+        "in provided directory: \n" + str(directory)
+    )
 
     filepathlist_temp = [
         Path(str(f).replace("RawDTS", "Temp")) for f in filepathlist_dts
@@ -88,7 +89,7 @@ def sensortran_binary_version_check(filepathlist: list[Path]):
     filepathlist
 
     Returns:
-    -------
+    --------
 
     """
     fname = filepathlist[0]
@@ -120,7 +121,7 @@ def read_sensortran_files_routine(
     silent
 
     Returns:
-    -------
+    --------
 
     """
     assert timezone_input_files == "UTC", "The sensortran files are always in UTC time."
@@ -267,7 +268,7 @@ def read_sensortran_single(file: Path) -> tuple[dict, dict]:
     file
 
     Returns:
-    -------
+    --------
     data, metadata
     """
     import struct

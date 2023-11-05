@@ -5,7 +5,6 @@ import pytest
 from scipy import stats
 from xarray import Dataset
 
-from dtscalibration import DtsAccessor  # noqa: F401
 from dtscalibration import read_silixa_files
 from dtscalibration.variance_stokes import variance_stokes_constant
 from dtscalibration.variance_stokes import variance_stokes_exponential

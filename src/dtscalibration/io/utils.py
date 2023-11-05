@@ -131,7 +131,7 @@ def get_xml_namespace(element):
     element
 
     Returns:
-    -------
+    --------
 
     """
     import re
@@ -171,7 +171,7 @@ def coords_time(
         A flag whether the measurement is double ended
 
     Returns:
-    -------
+    --------
 
     """
     time_attrs = {

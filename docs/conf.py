@@ -2,10 +2,10 @@ import os
 from datetime import date
 
 from xarray import Dataset  # noqa: E401
-import sphinx_autosummary_accessors
+import sphinx_autosummary_accessors  # noqa: E401
 
-import dtscalibration  # noqa: E401
-from dtscalibration import DtsAccessor   # noqa: E401
+# The following line introduces the .dts accessor for xarray datasets
+import dtscalibration  # noqa: E401  # noqa: E401
 
 extensions = [
     "sphinx_rtd_theme",
@@ -47,7 +47,7 @@ project = "dtscalibration"
 year = str(date.today().year)
 author = "Bas des Tombe and Bart Schilperoort"
 copyright = f"{year}, {author}"
-version = release = "2.0.0"
+version = release = "3.0.0"
 
 pygments_style = "trac"
 templates_path = [".", sphinx_autosummary_accessors.templates_path]

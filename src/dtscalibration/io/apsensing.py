@@ -57,11 +57,11 @@ def read_apsensing_files(
         keyword-arguments are passed to DataStore initialization
 
     Notes:
-    -----
+    ------
     Only XML files are supported for now
 
     Returns:
-    -------
+    --------
     datastore : DataStore
         The newly created datastore.
     """
@@ -72,9 +72,9 @@ def read_apsensing_files(
         filepathlist = sorted(Path(directory).glob(file_ext))
 
         # Make sure that the list of files contains any files
-        assert (
-            len(filepathlist) >= 1
-        ), "No measurement files found in provided " "directory: \n" + str(directory)
+        assert len(filepathlist) >= 1, (
+            "No measurement files found in provided " "directory: \n" + str(directory)
+        )
 
     # Make sure that the list of files contains any files
     assert len(filepathlist) >= 1, (
@@ -115,7 +115,7 @@ def apsensing_xml_version_check(filepathlist):
     filepathlist
 
     Returns:
-    -------
+    --------
 
     """
     sep = ":"
@@ -145,7 +145,7 @@ def read_apsensing_files_routine(
     load_in_memory
 
     Returns:
-    -------
+    --------
 
     """
     assert (
@@ -227,7 +227,7 @@ def read_apsensing_files_routine(
         file_handle
 
         Returns:
-        -------
+        --------
 
         """
         with open_file(file_handle, mode="r") as f_h:
@@ -292,7 +292,7 @@ def read_apsensing_files_routine(
         file_handle
 
         Returns:
-        -------
+        --------
 
         """
         with open_file(file_handle, mode="r") as f_h:
@@ -347,7 +347,7 @@ def read_apsensing_attrs_singlefile(filename, sep):
     sep
 
     Returns:
-    -------
+    --------
 
     """
     from xml.parsers.expat import ExpatError
@@ -371,7 +371,7 @@ def read_apsensing_attrs_singlefile(filename, sep):
         prefix
 
         Returns:
-        -------
+        --------
 
         """
         for key in dict_to_parse:

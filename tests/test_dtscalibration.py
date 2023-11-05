@@ -7,7 +7,6 @@ import scipy.sparse as sp
 from scipy import stats
 from xarray import Dataset
 
-from dtscalibration import DtsAccessor  # noqa: F401
 from dtscalibration.calibrate_utils import wls_sparse
 from dtscalibration.calibrate_utils import wls_stats
 from dtscalibration.variance_stokes import variance_stokes_exponential

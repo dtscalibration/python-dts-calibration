@@ -10,15 +10,14 @@ import pytest
 import xarray as xr
 from xarray import Dataset
 
-from dtscalibration import DtsAccessor  # noqa: F401
 from dtscalibration import read_apsensing_files
 from dtscalibration import read_sensornet_files
 from dtscalibration import read_sensortran_files
 from dtscalibration import read_silixa_files
 from dtscalibration.calibration.section_utils import set_sections
-from dtscalibration.datastore_utils import merge_double_ended
-from dtscalibration.datastore_utils import shift_double_ended
-from dtscalibration.datastore_utils import suggest_cable_shift_double_ended
+from dtscalibration.dts_accessor_utils import merge_double_ended
+from dtscalibration.dts_accessor_utils import shift_double_ended
+from dtscalibration.dts_accessor_utils import suggest_cable_shift_double_ended
 
 np.random.seed(0)
 
@@ -665,6 +664,6 @@ def test_merge_double_ended_times(inotinfw, inotinbw, inotinout):
         plot_result=False,
         verbose=False,
     )
-    assert ds.time.size == len(iout) and np.all(
-        ds.st.isel(x=0) == iout
+    assert (
+        ds.time.size == len(iout) and np.all(ds.st.isel(x=0) == iout)
     ), f"FW:{ifw} & BW:{ibw} should lead to {iout} but instead leads to {ds.st.isel(x=0).values}"

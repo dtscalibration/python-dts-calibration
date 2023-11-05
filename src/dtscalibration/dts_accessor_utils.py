@@ -29,24 +29,22 @@ def check_dims(
         The correct dimensions.
 
     Returns:
-    -------
+    --------
 
     """
     if not correct_dims:
         assert len(labels) > 1, "Define the correct dimensions"
 
         for li in labels[1:]:
-            assert (
-                ds[labels[0]].dims == ds[li].dims
-            ), li + " does not have the correct dimensions." " Should be " + str(
-                ds[labels[0]].dims
+            assert ds[labels[0]].dims == ds[li].dims, (
+                li + " does not have the correct dimensions."
+                " Should be " + str(ds[labels[0]].dims)
             )
     else:
         for li in labels:
-            assert (
-                ds[li].dims == correct_dims
-            ), li + " does not have the correct dimensions. " "Should be " + str(
-                correct_dims
+            assert ds[li].dims == correct_dims, (
+                li + " does not have the correct dimensions. "
+                "Should be " + str(correct_dims)
             )
 
 
@@ -403,7 +401,7 @@ def get_netcdf_encoding(
     ds : DataStore
 
     Returns:
-    -------
+    --------
     encoding:
         Encoding dictionary.
     """
@@ -707,7 +705,7 @@ def merge_double_ended(
     verbose : bool
 
     Returns:
-    -------
+    --------
     ds : DataStore object
         With the two channels merged
     """
@@ -793,7 +791,7 @@ def merge_double_ended_times(
         Print additional information to screen
 
     Returns:
-    -------
+    --------
     ds_fw_sel : DataSore object
         DataStore object representing the forward measurement channel with
         only times for which there is also a ds_bw measurement
@@ -917,7 +915,7 @@ def shift_double_ended(
         dropped. If False, the function will silently drop the variables.
 
     Returns:
-    -------
+    --------
     ds2 : DataStore object
         With a shifted x-axis
     """
@@ -1007,7 +1005,7 @@ def suggest_cable_shift_double_ended(
         Plot the summed error as a function of the shift.
 
     Returns:
-    -------
+    --------
     ishift1: int
         Suggested shift based on Err1
     ishift2: int
@@ -1159,10 +1157,10 @@ def ufunc_per_section_helper(
         Dictionary with options that are passed to func
 
     Returns:
-    -------
+    --------
 
     Examples:
-    --------
+    ---------
     1. Calculate the variance of the residuals in the along ALL the\
     reference sections wrt the temperature of the water baths
 
