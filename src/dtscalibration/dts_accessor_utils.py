@@ -958,7 +958,12 @@ def shift_double_ended(
 
     not_included = [k for k in ds.data_vars if k not in d2_data]
     if not_included and verbose:
-        print("I dont know what to do with the following data", not_included)
+        msg = (
+            "The following variables could not be shifted and are not included in the "
+            f"new dataset: {not_included}. You can silence this warning with the "
+            "keyword argument `verbose=False`."
+        )
+        warnings.warn(msg, UserWarning)
 
     return xr.Dataset(data_vars=d2_data, coords=d2_coords, attrs=ds.attrs)
 
@@ -1064,7 +1069,7 @@ def suggest_cable_shift_double_ended(
         f, (ax0, ax1) = plt.subplots(2, 1, sharex=False, **fig_kwargs)
         f.suptitle(f"best shift is {ishift1} or {ishift2}")
 
-        dt = ds.isel(time=0)
+        dt = ds.isel(time=0)[["st", "ast", "rst", "rast", "x"]]
         x = dt["x"].data
         y = dt["st"].data
         ax0.plot(x, y, label="ST original")
