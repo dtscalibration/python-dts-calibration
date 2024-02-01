@@ -83,7 +83,7 @@ def read_apsensing_files(
 
     device = apsensing_xml_version_check(filepathlist)
 
-    valid_devices = ["CP320"]
+    valid_devices = ["N4386B"]
 
     if device in valid_devices:
         pass
@@ -120,8 +120,10 @@ def apsensing_xml_version_check(filepathlist):
     """
     sep = ":"
     attrs, _ = read_apsensing_attrs_singlefile(filepathlist[0], sep)
+    deviceid_serialnb = attrs["wellbore:dtsInstalledSystemSet:dtsInstalledSystem:uid"]
+    deviceid = deviceid_serialnb.split("-")[0]
 
-    return attrs["wellbore:uid"]
+    return deviceid
 
 
 def read_apsensing_files_routine(
