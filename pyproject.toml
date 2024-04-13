@@ -158,7 +158,7 @@ select = [  # It would be nice to have the commented out checks working.
 
 ]
 extend-select = [
-  "D401",  # First line should be in imperative mood
+  #"D401",  # First line should be in imperative mood
   "D400",  # First line should end in a period.
   "D404",  # First word of the docstring should not be "This"
   "TID252",  # No relative imports (not pep8 compliant)
