@@ -1,4 +1,4 @@
-"""This module provides an xarray accessor for DTS calibration."""
+"""The xarray accessor for DTS calibration."""
 
 import dask.array as da
 import numpy as np

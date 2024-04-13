@@ -130,6 +130,7 @@ def read_sensornet_files(
     )
 
     ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
+    ds = ds.transpose("x", "time", ...)
     return ds
 
 
