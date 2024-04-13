@@ -845,17 +845,15 @@ def merge_double_ended_times(
         elif direction == "bw" and direction_next == "fw":
             pass
 
-        elif direction == "fw" and direction_next == "fw":
-            if verbose:
-                print(
-                    f"Missing backward measurement beween {ds_fw.time.values[ind]} and {ds_fw.time.values[ind_next]}"
-                )
+        elif direction == "fw" and direction_next == "fw" and verbose:
+            print(
+                f"Missing backward measurement beween {ds_fw.time.values[ind]} and {ds_fw.time.values[ind_next]}"
+            )
 
-        elif direction == "bw" and direction_next == "bw":
-            if verbose:
-                print(
-                    f"Missing forward measurement beween {ds_bw.time.values[ind]} and {ds_bw.time.values[ind_next]}"
-                )
+        elif direction == "bw" and direction_next == "bw" and verbose:
+            print(
+                f"Missing forward measurement beween {ds_bw.time.values[ind]} and {ds_bw.time.values[ind_next]}"
+            )
 
     # throw out is dt differs from its neighbors
     if verify_timedeltas:

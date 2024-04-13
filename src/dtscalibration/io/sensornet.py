@@ -109,11 +109,13 @@ def read_sensornet_files(
         or fnmatch.fnmatch(ddf_version, "Sentinel DTS v5*")
     ):
         flip_reverse_measurements = True
+    elif fnmatch.fnmatch(ddf_version, "ORYX F/W v4*"):
+        flip_reverse_measurements = False
     else:
         flip_reverse_measurements = False
         warnings.warn(
-            f"Sensornet .dff version {ddf_version}"
-            " has not been tested.\nPlease open an issue on github"
+            f"\n    Sensornet .dff version {ddf_version}"
+            " has not been tested.\n    Please open an issue on github"
             " and provide an example file"
         )
 
@@ -398,8 +400,14 @@ def read_sensornet_files_routine_v3(
                 [0, fiber_bw_1_index - fiber_n_indices - fiber_n_indices_internal]
             )
 
-            REV_ST = REV_ST[fiber_bw_start_index:fiber_bw_end_index]
-            REV_AST = REV_AST[fiber_bw_start_index:fiber_bw_end_index]
+            if (fiber_end_index - fiber_start_index) == (
+                fiber_bw_end_index - fiber_bw_start_index
+            ):
+                REV_ST = REV_ST[fiber_bw_start_index:fiber_bw_end_index]
+                REV_AST = REV_AST[fiber_bw_start_index:fiber_bw_end_index]
+            else:
+                REV_ST = REV_ST[fiber_start_index:fiber_end_index]
+                REV_AST = REV_AST[fiber_start_index:fiber_end_index]
 
         else:
             # Use the fiber indices from the forward channel

@@ -1,4 +1,5 @@
 import importlib.metadata
+import warnings
 
 from dtscalibration.dts_accessor import DtsAccessor  # noqa: F401
 from dtscalibration.dts_accessor_utils import get_netcdf_encoding
@@ -23,3 +24,8 @@ __all__ = [
     "shift_double_ended",
     "suggest_cable_shift_double_ended",
 ]
+
+warnings.filterwarnings(
+    "ignore",
+    message="Converting non-nanosecond precision timedelta values to nanosecond",
+)
