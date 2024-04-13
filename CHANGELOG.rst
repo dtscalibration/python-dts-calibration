@@ -2,6 +2,13 @@
 Changelog
 =========
 
+3.0.1 (2024-04-13)
+---
+
+Fixed
+
+* Oryx v4 double ended could have the backward measurements incorrectly cut off during loading.
+
 3.0.0 (2023-11-05)
 ---
 
