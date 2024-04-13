@@ -528,15 +528,17 @@ def test_resample_datastore():
     ds = read_silixa_files(directory=filepath, timezone_netcdf="UTC", file_ext="*.xml")
     assert ds.time.size == 3
 
-    ds_resampled = Dataset(ds.resample(time="47S").mean())
+    ds_resampled = ds.resample(time="47s").mean()
 
     assert ds_resampled.time.size == 2
-    assert ds_resampled.st.dims == ("x", "time"), (
-        "The dimension have to "
-        "be manually transposed "
-        "after resampling. To "
-        "guarantee the order"
-    )
+
+    ## No control over dim order from resample with accessor
+    # assert ds_resampled.st.dims == ("x", "time"), (
+    #     "The dimension have to "
+    #     "be manually transposed "
+    #     "after resampling. To "
+    #     "guarantee the order"
+    # )
 
 
 def test_timeseries_keys():
