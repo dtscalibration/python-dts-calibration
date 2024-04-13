@@ -112,6 +112,6 @@ Cite the specific implementation / repository via Zenodo:
     >>> # The following line introduces the .dts accessor for xarray datasets
     >>> import dtscalibration  # noqa: E401
     >>> dtscalibration.__version__
-    '3.0.0'
+    '3.0.1'
 2. Go to `Zenodo <https://zenodo.org/search?q=conceptrecid:%221410097%22&sort=-version&all_versions=True>`_ and follow the link to the version of interest.
 3. The citation is found on the bottom right of the page.
