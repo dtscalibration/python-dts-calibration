@@ -53,8 +53,7 @@ Overview
 
 A Python package to load Distributed Temperature Sensing files, perform a calibration, and plot the result. A detailed description of the calibration procedure can be found at https://doi.org/10.3390/s20082235 .
 
-* Free software: BSD 3-Clause License
-
+Do you have questions, ideas or just want to say hi? Please leave a message on the ` discussions page <https://github.com/dtscalibration/python-dts-calibration/discussions>`_!
 
 Installation
 ============
