@@ -77,9 +77,9 @@ DTS measures temperature by calibrating backscatter measurements to sections wit
    * Compute uncertainty of the calibrated temperature
    * All measurements are used to estimate parameter values that are constant over time.
    * Weighted least-squares calibration
-   * `Fixing parameters to a previously determined value <../main/examples/notebooks/13Fixed_parameter_calibration.ipynb>`_
-   * `(Asymmetric) step loss correction <../main/examples/notebooks/14Lossy_splices.ipynb>`_ so that fiber connectors can be used instead of welds/splices.
-   * `Matching temperature sections <../main/examples/notebooks/15Matching_sections.ipynb>`_ to support J-configurations
+   * `Fixing parameters to a previously determined value <https://github.com/dtscalibration/python-dts-calibration/blob/main/docs/notebooks/13Fixed_parameter_calibration.ipynb>`_
+   * `(Asymmetric) step loss correction <https://github.com/dtscalibration/python-dts-calibration/blob/main/docs/notebooks/14Lossy_splices.ipynb>`_ so that fiber connectors can be used instead of welds/splices.
+   * `Matching temperature sections <https://github.com/dtscalibration/python-dts-calibration/blob/main/docs/notebooks/15Matching_sections.ipynb>`_ to support J-configurations
 * Dynamic reference section definition
 * Tools for merging and aligning double-ended setups
 * Data formats of most manufacturers are supported
