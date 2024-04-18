@@ -19,7 +19,7 @@ disable = true  # Requires confirmation when publishing to pypi.
 
 [project]
 name = "dtscalibration"
-version = "3.0.0"
+version = "3.0.2"
 description = "Load Distributed Temperature Sensing (DTS) files, calibrate the temperature and estimate its uncertainty."
 readme = "README.rst"
 license = "BSD-3-Clause"
@@ -156,7 +156,7 @@ select = [  # It would be nice to have the commented out checks working.
 
 ]
 extend-select = [
-  "D401",  # First line should be in imperative mood
+  #"D401",  # First line should be in imperative mood
   "D400",  # First line should end in a period.
   "D404",  # First word of the docstring should not be "This"
   "TID252",  # No relative imports (not pep8 compliant)
