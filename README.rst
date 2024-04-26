@@ -29,7 +29,7 @@ Overview
     :alt: PyPI Package latest release
     :target: https://pypi.python.org/pypi/dtscalibration
 
-.. |commits-since| image:: https://img.shields.io/github/commits-since/dtscalibration/python-dts-calibration/v3.0.0.svg
+.. |commits-since| image:: https://img.shields.io/github/commits-since/dtscalibration/python-dts-calibration/v3.0.3.svg
     :alt: Commits since latest release
     :target: https://github.com/dtscalibration/python-dts-calibration/compare/v1.1.1...main
 
@@ -53,8 +53,7 @@ Overview
 
 A Python package to load Distributed Temperature Sensing files, perform a calibration, and plot the result. A detailed description of the calibration procedure can be found at https://doi.org/10.3390/s20082235 .
 
-* Free software: BSD 3-Clause License
-
+Do you have questions, ideas or just want to say hi? Please leave a message on the ` discussions page <https://github.com/dtscalibration/python-dts-calibration/discussions>`_!
 
 Installation
 ============
@@ -78,9 +77,9 @@ DTS measures temperature by calibrating backscatter measurements to sections wit
    * Compute uncertainty of the calibrated temperature
    * All measurements are used to estimate parameter values that are constant over time.
    * Weighted least-squares calibration
-   * `Fixing parameters to a previously determined value <../main/examples/notebooks/13Fixed_parameter_calibration.ipynb>`_
-   * `(Asymmetric) step loss correction <../main/examples/notebooks/14Lossy_splices.ipynb>`_ so that fiber connectors can be used instead of welds/splices.
-   * `Matching temperature sections <../main/examples/notebooks/15Matching_sections.ipynb>`_ to support J-configurations
+   * `Fixing parameters to a previously determined value <https://github.com/dtscalibration/python-dts-calibration/blob/main/docs/notebooks/13Fixed_parameter_calibration.ipynb>`_
+   * `(Asymmetric) step loss correction <https://github.com/dtscalibration/python-dts-calibration/blob/main/docs/notebooks/14Lossy_splices.ipynb>`_ so that fiber connectors can be used instead of welds/splices.
+   * `Matching temperature sections <https://github.com/dtscalibration/python-dts-calibration/blob/main/docs/notebooks/15Matching_sections.ipynb>`_ to support J-configurations
 * Dynamic reference section definition
 * Tools for merging and aligning double-ended setups
 * Data formats of most manufacturers are supported
@@ -112,6 +111,6 @@ Cite the specific implementation / repository via Zenodo:
     >>> # The following line introduces the .dts accessor for xarray datasets
     >>> import dtscalibration  # noqa: E401
     >>> dtscalibration.__version__
-    '3.0.0'
+    '3.0.1'
 2. Go to `Zenodo <https://zenodo.org/search?q=conceptrecid:%221410097%22&sort=-version&all_versions=True>`_ and follow the link to the version of interest.
 3. The citation is found on the bottom right of the page.

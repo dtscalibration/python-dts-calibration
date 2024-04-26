@@ -19,7 +19,7 @@ disable = true  # Requires confirmation when publishing to pypi.
 
 [project]
 name = "dtscalibration"
-version = "3.0.0"
+version = "3.0.3"
 description = "Load Distributed Temperature Sensing (DTS) files, calibrate the temperature and estimate its uncertainty."
 readme = "README.rst"
 license = "BSD-3-Clause"
@@ -71,7 +71,6 @@ dev = [
     "hatch",
     "bump2version",
     "ruff",
-    "isort",
     "black[jupyter]",   # for formatting
     "mypy",             # for type checking
     "types-PyYAML",     # for pyyaml types
@@ -108,10 +107,9 @@ features = ["dev"]
 lint = [
   "ruff check src/ tests/ examples/",
   "black --check docs/notebooks",
-  "isort --check-only --diff src/ tests/ examples/",
   "mypy src/",
 ]
-format = ["isort src/ tests/ examples/", "ruff check src/ tests/ examples/ --fix", "ruff format src/ tests/ examples/", "black docs/notebooks", "lint",]
+format = ["ruff check src/ tests/ examples/ --fix", "ruff format src/ tests/ examples/", "black docs/notebooks", "lint",]
 test = ["pytest ./src/ ./tests/",]
 fast-test = ["pytest ./tests/ -m \"not slow\"",]
 coverage = [
@@ -153,12 +151,12 @@ select = [  # It would be nice to have the commented out checks working.
   "PLE",  # Pylint error https://github.com/charliermarsh/ruff#error-ple
   # "PLR",  # Pylint refactor (e.g. too-many-arguments)
   "PLW",  # Pylint warning (useless-else-on-loop)
-  # "I",  # isort
+  "I",  # isort
   "SIM",  # flake8-simplify
 
 ]
 extend-select = [
-  "D401",  # First line should be in imperative mood
+  #"D401",  # First line should be in imperative mood
   "D400",  # First line should end in a period.
   "D404",  # First word of the docstring should not be "This"
   "TID252",  # No relative imports (not pep8 compliant)
@@ -167,9 +165,6 @@ ignore = [
   "PLR2004",  # magic value used in comparson
   "E501",  # Line too long (want to have fixed
 ]
-# Allow autofix for all enabled rules (when `--fix`) is provided.
-fixable = ["E", "F", "UP", "PLE", "D"]
-unfixable = []
 line-length = 88
 exclude = ["docs", "build"]
 # Allow unused variables when underscore-prefixed.
@@ -186,16 +181,9 @@ convention = "google"
 [tool.ruff.mccabe]
 max-complexity = 10
 
-[tool.ruff.lint.isort]
+[tool.ruff.isort]
+known-first-party = ["dtscalibration"]
 force-single-line = true
-
-[tool.isort]
-py_version=39
-force_single_line = true
-known_first_party = ["dtscalibration"]
-skip = [".gitignore", ".tox", "docs", ".venv"]
-src_paths = ["src", "tests"]
-line_length = 120
 
 [tool.black]
 line-length = 88

@@ -2,6 +2,32 @@
 Changelog
 =========
 
+3.0.3 (2024-04-18)
+---
+
+Fixed 
+
+* Improved error message when some variables cannot be shifted by the suggest_shift_double_ended function.
+
+Changed:
+
+* [dev] Moved to Ruff instead of isort for import sorting
+
+
+3.0.2 (2024-04-13)
+---
+
+Fixed
+
+* Bumpversion configuration was incorrect since v3.0.0. Therefore the 3.0.1 release failed. This is a re-release of 3.0.1:
+
+3.0.1 (2024-04-13)
+---
+
+Fixed
+
+* Oryx v4 double ended could have the backward measurements incorrectly cut off during loading.
+
 3.0.0 (2023-11-05)
 ---
 

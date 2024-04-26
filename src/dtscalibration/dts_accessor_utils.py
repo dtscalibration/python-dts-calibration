@@ -845,17 +845,15 @@ def merge_double_ended_times(
         elif direction == "bw" and direction_next == "fw":
             pass
 
-        elif direction == "fw" and direction_next == "fw":
-            if verbose:
-                print(
-                    f"Missing backward measurement beween {ds_fw.time.values[ind]} and {ds_fw.time.values[ind_next]}"
-                )
+        elif direction == "fw" and direction_next == "fw" and verbose:
+            print(
+                f"Missing backward measurement beween {ds_fw.time.values[ind]} and {ds_fw.time.values[ind_next]}"
+            )
 
-        elif direction == "bw" and direction_next == "bw":
-            if verbose:
-                print(
-                    f"Missing forward measurement beween {ds_bw.time.values[ind]} and {ds_bw.time.values[ind_next]}"
-                )
+        elif direction == "bw" and direction_next == "bw" and verbose:
+            print(
+                f"Missing forward measurement beween {ds_bw.time.values[ind]} and {ds_bw.time.values[ind_next]}"
+            )
 
     # throw out is dt differs from its neighbors
     if verify_timedeltas:
@@ -958,7 +956,12 @@ def shift_double_ended(
 
     not_included = [k for k in ds.data_vars if k not in d2_data]
     if not_included and verbose:
-        print("I dont know what to do with the following data", not_included)
+        msg = (
+            "The following variables could not be shifted and are not included in the "
+            f"new dataset: {not_included}. You can silence this warning with the "
+            "keyword argument `verbose=False`."
+        )
+        warnings.warn(msg, UserWarning)
 
     return xr.Dataset(data_vars=d2_data, coords=d2_coords, attrs=ds.attrs)
 
@@ -1064,7 +1067,7 @@ def suggest_cable_shift_double_ended(
         f, (ax0, ax1) = plt.subplots(2, 1, sharex=False, **fig_kwargs)
         f.suptitle(f"best shift is {ishift1} or {ishift2}")
 
-        dt = ds.isel(time=0)
+        dt = ds.isel(time=0)[["st", "ast", "rst", "rast", "x"]]
         x = dt["x"].data
         y = dt["st"].data
         ax0.plot(x, y, label="ST original")

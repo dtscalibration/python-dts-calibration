@@ -1,4 +1,5 @@
 import os
+import warnings
 from pathlib import Path
 from xml.etree import ElementTree
 
@@ -97,7 +98,11 @@ def read_silixa_files(
             "Silixa xml version " + f"{xml_version} not implemented"
         )
 
-    ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore", message="Converting non-nanosecond precision timedelta"
+        )
+        ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
     return ds
 
 
