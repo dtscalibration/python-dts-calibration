@@ -428,7 +428,6 @@ def read_apsensing_attrs_singlefile(filename, sep):
     return metakey({}, doc, ""), skip_chars
 
 
-
 def find_corresponding_tra_file(timestamp, tra_filelist):
     """
     Finds match between timstamp extracted from .xml file and filepathlist containing tra_files
@@ -506,8 +505,17 @@ def check_if_tra_exists(filepathlist):
 
 def parse_tra_numbers(val: str):
     """
-    helper function used by
-    read_single_tra_file()
+    helper function used by function read_single_tra_file() 
+    to determine correct datatype of read string
+
+    Parameters
+    ----------
+    val : str
+        String value of tra file item
+
+    Returns:
+    --------
+    val : Value in correct datatype (boolean, int, float and string supported), 
     """
     if val == "True":
         return True
@@ -520,88 +528,6 @@ def parse_tra_numbers(val: str):
     except:
         return val
 
-# def read_single_tra_file(tra_filepath):
-#     """
-#     Using AP Sensing N4386B both POSC (.xml) export and trace (.tra) export can be used to log measurements. 
-#     This function reads the .tra data and appends it to the dask array, which was read from the POSC export (.xml) file.
-
-#     .tra files contain different data then the .xml files from POSC export
-#         - more metadata
-#         - log_ratio and loss(attenuation) calculated by device
-#         - PT100 sensor data (optional only if sensors are connnected to device)
-    
-
-#     Parameters
-#     ----------
-#     tra_filepathlist : list of str
-#         List of paths that point the the .tra files
-#     Notes:
-#     ------
-#     more metadata could be read from the .tra file and stored in the dask array
-
-#     Returns:
-#     --------
-#     data_dict : dict containing time series data as lists of float
-#     reftemps_dict : dict containing PT100 reference as float
-#     date_dict : dict containing time data as str
-#     """
-#     raw_data = list()
-#     header_end = None
-    
-#     # Read data from file
-#     with open(tra_filepath) as f:
-#         csvreader = csv.reader(f, delimiter=';')
-#         for row in csvreader:
-#             raw_data.append(row)
-    
-#     # Find header and footer
-#     # Read temperature sensors
-#     # Read timestep info
-#     footer_idx_found = False
-#     date_dict = {}
-#     reftemps_dict = {}
-#     for ii, line in enumerate(raw_data):
-#         if len(line)>0:
-#             if 'Date.Year' in line[0] or 'Ref.Temperature.Sensor.' in line[0]:
-#                 if not footer_idx_found:
-#                     data_end = ii
-#                     footer_idx_found = True
-            
-#             if 'Trace.' in line[0]:
-#                 header_end = ii + 1
-
-#             elif "Ref.Temperature.Sensor." in line[0]:
-#                 idx_ref_temp_sens = int(line[0][-1])
-#                 reftemps_dict[f"PT100_{idx_ref_temp_sens}"] = float(line[1])
-
-#             elif 'Date.Year' in line[0]:
-#                 date_dict["year"] = line[1]
-#             elif 'Date.Month' in line[0]:
-#                 date_dict["month"] = line[1]
-#             elif 'Date.Day' in line[0]:
-#                 date_dict["day"] = line[1]
-#             elif 'Time.Hour' in line[0]:
-#                 date_dict["hour"] = line[1]
-#             elif 'Time.Minute' in line[0]:
-#                 date_dict["minute"] = line[1]
-#             elif 'Time.Second' in line[0]:
-#                 date_dict["second"] = line[1]
-                
-#     header = raw_data[:header_end]
-#     footer = raw_data[data_end:]
-    
-
-#     ### Convert data into usable datatype
-#     data_lst = raw_data[header_end:data_end]
-#     data_colnames = ["index", "distance", "t_by_dts", "log_ratio", "loss"]
-#     data_dict = dict()
-#     for ii, _ in enumerate(data_lst[0]):
-#         data_dict.update({data_colnames[ii]:[]})
-#     for ii, line in enumerate(data_lst):
-#         for jj, elem in enumerate(line):
-#             data_dict[data_colnames[jj]].append(float(elem))
-    
-#     return data_dict, reftemps_dict, date_dict
 
 def read_single_tra_file(tra_filepath):
     """
@@ -657,8 +583,25 @@ def read_single_tra_file(tra_filepath):
     
     return data_dict
 
+
 def append_to_data_vars_structure(data_vars, 
                 data_dict_list):
+    """
+    append data from .tra files to data_vars structure. 
+    (The data_vars structure is later on used to initialize the x-array dataset)
+
+
+    Parameters
+    ----------
+    data_vars : dictionary containing *.xml data
+    data_dict_list: list of dictionaries
+                each dictionary in the list contains the data of one .tra file
+
+    Returns:
+    --------
+    data_vars : dictionary containing *.xml data and *.tra data
+
+    """
     # compose array of format [[value(x1t1).. value(x1tm)]
     #                           ....
     #                           [value(xnt1).. value(xntm)]]
@@ -671,25 +614,19 @@ def append_to_data_vars_structure(data_vars,
             log_ratio_list.append(data_dict[tr_key][key][2]),
             loss_list.append(data_dict[tr_key][key][3])] 
             for key in data_dict[tr_key].keys() if isinstance(key, int)]
+        
         if idx == 0:
             # initialize numpy arrays
             distance = np.column_stack(np.column_stack(np.array(distance_list)))
             t_by_dts = np.column_stack(np.column_stack(np.array(t_by_dts_list)))
             log_ratio = np.column_stack(np.column_stack(np.array(log_ratio_list)))
             loss = np.column_stack(np.column_stack(np.array(loss_list)))
-
-            # t_by_dts = np.column_stack(np.column_stack(data_dict["t_by_dts"]))
-            # log_ratio = np.column_stack(np.column_stack(data_dict["log_ratio"]))
-            # loss = np.column_stack(np.column_stack(data_dict["loss"]))
         else:
             distance = np.concatenate((distance, np.column_stack(np.column_stack(np.array(distance_list)))), axis = 1)
             t_by_dts = np.concatenate((t_by_dts, np.column_stack(np.column_stack(np.array(t_by_dts_list)))), axis = 1)
             log_ratio = np.concatenate((log_ratio, np.column_stack(np.column_stack(np.array(log_ratio_list)))), axis = 1)
             loss = np.concatenate((loss, np.column_stack(np.column_stack(np.array(loss_list)))), axis = 1)
-                        
-            # t_by_dts = np.concatenate((t_by_dts, np.array(data_dict["t_by_dts"])[:,None]), axis=1)
-            # log_ratio = np.concatenate((log_ratio, np.array(data_dict["log_ratio"])[:,None]), axis=1)
-            # loss = np.concatenate((loss, np.array(data_dict["loss"])[:,None]), axis=1)
+            
     # add log_ratio and attenaution to data_vars
     data_vars["log_ratio_by_dts"] = (("x", "time"), log_ratio)
     data_vars["loss_by_dts"] = (("x", "time"), loss)
