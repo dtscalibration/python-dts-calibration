@@ -1,4 +1,3 @@
-import csv
 import os
 import warnings
 from pathlib import Path
@@ -109,15 +108,11 @@ def read_apsensing_files(
     if tra_exists:
         print(".tra files exist and will be read")
         data_dict_list = []
-        reftemps_dict_list = []
-        date_dict_list = []
         for _,  tra_file in enumerate(tra_filepathlist):
-            data_dict, reftemps_dict, date_dict = read_single_tra_file(tra_file)
+            data_dict = read_single_tra_file(tra_file)
             data_dict_list.append(data_dict)
-            reftemps_dict_list.append(reftemps_dict)
-            date_dict_list.append(date_dict)
         data_vars = append_to_data_vars_structure(data_vars, 
-                        data_dict_list, reftemps_dict_list, date_dict_list)
+                        data_dict_list)
 
 
 
@@ -508,6 +503,106 @@ def check_if_tra_exists(filepathlist):
     
     return tra_available, ordered_tra_filepathlist
 
+
+def parse_tra_numbers(val: str):
+    """
+    helper function used by
+    read_single_tra_file()
+    """
+    if val == "True":
+        return True
+    if val == "False":
+        return False
+    if val.isdigit():
+        return int(val)
+    try:  # a bit ugly, but sadly there is no string.isfloat() method...
+        return float(val)
+    except:
+        return val
+
+# def read_single_tra_file(tra_filepath):
+#     """
+#     Using AP Sensing N4386B both POSC (.xml) export and trace (.tra) export can be used to log measurements. 
+#     This function reads the .tra data and appends it to the dask array, which was read from the POSC export (.xml) file.
+
+#     .tra files contain different data then the .xml files from POSC export
+#         - more metadata
+#         - log_ratio and loss(attenuation) calculated by device
+#         - PT100 sensor data (optional only if sensors are connnected to device)
+    
+
+#     Parameters
+#     ----------
+#     tra_filepathlist : list of str
+#         List of paths that point the the .tra files
+#     Notes:
+#     ------
+#     more metadata could be read from the .tra file and stored in the dask array
+
+#     Returns:
+#     --------
+#     data_dict : dict containing time series data as lists of float
+#     reftemps_dict : dict containing PT100 reference as float
+#     date_dict : dict containing time data as str
+#     """
+#     raw_data = list()
+#     header_end = None
+    
+#     # Read data from file
+#     with open(tra_filepath) as f:
+#         csvreader = csv.reader(f, delimiter=';')
+#         for row in csvreader:
+#             raw_data.append(row)
+    
+#     # Find header and footer
+#     # Read temperature sensors
+#     # Read timestep info
+#     footer_idx_found = False
+#     date_dict = {}
+#     reftemps_dict = {}
+#     for ii, line in enumerate(raw_data):
+#         if len(line)>0:
+#             if 'Date.Year' in line[0] or 'Ref.Temperature.Sensor.' in line[0]:
+#                 if not footer_idx_found:
+#                     data_end = ii
+#                     footer_idx_found = True
+            
+#             if 'Trace.' in line[0]:
+#                 header_end = ii + 1
+
+#             elif "Ref.Temperature.Sensor." in line[0]:
+#                 idx_ref_temp_sens = int(line[0][-1])
+#                 reftemps_dict[f"PT100_{idx_ref_temp_sens}"] = float(line[1])
+
+#             elif 'Date.Year' in line[0]:
+#                 date_dict["year"] = line[1]
+#             elif 'Date.Month' in line[0]:
+#                 date_dict["month"] = line[1]
+#             elif 'Date.Day' in line[0]:
+#                 date_dict["day"] = line[1]
+#             elif 'Time.Hour' in line[0]:
+#                 date_dict["hour"] = line[1]
+#             elif 'Time.Minute' in line[0]:
+#                 date_dict["minute"] = line[1]
+#             elif 'Time.Second' in line[0]:
+#                 date_dict["second"] = line[1]
+                
+#     header = raw_data[:header_end]
+#     footer = raw_data[data_end:]
+    
+
+#     ### Convert data into usable datatype
+#     data_lst = raw_data[header_end:data_end]
+#     data_colnames = ["index", "distance", "t_by_dts", "log_ratio", "loss"]
+#     data_dict = dict()
+#     for ii, _ in enumerate(data_lst[0]):
+#         data_dict.update({data_colnames[ii]:[]})
+#     for ii, line in enumerate(data_lst):
+#         for jj, elem in enumerate(line):
+#             data_dict[data_colnames[jj]].append(float(elem))
+    
+#     return data_dict, reftemps_dict, date_dict
+
 def read_single_tra_file(tra_filepath):
     """
     Using AP Sensing N4386B both POSC (.xml) export and trace (.tra) export can be used to log measurements. 
@@ -529,115 +624,100 @@ def read_single_tra_file(tra_filepath):
 
     Returns:
     --------
-    data_dict : dict containing time series data as lists of float
-    reftemps_dict : dict containing PT100 reference as float
-    date_dict : dict containing time data as str
+    data_dict : dict containing time series measured fibre data by distance
+                                PT100 reference as float
+                                timestamp data
+                                other metadata
     """
-    raw_data = list()
-    header_end = None
     
-    # Read data from file
     with open(tra_filepath) as f:
-        csvreader = csv.reader(f, delimiter=';')
-        for row in csvreader:
-            raw_data.append(row)
-    
-    # Find header and footer
-    # Read temperature sensors
-    # Read timestep info
-    footer_idx_found = False
-    date_dict = {}
-    reftemps_dict = {}
-    for ii, line in enumerate(raw_data):
-        if len(line)>0:
-            if 'Date.Year' in line[0] or 'Ref.Temperature.Sensor.' in line[0]:
-                if not footer_idx_found:
-                    data_end = ii
-                    footer_idx_found = True
-            
-            if 'Trace.' in line[0]:
-                header_end = ii + 1
+        file = f.readlines()
 
-            elif "Ref.Temperature.Sensor." in line[0]:
-                idx_ref_temp_sens = int(line[0][-1])
-                reftemps_dict[f"PT100_{idx_ref_temp_sens}"] = float(line[1])
+    data = [line for line in file if line != "\n"]  # drops out empty lines
 
-            elif 'Date.Year' in line[0]:
-                date_dict["year"] = line[1]
-            elif 'Date.Month' in line[0]:
-                date_dict["month"] = line[1]
-            elif 'Date.Day' in line[0]:
-                date_dict["day"] = line[1]
-            elif 'Time.Hour' in line[0]:
-                date_dict["hour"] = line[1]
-            elif 'Time.Minute' in line[0]:
-                date_dict["minute"] = line[1]
-            elif 'Time.Second' in line[0]:
-                date_dict["second"] = line[1]
-                
-    header = raw_data[:header_end]
-    footer = raw_data[data_end:]
-    
-    # self.t_abs=dt.datetime(
-    #     int(date_dict["year"]), 
-    #     int(date_dict["month"]), 
-    #     int(date_dict["day"]), 
-    #     int(date_dict["hour"]), 
-    #     int(date_dict["minute"]), 
-    #     int(date_dict["second"])
-    #     )
+    data_dict = {}
 
-    ### Convert data into usable datatype
-    data_lst = raw_data[header_end:data_end]
-    data_colnames = ["index", "distance", "t_by_dts", "log_ratio", "loss"]
-    data_dict = dict()
-    for ii, _ in enumerate(data_lst[0]):
-        data_dict.update({data_colnames[ii]:[]})
-    for ii, line in enumerate(data_lst):
-        for jj, elem in enumerate(line):
-            data_dict[data_colnames[jj]].append(float(elem))
+    current_section = None
+    for line in data:
+        line = line.replace("\n", "") # drops out linebreaks
+        if line.startswith("["): # detects new section and sets it as current section
+            current_section = line.replace("[", "").replace("]", "")
+            data_dict[current_section] = {}
+        else:
+            content = line.split(";")
+            content = [parse_tra_numbers(val) for val in content]
+            content_name = content[0]
+            if len(content) == 2: # = metadata & data after trace data (optional sensors and time stamp)
+                data_dict[current_section][content_name] = content[1]
+            else: # == trace data containing distance, temperature, logratio, attenuation
+                data_dict[current_section][content_name] = tuple(content[1:])
+
+    trace_key = [key for key in data_dict.keys() if 'Trace.' in key][0] # find key of trace n in "Trace.n" is unknown
+    data_dict["trace_key"]=trace_key
     
-    return data_dict, reftemps_dict, date_dict
+    return data_dict
 
 def append_to_data_vars_structure(data_vars, 
-                data_dict_list, reftemps_dict_list, date_dict_list):
+                data_dict_list):
     # compose array of format [[value(x1t1).. value(x1tm)]
     #                           ....
     #                           [value(xnt1).. value(xntm)]]
     for idx, data_dict in enumerate(data_dict_list):
+        # first get distance, t_by_dts, log_ratio and loss as list from dictionary 
+        tr_key = data_dict["trace_key"]
+        [distance_list, t_by_dts_list, log_ratio_list, loss_list] = [[],[],[],[]]
+        [[distance_list.append(data_dict[tr_key][key][0]),
+            t_by_dts_list.append(data_dict[tr_key][key][1]),
+            log_ratio_list.append(data_dict[tr_key][key][2]),
+            loss_list.append(data_dict[tr_key][key][3])] 
+            for key in data_dict[tr_key].keys() if isinstance(key, int)]
         if idx == 0:
-            t_by_dts = np.column_stack(np.column_stack(data_dict["t_by_dts"]))
-            log_ratio = np.column_stack(np.column_stack(data_dict["log_ratio"]))
-            loss = np.column_stack(np.column_stack(data_dict["loss"]))
+            # initialize numpy arrays
+            distance = np.column_stack(np.column_stack(np.array(distance_list)))
+            t_by_dts = np.column_stack(np.column_stack(np.array(t_by_dts_list)))
+            log_ratio = np.column_stack(np.column_stack(np.array(log_ratio_list)))
+            loss = np.column_stack(np.column_stack(np.array(loss_list)))
+
+            # t_by_dts = np.column_stack(np.column_stack(data_dict["t_by_dts"]))
+            # log_ratio = np.column_stack(np.column_stack(data_dict["log_ratio"]))
+            # loss = np.column_stack(np.column_stack(data_dict["loss"]))
         else:
-            t_by_dts = np.concatenate((t_by_dts, np.array(data_dict["t_by_dts"])[:,None]), axis=1)
-            log_ratio = np.concatenate((log_ratio, np.array(data_dict["log_ratio"])[:,None]), axis=1)
-            loss = np.concatenate((loss, np.array(data_dict["loss"])[:,None]), axis=1)
+            distance = np.concatenate((distance, np.column_stack(np.column_stack(np.array(distance_list)))), axis = 1)
+            t_by_dts = np.concatenate((t_by_dts, np.column_stack(np.column_stack(np.array(t_by_dts_list)))), axis = 1)
+            log_ratio = np.concatenate((log_ratio, np.column_stack(np.column_stack(np.array(log_ratio_list)))), axis = 1)
+            loss = np.concatenate((loss, np.column_stack(np.column_stack(np.array(loss_list)))), axis = 1)
+                        
+            # t_by_dts = np.concatenate((t_by_dts, np.array(data_dict["t_by_dts"])[:,None]), axis=1)
+            # log_ratio = np.concatenate((log_ratio, np.array(data_dict["log_ratio"])[:,None]), axis=1)
+            # loss = np.concatenate((loss, np.array(data_dict["loss"])[:,None]), axis=1)
     # add log_ratio and attenaution to data_vars
     data_vars["log_ratio_by_dts"] = (("x", "time"), log_ratio)
     data_vars["loss_by_dts"] = (("x", "time"), loss)
 
     # add reference temp data, if they exist
     for idx_ref_temp in range(1,5):
-        if f"PT100_{idx_ref_temp}" in reftemps_dict_list[0].keys():
+        if f"Ref.Temperature.Sensor.{idx_ref_temp}" in data_dict[tr_key].keys():
             ref_temps = []
-            for _, reftemps_dict in enumerate(reftemps_dict_list):
-                ref_temps.append(reftemps_dict[f"PT100_{idx_ref_temp}"])
+            for _, data_dict in enumerate(data_dict_list):
+                tr_key = data_dict["trace_key"]
+                ref_temps.append(data_dict[tr_key][f"Ref.Temperature.Sensor.{idx_ref_temp}"])
             data_vars[f"probe{idx_ref_temp}Temperature"] = (("time",), ref_temps)
 
 
     # check if files match by comparing timestamps and dts temperature
-    for idx_t in range(0,len(date_dict_list)):
-        err_msg = f"fatal error in allocation of .xml and .tra data.\nxml file {data_vars['creationDate'][1][idx_t]}\ntra file {date_dict_list[idx_t]}\n\n"
+    for idx_t in range(0,len(data_dict_list)):
             # check timestamps
-        date_dict = date_dict_list[idx_t]
+        data_dict = data_dict_list[idx_t]
+        tr_key = data_dict["trace_key"]
         dd_ts = pd.Timestamp(
-             int(date_dict["year"]), 
-             int(date_dict["month"]), 
-             int(date_dict["day"]), 
-             int(date_dict["hour"]), 
-             int(date_dict["minute"]), 
-             int(date_dict["second"]))
+             int(data_dict[tr_key]["Date.Year"]), 
+             int(data_dict[tr_key]["Date.Month"]),
+             int(data_dict[tr_key]["Date.Day"]),
+             int(data_dict[tr_key]["Time.Hour"]),
+             int(data_dict[tr_key]["Time.Minute"]), 
+             int(data_dict[tr_key]["Time.Second"]))
+        
+        err_msg = f"fatal error in allocation of .xml and .tra data.\nxml file {data_vars['creationDate'][1][idx_t]}\ntra file {str(dd_ts)}\n\n"
         if not data_vars["creationDate"][1][idx_t] == dd_ts:
             raise Exception(err_msg)
         
