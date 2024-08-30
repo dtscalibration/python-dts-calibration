@@ -1,4 +1,5 @@
 """Common utilities for reading input files."""
+
 from contextlib import contextmanager
 
 import pandas as pd

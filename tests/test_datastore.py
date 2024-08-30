@@ -459,9 +459,15 @@ def test_read_apsensing_files():
         timezone_input_files="UTC",
         file_ext="*.xml",
     )
-    np.testing.assert_almost_equal(ds_tra.isel(time=0).probe2Temperature, 50.17586, decimal = 5)
-    np.testing.assert_almost_equal(ds_tra.isel(time=1).probe2Temperature, 50.17099, decimal = 5)
-    np.testing.assert_almost_equal(ds_tra.isel(time=0).log_ratio_by_dts[0], -7.08712720870972, decimal = 7)
+    np.testing.assert_almost_equal(
+        ds_tra.isel(time=0).probe2Temperature, 50.17586, decimal=5
+    )
+    np.testing.assert_almost_equal(
+        ds_tra.isel(time=1).probe2Temperature, 50.17099, decimal=5
+    )
+    np.testing.assert_almost_equal(
+        ds_tra.isel(time=0).log_ratio_by_dts[0], -7.08712720870972, decimal=7
+    )
     mm = int(np.datetime_as_string(ds_tra.isel(time=0).time)[14:16])
     ss = int(np.datetime_as_string(ds_tra.isel(time=0).time)[17:19])
     np.testing.assert_almost_equal([mm, ss], [18, 20])

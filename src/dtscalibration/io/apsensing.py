@@ -108,13 +108,10 @@ def read_apsensing_files(
     if tra_exists:
         print(".tra files exist and will be read")
         data_dict_list = []
-        for _,  tra_file in enumerate(tra_filepathlist):
+        for _, tra_file in enumerate(tra_filepathlist):
             data_dict = read_single_tra_file(tra_file)
             data_dict_list.append(data_dict)
-        data_vars = append_to_data_vars_structure(data_vars, 
-                        data_dict_list)
-
-
+        data_vars = append_to_data_vars_structure(data_vars, data_dict_list)
 
     ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
     return ds
@@ -212,9 +209,9 @@ def read_apsensing_files_routine(
 
     # print summary
     if not silent:
-        print("%s files were found, each representing a single timestep" % ntime)
-        print("%s recorded vars were found: " % nitem + ", ".join(data_item_names))
-        print("Recorded at %s points along the cable" % nx)
+        print(f"{ntime} files were found, each representing a single timestep")
+        print(f"{nitem} recorded vars were found: " + ", ".join(data_item_names))
+        print(f"Recorded at {nx} points along the cable")
 
         if double_ended_flag:
             print("The measurement is double ended")
@@ -429,8 +426,7 @@ def read_apsensing_attrs_singlefile(filename, sep):
 
 
 def find_corresponding_tra_file(timestamp, tra_filelist):
-    """
-    Finds match between timstamp extracted from .xml file and filepathlist containing tra_files
+    """Finds match between timstamp extracted from .xml file and filepathlist containing tra_files.
 
     Parameters
     ----------
@@ -453,8 +449,8 @@ def find_corresponding_tra_file(timestamp, tra_filelist):
 
 def check_if_tra_exists(filepathlist):
     """
-    Using AP Sensing N4386B both POSC (.xml) export and trace (.tra) export can be used to log measurements. 
-    This function checks, whether both export options were turned on simultaneously. All files .xml and .tra 
+    Using AP Sensing N4386B both POSC (.xml) export and trace (.tra) export can be used to log measurements.
+    This function checks, whether both export options were turned on simultaneously. All files .xml and .tra
     must be placed in the same directory.
 
     Parameters
@@ -468,45 +464,47 @@ def check_if_tra_exists(filepathlist):
 
     Returns:
     --------
-    tra_available : boolean, 
+    tra_available : boolean,
         True only, when all .xml files have a corresponding .tra file
     ordered_tra_filepathlist . list of str
-        if tra_available is True: This list contains a list of filepaths for the 
+        if tra_available is True: This list contains a list of filepaths for the
         .tra file. The list is ordered the same as the input .xml filepath list.
     """
-   
+
     filedir = os.path.dirname(filepathlist[0])
     # create list of .tra files in directory
-    dir_content=os.listdir(filedir)
+    dir_content = os.listdir(filedir)
     dir_content.sort()
     tra_filelist = []
     for _, file in enumerate(dir_content):
-        if '.tra' in file:
+        if ".tra" in file:
             tra_filelist.append(file)
             continue
-    
-    if len(tra_filelist) < len(filepathlist): # early exit, if less .tra than .xml files available
+
+    if len(tra_filelist) < len(
+        filepathlist
+    ):  # early exit, if less .tra than .xml files available
         return False, []
 
-    tra_available = True # assume it is and prove it wrong if it's not
+    tra_available = True  # assume it is and prove it wrong if it's not
     ordered_tra_filepathlist = []
     for filepath in filepathlist:
         filename = os.path.basename(filepath)
         # 14 char long timestamp is the always at the end of AP sensing exported filenames
         xml_timestamp = filename[-18:-5]
-        tra_exists, tra_filename =  find_corresponding_tra_file(xml_timestamp,tra_filelist)
+        tra_exists, tra_filename = find_corresponding_tra_file(
+            xml_timestamp, tra_filelist
+        )
         if not tra_exists:
             tra_available = False
             break
-        ordered_tra_filepathlist.append(os.path.join(filedir,tra_filename))
-    
+        ordered_tra_filepathlist.append(os.path.join(filedir, tra_filename))
+
     return tra_available, ordered_tra_filepathlist
 
 
 def parse_tra_numbers(val: str):
-    """
-    helper function used by function read_single_tra_file() 
-    to determine correct datatype of read string
+    """parsing helper function used by function read_single_tra_file() to determine correct datatype of read string.
 
     Parameters
     ----------
@@ -515,7 +513,7 @@ def parse_tra_numbers(val: str):
 
     Returns:
     --------
-    val : Value in correct datatype (boolean, int, float and string supported), 
+    val : Value in correct datatype (boolean, int, float and string supported),
     """
     if val == "True":
         return True
@@ -525,20 +523,20 @@ def parse_tra_numbers(val: str):
         return int(val)
     try:  # a bit ugly, but sadly there is no string.isfloat() method...
         return float(val)
-    except:
+    except ValueError:
         return val
 
 
 def read_single_tra_file(tra_filepath):
     """
-    Using AP Sensing N4386B both POSC (.xml) export and trace (.tra) export can be used to log measurements. 
+    Using AP Sensing N4386B both POSC (.xml) export and trace (.tra) export can be used to log measurements.
     This function reads the .tra data and appends it to the dask array, which was read from the POSC export (.xml) file.
 
     .tra files contain different data then the .xml files from POSC export
         - more metadata
         - log_ratio and loss(attenuation) calculated by device
         - PT100 sensor data (optional only if sensors are connnected to device)
-    
+
 
     Parameters
     ----------
@@ -555,7 +553,7 @@ def read_single_tra_file(tra_filepath):
                                 timestamp data
                                 other metadata
     """
-    
+
     with open(tra_filepath) as f:
         file = f.readlines()
 
@@ -564,31 +562,34 @@ def read_single_tra_file(tra_filepath):
     data_dict = {}
 
     current_section = None
-    for line in data:
-        line = line.replace("\n", "") # drops out linebreaks
-        if line.startswith("["): # detects new section and sets it as current section
+    for line_with_break in data:
+        line = line_with_break.replace("\n", "")  # drops out linebreaks
+        if line.startswith("["):  # detects new section and sets it as current section
             current_section = line.replace("[", "").replace("]", "")
             data_dict[current_section] = {}
         else:
             content = line.split(";")
             content = [parse_tra_numbers(val) for val in content]
             content_name = content[0]
-            if len(content) == 2: # = metadata & data after trace data (optional sensors and time stamp)
+            if (
+                len(content) == 2
+            ):  # = metadata & data after trace data (optional sensors and time stamp)
                 data_dict[current_section][content_name] = content[1]
-            else: # == trace data containing distance, temperature, logratio, attenuation
+            else:  # == trace data containing distance, temperature, logratio, attenuation
                 data_dict[current_section][content_name] = tuple(content[1:])
 
-    trace_key = [key for key in data_dict.keys() if 'Trace.' in key][0] # find key of trace n in "Trace.n" is unknown
-    data_dict["trace_key"]=trace_key
-    
+    trace_key = [key for key in data_dict if "Trace." in key][
+        0
+    ]  # find key of trace n in "Trace.n" is unknown
+    data_dict["trace_key"] = trace_key
+
     return data_dict
 
 
-def append_to_data_vars_structure(data_vars, 
-                data_dict_list):
+def append_to_data_vars_structure(data_vars, data_dict_list):
     """
-    append data from .tra files to data_vars structure. 
-    (The data_vars structure is later on used to initialize the x-array dataset)
+    append data from .tra files to data_vars structure.
+    (The data_vars structure is later on used to initialize the x-array dataset).
 
 
     Parameters
@@ -606,15 +607,20 @@ def append_to_data_vars_structure(data_vars,
     #                           ....
     #                           [value(xnt1).. value(xntm)]]
     for idx, data_dict in enumerate(data_dict_list):
-        # first get distance, t_by_dts, log_ratio and loss as list from dictionary 
+        # first get distance, t_by_dts, log_ratio and loss as list from dictionary
         tr_key = data_dict["trace_key"]
-        [distance_list, t_by_dts_list, log_ratio_list, loss_list] = [[],[],[],[]]
-        [[distance_list.append(data_dict[tr_key][key][0]),
-            t_by_dts_list.append(data_dict[tr_key][key][1]),
-            log_ratio_list.append(data_dict[tr_key][key][2]),
-            loss_list.append(data_dict[tr_key][key][3])] 
-            for key in data_dict[tr_key].keys() if isinstance(key, int)]
-        
+        [distance_list, t_by_dts_list, log_ratio_list, loss_list] = [[], [], [], []]
+        [
+            [
+                distance_list.append(data_dict[tr_key][key][0]),
+                t_by_dts_list.append(data_dict[tr_key][key][1]),
+                log_ratio_list.append(data_dict[tr_key][key][2]),
+                loss_list.append(data_dict[tr_key][key][3]),
+            ]
+            for key in data_dict[tr_key]
+            if isinstance(key, int)
+        ]
+
         if idx == 0:
             # initialize numpy arrays
             distance = np.column_stack(np.column_stack(np.array(distance_list)))
@@ -622,44 +628,57 @@ def append_to_data_vars_structure(data_vars,
             log_ratio = np.column_stack(np.column_stack(np.array(log_ratio_list)))
             loss = np.column_stack(np.column_stack(np.array(loss_list)))
         else:
-            distance = np.concatenate((distance, np.column_stack(np.column_stack(np.array(distance_list)))), axis = 1)
-            t_by_dts = np.concatenate((t_by_dts, np.column_stack(np.column_stack(np.array(t_by_dts_list)))), axis = 1)
-            log_ratio = np.concatenate((log_ratio, np.column_stack(np.column_stack(np.array(log_ratio_list)))), axis = 1)
-            loss = np.concatenate((loss, np.column_stack(np.column_stack(np.array(loss_list)))), axis = 1)
-            
+            distance = np.concatenate(
+                (distance, np.column_stack(np.column_stack(np.array(distance_list)))),
+                axis=1,
+            )
+            t_by_dts = np.concatenate(
+                (t_by_dts, np.column_stack(np.column_stack(np.array(t_by_dts_list)))),
+                axis=1,
+            )
+            log_ratio = np.concatenate(
+                (log_ratio, np.column_stack(np.column_stack(np.array(log_ratio_list)))),
+                axis=1,
+            )
+            loss = np.concatenate(
+                (loss, np.column_stack(np.column_stack(np.array(loss_list)))), axis=1
+            )
+
     # add log_ratio and attenaution to data_vars
     data_vars["log_ratio_by_dts"] = (("x", "time"), log_ratio)
     data_vars["loss_by_dts"] = (("x", "time"), loss)
 
     # add reference temp data, if they exist
-    for idx_ref_temp in range(1,5):
-        if f"Ref.Temperature.Sensor.{idx_ref_temp}" in data_dict[tr_key].keys():
+    for idx_ref_temp in range(1, 5):
+        if f"Ref.Temperature.Sensor.{idx_ref_temp}" in data_dict[tr_key]:
             ref_temps = []
             for _, data_dict in enumerate(data_dict_list):
                 tr_key = data_dict["trace_key"]
-                ref_temps.append(data_dict[tr_key][f"Ref.Temperature.Sensor.{idx_ref_temp}"])
+                ref_temps.append(
+                    data_dict[tr_key][f"Ref.Temperature.Sensor.{idx_ref_temp}"]
+                )
             data_vars[f"probe{idx_ref_temp}Temperature"] = (("time",), ref_temps)
 
-
     # check if files match by comparing timestamps and dts temperature
-    for idx_t in range(0,len(data_dict_list)):
-            # check timestamps
+    for idx_t in range(0, len(data_dict_list)):
+        # check timestamps
         data_dict = data_dict_list[idx_t]
         tr_key = data_dict["trace_key"]
         dd_ts = pd.Timestamp(
-             int(data_dict[tr_key]["Date.Year"]), 
-             int(data_dict[tr_key]["Date.Month"]),
-             int(data_dict[tr_key]["Date.Day"]),
-             int(data_dict[tr_key]["Time.Hour"]),
-             int(data_dict[tr_key]["Time.Minute"]), 
-             int(data_dict[tr_key]["Time.Second"]))
-        
+            int(data_dict[tr_key]["Date.Year"]),
+            int(data_dict[tr_key]["Date.Month"]),
+            int(data_dict[tr_key]["Date.Day"]),
+            int(data_dict[tr_key]["Time.Hour"]),
+            int(data_dict[tr_key]["Time.Minute"]),
+            int(data_dict[tr_key]["Time.Second"]),
+        )
+
         err_msg = f"fatal error in allocation of .xml and .tra data.\nxml file {data_vars['creationDate'][1][idx_t]}\ntra file {str(dd_ts)}\n\n"
         if not data_vars["creationDate"][1][idx_t] == dd_ts:
             raise Exception(err_msg)
-        
+
         # check dts temperature
-        for idx_x in [0,2,5]:
+        for idx_x in [0, 2, 5]:
             if not data_vars["tmp"][1][idx_x][idx_t] == t_by_dts[idx_x][idx_t]:
                 # fatal error in allocation of .tra and .xml data
                 raise Exception(err_msg)

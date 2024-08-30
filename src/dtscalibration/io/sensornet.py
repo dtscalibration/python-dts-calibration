@@ -314,8 +314,8 @@ def read_sensornet_files_routine_v3(
 
     # print summary
     if not silent:
-        print("%s files were found," % ntime + " each representing a single timestep")
-        print("Recorded at %s points along the cable" % nx)
+        print(f"{ntime} files were found," + " each representing a single timestep")
+        print(f"Recorded at {nx} points along the cable")
 
         if double_ended_flag:
             print("The measurement is double ended")
