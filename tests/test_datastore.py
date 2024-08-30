@@ -49,6 +49,7 @@ data_dir_single_silixa_v45 = os.path.join(wd, "data", "silixa_v4.5")
 data_dir_single_silixa_v7 = os.path.join(wd, "data", "silixa_v7.0")
 data_dir_single_silixa_v8 = os.path.join(wd, "data", "silixa_v8.1")
 data_dir_ap_sensing = os.path.join(wd, "data", "ap_sensing")
+data_dir_ap_sensing_with_tra = os.path.join(wd, "data", "ap_sensing_2", "CH1_SE")
 data_dir_sensortran_binary = os.path.join(wd, "data", "sensortran_binary")
 data_dir_double_single_ch1 = os.path.join(
     wd, "data", "double_single_ended", "channel_1"
@@ -450,6 +451,20 @@ def test_read_apsensing_files():
         file_ext="*.xml",
     )
     np.testing.assert_almost_equal(ds.st.sum(), 10415.2837, decimal=2)
+
+    filepath_tra = data_dir_ap_sensing_with_tra
+    ds_tra = read_apsensing_files(
+        directory=filepath_tra,
+        timezone_netcdf="UTC",
+        timezone_input_files="UTC",
+        file_ext="*.xml",
+    )
+    np.testing.assert_almost_equal(ds_tra.isel(time=0).probe2Temperature, 50.17586, decimal = 5)
+    np.testing.assert_almost_equal(ds_tra.isel(time=1).probe2Temperature, 50.17099, decimal = 5)
+    np.testing.assert_almost_equal(ds_tra.isel(time=0).log_ratio_by_dts[0], -7.08712720870972, decimal = 7)
+    mm = int(np.datetime_as_string(ds_tra.isel(time=0).time)[14:16])
+    ss = int(np.datetime_as_string(ds_tra.isel(time=0).time)[17:19])
+    np.testing.assert_almost_equal([mm, ss], [18, 20])
 
 
 def test_read_apsensing_files_loadinmemory():

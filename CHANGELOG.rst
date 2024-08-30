@@ -1,6 +1,18 @@
 
 Changelog
 =========
+3.0.4 (2024-08-30)
+
+Fixed 
+
+* Device ID bug for APSensing fixed. Device ID is N4386B instead of C320. C320 was an arbitrary name given for the wellbore by the user
+
+Added
+
+* more test data from AP sensing device N4386B, which do also contain their .tra log files
+* AP sensing .tra support, as the reference temperature sensor data by this device in only logged in .tra and not in the .xml log files.
+    added functions in io/apsensing.py to read .tra files if they are in the same directory as the .xml files.
+* a few tests in test_datastore.py inside fuction test_read_apsensing_files
 
 3.0.3 (2024-04-18)
 ---
