@@ -51,7 +51,7 @@ classifiers = [
     "Topic :: Utilities",
 ]
 dependencies = [
-    "numpy>=1.22.4",        # >= 1.22 for full quantile method support in xarray
+    "numpy>=1.22.4, <=2.0.1",  # >= 1.22 for quantile method support in xarray. https://github.com/statsmodels/statsmodels/issues/9333
     "dask",
     "pandas",
     "xarray[parallel]",     # numbagg (llvmlite) is a pain to install with pip

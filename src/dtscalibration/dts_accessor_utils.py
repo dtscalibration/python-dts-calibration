@@ -682,6 +682,7 @@ def merge_double_ended(
     ds_bw: xr.Dataset,
     cable_length: float,
     plot_result: bool = True,
+    verify_timedeltas: bool = True,
     verbose: bool = True,
 ) -> xr.Dataset:
     """Some measurements are not set up on the DTS-device as double-ended
@@ -702,6 +703,9 @@ def merge_double_ended(
         Manually estimated cable length to base alignment on
     plot_result : bool
         Plot the aligned Stokes of the forward and backward channels
+    verify_timedeltas : bool
+        Check whether times between forward and backward measurements are similar to
+        those of neighboring measurements
     verbose : bool
 
     Returns:
@@ -713,7 +717,7 @@ def merge_double_ended(
         ds_fw.attrs["isDoubleEnded"] == "0" and ds_bw.attrs["isDoubleEnded"] == "0"
     ), "(one of the) input DataStores is already double ended"
 
-    ds_fw, ds_bw = merge_double_ended_times(ds_fw, ds_bw, verbose=verbose)
+    ds_fw, ds_bw = merge_double_ended_times(ds_fw, ds_bw, verbose=verbose, verify_timedeltas=verify_timedeltas)
 
     ds = ds_fw.copy()
     ds_bw = ds_bw.copy()
