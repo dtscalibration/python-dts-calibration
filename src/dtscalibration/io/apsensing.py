@@ -111,7 +111,7 @@ def read_apsensing_files(
     # add .tra data if it is available
     tra_exists, tra_filepathlist = check_if_tra_exists(filepathlist)
     if tra_exists:
-        print(".tra files exist and will be read")
+        print(".tra files are present and will be read")
         data_dict_list = []
         for _, tra_file in enumerate(tra_filepathlist):
             data_dict = read_single_tra_file(tra_file, load_tra_arrays)
