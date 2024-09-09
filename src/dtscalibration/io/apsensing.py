@@ -55,6 +55,9 @@ def read_apsensing_files(
         If set tot True, some verbose texts are not printed to stdout/screen
     load_in_memory : {'auto', True, False}
         If 'auto' the Stokes data is only loaded to memory for small files
+    load_tra_arrays : bool
+        If true and tra files available, the tra array data will imported. 
+        Current implementation is limited to in-memory reading only.
     kwargs : dict-like, optional
         keyword-arguments are passed to DataStore initialization
 
