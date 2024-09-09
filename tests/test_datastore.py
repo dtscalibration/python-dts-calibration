@@ -462,7 +462,7 @@ def test_read_apsensing_files_double_ended():
         timezone_netcdf="UTC",
         timezone_input_files="UTC",
         file_ext="*.xml",
-        load_tra_arrays = True, # for log_ratio_by_dts test
+        load_tra_arrays=True,  # for log_ratio_by_dts test
     )
     ds_CH2 = read_apsensing_files(
         directory=filepath_tra,
@@ -486,29 +486,38 @@ def test_read_apsensing_files_double_ended():
     ## 2: test the double-ended calibration
     # define sections and aq time
     sections = {
-    "probe1Temperature": [slice(60, 72), slice(120.5, 132.5)],  # cold bath
-    "probe2Temperature": [slice(40, 52), slice(140, 152)],  # warm bath
+        "probe1Temperature": [slice(60, 72), slice(120.5, 132.5)],  # cold bath
+        "probe2Temperature": [slice(40, 52), slice(140, 152)],  # warm bath
     }
     acquisitiontime = np.array([60 for ii in range(len(ds_CH1.time))])
     # construct one DE dataset of two SE sets
     ds_DE = ds_CH1
     da_rst = ds_CH1.st.copy(data=np.flip(ds_CH2.st.to_numpy(), axis=0))
-    ds_DE["rst"] = da_rst.assign_attrs(name="rst", description="reverse Stokes intensity")
+    ds_DE["rst"] = da_rst.assign_attrs(
+        name="rst", description="reverse Stokes intensity"
+    )
     da_rast = ds_CH1.st.copy(data=np.flip(ds_CH2.ast.to_numpy(), axis=0))
-    ds_DE["rast"] = da_rast.assign_attrs(name="rast", description="reverse anti-Stokes intensity")
+    ds_DE["rast"] = da_rast.assign_attrs(
+        name="rast", description="reverse anti-Stokes intensity"
+    )
     # shift the data
     suggested_shift = suggest_cable_shift_double_ended(
-        ds_DE, np.arange(-40, 40), plot_result=True, figsize=(12, 8))
+        ds_DE, np.arange(-40, 40), plot_result=True, figsize=(12, 8)
+    )
     ds_DE = shift_double_ended(ds_DE, suggested_shift[0])
     # perform the de calibration
     st_var, _ = variance_stokes_constant(
-    ds_DE.dts.st, sections, acquisitiontime, reshape_residuals=True)
+        ds_DE.dts.st, sections, acquisitiontime, reshape_residuals=True
+    )
     ast_var, _ = variance_stokes_constant(
-        ds_DE.dts.ast, sections, acquisitiontime, reshape_residuals=False)
+        ds_DE.dts.ast, sections, acquisitiontime, reshape_residuals=False
+    )
     rst_var, _ = variance_stokes_constant(
-        ds_DE.dts.rst, sections, acquisitiontime, reshape_residuals=False)
+        ds_DE.dts.rst, sections, acquisitiontime, reshape_residuals=False
+    )
     rast_var, _ = variance_stokes_constant(
-        ds_DE.dts.rast, sections, acquisitiontime, reshape_residuals=False)
+        ds_DE.dts.rast, sections, acquisitiontime, reshape_residuals=False
+    )
     out = ds_DE.dts.calibrate_double_ended(
         sections=sections,
         st_var=st_var,
@@ -517,8 +526,7 @@ def test_read_apsensing_files_double_ended():
         rast_var=rast_var,
     )
     # test the data
-    np.testing.assert_almost_equal(out.tmpw.isel(time=0).sel(x=50), 
-                                   49.86, decimal=2)
+    np.testing.assert_almost_equal(out.tmpw.isel(time=0).sel(x=50), 49.86, decimal=2)
 
 
 def test_read_apsensing_files_loadinmemory():

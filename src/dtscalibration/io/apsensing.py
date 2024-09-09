@@ -30,7 +30,7 @@ def read_apsensing_files(
     timezone_netcdf="UTC",
     silent=False,
     load_in_memory="auto",
-    load_tra_arrays = False,
+    load_tra_arrays=False,
     **kwargs,
 ):
     """Read a folder with measurement files from a device of the Sensortran
@@ -113,7 +113,9 @@ def read_apsensing_files(
         for _, tra_file in enumerate(tra_filepathlist):
             data_dict = read_single_tra_file(tra_file, load_tra_arrays)
             data_dict_list.append(data_dict)
-        data_vars = append_to_data_vars_structure(data_vars, data_dict_list, load_tra_arrays)
+        data_vars = append_to_data_vars_structure(
+            data_vars, data_dict_list, load_tra_arrays
+        )
 
     ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
     return ds
@@ -448,30 +450,37 @@ def check_if_tra_exists(filepathlist):
         True only, when all .xml files have a corresponding .tra file
     sorted_tra_filepathlist . list of str
         if tra_available is True: This list contains a list of filepaths for the
-        .tra file. The list is sorted the same as the input .xml filepath list, 
+        .tra file. The list is sorted the same as the input .xml filepath list,
         because both were generated with the sorted(...) command and are thus sorted
         by their identical timestamps.
     """
 
-    
-    directory = Path(filepathlist[0]).parent # create list of .tra files in directory
+    directory = Path(filepathlist[0]).parent  # create list of .tra files in directory
     sorted_tra_filepathlist = sorted(directory.glob("*.tra"))
-    tra_files = "\n".join([file.name for file in sorted_tra_filepathlist]) # make it one big string
-    tra_timestamps = set(re.findall(r"(\d{14}).tra", tra_files))  # find 14 digits followed by .tra
+    tra_files = "\n".join(
+        [file.name for file in sorted_tra_filepathlist]
+    )  # make it one big string
+    tra_timestamps = set(
+        re.findall(r"(\d{14}).tra", tra_files)
+    )  # find 14 digits followed by .tra
 
     xml_timestamps = "\n".join([file.name for file in filepathlist])
-    xml_timestamps = set(re.findall(r"(\d{14}).xml", xml_timestamps)) # note that these are sets now
+    xml_timestamps = set(
+        re.findall(r"(\d{14}).xml", xml_timestamps)
+    )  # note that these are sets now
 
     diff = xml_timestamps - tra_timestamps
-    if len(diff) == len(xml_timestamps): # No tra data - that may be intended --> warning.
+    if len(diff) == len(
+        xml_timestamps
+    ):  # No tra data - that may be intended --> warning.
         msg = f"Not all .xml files have a matching .tra file.\n Missing are time following timestamps {diff}.  Not loading .tra data."
         warnings.warn(msg)
         return False, []
-    
-    elif len(diff) > 0: 
+
+    elif len(diff) > 0:
         msg = f"Not all .xml files have a matching .tra file.\n Missing are time following timestamps {diff}."
         raise ValueError(msg)
-    
+
     diff = tra_timestamps - xml_timestamps
     if len(diff) > 0:
         msg = f"Not all .tra files have a matching .xml file.\n Missing are time following timestamps {diff}."
@@ -520,7 +529,7 @@ def read_single_tra_file(tra_filepath, load_tra_arrays):
     tra_filepathlist: list of str
         List of paths that point the the .tra files
     load_tra_arrays: boolean
-        If False, the array data taken along the fibre (distance, temperature, 
+        If False, the array data taken along the fibre (distance, temperature,
         log_ratio and loss) are not imported.
     Notes:
     ------
@@ -555,7 +564,7 @@ def read_single_tra_file(tra_filepath, load_tra_arrays):
                 len(content) == 2
             ):  # = metadata & data after trace data (optional sensors and time stamp)
                 data_dict[current_section][content_name] = content[1]
-            elif load_tra_arrays:  
+            elif load_tra_arrays:
                 # == trace data containing distance, temperature, logratio, attenuation
                 # read only when requested by load_tra_arrays=True
                 data_dict[current_section][content_name] = tuple(content[1:])
@@ -580,7 +589,7 @@ def append_to_data_vars_structure(data_vars, data_dict_list, load_tra_arrays):
     data_dict_list: list of dictionaries
                 each dictionary in the list contains the data of one .tra file
     load_tra_arrays: boolean
-                If False, the array data taken along the fibre (distance, temperature, 
+                If False, the array data taken along the fibre (distance, temperature,
                 log_ratio and loss) were not imported and thus not in data_dict_list
 
     Returns:
@@ -592,7 +601,7 @@ def append_to_data_vars_structure(data_vars, data_dict_list, load_tra_arrays):
     data_dict = data_dict_list[0]
     tr_key = data_dict["trace_key"]
     n_measurements = len([key for key in data_dict[tr_key] if isinstance(key, int)])
-    
+
     if load_tra_arrays:
         # Initialize arrays
         distances = np.zeros((len(data_dict_list), n_measurements))
@@ -615,8 +624,6 @@ def append_to_data_vars_structure(data_vars, data_dict_list, load_tra_arrays):
         # add log_ratio and attenaution to data_vars
         data_vars["log_ratio_by_dts"] = (("time", "x"), log_ratio)
         data_vars["loss_by_dts"] = (("time", "x"), loss)
-
-
 
     # add reference temperature data, if they exist
     for idx_ref_temp in range(1, 5):
