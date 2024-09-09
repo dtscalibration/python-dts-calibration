@@ -462,6 +462,7 @@ def test_read_apsensing_files_double_ended():
         timezone_netcdf="UTC",
         timezone_input_files="UTC",
         file_ext="*.xml",
+        load_tra_arrays = True, # for log_ratio_by_dts test
     )
     ds_CH2 = read_apsensing_files(
         directory=filepath_tra,
@@ -469,7 +470,7 @@ def test_read_apsensing_files_double_ended():
         timezone_input_files="UTC",
         file_ext="*.xml",
     )
-    ## 1: check temperature probes, log_ratio and timestamp
+    ## 1: check PT100 temperature probes, log_ratio and timestamp
     np.testing.assert_almost_equal(
         ds_CH1.isel(time=0).probe2Temperature, 50.17586, decimal=5
     )
