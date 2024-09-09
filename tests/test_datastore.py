@@ -18,6 +18,7 @@ from dtscalibration.calibration.section_utils import set_sections
 from dtscalibration.dts_accessor_utils import merge_double_ended
 from dtscalibration.dts_accessor_utils import shift_double_ended
 from dtscalibration.dts_accessor_utils import suggest_cable_shift_double_ended
+from dtscalibration.variance_stokes import variance_stokes_constant
 
 np.random.seed(0)
 
@@ -49,7 +50,8 @@ data_dir_single_silixa_v45 = os.path.join(wd, "data", "silixa_v4.5")
 data_dir_single_silixa_v7 = os.path.join(wd, "data", "silixa_v7.0")
 data_dir_single_silixa_v8 = os.path.join(wd, "data", "silixa_v8.1")
 data_dir_ap_sensing = os.path.join(wd, "data", "ap_sensing")
-data_dir_ap_sensing_with_tra = os.path.join(wd, "data", "ap_sensing_2", "CH1_SE")
+data_dir_ap_sensing_2_CH1 = os.path.join(wd, "data", "ap_sensing_2", "CH1_SE")
+data_dir_ap_sensing_2_CH2 = os.path.join(wd, "data", "ap_sensing_2", "CH1_SE")
 data_dir_sensortran_binary = os.path.join(wd, "data", "sensortran_binary")
 data_dir_double_single_ch1 = os.path.join(
     wd, "data", "double_single_ended", "channel_1"
@@ -452,25 +454,70 @@ def test_read_apsensing_files():
     )
     np.testing.assert_almost_equal(ds.st.sum(), 10415.2837, decimal=2)
 
-    filepath_tra = data_dir_ap_sensing_with_tra
-    ds_tra = read_apsensing_files(
+
+def test_read_apsensing_files_double_ended():
+    filepath_tra = data_dir_ap_sensing_2_CH1
+    ds_CH1 = read_apsensing_files(
         directory=filepath_tra,
         timezone_netcdf="UTC",
         timezone_input_files="UTC",
         file_ext="*.xml",
     )
+    ds_CH2 = read_apsensing_files(
+        directory=filepath_tra,
+        timezone_netcdf="UTC",
+        timezone_input_files="UTC",
+        file_ext="*.xml",
+    )
+    ## 1: check temperature probes, log_ratio and timestamp
     np.testing.assert_almost_equal(
-        ds_tra.isel(time=0).probe2Temperature, 50.17586, decimal=5
+        ds_CH1.isel(time=0).probe2Temperature, 50.17586, decimal=5
     )
     np.testing.assert_almost_equal(
-        ds_tra.isel(time=1).probe2Temperature, 50.17099, decimal=5
+        ds_CH1.isel(time=1).probe2Temperature, 50.17099, decimal=5
     )
     np.testing.assert_almost_equal(
-        ds_tra.isel(time=0).log_ratio_by_dts[0], -7.08712720870972, decimal=7
+        ds_CH1.isel(time=0).log_ratio_by_dts[0], -7.08712720870972, decimal=7
     )
-    mm = int(np.datetime_as_string(ds_tra.isel(time=0).time)[14:16])
-    ss = int(np.datetime_as_string(ds_tra.isel(time=0).time)[17:19])
+    mm = int(np.datetime_as_string(ds_CH1.isel(time=0).time)[14:16])
+    ss = int(np.datetime_as_string(ds_CH1.isel(time=0).time)[17:19])
     np.testing.assert_almost_equal([mm, ss], [18, 20])
+    ## 2: test the double-ended calibration
+    # define sections and aq time
+    sections = {
+    "probe1Temperature": [slice(60, 72), slice(120.5, 132.5)],  # cold bath
+    "probe2Temperature": [slice(40, 52), slice(140, 152)],  # warm bath
+    }
+    acquisitiontime = np.array([60 for ii in range(len(ds_CH1.time))])
+    # construct one DE dataset of two SE sets
+    ds_DE = ds_CH1
+    da_rst = ds_CH1.st.copy(data=np.flip(ds_CH2.st.to_numpy(), axis=0))
+    ds_DE["rst"] = da_rst.assign_attrs(name="rst", description="reverse Stokes intensity")
+    da_rast = ds_CH1.st.copy(data=np.flip(ds_CH2.ast.to_numpy(), axis=0))
+    ds_DE["rast"] = da_rast.assign_attrs(name="rast", description="reverse anti-Stokes intensity")
+    # shift the data
+    suggested_shift = suggest_cable_shift_double_ended(
+        ds_DE, np.arange(-40, 40), plot_result=True, figsize=(12, 8))
+    ds_DE = shift_double_ended(ds_DE, suggested_shift[0])
+    # perform the de calibration
+    st_var, _ = variance_stokes_constant(
+    ds_DE.dts.st, sections, acquisitiontime, reshape_residuals=True)
+    ast_var, _ = variance_stokes_constant(
+        ds_DE.dts.ast, sections, acquisitiontime, reshape_residuals=False)
+    rst_var, _ = variance_stokes_constant(
+        ds_DE.dts.rst, sections, acquisitiontime, reshape_residuals=False)
+    rast_var, _ = variance_stokes_constant(
+        ds_DE.dts.rast, sections, acquisitiontime, reshape_residuals=False)
+    out = ds_DE.dts.calibrate_double_ended(
+        sections=sections,
+        st_var=st_var,
+        ast_var=ast_var,
+        rst_var=rst_var,
+        rast_var=rast_var,
+    )
+    # test the data
+    np.testing.assert_almost_equal(out.tmpw.isel(time=0).sel(x=50), 
+                                   49.86, decimal=2)
 
 
 def test_read_apsensing_files_loadinmemory():

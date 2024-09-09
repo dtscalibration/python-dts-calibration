@@ -1,4 +1,5 @@
 import os
+import re
 import warnings
 from pathlib import Path
 from xml.etree import ElementTree
@@ -425,28 +426,6 @@ def read_apsensing_attrs_singlefile(filename, sep):
     return metakey({}, doc, ""), skip_chars
 
 
-def find_corresponding_tra_file(timestamp, tra_filelist):
-    """Finds match between timstamp extracted from .xml file and filepathlist containing tra_files.
-
-    Parameters
-    ----------
-    timestamp : str
-    tra_filelist : list of str
-
-    Returns:
-    --------
-    match_exists : boolean
-    file : str
-    """
-    match_exists = False
-    for _, file in enumerate(tra_filelist):
-        tra_timestamp = file[-18:-5]
-        if tra_timestamp == timestamp:
-            match_exists = True
-            break
-    return match_exists, file
-
-
 def check_if_tra_exists(filepathlist):
     """
     Using AP Sensing N4386B both POSC (.xml) export and trace (.tra) export can be used to log measurements.
@@ -471,36 +450,31 @@ def check_if_tra_exists(filepathlist):
         .tra file. The list is ordered the same as the input .xml filepath list.
     """
 
-    filedir = os.path.dirname(filepathlist[0])
-    # create list of .tra files in directory
-    dir_content = os.listdir(filedir)
-    dir_content.sort()
-    tra_filelist = []
-    for _, file in enumerate(dir_content):
-        if ".tra" in file:
-            tra_filelist.append(file)
-            continue
+    
+    directory = Path(filepathlist[0]).parent # create list of .tra files in directory
+    sorted_tra_filepathlist = sorted(directory.glob("*.tra"))
+    tra_files = "\n".join([file.name for file in sorted_tra_filepathlist]) # make it one big string
+    tra_timestamps = set(re.findall(r"(\d{14}).tra", tra_files))  # find 14 digits followed by .tra
 
-    if len(tra_filelist) < len(
-        filepathlist
-    ):  # early exit, if less .tra than .xml files available
+    xml_timestamps = "\n".join([file.name for file in filepathlist])
+    xml_timestamps = set(re.findall(r"(\d{14}).xml", xml_timestamps)) # note that these are sets now
+
+    diff = xml_timestamps - tra_timestamps
+    if len(diff) == len(xml_timestamps): # No tra data - that may be intended --> warning.
+        msg = f"Not all .xml files have a matching .tra file.\n Missing are time following timestamps {diff}.  Not loading .tra data."
+        warnings.warn(msg)
         return False, []
+    
+    elif len(diff) > 0: 
+        msg = f"Not all .xml files have a matching .tra file.\n Missing are time following timestamps {diff}."
+        raise ValueError(msg)
+    
+    diff = tra_timestamps - xml_timestamps
+    if len(diff) > 0:
+        msg = f"Not all .tra files have a matching .xml file.\n Missing are time following timestamps {diff}."
+        raise ValueError(msg)
 
-    tra_available = True  # assume it is and prove it wrong if it's not
-    ordered_tra_filepathlist = []
-    for filepath in filepathlist:
-        filename = os.path.basename(filepath)
-        # 14 char long timestamp is the always at the end of AP sensing exported filenames
-        xml_timestamp = filename[-18:-5]
-        tra_exists, tra_filename = find_corresponding_tra_file(
-            xml_timestamp, tra_filelist
-        )
-        if not tra_exists:
-            tra_available = False
-            break
-        ordered_tra_filepathlist.append(os.path.join(filedir, tra_filename))
-
-    return tra_available, ordered_tra_filepathlist
+    return True, sorted_tra_filepathlist
 
 
 def parse_tra_numbers(val: str):
@@ -589,7 +563,7 @@ def read_single_tra_file(tra_filepath):
 def append_to_data_vars_structure(data_vars, data_dict_list):
     """
     append data from .tra files to data_vars structure.
-    (The data_vars structure is later on used to initialize the x-array dataset).
+    (The data_vars structure is later on used to initialize the xarray dataset).
 
 
     Parameters

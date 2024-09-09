@@ -1,4 +1,6 @@
-Exported Files:
+# Data documentation - ap_sensing_2
+
+## Exported Files:
 For each measurment both file exports of the AP sensing N4386B were used:
 	- .tra files 
 		- more metadata available, like all device settings of configurations
@@ -10,7 +12,7 @@ For each measurment both file exports of the AP sensing N4386B were used:
 		- no PT100 Sensor data
 		- Stokes and Anti-Stokes intensities included!!
 
-Measurement Setup:
+## Measurement Setup:
 - Duplex OM4 glass fibre connected to CH1 and CH2
 - Fibre length: 98 m
 - Splice at 98 m
@@ -32,7 +34,7 @@ Measurement Setup:
 	- heated length = 2547 mm
 	- distance helix to splice ~ 10-15 cm
 
-Measurement Strategy: (given in .seq file, which can by imported by AP sensing software)
+## DTS measurement settings: (given in .seq file, which can by imported by AP sensing software - DTS Configurator)
 - Sequence containing three Configurations
 	- C1: Single ended from Channel 1
 	- C2: Single ended from Channel 2
