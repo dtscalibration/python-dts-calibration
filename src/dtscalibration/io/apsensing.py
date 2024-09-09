@@ -445,9 +445,11 @@ def check_if_tra_exists(filepathlist):
     --------
     tra_available : boolean,
         True only, when all .xml files have a corresponding .tra file
-    ordered_tra_filepathlist . list of str
+    sorted_tra_filepathlist . list of str
         if tra_available is True: This list contains a list of filepaths for the
-        .tra file. The list is ordered the same as the input .xml filepath list.
+        .tra file. The list is sorted the same as the input .xml filepath list, 
+        because both were generated with the sorted(...) command and are thus sorted
+        by their identical timestamps.
     """
 
     
@@ -560,10 +562,109 @@ def read_single_tra_file(tra_filepath):
     return data_dict
 
 
+# def append_to_data_vars_structure(data_vars, data_dict_list):
+#     """
+#     append data from .tra files to data_vars structure.
+#     (The data_vars structure is later on used to initialize the xarray dataset).
+
+
+#     Parameters
+#     ----------
+#     data_vars : dictionary containing *.xml data
+#     data_dict_list: list of dictionaries
+#                 each dictionary in the list contains the data of one .tra file
+
+#     Returns:
+#     --------
+#     data_vars : dictionary containing *.xml data and *.tra data
+
+#     """
+#     # compose array of format [[value(x1t1).. value(x1tm)]
+#     #                           ....
+#     #                           [value(xnt1).. value(xntm)]]
+#     for idx, data_dict in enumerate(data_dict_list):
+#         # first get distance, t_by_dts, log_ratio and loss as list from dictionary
+#         tr_key = data_dict["trace_key"]
+#         [distance_list, t_by_dts_list, log_ratio_list, loss_list] = [[], [], [], []]
+#         [
+#             [
+#                 distance_list.append(data_dict[tr_key][key][0]),
+#                 t_by_dts_list.append(data_dict[tr_key][key][1]),
+#                 log_ratio_list.append(data_dict[tr_key][key][2]),
+#                 loss_list.append(data_dict[tr_key][key][3]),
+#             ]
+#             for key in data_dict[tr_key]
+#             if isinstance(key, int)
+#         ]
+
+#         if idx == 0:
+#             # initialize numpy arrays
+#             distance = np.column_stack(np.column_stack(np.array(distance_list)))
+#             t_by_dts = np.column_stack(np.column_stack(np.array(t_by_dts_list)))
+#             log_ratio = np.column_stack(np.column_stack(np.array(log_ratio_list)))
+#             loss = np.column_stack(np.column_stack(np.array(loss_list)))
+#         else:
+#             distance = np.concatenate(
+#                 (distance, np.column_stack(np.column_stack(np.array(distance_list)))),
+#                 axis=1,
+#             )
+#             t_by_dts = np.concatenate(
+#                 (t_by_dts, np.column_stack(np.column_stack(np.array(t_by_dts_list)))),
+#                 axis=1,
+#             )
+#             log_ratio = np.concatenate(
+#                 (log_ratio, np.column_stack(np.column_stack(np.array(log_ratio_list)))),
+#                 axis=1,
+#             )
+#             loss = np.concatenate(
+#                 (loss, np.column_stack(np.column_stack(np.array(loss_list)))), axis=1
+#             )
+
+#     # add log_ratio and attenaution to data_vars
+#     data_vars["log_ratio_by_dts"] = (("x", "time"), log_ratio)
+#     data_vars["loss_by_dts"] = (("x", "time"), loss)
+
+#     # add reference temp data, if they exist
+#     for idx_ref_temp in range(1, 5):
+#         if f"Ref.Temperature.Sensor.{idx_ref_temp}" in data_dict[tr_key]:
+#             ref_temps = []
+#             for _, data_dict in enumerate(data_dict_list):
+#                 tr_key = data_dict["trace_key"]
+#                 ref_temps.append(
+#                     data_dict[tr_key][f"Ref.Temperature.Sensor.{idx_ref_temp}"]
+#                 )
+#             data_vars[f"probe{idx_ref_temp}Temperature"] = (("time",), ref_temps)
+
+#     # check if files match by comparing timestamps and dts temperature
+#     for idx_t in range(0, len(data_dict_list)):
+#         # check timestamps
+#         data_dict = data_dict_list[idx_t]
+#         tr_key = data_dict["trace_key"]
+#         dd_ts = pd.Timestamp(
+#             int(data_dict[tr_key]["Date.Year"]),
+#             int(data_dict[tr_key]["Date.Month"]),
+#             int(data_dict[tr_key]["Date.Day"]),
+#             int(data_dict[tr_key]["Time.Hour"]),
+#             int(data_dict[tr_key]["Time.Minute"]),
+#             int(data_dict[tr_key]["Time.Second"]),
+#         )
+
+#         err_msg = f"fatal error in allocation of .xml and .tra data.\nxml file {data_vars['creationDate'][1][idx_t]}\ntra file {str(dd_ts)}\n\n"
+#         if not data_vars["creationDate"][1][idx_t] == dd_ts:
+#             raise Exception(err_msg)
+
+#         # check dts temperature
+#         for idx_x in [0, 2, 5]:
+#             if not data_vars["tmp"][1][idx_x][idx_t] == t_by_dts[idx_x][idx_t]:
+#                 # fatal error in allocation of .tra and .xml data
+#                 raise Exception(err_msg)
+#     return data_vars
+
+
 def append_to_data_vars_structure(data_vars, data_dict_list):
     """
     append data from .tra files to data_vars structure.
-    (The data_vars structure is later on used to initialize the xarray dataset).
+    (The data_vars structure is later on used to initialize the x-array dataset).
 
 
     Parameters
@@ -577,50 +678,32 @@ def append_to_data_vars_structure(data_vars, data_dict_list):
     data_vars : dictionary containing *.xml data and *.tra data
 
     """
-    # compose array of format [[value(x1t1).. value(x1tm)]
-    #                           ....
-    #                           [value(xnt1).. value(xntm)]]
+    # First derive numer of measurements in each file (should be constant):
+    data_dict = data_dict_list[0]
+    tr_key = data_dict["trace_key"]
+    n_measurements = len([key for key in data_dict[tr_key] if isinstance(key, int)])
+    
+    # Initialize arrays
+    distances = np.zeros((len(data_dict_list), n_measurements))
+    t_by_dts = np.zeros((len(data_dict_list), n_measurements))
+    log_ratio = np.zeros((len(data_dict_list), n_measurements))
+    loss = np.zeros((len(data_dict_list), n_measurements))
+
     for idx, data_dict in enumerate(data_dict_list):
         # first get distance, t_by_dts, log_ratio and loss as list from dictionary
         tr_key = data_dict["trace_key"]
-        [distance_list, t_by_dts_list, log_ratio_list, loss_list] = [[], [], [], []]
-        [
-            [
-                distance_list.append(data_dict[tr_key][key][0]),
-                t_by_dts_list.append(data_dict[tr_key][key][1]),
-                log_ratio_list.append(data_dict[tr_key][key][2]),
-                loss_list.append(data_dict[tr_key][key][3]),
-            ]
-            for key in data_dict[tr_key]
-            if isinstance(key, int)
-        ]
+        data_keys = [key for key in data_dict[tr_key] if isinstance(key, int)]
+        data = np.array([data_dict[tr_key][key] for key in data_keys]).T
 
-        if idx == 0:
-            # initialize numpy arrays
-            distance = np.column_stack(np.column_stack(np.array(distance_list)))
-            t_by_dts = np.column_stack(np.column_stack(np.array(t_by_dts_list)))
-            log_ratio = np.column_stack(np.column_stack(np.array(log_ratio_list)))
-            loss = np.column_stack(np.column_stack(np.array(loss_list)))
-        else:
-            distance = np.concatenate(
-                (distance, np.column_stack(np.column_stack(np.array(distance_list)))),
-                axis=1,
-            )
-            t_by_dts = np.concatenate(
-                (t_by_dts, np.column_stack(np.column_stack(np.array(t_by_dts_list)))),
-                axis=1,
-            )
-            log_ratio = np.concatenate(
-                (log_ratio, np.column_stack(np.column_stack(np.array(log_ratio_list)))),
-                axis=1,
-            )
-            loss = np.concatenate(
-                (loss, np.column_stack(np.column_stack(np.array(loss_list)))), axis=1
-            )
+        # Fill in pre-initialized array
+        distances[idx] = data[0]
+        t_by_dts[idx] = data[1]
+        log_ratio[idx] = data[2]
+        loss[idx] = data[3]
 
     # add log_ratio and attenaution to data_vars
-    data_vars["log_ratio_by_dts"] = (("x", "time"), log_ratio)
-    data_vars["loss_by_dts"] = (("x", "time"), loss)
+    data_vars["log_ratio_by_dts"] = (("time", "x"), log_ratio)
+    data_vars["loss_by_dts"] = (("time", "x"), loss)
 
     # add reference temp data, if they exist
     for idx_ref_temp in range(1, 5):
@@ -653,7 +736,7 @@ def append_to_data_vars_structure(data_vars, data_dict_list):
 
         # check dts temperature
         for idx_x in [0, 2, 5]:
-            if not data_vars["tmp"][1][idx_x][idx_t] == t_by_dts[idx_x][idx_t]:
+            if not data_vars["tmp"][1][idx_x][idx_t] == t_by_dts[idx_t][idx_x]:
                 # fatal error in allocation of .tra and .xml data
                 raise Exception(err_msg)
     return data_vars
