@@ -6,7 +6,7 @@ Changelog
 
 Fixed 
 
-* Device ID bug for APSensing fixed. Device ID is N4386B instead of C320. C320 was an arbitrary name given for the wellbore by the user
+* device ID bug for APSensing. Device ID is N4386B instead of C320. C320 was an arbitrary name given for the wellbore by the user.
 
 Added
 
