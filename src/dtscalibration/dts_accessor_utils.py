@@ -743,10 +743,10 @@ def merge_double_ended(
     ds.attrs["isDoubleEnded"] = "1"
     ds["userAcquisitionTimeBW"] = ("time", ds_bw["userAcquisitionTimeFW"].values)
 
-    if plot_result:
-        _, ax = plt.subplots()
-        ds["st"].isel(time=0).plot(ax=ax, label="Stokes forward")
-        ds["rst"].isel(time=0).plot(ax=ax, label="Stokes backward")
+    if plot_result:  # type: ignore
+        _, ax = plt.subplots()  # type: ignore
+        ds["st"].isel(time=0).plot(ax=ax, label="Stokes forward")  # type: ignore
+        ds["rst"].isel(time=0).plot(ax=ax, label="Stokes backward")  # type: ignore
         ax.legend()
 
     return ds
