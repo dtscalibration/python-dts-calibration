@@ -23,7 +23,7 @@ version = "3.0.3"
 description = "Load Distributed Temperature Sensing (DTS) files, calibrate the temperature and estimate its uncertainty."
 readme = "README.rst"
 license = "BSD-3-Clause"
-requires-python = ">=3.9, <3.12"
+requires-python = ">=3.9, <3.13"
 authors = [
   {name = "Bas des Tombe, Bart Schilperoort"},
 ]
@@ -166,7 +166,7 @@ ignore = [
   "E501",  # Line too long (want to have fixed
 ]
 line-length = 88
-exclude = ["docs", "build"]
+exclude = ["docs", "build", "tests/data"]
 # Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 # Minimum supported Python version
