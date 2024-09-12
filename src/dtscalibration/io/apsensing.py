@@ -1,4 +1,5 @@
 import os
+import re
 import warnings
 from pathlib import Path
 from xml.etree import ElementTree
@@ -29,6 +30,7 @@ def read_apsensing_files(
     timezone_netcdf="UTC",
     silent=False,
     load_in_memory="auto",
+    load_tra_arrays=False,
     **kwargs,
 ):
     """Read a folder with measurement files from a device of the Sensortran
@@ -53,6 +55,9 @@ def read_apsensing_files(
         If set tot True, some verbose texts are not printed to stdout/screen
     load_in_memory : {'auto', True, False}
         If 'auto' the Stokes data is only loaded to memory for small files
+    load_tra_arrays : bool
+        If true and tra files available, the tra array data will imported. 
+        Current implementation is limited to in-memory reading only.
     kwargs : dict-like, optional
         keyword-arguments are passed to DataStore initialization
 
@@ -83,7 +88,7 @@ def read_apsensing_files(
 
     device = apsensing_xml_version_check(filepathlist)
 
-    valid_devices = ["CP320"]
+    valid_devices = ["N4386B"]
 
     if device in valid_devices:
         pass
@@ -103,6 +108,18 @@ def read_apsensing_files(
         load_in_memory=load_in_memory,
     )
 
+    # add .tra data if it is available
+    tra_exists, tra_filepathlist = check_if_tra_exists(filepathlist)
+    if tra_exists:
+        print(".tra files are present and will be read")
+        data_dict_list = []
+        for _, tra_file in enumerate(tra_filepathlist):
+            data_dict = read_single_tra_file(tra_file, load_tra_arrays)
+            data_dict_list.append(data_dict)
+        data_vars = append_to_data_vars_structure(
+            data_vars, data_dict_list, load_tra_arrays
+        )
+
     ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs, **kwargs)
     return ds
 
@@ -120,8 +137,10 @@ def apsensing_xml_version_check(filepathlist):
     """
     sep = ":"
     attrs, _ = read_apsensing_attrs_singlefile(filepathlist[0], sep)
+    deviceid_serialnb = attrs["wellbore:dtsInstalledSystemSet:dtsInstalledSystem:uid"]
+    deviceid = deviceid_serialnb.split("-")[0]
 
-    return attrs["wellbore:uid"]
+    return deviceid
 
 
 def read_apsensing_files_routine(
@@ -197,9 +216,9 @@ def read_apsensing_files_routine(
 
     # print summary
     if not silent:
-        print("%s files were found, each representing a single timestep" % ntime)
-        print("%s recorded vars were found: " % nitem + ", ".join(data_item_names))
-        print("Recorded at %s points along the cable" % nx)
+        print(f"{ntime} files were found, each representing a single timestep")
+        print(f"{nitem} recorded vars were found: " + ", ".join(data_item_names))
+        print(f"Recorded at {nx} points along the cable")
 
         if double_ended_flag:
             print("The measurement is double ended")
@@ -411,3 +430,237 @@ def read_apsensing_attrs_singlefile(filename, sep):
     doc = doc_["WITSMLComposite"]["wellSet"]["well"]["wellboreSet"]
 
     return metakey({}, doc, ""), skip_chars
+
+
+def check_if_tra_exists(filepathlist):
+    """
+    Using AP Sensing N4386B both POSC (.xml) export and trace (.tra) export can be used to log measurements.
+    This function checks, whether both export options were turned on simultaneously. All files .xml and .tra
+    must be placed in the same directory.
+
+    Parameters
+    ----------
+    filepathlist : list of str
+        List of paths that point the the .xml files
+
+    Notes:
+    ------
+    All files .xml and .tra must be placed in the same directory.
+
+    Returns:
+    --------
+    tra_available : boolean,
+        True only, when all .xml files have a corresponding .tra file
+    sorted_tra_filepathlist . list of str
+        if tra_available is True: This list contains a list of filepaths for the
+        .tra file. The list is sorted the same as the input .xml filepath list,
+        because both were generated with the sorted(...) command and are thus sorted
+        by their identical timestamps.
+    """
+
+    directory = Path(filepathlist[0]).parent  # create list of .tra files in directory
+    sorted_tra_filepathlist = sorted(directory.glob("*.tra"))
+    tra_files = "\n".join(
+        [file.name for file in sorted_tra_filepathlist]
+    )  # make it one big string
+    tra_timestamps = set(
+        re.findall(r"(\d{14}).tra", tra_files)
+    )  # find 14 digits followed by .tra
+
+    xml_timestamps = "\n".join([file.name for file in filepathlist])
+    xml_timestamps = set(
+        re.findall(r"(\d{14}).xml", xml_timestamps)
+    )  # note that these are sets now
+
+    diff = xml_timestamps - tra_timestamps
+    if len(diff) == len(
+        xml_timestamps
+    ):  # No tra data - that may be intended --> warning.
+        msg = f"Not all .xml files have a matching .tra file.\n Missing are time following timestamps {diff}.  Not loading .tra data."
+        warnings.warn(msg)
+        return False, []
+
+    elif len(diff) > 0:
+        msg = f"Not all .xml files have a matching .tra file.\n Missing are time following timestamps {diff}."
+        raise ValueError(msg)
+
+    diff = tra_timestamps - xml_timestamps
+    if len(diff) > 0:
+        msg = f"Not all .tra files have a matching .xml file.\n Missing are time following timestamps {diff}."
+        raise ValueError(msg)
+
+    return True, sorted_tra_filepathlist
+
+
+def parse_tra_numbers(val: str):
+    """parsing helper function used by function read_single_tra_file() to determine correct datatype of read string.
+
+    Parameters
+    ----------
+    val : str
+        String value of tra file item
+
+    Returns:
+    --------
+    val : Value in correct datatype (boolean, int, float and string supported),
+    """
+    if val == "True":
+        return True
+    if val == "False":
+        return False
+    if val.isdigit():
+        return int(val)
+    try:  # a bit ugly, but sadly there is no string.isfloat() method...
+        return float(val)
+    except ValueError:
+        return val
+
+
+def read_single_tra_file(tra_filepath, load_tra_arrays):
+    """
+    Using AP Sensing N4386B both POSC (.xml) export and trace (.tra) export can be used to log measurements.
+    This function reads the .tra data and appends it to the dask array, which was read from the POSC export (.xml) file.
+
+    .tra files contain different data then the .xml files from POSC export
+        - more metadata
+        - log_ratio and loss(attenuation) calculated by device
+        - PT100 sensor data (optional only if sensors are connnected to device)
+
+
+    Parameters
+    ----------
+    tra_filepathlist: list of str
+        List of paths that point the the .tra files
+    load_tra_arrays: boolean
+        If False, the array data taken along the fibre (distance, temperature,
+        log_ratio and loss) are not imported.
+    Notes:
+    ------
+    more metadata could be read from the .tra file and stored in the dask array
+
+    Returns:
+    --------
+    data_dict : dict containing time series measured fibre data by distance
+                                PT100 reference as float
+                                timestamp data
+                                other metadata
+    """
+
+    with open(tra_filepath) as f:
+        file = f.readlines()
+
+    data = [line for line in file if line != "\n"]  # drops out empty lines
+
+    data_dict = {}
+
+    current_section = None
+    for line_with_break in data:
+        line = line_with_break.replace("\n", "")  # drops out linebreaks
+        if line.startswith("["):  # detects new section and sets it as current section
+            current_section = line.replace("[", "").replace("]", "")
+            data_dict[current_section] = {}
+        else:
+            content = line.split(";")
+            content = [parse_tra_numbers(val) for val in content]
+            content_name = content[0]
+            if (
+                len(content) == 2
+            ):  # = metadata & data after trace data (optional sensors and time stamp)
+                data_dict[current_section][content_name] = content[1]
+            elif load_tra_arrays:
+                # == trace data containing distance, temperature, logratio, attenuation
+                # read only when requested by load_tra_arrays=True
+                data_dict[current_section][content_name] = tuple(content[1:])
+
+    trace_key = [key for key in data_dict if "Trace." in key][
+        0
+    ]  # find key of trace n in "Trace.n" is unknown
+    data_dict["trace_key"] = trace_key
+
+    return data_dict
+
+
+def append_to_data_vars_structure(data_vars, data_dict_list, load_tra_arrays):
+    """
+    append data from .tra files to data_vars structure.
+    (The data_vars structure is later on used to initialize the x-array dataset).
+
+
+    Parameters
+    ----------
+    data_vars: dictionary containing *.xml data
+    data_dict_list: list of dictionaries
+                each dictionary in the list contains the data of one .tra file
+    load_tra_arrays: boolean
+                If False, the array data taken along the fibre (distance, temperature,
+                log_ratio and loss) were not imported and thus not in data_dict_list
+
+    Returns:
+    --------
+    data_vars : dictionary containing *.xml data and *.tra data
+
+    """
+    # First derive numer of measurements in each file (should be constant):
+    data_dict = data_dict_list[0]
+    tr_key = data_dict["trace_key"]
+    n_measurements = len([key for key in data_dict[tr_key] if isinstance(key, int)])
+
+    if load_tra_arrays:
+        # Initialize arrays
+        distances = np.zeros((len(data_dict_list), n_measurements))
+        t_by_dts = np.zeros((len(data_dict_list), n_measurements))
+        log_ratio = np.zeros((len(data_dict_list), n_measurements))
+        loss = np.zeros((len(data_dict_list), n_measurements))
+
+        for idx, data_dict in enumerate(data_dict_list):
+            # first get distance, t_by_dts, log_ratio and loss as list from dictionary
+            tr_key = data_dict["trace_key"]
+            data_keys = [key for key in data_dict[tr_key] if isinstance(key, int)]
+            data = np.array([data_dict[tr_key][key] for key in data_keys]).T
+
+            # Fill in pre-initialized array
+            distances[idx] = data[0]
+            t_by_dts[idx] = data[1]
+            log_ratio[idx] = data[2]
+            loss[idx] = data[3]
+
+        # add log_ratio and attenaution to data_vars
+        data_vars["log_ratio_by_dts"] = (("time", "x"), log_ratio)
+        data_vars["loss_by_dts"] = (("time", "x"), loss)
+
+    # add reference temperature data, if they exist
+    for idx_ref_temp in range(1, 5):
+        if f"Ref.Temperature.Sensor.{idx_ref_temp}" in data_dict[tr_key]:
+            ref_temps = []
+            for _, data_dict in enumerate(data_dict_list):
+                tr_key = data_dict["trace_key"]
+                ref_temps.append(
+                    data_dict[tr_key][f"Ref.Temperature.Sensor.{idx_ref_temp}"]
+                )
+            data_vars[f"probe{idx_ref_temp}Temperature"] = (("time",), ref_temps)
+
+    # check if files match by comparing timestamps and dts temperature
+    for idx_t in range(0, len(data_dict_list)):
+        # check timestamps
+        data_dict = data_dict_list[idx_t]
+        tr_key = data_dict["trace_key"]
+        dd_ts = pd.Timestamp(
+            int(data_dict[tr_key]["Date.Year"]),
+            int(data_dict[tr_key]["Date.Month"]),
+            int(data_dict[tr_key]["Date.Day"]),
+            int(data_dict[tr_key]["Time.Hour"]),
+            int(data_dict[tr_key]["Time.Minute"]),
+            int(data_dict[tr_key]["Time.Second"]),
+        )
+
+        err_msg = f"fatal error in allocation of .xml and .tra data.\nxml file {data_vars['creationDate'][1][idx_t]}\ntra file {str(dd_ts)}\n\n"
+        if not data_vars["creationDate"][1][idx_t] == dd_ts:
+            raise Exception(err_msg)
+
+        # check dts temperature only if loaded
+        if load_tra_arrays:
+            for idx_x in [0, 2, 5]:
+                if not data_vars["tmp"][1][idx_x][idx_t] == t_by_dts[idx_t][idx_x]:
+                    # fatal error in allocation of .tra and .xml data
+                    raise Exception(err_msg)
+    return data_vars

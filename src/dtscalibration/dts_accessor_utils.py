@@ -717,7 +717,9 @@ def merge_double_ended(
         ds_fw.attrs["isDoubleEnded"] == "0" and ds_bw.attrs["isDoubleEnded"] == "0"
     ), "(one of the) input DataStores is already double ended"
 
-    ds_fw, ds_bw = merge_double_ended_times(ds_fw, ds_bw, verbose=verbose, verify_timedeltas=verify_timedeltas)
+    ds_fw, ds_bw = merge_double_ended_times(
+        ds_fw, ds_bw, verbose=verbose, verify_timedeltas=verify_timedeltas
+    )
 
     ds = ds_fw.copy()
     ds_bw = ds_bw.copy()
@@ -741,10 +743,10 @@ def merge_double_ended(
     ds.attrs["isDoubleEnded"] = "1"
     ds["userAcquisitionTimeBW"] = ("time", ds_bw["userAcquisitionTimeFW"].values)
 
-    if plot_result:
-        _, ax = plt.subplots()
-        ds["st"].isel(time=0).plot(ax=ax, label="Stokes forward")
-        ds["rst"].isel(time=0).plot(ax=ax, label="Stokes backward")
+    if plot_result:  # type: ignore
+        _, ax = plt.subplots()  # type: ignore
+        ds["st"].isel(time=0).plot(ax=ax, label="Stokes forward")  # type: ignore
+        ds["rst"].isel(time=0).plot(ax=ax, label="Stokes backward")  # type: ignore
         ax.legend()
 
     return ds

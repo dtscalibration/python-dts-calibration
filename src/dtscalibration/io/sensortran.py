@@ -145,8 +145,8 @@ def read_sensortran_files_routine(
 
     # print summary
     if not silent:
-        print("%s files were found," % ntime + " each representing a single timestep")
-        print("Recorded at %s points along the cable" % nx)
+        print(f"{ntime} files were found," + " each representing a single timestep")
+        print(f"Recorded at {nx} points along the cable")
 
         print("The measurement is single ended")
 
