@@ -19,7 +19,7 @@ disable = true  # Requires confirmation when publishing to pypi.
 
 [project]
 name = "dtscalibration"
-version = "3.0.3"
+version = "3.1.0"
 description = "Load Distributed Temperature Sensing (DTS) files, calibrate the temperature and estimate its uncertainty."
 readme = "README.rst"
 license = "BSD-3-Clause"
@@ -48,19 +48,17 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Utilities",
 ]
 dependencies = [
-    "numpy>=1.22.4, <=2.0.1",  # >= 1.22 for quantile method support in xarray. https://github.com/statsmodels/statsmodels/issues/9333
-    "dask",
+    "numpy",
+    "xarray[accel]",
+    "dask[distributed]",
     "pandas",
-    "xarray[parallel]",     # numbagg (llvmlite) is a pain to install with pip
-    "bottleneck",           # speeds up Xarray
-    "flox",                 # speeds up Xarray
     "pyyaml>=6.0.1",
     "xmltodict",
     "scipy",
-    "statsmodels",
     "matplotlib",
     "netCDF4>=1.6.4",
     "nc-time-axis>=1.4.1"  # plot dependency of xarray
@@ -128,10 +126,11 @@ build = [
 features = ["dev"]
 
 [[tool.hatch.envs.matrix_test.matrix]]
-python = ["3.9", "3.10", "3.11"]
+python = ["3.9", "3.10", "3.11", "3.12"]
 
 [tool.hatch.envs.matrix_test.scripts]
 test = ["pytest ./src/ ./tests/",]  # --doctest-modules
+fast-test = ["pytest ./tests/ -m \"not slow\"",]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

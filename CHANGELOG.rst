@@ -1,18 +1,25 @@
 
 Changelog
 =========
-3.0.4 (2024-08-30)
+3.1.0 (2024-09-13)
 ---
+
+Added
+
+* support for Python 3.12.
+* AP sensing .tra support, as the reference temperature sensor data by this device in only logged in .tra and not in the .xml log files.
+    added functions in io/apsensing.py to read .tra files if they are in the same directory as the .xml files.
+* more test data from AP sensing device N4386B, which do also contain their .tra log files
 
 Fixed 
 
 * device ID bug for APSensing. Device ID is N4386B instead of C320. C320 was an arbitrary name given for the wellbore by the user.
 
-Added
+Changed
 
-* more test data from AP sensing device N4386B, which do also contain their .tra log files
-* AP sensing .tra support, as the reference temperature sensor data by this device in only logged in .tra and not in the .xml log files.
-    added functions in io/apsensing.py to read .tra files if they are in the same directory as the .xml files.
+* the `verify_timedeltas` keyword argument is now optional when merging two single ended datasets.
+* removed `statsmodels` as a dependency. It is now optional, and only used for testing the `wls_sparse` solver
+
 
 3.0.3 (2024-04-18)
 ---

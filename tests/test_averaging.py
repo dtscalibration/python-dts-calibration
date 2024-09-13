@@ -46,7 +46,6 @@ def assert_almost_equal_verbose(actual, desired, verbose=False, **kwargs):
 
     desired2 = np.broadcast_to(desired, actual.shape)
     np.testing.assert_almost_equal(actual, desired2, err_msg=m, **kwargs)
-    pass
 
 
 def test_average_measurements_single_ended():
@@ -111,7 +110,6 @@ def test_average_measurements_single_ended():
         ci_avg_time_flag2=True,
         ci_avg_time_isel=range(3),
     )
-    pass
 
 
 def test_average_measurements_double_ended():

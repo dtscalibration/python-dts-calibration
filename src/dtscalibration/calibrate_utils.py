@@ -1,6 +1,5 @@
 import numpy as np
 import scipy.sparse as sp
-import statsmodels.api as sm
 import xarray as xr
 from scipy.sparse import linalg as ln
 
@@ -1673,7 +1672,6 @@ def construct_submatrices_matching_sections(x, ix_sec, hix, tix, nt, trans_att):
     Zero_d_eq12 : sparse matrix
         Zero in EQ1 and EQ2
 
-
     """
     # contains all indices of the entire fiber that either are using for
     # calibrating to reference temperature or for matching sections. Is sorted.
@@ -1988,6 +1986,9 @@ def wls_sparse(
 ):
     """Weighted least squares solver.
 
+    Note: during development this solver was compared to the statsmodels solver. To
+    enable the comparison tests again, install `statsmodels` before running pytest.
+
     If some initial estimate x0 is known and if damp == 0, one could proceed as follows:
     - Compute a residual vector r0 = b - A*x0.
     - Use LSQR to solve the system A*dx = r0.
@@ -2124,6 +2125,15 @@ def wls_stats(X, y, w=1.0, calc_cov=False, x0=None, return_werr=False, verbose=F
     p_cov : ndarray
         The covariance of the solution.
     """
+    try:
+        import statsmodels.api as sm
+    except ModuleNotFoundError as err:
+        msg = (
+            "Statsmodels has to be installed for this function.\n"
+            "Install it with `pip install statsmodels`."
+        )
+        raise ModuleNotFoundError(msg) from err
+
     y = np.asarray(y)
     w = np.asarray(w)
 

@@ -43,7 +43,6 @@ def validate_no_overlapping_sections(sections: dict[str, list[slice]]):
     assert all_start_stop_startsort_flat == sorted(
         all_start_stop_startsort_flat
     ), "Sections contains overlapping stretches"
-    pass
 
 
 def validate_sections_definition(sections: dict[str, list[slice]]):
@@ -123,7 +122,6 @@ def validate_sections(ds: xr.Dataset, sections: dict[str, list[slice]]):
                 f"Better define the {k} section. You tried {vi}, "
                 "which is not within the x-dimension"
             )
-    pass
 
 
 def ufunc_per_section(
@@ -175,7 +173,6 @@ def ufunc_per_section(
 
     TODO: Spend time on creating a slice instead of appendng everything\
     to a list and concatenating after.
-
 
     Returns:
     --------
@@ -240,7 +237,6 @@ def ufunc_per_section(
     7. x-coordinate index
 
     >>> ix_loc = d.ufunc_per_section(sections, x_indices=True)
-
 
     Note:
     ----

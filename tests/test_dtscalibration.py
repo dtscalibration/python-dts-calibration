@@ -57,7 +57,6 @@ def assert_almost_equal_verbose(actual, desired, verbose=False, **kwargs):
 
     desired2 = np.broadcast_to(desired, actual.shape)
     np.testing.assert_almost_equal(actual, desired2, err_msg=m, **kwargs)
-    pass
 
 
 def test_double_ended_wls_estimate_synthetic():
@@ -268,7 +267,6 @@ def test_double_ended_wls_estimate_synthetic_df_and_db_are_different():
     assert_almost_equal_verbose(temp_real_celsius, out["tmpf"].values, decimal=10)
     assert_almost_equal_verbose(temp_real_celsius, out["tmpb"].values, decimal=10)
     assert_almost_equal_verbose(temp_real_celsius, out["tmpw"].values, decimal=10)
-    pass
 
 
 @pytest.mark.xfail
@@ -367,7 +365,6 @@ def test_fail_if_st_labels_are_passed_to_calibration_function():
         fix_gamma=(gamma, 0.0),
         mc_remove_set_flag=True,
     )
-    pass
 
 
 def test_double_ended_asymmetrical_attenuation():
@@ -472,7 +469,6 @@ def test_double_ended_asymmetrical_attenuation():
     assert_almost_equal_verbose(temp_real_celsius, out.tmpf.values, decimal=7)
     assert_almost_equal_verbose(temp_real_celsius, out.tmpb.values, decimal=7)
     assert_almost_equal_verbose(temp_real_celsius, out.tmpw.values, decimal=7)
-    pass
 
 
 def test_double_ended_one_matching_section_and_one_asym_att():
@@ -706,7 +702,6 @@ def test_double_ended_two_matching_sections_and_two_asym_atts():
     assert_almost_equal_verbose(temp_real_celsius, out["tmpf"].values, decimal=7)
     assert_almost_equal_verbose(temp_real_celsius, out["tmpb"].values, decimal=7)
     assert_almost_equal_verbose(temp_real_celsius, out["tmpw"].values, decimal=7)
-    pass
 
 
 def test_double_ended_wls_fix_gamma_estimate_synthetic():
@@ -804,8 +799,6 @@ def test_double_ended_wls_fix_gamma_estimate_synthetic():
     assert_almost_equal_verbose(out["tmpb"].values, temp_real - 273.15, decimal=6)
     assert_almost_equal_verbose(out["tmpw"].values, temp_real - 273.15, decimal=6)
 
-    pass
-
 
 def test_double_ended_wls_fix_alpha_estimate_synthetic():
     """Checks whether the coefficients are correctly defined by creating a
@@ -896,8 +889,6 @@ def test_double_ended_wls_fix_alpha_estimate_synthetic():
     assert_almost_equal_verbose(out["tmpf"].values, temp_real - 273.15, decimal=7)
     assert_almost_equal_verbose(out["tmpb"].values, temp_real - 273.15, decimal=7)
     assert_almost_equal_verbose(out["tmpw"].values, temp_real - 273.15, decimal=7)
-
-    pass
 
 
 def test_double_ended_wls_fix_alpha_fix_gamma_estimate_synthetic():
@@ -990,8 +981,6 @@ def test_double_ended_wls_fix_alpha_fix_gamma_estimate_synthetic():
     assert_almost_equal_verbose(out["tmpf"].values, temp_real - 273.15, decimal=11)
     assert_almost_equal_verbose(out["tmpb"].values, temp_real - 273.15, decimal=11)
     assert_almost_equal_verbose(out["tmpw"].values, temp_real - 273.15, decimal=11)
-
-    pass
 
 
 def test_double_ended_fix_alpha_matching_sections_and_one_asym_att():
@@ -1129,7 +1118,6 @@ def test_double_ended_fix_alpha_matching_sections_and_one_asym_att():
     assert_almost_equal_verbose(temp_real_celsius, out["tmpf"].values, decimal=7)
     assert_almost_equal_verbose(temp_real_celsius, out["tmpb"].values, decimal=7)
     assert_almost_equal_verbose(temp_real_celsius, out["tmpw"].values, decimal=7)
-    pass
 
 
 def test_double_ended_fix_alpha_gamma_matching_sections_and_one_asym_att():
@@ -1268,7 +1256,6 @@ def test_double_ended_fix_alpha_gamma_matching_sections_and_one_asym_att():
     assert_almost_equal_verbose(temp_real_celsius, out["tmpf"].values, decimal=7)
     assert_almost_equal_verbose(temp_real_celsius, out["tmpb"].values, decimal=7)
     assert_almost_equal_verbose(temp_real_celsius, out["tmpw"].values, decimal=7)
-    pass
 
 
 def test_double_ended_fix_gamma_matching_sections_and_one_asym_att():
@@ -1379,7 +1366,6 @@ def test_double_ended_fix_gamma_matching_sections_and_one_asym_att():
     assert_almost_equal_verbose(temp_real_celsius, out["tmpf"].values, decimal=7)
     assert_almost_equal_verbose(temp_real_celsius, out["tmpb"].values, decimal=7)
     assert_almost_equal_verbose(temp_real_celsius, out["tmpw"].values, decimal=7)
-    pass
 
 
 @pytest.mark.skip(
@@ -1546,9 +1532,16 @@ def test_double_ended_exponential_variance_estimate_synthetic():
             print("Real VAR: ", v1i**2, "Estimated VAR: ", v2i)
             assert_almost_equal_verbose(v1i**2, v2i, decimal=1)
 
-    pass
+
+def statsmodels_available():
+    try:
+        import statsmodels  # noqa: F401
+    except ModuleNotFoundError:
+        return False
+    return True
 
 
+@pytest.mark.skipif(not statsmodels_available(), reason="requires statsmodels!")
 @pytest.mark.slow  # Execution time ~2 minutes.
 def test_estimate_variance_of_temperature_estimate():
     import dask.array as da
@@ -1699,8 +1692,6 @@ def test_estimate_variance_of_temperature_estimate():
     desire2 = out["tmpw_var"].mean(dim="time")
     assert_almost_equal_verbose(actual[16:32], desire2[16:32], decimal=3)
 
-    pass
-
 
 def test_single_ended_wls_estimate_synthetic():
     """Checks whether the coefficients are correctly defined by creating a
@@ -1772,8 +1763,6 @@ def test_single_ended_wls_estimate_synthetic():
     assert_almost_equal_verbose(out["gamma"].values, gamma, decimal=6)
     assert_almost_equal_verbose(out["dalpha"].values, dalpha_p - dalpha_m, decimal=8)
     assert_almost_equal_verbose(out["tmpf"].values, temp_real - 273.15, decimal=4)
-
-    pass
 
 
 def test_single_ended_wls_fix_dalpha_synthetic():
@@ -1868,8 +1857,6 @@ def test_single_ended_wls_fix_dalpha_synthetic():
     assert_almost_equal_verbose(out.alpha.values, x * (dalpha_p - dalpha_m), decimal=14)
     assert_almost_equal_verbose(out.tmpf.values, temp_real - 273.15, decimal=10)
 
-    pass
-
 
 def test_single_ended_wls_fix_gamma_synthetic():
     """Checks whether the coefficients are correctly defined by creating a
@@ -1946,8 +1933,6 @@ def test_single_ended_wls_fix_gamma_synthetic():
     assert_almost_equal_verbose(out.gamma.values, gamma, decimal=18)
     assert_almost_equal_verbose(out.dalpha.values, dalpha_p - dalpha_m, decimal=10)
     assert_almost_equal_verbose(out.tmpf.values, temp_real - 273.15, decimal=8)
-
-    pass
 
 
 def test_single_ended_wls_fix_gamma_fix_dalpha_synthetic():
@@ -2026,8 +2011,6 @@ def test_single_ended_wls_fix_gamma_fix_dalpha_synthetic():
     assert_almost_equal_verbose(out.gamma.values, gamma, decimal=18)
     assert_almost_equal_verbose(out.dalpha.values, dalpha_p - dalpha_m, decimal=18)
     assert_almost_equal_verbose(out.tmpf.values, temp_real - 273.15, decimal=8)
-
-    pass
 
 
 def test_single_ended_trans_att_synthetic():
@@ -2500,10 +2483,8 @@ def test_single_ended_exponential_variance_estimate_synthetic():
             print("Real VAR: ", v1i, "Estimated VAR: ", v2i_c)
             assert_almost_equal_verbose(v1i, v2i_c, decimal=1)
 
-    pass
-    print("hoi")
 
-
+@pytest.mark.skipif(not statsmodels_available(), reason="requires statsmodels!")
 def test_calibrate_wls_solver_procedures():
     x = np.linspace(0, 10, 25 * 4)
     np.random.shuffle(x)

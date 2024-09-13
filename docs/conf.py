@@ -40,14 +40,13 @@ if os.getenv("SPELLCHECK"):
     spelling_show_suggestions = True
     spelling_lang = "en_US"
 
-
 source_suffix = [".rst", ".md"]
 master_doc = "index"
 project = "dtscalibration"
 year = str(date.today().year)
 author = "Bas des Tombe and Bart Schilperoort"
 copyright = f"{year}, {author}"
-version = release = "3.0.3"
+version = release = "3.1.0"
 
 pygments_style = "trac"
 templates_path = [".", sphinx_autosummary_accessors.templates_path]

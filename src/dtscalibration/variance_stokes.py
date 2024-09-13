@@ -29,7 +29,6 @@ def variance_stokes_constant(st, sections, acquisitiontime, reshape_residuals=Tr
 
             st_var = a * ds.st + b
 
-
         where `a` and `b` are constants. Requires reference sections at
         beginning and end of the fiber, to have residuals at high and low
         intensity measurements.
@@ -167,7 +166,6 @@ def variance_stokes_exponential(
         Assumes Poisson distributed noise with the following model::
 
             st_var = a * ds.st + b
-
 
         where `a` and `b` are constants. Requires reference sections at
         beginning and end of the fiber, to have residuals at high and low
@@ -360,7 +358,6 @@ def variance_stokes_linear(
         Assumes Poisson distributed noise with the following model::
 
             st_var = a * ds.st + b
-
 
         where `a` and `b` are constants. Requires reference sections at
         beginning and end of the fiber, to have residuals at high and low

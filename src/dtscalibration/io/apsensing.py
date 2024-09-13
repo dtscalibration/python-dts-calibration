@@ -56,7 +56,7 @@ def read_apsensing_files(
     load_in_memory : {'auto', True, False}
         If 'auto' the Stokes data is only loaded to memory for small files
     load_tra_arrays : bool
-        If true and tra files available, the tra array data will imported. 
+        If true and tra files available, the tra array data will imported.
         Current implementation is limited to in-memory reading only.
     kwargs : dict-like, optional
         keyword-arguments are passed to DataStore initialization
@@ -526,7 +526,6 @@ def read_single_tra_file(tra_filepath, load_tra_arrays):
         - log_ratio and loss(attenuation) calculated by device
         - PT100 sensor data (optional only if sensors are connnected to device)
 
-
     Parameters
     ----------
     tra_filepathlist: list of str
@@ -584,7 +583,6 @@ def append_to_data_vars_structure(data_vars, data_dict_list, load_tra_arrays):
     """
     append data from .tra files to data_vars structure.
     (The data_vars structure is later on used to initialize the x-array dataset).
-
 
     Parameters
     ----------
