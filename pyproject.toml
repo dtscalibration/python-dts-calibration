@@ -126,10 +126,11 @@ build = [
 features = ["dev"]
 
 [[tool.hatch.envs.matrix_test.matrix]]
-python = ["3.9", "3.10", "3.11"]
+python = ["3.9", "3.10", "3.11", "3.12"]
 
 [tool.hatch.envs.matrix_test.scripts]
 test = ["pytest ./src/ ./tests/",]  # --doctest-modules
+fast-test = ["pytest ./tests/ -m \"not slow\"",]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
