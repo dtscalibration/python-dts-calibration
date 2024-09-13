@@ -1,6 +1,5 @@
 import numpy as np
 import scipy.sparse as sp
-import statsmodels.api as sm
 import xarray as xr
 from scipy.sparse import linalg as ln
 
@@ -2124,6 +2123,15 @@ def wls_stats(X, y, w=1.0, calc_cov=False, x0=None, return_werr=False, verbose=F
     p_cov : ndarray
         The covariance of the solution.
     """
+    try:
+        import statsmodels.api as sm
+    except ImportError as err:
+        msg = (
+            "Statsmodels has to be installed for this function.\n"
+            "Install it with `pip install statsmodels`."
+        )
+        raise ImportError(msg) from err
+
     y = np.asarray(y)
     w = np.asarray(w)
 

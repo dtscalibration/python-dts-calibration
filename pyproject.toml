@@ -52,16 +52,13 @@ classifiers = [
     "Topic :: Utilities",
 ]
 dependencies = [
-    "numpy>=1.22.4, <=2.0.1",  # >= 1.22 for quantile method support in xarray. https://github.com/statsmodels/statsmodels/issues/9333
-    "dask",
+    "numpy",
+    "xarray[accel]",
+    "dask[distributed]",
     "pandas",
-    "xarray[parallel]",     # numbagg (llvmlite) is a pain to install with pip
-    "bottleneck",           # speeds up Xarray
-    "flox",                 # speeds up Xarray
     "pyyaml>=6.0.1",
     "xmltodict",
     "scipy",
-    "statsmodels",
     "matplotlib",
     "netCDF4>=1.6.4",
     "nc-time-axis>=1.4.1"  # plot dependency of xarray

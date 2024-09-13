@@ -76,7 +76,14 @@ def variance_stokes_exponential_helper(
 
     if use_statsmodels:
         # returns the same answer with statsmodel
-        import statsmodels.api as sm
+        try:
+            import statsmodels.api as sm
+        except ImportError as err:
+            msg = (
+                "Statsmodels has to be installed for this function.\n"
+                "Install it with `pip install statsmodels`."
+            )
+            raise ImportError(msg) from err
 
         X = sp.coo_matrix(
             (data, coords), shape=(nt * n_locs, ddof), dtype=float, copy=False
