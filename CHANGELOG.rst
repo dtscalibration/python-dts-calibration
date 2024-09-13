@@ -1,7 +1,7 @@
 
 Changelog
 =========
-3.1.0 (2024-09-12)
+3.1.0 (2024-09-13)
 ---
 
 Added
@@ -18,6 +18,7 @@ Fixed
 Changed
 
 * the `verify_timedeltas` keyword argument is now optional when merging two single ended datasets.
+* removed `statsmodels` as a dependency. It is now optional, and only used for testing the `wls_sparse` solver
 
 
 3.0.3 (2024-04-18)
