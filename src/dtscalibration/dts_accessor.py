@@ -335,7 +335,6 @@ class DtsAccessor:
         TODO: Spend time on creating a slice instead of appendng everything\
         to a list and concatenating after.
 
-
         Returns:
         --------
         dict
@@ -407,7 +406,6 @@ class DtsAccessor:
         7. x-coordinate index
 
         >>> ix_loc = d.ufunc_per_section(sections=sections, x_indices=True)
-
 
         Notes:
         ------
@@ -493,7 +491,6 @@ class DtsAccessor:
         .. math::
 
             I(x,t) = \ln{\left(\frac{P_+(x,t)}{P_-(x,t)}\right)}
-
 
         .. math::
 
@@ -878,7 +875,6 @@ class DtsAccessor:
         estimate of the temperature is obtained from the weighted average of
         :math:`T_\mathrm{F}` and :math:`T_\mathrm{B}` as discussed in
         Section 7.2 [1]_ .
-
 
         Parameters
         ----------
@@ -1990,7 +1986,6 @@ class DtsAccessor:
         """Average temperatures from single-ended setups.
 
         Four types of averaging are implemented. Please see Example Notebook 16.
-
 
         Parameters
         ----------

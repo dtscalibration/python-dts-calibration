@@ -52,7 +52,6 @@ def assert_almost_equal_verbose(actual, desired, verbose=False, **kwargs):
 
     desired2 = np.broadcast_to(desired, actual.shape)
     np.testing.assert_almost_equal(actual, desired2, err_msg=m, **kwargs)
-    pass
 
 
 @pytest.mark.slow  # Execution time ~20 seconds
@@ -240,8 +239,6 @@ def test_variance_input_types_single():
         3.0759,
         decimal=2,
     )
-
-    pass
 
 
 @pytest.mark.slow  # Execution time ~0.5 minute
@@ -490,8 +487,6 @@ def test_variance_input_types_double():
         decimal=2,
     )
 
-    pass
-
 
 @pytest.mark.slow  # Execution time ~0.5 minute
 def test_double_ended_variance_estimate_synthetic():
@@ -672,8 +667,6 @@ def test_double_ended_variance_estimate_synthetic():
             print("Real VAR: ", v1i**2, "Estimated VAR: ", float(v2i))
             assert_almost_equal_verbose(v1i**2, v2i, decimal=2)
 
-    pass
-
 
 def test_single_ended_variance_estimate_synthetic():
     import dask.array as da
@@ -798,8 +791,6 @@ def test_single_ended_variance_estimate_synthetic():
             print("Real VAR: ", v1i**2, "Estimated VAR: ", float(v2i))
             assert_almost_equal_verbose(v1i**2, v2i, decimal=2)
 
-    pass
-
 
 @pytest.mark.skip(reason="Not enough measurements in time. Use exponential instead.")
 def test_variance_of_stokes():
@@ -817,8 +808,6 @@ def test_variance_of_stokes():
     ds_dask = ds.chunk(chunks={})
     I_var, _ = variance_stokes_constant(st=ds_dask["st"], sections=sections)
     assert_almost_equal_verbose(I_var, correct_var, decimal=1)
-
-    pass
 
 
 def test_variance_of_stokes_synthetic():
@@ -858,7 +847,6 @@ def test_variance_of_stokes_synthetic():
     )
 
     assert_almost_equal_verbose(test_st_var, yvar, decimal=1)
-    pass
 
 
 @pytest.mark.slow  # Execution time ~20 seconds
@@ -937,8 +925,6 @@ def test_variance_of_stokes_linear_synthetic():
     assert_almost_equal_verbose(slope, var_slope, decimal=3)
     assert_almost_equal_verbose(offset, 0.0, decimal=0)
 
-    pass
-
 
 @pytest.mark.slow  # Execution time ~20 seconds
 def test_exponential_variance_of_stokes():
@@ -960,8 +946,6 @@ def test_exponential_variance_of_stokes():
         st=ds_dask["st"], sections=sections, acquisitiontime=ds.dts.acquisitiontime_fw
     )
     assert_almost_equal_verbose(I_var, correct_var, decimal=5)
-
-    pass
 
 
 def test_exponential_variance_of_stokes_synthetic():
@@ -1001,4 +985,3 @@ def test_exponential_variance_of_stokes_synthetic():
     )
 
     assert_almost_equal_verbose(test_st_var, yvar, decimal=1)
-    pass

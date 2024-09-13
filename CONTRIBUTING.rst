@@ -53,7 +53,6 @@ To set up `python-dts-calibration` for local development:
 
     pip install -e ".[dev]"
 
-
 4. When you're done making changes, make sure the code follows the right style, that all tests pass, and that the docs build with the following commands::
 
     hatch run format

@@ -1672,7 +1672,6 @@ def construct_submatrices_matching_sections(x, ix_sec, hix, tix, nt, trans_att):
     Zero_d_eq12 : sparse matrix
         Zero in EQ1 and EQ2
 
-
     """
     # contains all indices of the entire fiber that either are using for
     # calibrating to reference temperature or for matching sections. Is sorted.

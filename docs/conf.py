@@ -40,7 +40,6 @@ if os.getenv("SPELLCHECK"):
     spelling_show_suggestions = True
     spelling_lang = "en_US"
 
-
 source_suffix = [".rst", ".md"]
 master_doc = "index"
 project = "dtscalibration"

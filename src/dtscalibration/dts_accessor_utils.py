@@ -393,7 +393,6 @@ def get_netcdf_encoding(
 
     TODO: Truncate precision to XML precision per data variable
 
-
     Parameters
     ----------
     zlib
@@ -905,7 +904,6 @@ def shift_double_ended(
 
     There is no interpolation, as this would alter the accuracy.
 
-
     Parameters
     ----------
     ds : DataSore object
@@ -998,7 +996,6 @@ def suggest_cable_shift_double_ended(
     The top plot shows the origional Stokes and the origional and shifted
     anti-Stokes The bottom plot is generated that shows the two objective
     functions
-
 
     Parameters
     ----------
@@ -1228,7 +1225,6 @@ def ufunc_per_section_helper(
     7. x-coordinate index
 
     >>> ix_loc = ufunc_per_section_helper(x_coords=d.x)
-
 
     Note:
     ----
