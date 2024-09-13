@@ -1987,6 +1987,9 @@ def wls_sparse(
 ):
     """Weighted least squares solver.
 
+    Note: during development this solver was compared to the statsmodels solver. To
+    enable the comparison tests again, install `statsmodels` before running pytest.
+
     If some initial estimate x0 is known and if damp == 0, one could proceed as follows:
     - Compute a residual vector r0 = b - A*x0.
     - Use LSQR to solve the system A*dx = r0.
@@ -2125,12 +2128,12 @@ def wls_stats(X, y, w=1.0, calc_cov=False, x0=None, return_werr=False, verbose=F
     """
     try:
         import statsmodels.api as sm
-    except ImportError as err:
+    except ModuleNotFoundError as err:
         msg = (
             "Statsmodels has to be installed for this function.\n"
             "Install it with `pip install statsmodels`."
         )
-        raise ImportError(msg) from err
+        raise ModuleNotFoundError(msg) from err
 
     y = np.asarray(y)
     w = np.asarray(w)

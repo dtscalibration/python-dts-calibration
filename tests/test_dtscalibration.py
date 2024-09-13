@@ -1549,6 +1549,15 @@ def test_double_ended_exponential_variance_estimate_synthetic():
     pass
 
 
+def statsmodels_available():
+    try:
+        import statsmodels  # noqa: F401
+    except ModuleNotFoundError:
+        return False
+    return True
+
+
+@pytest.mark.skipif(not statsmodels_available(), reason="requires statsmodels!")
 @pytest.mark.slow  # Execution time ~2 minutes.
 def test_estimate_variance_of_temperature_estimate():
     import dask.array as da
@@ -1698,8 +1707,6 @@ def test_estimate_variance_of_temperature_estimate():
     actual = (out["tmpw"] - temp_real2[:, None]).var(dim="time")
     desire2 = out["tmpw_var"].mean(dim="time")
     assert_almost_equal_verbose(actual[16:32], desire2[16:32], decimal=3)
-
-    pass
 
 
 def test_single_ended_wls_estimate_synthetic():
@@ -2501,9 +2508,9 @@ def test_single_ended_exponential_variance_estimate_synthetic():
             assert_almost_equal_verbose(v1i, v2i_c, decimal=1)
 
     pass
-    print("hoi")
 
 
+@pytest.mark.skipif(not statsmodels_available(), reason="requires statsmodels!")
 def test_calibrate_wls_solver_procedures():
     x = np.linspace(0, 10, 25 * 4)
     np.random.shuffle(x)
