@@ -358,9 +358,6 @@ def test_read_single_silixa_v8():
         assert isinstance(ds[k].data, np.ndarray)
 
 
-@pytest.mark.skip(
-    reason="Randomly fails. Has to do with delayed reading" "out of zips with dask."
-)
 def test_read_silixa_zipped():
     files = [
         (data_dir_zipped_single_ended, 11387947.857184),
