@@ -83,7 +83,7 @@ docs = [  # Required for ReadTheDocs
     "IPython",
     "myst_parser",
     "matplotlib>=3.0.0",
-    "sphinx",
+    "sphinx<9",  # see https://github.com/xarray-contrib/sphinx-autosummary-accessors/issues/165
     "sphinx_rtd_theme",
     "sphinx-autoapi",
     "sphinx-automodapi",
