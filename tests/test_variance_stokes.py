@@ -9,6 +9,7 @@ from dtscalibration import read_silixa_files
 from dtscalibration.variance_stokes import variance_stokes_constant
 from dtscalibration.variance_stokes import variance_stokes_exponential
 from dtscalibration.variance_stokes import variance_stokes_linear
+from tests.conftest import assert_almost_equal_verbose
 
 state = np.random.seed(0)
 
@@ -35,23 +36,6 @@ else:
     data_dir_single_ended = os.path.join("..", "..", "tests", "data", "single_ended")
     data_dir_double_ended = os.path.join("..", "..", "tests", "data", "double_ended")
     data_dir_double_ended2 = os.path.join("..", "..", "tests", "data", "double_ended2")
-
-
-def assert_almost_equal_verbose(actual, desired, verbose=False, **kwargs):
-    """Print the actual precision decimals"""
-    err = np.abs(actual - desired).max()
-    dec = -np.ceil(np.log10(err))
-
-    if not (np.isfinite(dec)):
-        dec = 18.0
-
-    m = "\n>>>>>The actual precision is: " + str(float(dec))
-
-    if verbose:
-        print(m)
-
-    desired2 = np.broadcast_to(desired, actual.shape)
-    np.testing.assert_almost_equal(actual, desired2, err_msg=m, **kwargs)
 
 
 @pytest.mark.slow  # Execution time ~20 seconds
