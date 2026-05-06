@@ -11,7 +11,7 @@ Overview
     * - Tests
       - |tests|
     * - Package
-      - | |version| |supported-versions| |commits-since|
+      - | |version| |conda-forge| |supported-versions| |commits-since|
     * - Citable
       - |zenodo|
     * - Example notebooks
@@ -49,14 +49,20 @@ Overview
    :alt: Interactively run the example notebooks online
    :target: https://mybinder.org/v2/gh/dtscalibration/python-dts-calibration/main?labpath=docs%2Fnotebooks
 
+.. |conda-forge| image:: https://anaconda.org/conda-forge/dtscalibration/badges/version.svg
+   :alt: Conda-forge package
+   :target: https://anaconda.org/conda-forge/dtscalibration
+
 .. end-badges
 
 A Python package to load Distributed Temperature Sensing files, perform a calibration, and plot the result. A detailed description of the calibration procedure can be found at https://doi.org/10.3390/s20082235 .
 
-Do you have questions, ideas or just want to say hi? Please leave a message on the ` discussions page <https://github.com/dtscalibration/python-dts-calibration/discussions>`_!
+Do you have questions, ideas or just want to say hi? Please leave a message on the `discussions page <https://github.com/dtscalibration/python-dts-calibration/discussions>`_!
 
 Installation
 ============
+
+You can install the package in a python (virtual) environment with:
 
 .. code-block:: zsh
 
@@ -67,6 +73,12 @@ Or the development version directly from GitHub
 .. code-block:: zsh
 
     pip install https://github.com/dtscalibration/python-dts-calibration/zipball/main --upgrade
+
+The package is also available on conda-forge. Install it in a conda or mamba environment with:
+
+.. code-block:: sh
+
+    conda install -c conda-forge dtscalibration
 
 Package features
 ================
