@@ -23,7 +23,7 @@ version = "3.1.0"
 description = "Load Distributed Temperature Sensing (DTS) files, calibrate the temperature and estimate its uncertainty."
 readme = "README.rst"
 license = "BSD-3-Clause"
-requires-python = ">=3.9, <3.13"
+requires-python = ">=3.12"
 authors = [
   {name = "Bas des Tombe, Bart Schilperoort"},
 ]

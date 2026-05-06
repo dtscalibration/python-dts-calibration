@@ -1,6 +1,21 @@
 
 Changelog
 =========
+
+
+Unreleased
+----------
+
+Added
+
+* Support for Python 3.13 and 3.14
+
+
+Removed
+
+* Support for Python versions below 3.12.
+
+
 3.1.0 (2024-09-13)
 ---
 
