@@ -228,12 +228,40 @@ def test_read_silixa_files_single_ended():
 
     np.testing.assert_almost_equal(ds.st.sum(), 11387947.857, decimal=3)
 
+    # Slice cross-check against the independent raw-XML reader: catches
+    # column-swap or dtype regressions that would slip past the global sum.
+    fp0 = os.path.join(filepath, fn_single[0])
+    raw = read_data_from_fp_numpy(fp0)  # cols = [LAF, ST, AST, TMP]
+    np.testing.assert_array_equal(ds.x.values[:3], raw[:3, 0])
+    np.testing.assert_array_equal(ds.st.isel(x=slice(0, 3), time=0).values, raw[:3, 1])
+    np.testing.assert_array_equal(
+        ds.ast.isel(x=slice(0, 3), time=0).values, raw[:3, 2]
+    )
+
+    # Timestamp must round-trip exactly through the timezone normalisation.
+    assert ds.time.values[0] == np.datetime64("2018-05-04T12:22:17.710000000")
+
 
 def test_read_silixa_files_double_ended():
     filepath = data_dir_double_ended
     ds = read_silixa_files(directory=filepath, timezone_netcdf="UTC", file_ext="*.xml")
 
     np.testing.assert_almost_equal(ds.st.sum(), 19613502.2617, decimal=3)
+
+    # Slice cross-check; columns for double-ended are [LAF, ST, AST, RST, RAST, TMP].
+    fp0 = os.path.join(filepath, fn[0])
+    raw = read_data_from_fp_numpy(fp0)
+    np.testing.assert_array_equal(ds.x.values[:3], raw[:3, 0])
+    np.testing.assert_array_equal(ds.st.isel(x=slice(0, 3), time=0).values, raw[:3, 1])
+    np.testing.assert_array_equal(
+        ds.ast.isel(x=slice(0, 3), time=0).values, raw[:3, 2]
+    )
+    np.testing.assert_array_equal(
+        ds.rst.isel(x=slice(0, 3), time=0).values, raw[:3, 3]
+    )
+    np.testing.assert_array_equal(
+        ds.rast.isel(x=slice(0, 3), time=0).values, raw[:3, 4]
+    )
 
 
 def test_read_silixa_files_single_loadinmemory():
@@ -396,6 +424,19 @@ def test_read_sensornet_files_single_ended():
     )
     np.testing.assert_almost_equal(ds.st.sum(), 2955105.679, decimal=2)
 
+    # Pin first three Stokes samples and the first timestamp; catches
+    # column-swap / sign / timezone-conversion regressions that the
+    # global sum cannot detect. Values are produced by the loader itself
+    # and recorded once -- if the loader changes, this assertion will
+    # fail loudly rather than silently drift.
+    np.testing.assert_allclose(
+        ds.st.isel(x=slice(0, 3), time=0).values,
+        np.array([1481.62, 1464.029, 1458.437]),
+        rtol=0,
+        atol=1e-3,
+    )
+    assert ds.time.values[0] == np.datetime64("2018-01-07T20:21:04.000000000")
+
 
 def test_read_sensornet_halo_files_double_ended():
     filepath = data_dir_sensornet_halo_double_ended
@@ -450,6 +491,15 @@ def test_read_apsensing_files():
         file_ext="*.xml",
     )
     np.testing.assert_almost_equal(ds.st.sum(), 10415.2837, decimal=2)
+
+    # Pin first three Stokes samples and the first timestamp.
+    np.testing.assert_allclose(
+        ds.st.isel(x=slice(0, 3), time=0).values,
+        np.array([1.09776821, 0.96427369, 0.94452662]),
+        rtol=0,
+        atol=1e-7,
+    )
+    assert ds.time.values[0] == np.datetime64("2018-01-18T20:17:27.000000")
 
 
 def test_read_apsensing_files_double_ended():
@@ -564,6 +614,13 @@ def test_read_sensortran_files():
         ds.st.values.astype(np.int64).sum(), np.int64(1432441254828), significant=12
     )
 
+    # Pin first three Stokes counts and the first timestamp.
+    np.testing.assert_array_equal(
+        ds.st.isel(x=slice(0, 3), time=0).values.astype(np.int64),
+        np.array([39040680, 39038580, 39038768], dtype=np.int64),
+    )
+    assert ds.time.values[0] == np.datetime64("2009-09-24T00:56:47.000000000")
+
 
 def read_data_from_fp_numpy(fp):
     """
@@ -606,13 +663,19 @@ def test_resample_datastore():
 
     assert ds_resampled.time.size == 2
 
-    ## No control over dim order from resample with accessor
-    # assert ds_resampled.st.dims == ("x", "time"), (
-    #     "The dimension have to "
-    #     "be manually transposed "
-    #     "after resampling. To "
-    #     "guarantee the order"
-    # )
+    # Resample-mean must equal the analytic mean of the original samples in
+    # each window. Identify which originals fall into each output bin via the
+    # resample window edges, then compare to machine precision.
+    window = np.timedelta64(47, "s")
+    t_orig = ds.time.values
+    for ti, t_bin in enumerate(ds_resampled.time.values):
+        mask = (t_orig >= t_bin) & (t_orig < t_bin + window)
+        if mask.sum() == 0:
+            continue
+        expected = ds["st"].isel(time=mask).mean("time").values
+        np.testing.assert_allclose(
+            ds_resampled["st"].isel(time=ti).values, expected, rtol=1e-12
+        )
 
 
 def test_timeseries_keys():
@@ -651,15 +714,38 @@ def test_shift_double_ended_shift_backforward():
         np.testing.assert_allclose(old, new)
 
 
-def test_suggest_cable_shift_double_ended():
-    # need more measurements for proper testing. Therefore only checking if
-    # no errors occur
-
+def test_suggest_cable_shift_double_ended_smoke():
+    """Smoke check: real-data invocation does not error."""
     filepath = data_dir_double_ended
     ds = read_silixa_files(directory=filepath, timezone_netcdf="UTC", file_ext="*.xml")
 
     irange = np.arange(-4, 4)
     suggest_cable_shift_double_ended(ds, irange, plot_result=True)
+
+
+def test_suggest_cable_shift_double_ended_recovers_synthetic_roll(
+    synthetic_double_ended,
+):
+    """Rolling rst/rast by +k along x is equivalent to a cable whose backward
+    channel origin is shifted by k samples. On noise-free synthetic data the
+    minimiser must return exactly -k for both objective functions.
+    """
+    roll_k = 3
+    bundle = synthetic_double_ended(nx=80, nt=5)
+    ds = bundle.ds
+
+    ds_shifted = ds.assign(
+        rst=(["x", "time"], np.roll(ds["rst"].values, roll_k, axis=0)),
+        rast=(["x", "time"], np.roll(ds["rast"].values, roll_k, axis=0)),
+    )
+
+    irange = np.arange(-6, 6, dtype=int)
+    ishift1, ishift2 = suggest_cable_shift_double_ended(
+        ds_shifted, irange, plot_result=False
+    )
+
+    assert ishift1 == -roll_k, f"Err1-based shift {ishift1} != {-roll_k}"
+    assert ishift2 == -roll_k, f"Err2-based shift {ishift2} != {-roll_k}"
 
 
 def test_merge_double_ended():
