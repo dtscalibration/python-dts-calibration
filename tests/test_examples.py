@@ -1,7 +1,6 @@
 import os
 from collections import namedtuple
 from pathlib import Path
-from typing import Optional
 
 import nbformat
 import pytest
@@ -27,7 +26,7 @@ def test_identify_not_working_docs_notebook():
     _test_notebook(fp, "python3")
 
 
-def _test_notebook(notebook_file, kernel) -> Optional[NBError]:
+def _test_notebook(notebook_file, kernel) -> NBError | None:
     """
     Test single notebook.
 
