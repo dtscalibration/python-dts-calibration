@@ -1,7 +1,6 @@
 import struct
 from pathlib import Path
 from typing import Any
-from typing import Union
 
 import numpy as np
 import xarray as xr
@@ -11,7 +10,7 @@ from dtscalibration.io.utils import dim_attrs
 
 
 def read_sensortran_files(
-    directory: Union[str, Path],
+    directory: str | Path,
     timezone_input_files: str = "UTC",
     timezone_netcdf: str = "UTC",
     silent: bool = False,

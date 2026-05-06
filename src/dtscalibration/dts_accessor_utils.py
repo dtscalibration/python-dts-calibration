@@ -1,6 +1,4 @@
 import warnings
-from typing import Optional
-from typing import Union
 
 import dask.array as da
 import matplotlib.pyplot as plt
@@ -11,8 +9,8 @@ import xarray as xr
 
 def check_dims(
     ds: xr.Dataset,
-    labels: Union[list[str], tuple[str]],
-    correct_dims: Optional[tuple[str]] = None,
+    labels: list[str] | tuple[str],
+    correct_dims: tuple[str] | None = None,
 ) -> None:
     """Compare the dimensions of different labels. For example: ['st', 'rst'].
     If a calculation is performed and the dimensions do not agree, the answers do not
