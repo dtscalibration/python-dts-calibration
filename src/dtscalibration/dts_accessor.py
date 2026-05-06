@@ -131,7 +131,12 @@ class DtsAccessor:
 
     @sections.deleter
     def sections(self):
-        self._obj.attrs["_sections"] = yaml.dump(None)
+        msg = (
+            "Not possible anymore. Sections are owned by the calibration result; "
+            "pass the sections as an argument to ds.dts.calibrate_single_ended() "
+            "or ds.dts.calibrate_double_ended() instead."
+        )
+        raise NotImplementedError(msg)
 
     @sections.setter
     def sections(self, value):
@@ -172,7 +177,12 @@ class DtsAccessor:
 
     @matching_sections.deleter
     def matching_sections(self):
-        self._obj.attrs["_matching_sections"] = yaml.dump(None)
+        msg = (
+            "Not possible anymore. Matching sections are owned by the calibration "
+            "result; pass them as an argument to ds.dts.calibrate_single_ended() "
+            "or ds.dts.calibrate_double_ended() instead."
+        )
+        raise NotImplementedError(msg)
 
     @matching_sections.setter
     def matching_sections(self, value):
@@ -457,7 +467,7 @@ class DtsAccessor:
         p_var=None,
         p_cov=None,
         matching_sections=None,
-        trans_att=[],
+        trans_att=None,
         fix_gamma=None,
         fix_dalpha=None,
         fix_alpha=None,
@@ -601,6 +611,8 @@ class DtsAccessor:
     07Calibrate_single_wls.ipynb>`_
 
         """
+        if trans_att is None:
+            trans_att = []
         # out contains the state
         out = xr.Dataset(
             coords={"x": self.x, "time": self.time, "trans_att": trans_att}
@@ -760,7 +772,7 @@ class DtsAccessor:
         p_val=None,
         p_var=None,
         p_cov=None,
-        trans_att=[],
+        trans_att=None,
         fix_gamma=None,
         fix_alpha=None,
         matching_sections=None,
@@ -995,6 +1007,8 @@ class DtsAccessor:
         dtscalibration/python-dts-calibration/blob/master/examples/notebooks/
         08Calibrate_double_wls.ipynb>`
         """
+        if trans_att is None:
+            trans_att = []
         # out contains the state
         out = xr.Dataset(
             coords={"x": self.x, "time": self.time, "trans_att": trans_att}
@@ -2803,7 +2817,6 @@ class DtsAccessor:
 
             for k in remove_mc_set:
                 if k in out:
-                    print(f"Removed from results: {k}")
                     del out[k]
 
         return out
