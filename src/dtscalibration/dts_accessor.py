@@ -132,19 +132,20 @@ class DtsAccessor:
     @sections.deleter
     def sections(self):
         msg = (
-            "Not possible anymore. Sections are owned by the calibration result; "
-            "pass the sections as an argument to ds.dts.calibrate_single_ended() "
-            "or ds.dts.calibrate_double_ended() instead."
+            "Cannot delete sections. They are owned by the calibration result; "
+            "pass them to ds.dts.calibrate_single_ended() or "
+            "ds.dts.calibrate_double_ended() instead."
         )
-        raise NotImplementedError(msg)
+        raise AttributeError(msg)
 
     @sections.setter
     def sections(self, value):
         msg = (
-            "Not possible anymore. Instead, pass the sections as an argument to \n"
-            "ds.dts.calibrate_single_ended() or ds.dts.calibrate_double_ended()."
+            "Cannot set sections directly. Pass them as an argument to "
+            "ds.dts.calibrate_single_ended() or ds.dts.calibrate_double_ended() "
+            "instead."
         )
-        raise NotImplementedError(msg)
+        raise AttributeError(msg)
 
     # noinspection PyIncorrectDocstring
     @property
@@ -178,19 +179,20 @@ class DtsAccessor:
     @matching_sections.deleter
     def matching_sections(self):
         msg = (
-            "Not possible anymore. Matching sections are owned by the calibration "
-            "result; pass them as an argument to ds.dts.calibrate_single_ended() "
-            "or ds.dts.calibrate_double_ended() instead."
+            "Cannot delete matching_sections. They are owned by the calibration "
+            "result; pass them to ds.dts.calibrate_single_ended() or "
+            "ds.dts.calibrate_double_ended() instead."
         )
-        raise NotImplementedError(msg)
+        raise AttributeError(msg)
 
     @matching_sections.setter
     def matching_sections(self, value):
         msg = (
-            "Not possible anymore. Instead, pass the matching_sections as an argument to \n"
-            "ds.dts.calibrate_single_ended() or ds.dts.calibrate_double_ended()."
+            "Cannot set matching_sections directly. Pass them as an argument to "
+            "ds.dts.calibrate_single_ended() or ds.dts.calibrate_double_ended() "
+            "instead."
         )
-        raise NotImplementedError(msg)
+        raise AttributeError(msg)
 
     def get_default_encoding(self, time_chunks_from_key=None):
         """Returns a dictionary with sensible compression setting for writing netCDF files.
