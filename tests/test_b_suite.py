@@ -18,19 +18,14 @@ import xarray as xr
 from xarray import Dataset
 
 from dtscalibration import read_silixa_files
-from dtscalibration.dts_accessor_utils import (
-    ParameterIndexDoubleEnded,
-    ParameterIndexSingleEnded,
-    get_params_from_pval_double_ended,
-)
 from dtscalibration.calibration.section_utils import validate_sections
+from dtscalibration.dts_accessor_utils import ParameterIndexDoubleEnded
+from dtscalibration.dts_accessor_utils import ParameterIndexSingleEnded
+from dtscalibration.dts_accessor_utils import get_params_from_pval_double_ended
 from dtscalibration.io.apsensing import parse_tra_numbers
 from dtscalibration.io.utils import coords_time
-from dtscalibration.variance_stokes import (
-    variance_stokes_constant,
-    variance_stokes_linear,
-)
-
+from dtscalibration.variance_stokes import variance_stokes_constant
+from dtscalibration.variance_stokes import variance_stokes_linear
 
 # ---------------------------------------------------------------------------
 # B1 -- Forward-model round-trip after calibrate_single_ended
