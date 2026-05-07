@@ -131,15 +131,21 @@ class DtsAccessor:
 
     @sections.deleter
     def sections(self):
-        self._obj.attrs["_sections"] = yaml.dump(None)
+        msg = (
+            "Cannot delete sections. They are owned by the calibration result; "
+            "pass them to ds.dts.calibrate_single_ended() or "
+            "ds.dts.calibrate_double_ended() instead."
+        )
+        raise AttributeError(msg)
 
     @sections.setter
     def sections(self, value):
         msg = (
-            "Not possible anymore. Instead, pass the sections as an argument to \n"
-            "ds.dts.calibrate_single_ended() or ds.dts.calibrate_double_ended()."
+            "Cannot set sections directly. Pass them as an argument to "
+            "ds.dts.calibrate_single_ended() or ds.dts.calibrate_double_ended() "
+            "instead."
         )
-        raise NotImplementedError(msg)
+        raise AttributeError(msg)
 
     # noinspection PyIncorrectDocstring
     @property
@@ -172,15 +178,21 @@ class DtsAccessor:
 
     @matching_sections.deleter
     def matching_sections(self):
-        self._obj.attrs["_matching_sections"] = yaml.dump(None)
+        msg = (
+            "Cannot delete matching_sections. They are owned by the calibration "
+            "result; pass them to ds.dts.calibrate_single_ended() or "
+            "ds.dts.calibrate_double_ended() instead."
+        )
+        raise AttributeError(msg)
 
     @matching_sections.setter
     def matching_sections(self, value):
         msg = (
-            "Not possible anymore. Instead, pass the matching_sections as an argument to \n"
-            "ds.dts.calibrate_single_ended() or ds.dts.calibrate_double_ended()."
+            "Cannot set matching_sections directly. Pass them as an argument to "
+            "ds.dts.calibrate_single_ended() or ds.dts.calibrate_double_ended() "
+            "instead."
         )
-        raise NotImplementedError(msg)
+        raise AttributeError(msg)
 
     def get_default_encoding(self, time_chunks_from_key=None):
         """Returns a dictionary with sensible compression setting for writing netCDF files.
@@ -457,7 +469,7 @@ class DtsAccessor:
         p_var=None,
         p_cov=None,
         matching_sections=None,
-        trans_att=[],
+        trans_att=None,
         fix_gamma=None,
         fix_dalpha=None,
         fix_alpha=None,
@@ -601,6 +613,8 @@ class DtsAccessor:
     07Calibrate_single_wls.ipynb>`_
 
         """
+        if trans_att is None:
+            trans_att = []
         # out contains the state
         out = xr.Dataset(
             coords={"x": self.x, "time": self.time, "trans_att": trans_att}
@@ -760,7 +774,7 @@ class DtsAccessor:
         p_val=None,
         p_var=None,
         p_cov=None,
-        trans_att=[],
+        trans_att=None,
         fix_gamma=None,
         fix_alpha=None,
         matching_sections=None,
@@ -995,6 +1009,8 @@ class DtsAccessor:
         dtscalibration/python-dts-calibration/blob/master/examples/notebooks/
         08Calibrate_double_wls.ipynb>`
         """
+        if trans_att is None:
+            trans_att = []
         # out contains the state
         out = xr.Dataset(
             coords={"x": self.x, "time": self.time, "trans_att": trans_att}
@@ -2803,7 +2819,6 @@ class DtsAccessor:
 
             for k in remove_mc_set:
                 if k in out:
-                    print(f"Removed from results: {k}")
                     del out[k]
 
         return out

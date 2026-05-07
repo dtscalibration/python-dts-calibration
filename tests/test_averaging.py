@@ -1,194 +1,213 @@
+"""Meaningful tests for the average_monte_carlo_* APIs.
+
+Each test exercises the four ci_avg_x / ci_avg_time flag combinations on a
+synthetic noise-free dataset. With variances driven to numerical zero
+(1e-30, kept slightly above 0.0 because the inverse-variance weighting in
+ci_avg_*_flag2 divides by per-sample variance), every Monte-Carlo draw
+collapses to the MAP estimate, so the spread between confidence-interval
+percentiles must vanish to machine precision. This catches sign flips,
+shape regressions, and broken aggregation paths that the previous
+assertion-free smoke tests would not have detected.
+"""
+
 import os
 
 import numpy as np
 
 from dtscalibration import read_silixa_files
 
+# Tests pull the synthetic_double_ended fixture from tests/conftest.py.
+
 np.random.seed(0)
 
-fn = [
-    "channel 1_20170921112245510.xml",
-    "channel 1_20170921112746818.xml",
-    "channel 1_20170921112746818.xml",
-]
-fn_single = [
-    "channel 2_20180504132202074.xml",
-    "channel 2_20180504132232903.xml",
-    "channel 2_20180504132303723.xml",
-]
-
 if 1:
-    # working dir is tests
     wd = os.path.dirname(os.path.abspath(__file__))
     data_dir_single_ended = os.path.join(wd, "data", "single_ended")
     data_dir_double_ended = os.path.join(wd, "data", "double_ended")
     data_dir_double_ended2 = os.path.join(wd, "data", "double_ended2")
 
-else:
-    # working dir is src
-    data_dir_single_ended = os.path.join("..", "..", "tests", "data", "single_ended")
-    data_dir_double_ended = os.path.join("..", "..", "tests", "data", "double_ended")
-    data_dir_double_ended2 = os.path.join("..", "..", "tests", "data", "double_ended2")
+
+# Tiny, non-zero variance: the inverse-variance weighting branches divide by
+# the per-sample variance, so 0.0 would NaN. 1e-30 keeps the MC draws within
+# machine precision of the MAP while sidestepping the division.
+_NEAR_ZERO_VAR = 1e-30
+_MC_SPREAD_TOL = 1e-6
 
 
-def assert_almost_equal_verbose(actual, desired, verbose=False, **kwargs):
-    """Print the actual precision decimals"""
-    err = np.abs(actual - desired).max()
-    dec = -np.ceil(np.log10(err))
-
-    if not (np.isfinite(dec)):
-        dec = 18.0
-
-    m = "\n>>>>>The actual precision is: " + str(float(dec))
-
-    if verbose:
-        print(m)
-
-    desired2 = np.broadcast_to(desired, actual.shape)
-    np.testing.assert_almost_equal(actual, desired2, err_msg=m, **kwargs)
+def _section_isel(x_da, sec):
+    xis = x_da.astype(int) * 0 + np.arange(x_da.size, dtype=int)
+    return xis.sel(x=sec).values
 
 
-def test_average_measurements_single_ended():
-    filepath = data_dir_single_ended
-
-    ds_ = read_silixa_files(directory=filepath, timezone_netcdf="UTC", file_ext="*.xml")
-
-    ds = ds_.sel(x=slice(0, 100))  # only calibrate parts of the fiber
-    sections = {"probe2Temperature": [slice(6.0, 14.0)]}  # warm bath
-
-    st_var, ast_var = 5.0, 5.0
+def test_average_monte_carlo_single_ended_zero_noise(synthetic_double_ended):
+    """All four CI-aggregation modes must collapse to zero spread when the
+    Monte-Carlo input variance is numerically zero. We exercise the same four
+    flag combinations the original smoke test did."""
+    bundle = synthetic_double_ended(nx=30, nt=10)
+    # Drop double-ended-only variables to simulate a single-ended dataset.
+    ds = bundle.ds.drop_vars(["rst", "rast"])
+    ds.attrs["isDoubleEnded"] = "0"
+    sections = bundle.sections
 
     out = ds.dts.calibrate_single_ended(
-        sections=sections, st_var=st_var, ast_var=ast_var, method="wls", solver="sparse"
-    )
-    ds.dts.average_monte_carlo_single_ended(
-        result=out,
-        st_var=st_var,
-        ast_var=ast_var,
-        conf_ints=[2.5, 97.5],
-        mc_sample_size=50,  # <- choose a much larger sample size
-        ci_avg_x_flag1=True,
-        ci_avg_x_sel=slice(6.0, 14.0),
-    )
-
-    def get_section_indices(x_da, sec):
-        """Returns the x-indices of the section. `sec` is a slice."""
-        xis = x_da.astype(int) * 0 + np.arange(x_da.size, dtype=int)
-        return xis.sel(x=sec).values
-
-    ix = get_section_indices(ds.x, slice(6, 14))
-    ds.dts.average_monte_carlo_single_ended(
-        result=out,
-        st_var=st_var,
-        ast_var=ast_var,
-        conf_ints=[2.5, 97.5],
-        mc_sample_size=50,  # <- choose a much larger sample size
-        ci_avg_x_flag2=True,
-        ci_avg_x_isel=ix,
-    )
-    sl = slice(
-        np.datetime64("2018-05-04T12:22:17.710000000"),
-        np.datetime64("2018-05-04T12:22:47.702000000"),
-    )
-    ds.dts.average_monte_carlo_single_ended(
-        result=out,
-        st_var=st_var,
-        ast_var=ast_var,
-        conf_ints=[2.5, 97.5],
-        mc_sample_size=50,  # <- choose a much larger sample size
-        ci_avg_time_flag1=True,
-        ci_avg_time_flag2=False,
-        ci_avg_time_sel=sl,
-    )
-    ds.dts.average_monte_carlo_single_ended(
-        result=out,
-        st_var=st_var,
-        ast_var=ast_var,
-        conf_ints=[2.5, 97.5],
-        mc_sample_size=50,  # <- choose a much larger sample size
-        ci_avg_time_flag1=False,
-        ci_avg_time_flag2=True,
-        ci_avg_time_isel=range(3),
-    )
-
-
-def test_average_measurements_double_ended():
-    filepath = data_dir_double_ended2
-
-    ds_ = read_silixa_files(directory=filepath, timezone_netcdf="UTC", file_ext="*.xml")
-
-    ds = ds_.sel(x=slice(0, 100))  # only calibrate parts of the fiber
-    sections = {
-        "probe1Temperature": [slice(7.5, 17.0), slice(70.0, 80.0)],  # cold bath
-        "probe2Temperature": [slice(24.0, 34.0), slice(85.0, 95.0)],  # warm bath
-    }
-
-    st_var, ast_var, rst_var, rast_var = 5.0, 5.0, 5.0, 5.0
-
-    out = ds.dts.calibrate_double_ended(
         sections=sections,
-        st_var=st_var,
-        ast_var=ast_var,
-        rst_var=rst_var,
-        rast_var=rast_var,
+        st_var=_NEAR_ZERO_VAR,
+        ast_var=_NEAR_ZERO_VAR,
         method="wls",
         solver="sparse",
     )
-    ds.dts.average_monte_carlo_double_ended(
+
+    common = dict(
         result=out,
-        st_var=st_var,
-        ast_var=ast_var,
-        rst_var=rst_var,
-        rast_var=rast_var,
+        st_var=_NEAR_ZERO_VAR,
+        ast_var=_NEAR_ZERO_VAR,
         conf_ints=[2.5, 97.5],
-        mc_sample_size=50,  # <- choose a much larger sample size
-        ci_avg_x_flag1=True,
-        ci_avg_x_sel=slice(6, 10),
+        mc_sample_size=50,
+    )
+    sec_slice = sections["cold"][0]
+
+    # ci_avg_x_flag1: unweighted spatial average over a slice
+    av = ds.dts.average_monte_carlo_single_ended(
+        **common, ci_avg_x_flag1=True, ci_avg_x_sel=sec_slice
+    )
+    assert (
+        np.abs(av["tmpf_mc_avgx1"].values[1] - av["tmpf_mc_avgx1"].values[0]).max()
+        < _MC_SPREAD_TOL
     )
 
-    def get_section_indices(x_da, sec):
-        """Returns the x-indices of the section. `sec` is a slice."""
-        xis = x_da.astype(int) * 0 + np.arange(x_da.size, dtype=int)
-        return xis.sel(x=sec).values
+    # ci_avg_x_flag2: inverse-variance spatial average over an integer index set
+    ix = _section_isel(ds.x, sec_slice)
+    av = ds.dts.average_monte_carlo_single_ended(
+        **common, ci_avg_x_flag2=True, ci_avg_x_isel=ix
+    )
+    assert (
+        np.abs(av["tmpf_mc_avgx2"].values[1] - av["tmpf_mc_avgx2"].values[0]).max()
+        < _MC_SPREAD_TOL
+    )
 
-    ix = get_section_indices(ds.x, slice(6, 10))
-    ds.dts.average_monte_carlo_double_ended(
-        result=out,
-        st_var=st_var,
-        ast_var=ast_var,
-        rst_var=rst_var,
-        rast_var=rast_var,
-        conf_ints=[2.5, 97.5],
-        mc_sample_size=50,  # <- choose a much larger sample size
-        ci_avg_x_flag2=True,
-        ci_avg_x_isel=ix,
-    )
-    sl = slice(
-        np.datetime64("2018-03-28T00:40:54.097000000"),
-        np.datetime64("2018-03-28T00:41:12.084000000"),
-    )
-    ds.dts.average_monte_carlo_double_ended(
-        result=out,
-        st_var=st_var,
-        ast_var=ast_var,
-        rst_var=rst_var,
-        rast_var=rast_var,
-        conf_ints=[2.5, 97.5],
-        mc_sample_size=50,  # <- choose a much larger sample size
+    # ci_avg_time_flag1: unweighted temporal average over a time slice
+    time_sel = slice(ds.time.values[0], ds.time.values[5])
+    av = ds.dts.average_monte_carlo_single_ended(
+        **common,
         ci_avg_time_flag1=True,
         ci_avg_time_flag2=False,
-        ci_avg_time_sel=sl,
+        ci_avg_time_sel=time_sel,
     )
-    ds.dts.average_monte_carlo_double_ended(
-        result=out,
-        st_var=st_var,
-        ast_var=ast_var,
-        rst_var=rst_var,
-        rast_var=rast_var,
-        conf_ints=[2.5, 97.5],
-        mc_sample_size=50,  # <- choose a much larger sample size
+    assert (
+        np.abs(av["tmpf_mc_avg1"].values[1] - av["tmpf_mc_avg1"].values[0]).max()
+        < _MC_SPREAD_TOL
+    )
+
+    # ci_avg_time_flag2: inverse-variance temporal average over integer indices
+    av = ds.dts.average_monte_carlo_single_ended(
+        **common,
         ci_avg_time_flag1=False,
         ci_avg_time_flag2=True,
-        ci_avg_time_isel=range(3),
+        ci_avg_time_isel=range(5),
     )
-    pass
+    assert (
+        np.abs(av["tmpf_mc_avg2"].values[1] - av["tmpf_mc_avg2"].values[0]).max()
+        < _MC_SPREAD_TOL
+    )
+
+
+def test_average_monte_carlo_double_ended_zero_noise_and_symmetry(
+    synthetic_double_ended,
+):
+    """For each of the four CI-aggregation modes the per-CI spread must vanish
+    on a noise-free dataset. Additionally, with all four channel variances
+    equal and the synthetic dataset symmetric in fw/bw, the calibrated tmpf
+    and tmpb fields must agree to machine precision."""
+    bundle = synthetic_double_ended(nx=30, nt=10)
+    ds = bundle.ds
+    sections = bundle.sections
+
+    out = ds.dts.calibrate_double_ended(
+        sections=sections,
+        st_var=_NEAR_ZERO_VAR,
+        ast_var=_NEAR_ZERO_VAR,
+        rst_var=_NEAR_ZERO_VAR,
+        rast_var=_NEAR_ZERO_VAR,
+        method="wls",
+        solver="sparse",
+    )
+
+    # Symmetry check: equal per-channel variances + symmetric forward/backward
+    # synthetic fields => tmpf and tmpb must converge to the same field.
+    np.testing.assert_allclose(out["tmpf"].values, out["tmpb"].values, atol=1e-8)
+
+    common = dict(
+        result=out,
+        st_var=_NEAR_ZERO_VAR,
+        ast_var=_NEAR_ZERO_VAR,
+        rst_var=_NEAR_ZERO_VAR,
+        rast_var=_NEAR_ZERO_VAR,
+        conf_ints=[2.5, 97.5],
+        mc_sample_size=50,
+    )
+    sec_slice = sections["cold"][0]
+
+    # flag1 spatial
+    av = ds.dts.average_monte_carlo_double_ended(
+        **common, ci_avg_x_flag1=True, ci_avg_x_sel=sec_slice
+    )
+    for label in ("tmpf_mc_avgx1", "tmpb_mc_avgx1", "tmpw_mc_avgx1"):
+        spread = np.abs(av[label].values[1] - av[label].values[0]).max()
+        assert spread < _MC_SPREAD_TOL, f"{label} CI spread {spread} too wide"
+
+    # flag2 spatial
+    ix = _section_isel(ds.x, sec_slice)
+    av = ds.dts.average_monte_carlo_double_ended(
+        **common, ci_avg_x_flag2=True, ci_avg_x_isel=ix
+    )
+    for label in ("tmpf_mc_avgx2", "tmpb_mc_avgx2", "tmpw_mc_avgx2"):
+        spread = np.abs(av[label].values[1] - av[label].values[0]).max()
+        assert spread < _MC_SPREAD_TOL, f"{label} CI spread {spread} too wide"
+
+    # flag1 temporal
+    time_sel = slice(ds.time.values[0], ds.time.values[5])
+    av = ds.dts.average_monte_carlo_double_ended(
+        **common,
+        ci_avg_time_flag1=True,
+        ci_avg_time_flag2=False,
+        ci_avg_time_sel=time_sel,
+    )
+    for label in ("tmpf_mc_avg1", "tmpb_mc_avg1", "tmpw_mc_avg1"):
+        spread = np.abs(av[label].values[1] - av[label].values[0]).max()
+        assert spread < _MC_SPREAD_TOL, f"{label} CI spread {spread} too wide"
+
+    # flag2 temporal
+    av = ds.dts.average_monte_carlo_double_ended(
+        **common,
+        ci_avg_time_flag1=False,
+        ci_avg_time_flag2=True,
+        ci_avg_time_isel=range(5),
+    )
+    for label in ("tmpf_mc_avg2", "tmpb_mc_avg2", "tmpw_mc_avg2"):
+        spread = np.abs(av[label].values[1] - av[label].values[0]).max()
+        assert spread < _MC_SPREAD_TOL, f"{label} CI spread {spread} too wide"
+
+
+def test_average_smoke_real_data_single_ended():
+    """Real-data smoke check: the full pipeline still runs end-to-end on the
+    Silixa fixture. Replaces the previous assertion-free test."""
+    ds_ = read_silixa_files(
+        directory=data_dir_single_ended, timezone_netcdf="UTC", file_ext="*.xml"
+    )
+    ds = ds_.sel(x=slice(0, 100))
+    sections = {"probe2Temperature": [slice(6.0, 14.0)]}
+
+    out = ds.dts.calibrate_single_ended(
+        sections=sections, st_var=5.0, ast_var=5.0, method="wls", solver="sparse"
+    )
+    av = ds.dts.average_monte_carlo_single_ended(
+        result=out,
+        st_var=5.0,
+        ast_var=5.0,
+        conf_ints=[2.5, 97.5],
+        mc_sample_size=50,
+        ci_avg_x_flag1=True,
+        ci_avg_x_sel=slice(6.0, 14.0),
+    )
+    # Sanity: CI lower bound is below upper bound everywhere.
+    assert (av["tmpf_mc_avgx1"].values[0] <= av["tmpf_mc_avgx1"].values[1]).all()

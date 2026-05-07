@@ -1,5 +1,4 @@
 import os
-import warnings
 
 import numpy as np
 import pytest
@@ -10,6 +9,7 @@ from xarray import Dataset
 from dtscalibration.calibrate_utils import wls_sparse
 from dtscalibration.calibrate_utils import wls_stats
 from dtscalibration.variance_stokes import variance_stokes_exponential
+from tests.conftest import assert_almost_equal_verbose
 
 np.random.seed(0)
 
@@ -36,27 +36,6 @@ else:
     data_dir_single_ended = os.path.join("..", "..", "tests", "data", "single_ended")
     data_dir_double_ended = os.path.join("..", "..", "tests", "data", "double_ended")
     data_dir_double_ended2 = os.path.join("..", "..", "tests", "data", "double_ended2")
-
-
-def assert_almost_equal_verbose(actual, desired, verbose=False, **kwargs):
-    """Print the actual precision decimals"""
-    err = np.abs(actual - desired).max()
-
-    with warnings.catch_warnings():
-        # Supress zero division warnings
-        warnings.filterwarnings("ignore", message="divide by zero encountered in log10")
-        dec = -np.ceil(np.log10(err))
-
-    if not (np.isfinite(dec)):
-        dec = 18.0
-
-    m = "\n>>>>>The actual precision is: " + str(float(dec))
-
-    if verbose:
-        print(m)
-
-    desired2 = np.broadcast_to(desired, actual.shape)
-    np.testing.assert_almost_equal(actual, desired2, err_msg=m, **kwargs)
 
 
 def test_double_ended_wls_estimate_synthetic():
@@ -1369,7 +1348,7 @@ def test_double_ended_fix_gamma_matching_sections_and_one_asym_att():
 
 
 @pytest.mark.skip(
-    reason="Superseeded by " "test_estimate_variance_of_temperature_estimate"
+    reason="Superseeded by test_estimate_variance_of_temperature_estimate"
 )
 def test_double_ended_exponential_variance_estimate_synthetic():
     import dask.array as da

@@ -191,7 +191,7 @@ def calibration_single_ended_solver(  # noqa: MC0001
     calc_cov=True,
     solver="sparse",
     matching_indices=None,
-    trans_att=[],
+    trans_att=None,
     verbose=False,
 ):
     """The solver for single-ended setups. Assumes `ds` is pre-configured with `sections` and `trans_att`.
@@ -234,6 +234,8 @@ def calibration_single_ended_solver(  # noqa: MC0001
     p_var : np.ndarray
         The variance of the estimated parameters.
     """
+    if trans_att is None:
+        trans_att = []
     # get ix_sec argsort so the sections are in order of increasing x
     ix_sec = ds.dts.ufunc_per_section(sections=sections, x_indices=True, calc_per="all")
     ds_sec = ds.isel(x=ix_sec)
