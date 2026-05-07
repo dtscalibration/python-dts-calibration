@@ -75,3 +75,4 @@ docs/_build
 .vscode/settings.json
 *.code-workspace
 xunit-result.xml
+.claude
