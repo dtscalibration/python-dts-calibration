@@ -614,11 +614,26 @@ def test_read_sensortran_files():
         ds.st.values.astype(np.int64).sum(), np.int64(1432441254828), significant=12
     )
 
-    # Pin first three Stokes counts and the first timestamp.
+    # Pin first three Stokes counts.
     np.testing.assert_array_equal(
         ds.st.isel(x=slice(0, 3), time=0).values.astype(np.int64),
         np.array([39040680, 39038580, 39038768], dtype=np.int64),
     )
+
+
+@pytest.mark.xfail(
+    reason="exposes #229 item 3: sensortran loader uses datetime.fromtimestamp(ts) "
+    "without tz=, so ds.time depends on the local system timezone",
+    strict=False,
+)
+def test_read_sensortran_files_timestamp_is_utc():
+    """The sensortran loader is documented to interpret raw timestamps as
+    UTC, so ds.time.values[0] should be the same on every host. It is
+    currently not -- on a non-UTC system the value is off by the local
+    UTC offset. Split off into its own test so the rest of the loader's
+    assertions are not blocked by this filed bug."""
+    filepath = data_dir_sensortran_binary
+    ds = read_sensortran_files(directory=filepath, timezone_netcdf="UTC")
     assert ds.time.values[0] == np.datetime64("2009-09-24T00:56:47.000000000")
 
 
