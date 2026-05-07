@@ -215,14 +215,7 @@ def test_b5_parameter_index_double_ended_tiles_npar(fix_gamma, fix_alpha):
     tiled = _double_ended_tiling(ip)
     expected = list(range(ip.npar))
     if fix_gamma and not fix_alpha:
-        # A pre-existing off-by-one in the alpha range when fix_gamma=True
-        # makes this combination produce nx+1 alpha indices instead of nx.
-        # Mark xfail so the bug becomes visible without breaking the suite.
-        pytest.xfail(
-            "off-by-one in ParameterIndexDoubleEnded.alpha when "
-            "fix_gamma=True; alpha returns range(2*nt, 1+2*nt+nx) which "
-            "yields nx+1 indices instead of nx"
-        )
+        pytest.xfail("exposes #235: off-by-one in ParameterIndexDoubleEnded.alpha when fix_gamma=True")
     assert tiled == expected
 
 
